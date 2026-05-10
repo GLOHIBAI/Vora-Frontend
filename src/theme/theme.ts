@@ -1,68 +1,16 @@
-import { createTheme } from '@mui/material/styles';
+// Theme configuration is now handled via Tailwind CSS (tailwind.config.js)
+// and global styles in index.css. This file is kept as a reference for design tokens.
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#6366f1', // Indigo-500
-      light: '#818cf8',
-      dark: '#4f46e5',
-      contrastText: '#fff',
-    },
-    secondary: {
-      main: '#f43f5e', // Rose-500
-      light: '#fb7185',
-      dark: '#e11d48',
-      contrastText: '#fff',
-    },
-    background: {
-      default: '#f8fafc', // Slate-50
-      paper: '#ffffff',
-    },
-    text: {
-      primary: '#0f172a', // Slate-900
-      secondary: '#64748b', // Slate-500
-    },
-  },
-  typography: {
-    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-    h1: {
-      fontSize: '2.5rem',
-      fontWeight: 700,
-      letterSpacing: '-0.02em',
-    },
-    h2: {
-      fontSize: '2rem',
-      fontWeight: 600,
-      letterSpacing: '-0.01em',
-    },
-    button: {
-      textTransform: 'none',
-      fontWeight: 600,
-    },
-  },
-  shape: {
-    borderRadius: 12,
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          padding: '10px 24px',
-          boxShadow: 'none',
-          '&:hover': {
-            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
-          },
-        },
-      },
-    },
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
-        },
-      },
-    },
-  },
-});
+export const colors = {
+  primary: '#0052cc',
+  primaryLight: '#3B82F6',
+  primaryDark: '#003d99',
+  secondary: '#7C3AED',
+  background: '#f8fafc',
+  surface: '#ffffff',
+  textPrimary: '#1C1C1C',
+  textSecondary: '#6B7280',
+  border: '#E5E7EB',
+};
 
-export default theme;
+export const fontFamily = '"Nunito Sans", "Inter", "Roboto", "Helvetica", "Arial", sans-serif';

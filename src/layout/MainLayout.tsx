@@ -1,61 +1,58 @@
 import React from 'react';
-import { Box, AppBar, Toolbar, Typography, Container, Button } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 interface MainLayoutProps {
   children: React.ReactNode;
 }
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+  const location = useLocation();
+  
+  // Define paths where navbar and footer should be hidden
+  const hideLayoutPaths = ['/login', '/signup', '/verify-otp'];
+  const isFullPage = hideLayoutPaths.includes(location.pathname) || location.pathname.startsWith('/onboard');
+
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <AppBar position="sticky" elevation={0} sx={{ borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', color: 'text.primary' }}>
-        <Container maxWidth="lg">
-          <Toolbar disableGutters>
-            <Typography
-              variant="h6"
-              noWrap
-              component={RouterLink}
-              to="/"
-              sx={{
-                mr: 2,
-                fontWeight: 700,
-                color: 'primary.main',
-                textDecoration: 'none',
-                flexGrow: 1,
-              }}
-            >
-              VORA
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Button component={RouterLink} to="/" color="inherit">
-                Dashboard
-              </Button>
-              <Button component={RouterLink} to="/settings" color="inherit">
-                Settings
-              </Button>
-              <Button variant="contained" disableElevation>
-                Connect Wallet
-              </Button>
-            </Box>
-          </Toolbar>
-        </Container>
-      </AppBar>
+    <div className={`flex flex-col min-h-screen ${isFullPage ? 'bg-white' : 'bg-gray-50'}`}>
+      {!isFullPage && (
+        <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <Link to="/" className="text-xl font-bold text-[#0052cc] no-underline">
+                VORA
+              </Link>
+              <div className="flex items-center gap-2">
+                <Link to="/" className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
+                  Dashboard
+                </Link>
+                <Link to="/settings" className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
+                  Settings
+                </Link>
+                <button className="px-5 py-2 text-sm font-semibold text-white bg-[#0052cc] rounded-lg hover:bg-[#003d99] transition-colors cursor-pointer">
+                  Connect Wallet
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
+      )}
 
-      <Box component="main" sx={{ flexGrow: 1, py: 4, bgcolor: 'background.default' }}>
-        <Container maxWidth="lg">
+      <main className={`flex-1 ${isFullPage ? '' : 'py-8'}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {children}
-        </Container>
-      </Box>
+        </div>
+      </main>
 
-      <Box component="footer" sx={{ py: 3, borderTop: '1px solid', borderColor: 'divider', mt: 'auto' }}>
-        <Container maxWidth="lg">
-          <Typography variant="body2" color="text.secondary" align="center">
-            © {new Date().getFullYear()} Vora Scaling Project. Built for performance.
-          </Typography>
-        </Container>
-      </Box>
-    </Box>
+      {!isFullPage && (
+        <footer className="py-6 border-t border-gray-200 mt-auto">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <p className="text-sm text-gray-500 text-center">
+              © {new Date().getFullYear()} Vora Scaling Project. Built for performance.
+            </p>
+          </div>
+        </footer>
+      )}
+    </div>
   );
 };
 
