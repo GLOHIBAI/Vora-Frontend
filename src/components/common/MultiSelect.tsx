@@ -1,14 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-interface MultiSelectProps {
-  label: string;
-  options: { label: string; value: string }[];
-  selected: string[];
-  onChange: (selected: string[]) => void;
-  placeholder?: string;
-  error?: boolean;
-  helperText?: string;
-}
+import { MultiSelectProps } from '../../types';
 
 const MultiSelect: React.FC<MultiSelectProps> = ({
   label,

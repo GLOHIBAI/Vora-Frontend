@@ -1,14 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-interface NationalityTaggerProps {
-  label: string;
-  hint?: string;
-  selected: string[];
-  onChange: (nationalities: string[]) => void;
-  options: string[];
-  popularOptions?: string[];
-  placeholder?: string;
-}
+import { NationalityTaggerProps } from '../../types';
 
 const NationalityTagger: React.FC<NationalityTaggerProps> = ({
   label,

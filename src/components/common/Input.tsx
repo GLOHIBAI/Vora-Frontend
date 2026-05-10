@@ -1,11 +1,6 @@
 import React, { useState } from 'react';
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label: string;
-  showPasswordToggle?: boolean;
-  error?: boolean;
-  helperText?: string;
-}
+import { InputProps } from '../../types';
 
 const Input: React.FC<InputProps> = ({ 
   label, 

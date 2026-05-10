@@ -1,3 +1,5 @@
+import { StudyHoursMap } from '../types';
+
 // =============================================
 // AREAS OF INTEREST
 // =============================================
@@ -236,7 +238,7 @@ export const WORK_ARRANGEMENT_OPTIONS = [
 // =============================================
 // STUDY PERMIT HOURS (per country)
 // =============================================
-export const STUDY_HOURS: Record<string, { term: string; holidays: string }> = {
+export const STUDY_HOURS: StudyHoursMap = {
   'United Kingdom':    { term: '20 hrs/week', holidays: 'Full-time during vacations' },
   'United States':     { term: '20 hrs/week on campus; off-campus OPT/CPT eligible', holidays: 'Full-time during breaks' },
   'Canada':            { term: '24 hrs/week off-campus (from Nov 2024)', holidays: 'Full-time during scheduled breaks' },

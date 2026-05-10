@@ -1,14 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-interface SearchableSelectProps {
-  label: string;
-  options: { label: string; value: string }[];
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  error?: boolean;
-  helperText?: string;
-}
+import { SearchableSelectProps } from '../../types';
 
 const SearchableSelect: React.FC<SearchableSelectProps> = ({
   label,

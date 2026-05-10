@@ -1,30 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-interface Option {
-  label: string;
-  value: string;
-  italic?: boolean;
-}
-
-interface OptionGroup {
-  label: string;
-  options: Option[];
-}
-
-interface SelectProps {
-  label: string;
-  name?: string;
-  options?: Option[];
-  groups?: OptionGroup[];
-  value?: string;
-  placeholder?: string;
-  error?: boolean;
-  helperText?: string;
-  hint?: string;
-  className?: string;
-  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  onBlur?: () => void;
-}
+import { Option, OptionGroup, SelectProps } from '../../types';
 
 const Select: React.FC<SelectProps> = ({ 
   label, 
