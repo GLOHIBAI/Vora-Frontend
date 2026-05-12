@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-import { NationalityTaggerProps } from '../../types';
+import type { NationalityTaggerProps } from '../../types';
 
 const NationalityTagger: React.FC<NationalityTaggerProps> = ({
   label,

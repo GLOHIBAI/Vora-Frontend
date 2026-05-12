@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-import { Option, OptionGroup, SelectProps } from '../../types';
+import type { Option, OptionGroup, SelectProps } from '../../types';
 
 const Select: React.FC<SelectProps> = ({ 
   label, 

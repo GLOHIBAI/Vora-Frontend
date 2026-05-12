@@ -34,6 +34,16 @@ export const validateWorkEmail = (email: string): string => {
 export const validatePassword = (password: string): string => {
   if (!password) return 'Password is required';
   if (password.length < 8) return 'Password must be at least 8 characters long';
+
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+  if (!hasUppercase || !hasLowercase || !hasNumber || !hasSpecial) {
+    return 'Password must contain at least one uppercase, lowercase, number and special character';
+  }
+
   return '';
 };
 

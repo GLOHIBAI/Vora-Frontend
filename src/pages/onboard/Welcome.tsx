@@ -16,19 +16,19 @@ const Welcome: React.FC = () => {
   };
 
   const getHeading = () => {
-    if (isMentor) return 'Your Mentor Profile Is Live';
-    if (isEmployer) return 'Your Employer Profile Is Live';
+    if (isMentor) return `${firstName}'s Profile Is Live`;
+    if (isEmployer) return `${firstName} Profile Is Live`;
     return `Welcome to VORA, ${firstName}`;
   };
 
   const getDescription = () => {
     if (isMentor) {
-      return 'Your profile is now live and you can now mentor career-ready candidates, guide readiness and growth, explore teaching opportunities when you\'re ready.';
+      return `${firstName}'s profile is now live. You can now mentor career-ready candidates, guide readiness and growth, and explore teaching opportunities when you're ready.`;
     }
     if (isEmployer) {
-      return 'Your profile is now live and you can now hire career-ready candidates, guide readiness and growth, and build your specialized workforce when you\'re ready.';
+      return `The ${firstName} profile is now live. You can now hire career-ready candidates, guide readiness and growth, and build your specialized workforce when you're ready.`;
     }
-    return 'You\'re now part of a growing global community in public health & wellness. Start your journey by exploring jobs, start mentorships, and building your Career Readiness Score.';
+    return `${firstName}, you're now part of a growing global community in public health & wellness. Start your journey by exploring jobs, starting mentorships, and building your Career Readiness Score.`;
   };
 
   const getButtonText = () => {

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-import { SearchableSelectProps } from '../../types';
+import type { SearchableSelectProps } from '../../types';
 
 const SearchableSelect: React.FC<SearchableSelectProps> = ({
   label,

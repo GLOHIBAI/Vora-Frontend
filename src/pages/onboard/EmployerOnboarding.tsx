@@ -4,116 +4,24 @@ import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
 import MultiSelect from '../../components/common/MultiSelect';
 import SearchableSelect from '../../components/common/SearchableSelect';
-
-const ORG_TYPE_OPTIONS = [
-  { label: 'Government Agency', value: 'government-agency' },
-  { label: 'Multilateral Organization', value: 'multilateral-org' },
-  { label: 'Non-Governmental Organization (NGO)', value: 'ngo' },
-  { label: 'Research Institution', value: 'research-institution' },
-  { label: 'Healthcare Provider', value: 'healthcare-provider' },
-  { label: 'Private Health Partner', value: 'private-health-partner' },
-];
-
-const COUNTRY_OPTIONS = [
-  { label: 'United States', value: 'US' },
-  { label: 'United Kingdom', value: 'GB' },
-  { label: 'Nigeria', value: 'NG' },
-  { label: 'Canada', value: 'CA' },
-  { label: 'Germany', value: 'DE' },
-  { label: 'South Africa', value: 'ZA' },
-  { label: 'Kenya', value: 'KE' },
-  { label: 'Ghana', value: 'GH' },
-  { label: 'India', value: 'IN' },
-  { label: 'Australia', value: 'AU' },
-  { label: 'France', value: 'FR' },
-  { label: 'Brazil', value: 'BR' },
-  { label: 'Switzerland', value: 'CH' },
-];
-
-const INSTITUTIONAL_MANDATE_OPTIONS = [
-  { label: 'Service Delivery', value: 'service-delivery' },
-  { label: 'Emergency Response', value: 'emergency-response' },
-  { label: 'Policy & Governance', value: 'policy-governance' },
-  { label: 'Research & Evidence Generation', value: 'research-evidence' },
-  { label: 'Health Systems Strengthening', value: 'health-systems' },
-  { label: 'Multi-sector Health Programming', value: 'multi-sector' },
-];
-
-const FUNDING_MODEL_OPTIONS = [
-  { label: 'Publicly Funded', value: 'publicly-funded' },
-  { label: 'Donor-Funded', value: 'donor-funded' },
-  { label: 'Privately Funded', value: 'privately-funded' },
-  { label: 'Hybrid Funding Model', value: 'hybrid' },
-];
-
-const WORK_TYPE_OPTIONS = [
-  'Clinical service delivery',
-  'Community health programs',
-  'Disease surveillance & epidemiology',
-  'Policy & health systems strengthening',
-  'Research & data analysis',
-  'Emergency / outbreak response',
-  'Monitoring & evaluation',
-  'Health education & advocacy',
-];
-
-const ROLE_SETTING_OPTIONS = [
-  'Facility-based',
-  'Field-based',
-  'Office-based',
-  'Remote / advisory',
-];
-
-const LICENSING_OPTIONS = [
-  { label: 'Yes, always', value: 'yes-always' },
-  { label: 'For specific roles', value: 'specific-roles' },
-  { label: 'Not typically', value: 'not-typically' },
-];
-
-const INT_LICENSE_OPTIONS = [
-  { label: 'Yes', value: 'yes' },
-  { label: 'Case-by-case', value: 'case-by-case' },
-  { label: 'No', value: 'no' },
-];
-
-const REMOTE_ELIGIBLE_OPTIONS = [
-  { label: 'Yes', value: 'yes' },
-  { label: 'Only advisory roles', value: 'advisory-only' },
-  { label: 'No', value: 'no' },
-];
-
-const SPONSORSHIP_OPTIONS = [
-  { label: 'Yes', value: 'yes' },
-  { label: 'Occasionally', value: 'occasionally' },
-  { label: 'No', value: 'no' },
-];
-
-const FEEDBACK_OPTIONS = [
-  { label: 'One time feedback', value: 'one-time' },
-  { label: 'Monthly', value: 'monthly' },
-  { label: 'Quarterly', value: 'quarterly' },
-];
-
-const VISIBILITY_OPTIONS = [
-  { label: 'Fully qualified professionals', value: 'fully-qualified' },
-  { label: 'Fully qualified + near-qualified professionals', value: 'near-qualified' },
-  { label: 'A broad pool including developing professionals', value: 'developing' },
-];
-
-const TRAINING_OPTIONS = [
-  { label: 'Yes', value: 'yes' },
-  { label: 'Limited', value: 'limited' },
-  { label: 'No', value: 'no' },
-];
-
-const EXPERIENCE_DOC_OPTIONS = [
-  { label: 'Licenses & Certifications', value: 'licenses' },
-  { label: 'Institutional Work History', value: 'work-history' },
-  { label: 'Published Research', value: 'research' },
-  { label: 'Program Impact Metrics', value: 'impact-metrics' },
-  { label: 'References', value: 'references' },
-  { label: 'Skills Assessments', value: 'assessments' },
-];
+import { capitalizeFirstLetter } from '../../utils/stringUtils';
+import {
+  ORG_TYPE_OPTIONS,
+  COUNTRY_OPTIONS,
+  INSTITUTIONAL_MANDATE_OPTIONS,
+  FUNDING_MODEL_OPTIONS,
+  WORK_TYPE_OPTIONS,
+  ROLE_SETTING_OPTIONS,
+  LICENSING_OPTIONS,
+  INT_LICENSE_OPTIONS,
+  REMOTE_ELIGIBLE_OPTIONS,
+  SPONSORSHIP_OPTIONS,
+  FEEDBACK_OPTIONS,
+  VISIBILITY_OPTIONS,
+  TRAINING_OPTIONS,
+  EXPERIENCE_DOC_OPTIONS,
+  HIRING_PRIORITY_OPTIONS
+} from '../../data/employerOnboardingData';
 
 const TOTAL_STEPS = 5;
 
@@ -145,16 +53,11 @@ const EmployerOnboarding: React.FC = () => {
   });
 
   // Step 4: Hiring Priority
-  const [hiringPriority, setHiringPriority] = useState([
-    'Technical / Clinical Competence',
-    'Regulatory Knowledge',
-    'Field Experience',
-    'Research Capability',
-    'Leadership',
-    'Ethical Standards',
-  ]);
+  const [hiringPool, setHiringPool] = useState<string[]>(HIRING_PRIORITY_OPTIONS);
+  const [hiringPriority, setHiringPriority] = useState<string[]>([]);
+  const [otherPriority, setOtherPriority] = useState('');
+  const [showOtherInput, setShowOtherInput] = useState(false);
   const [experienceDocs, setExperienceDocs] = useState<string[]>([]);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   // Step 5: Matching Preferences
   const [matchInfo, setMatchInfo] = useState({
@@ -166,7 +69,10 @@ const EmployerOnboarding: React.FC = () => {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    let { name, value } = e.target;
+    if (name === 'organizationName') {
+      value = capitalizeFirstLetter(value);
+    }
     if (step === 1) {
       setOrgInfo(prev => ({ ...prev, [name]: value }));
     } else if (step === 2) {
@@ -254,23 +160,22 @@ const EmployerOnboarding: React.FC = () => {
     setHiringPriority(newPriority);
   };
 
-  const handleDragStart = (index: number) => {
-    setDraggedIndex(index);
+  const togglePrioritySelection = (item: string) => {
+    if (hiringPriority.includes(item)) {
+      setHiringPriority(hiringPriority.filter(i => i !== item));
+    } else {
+      setHiringPriority([...hiringPriority, item]);
+    }
   };
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = (index: number) => {
-    if (draggedIndex === null || draggedIndex === index) return;
-
-    const newPriority = [...hiringPriority];
-    const item = newPriority.splice(draggedIndex, 1)[0];
-    newPriority.splice(index, 0, item);
-
-    setHiringPriority(newPriority);
-    setDraggedIndex(null);
+  const handleAddOtherPriority = () => {
+    if (otherPriority.trim() && !hiringPool.includes(otherPriority.trim())) {
+      const trimmed = otherPriority.trim();
+      setHiringPool([...hiringPool, trimmed]);
+      setHiringPriority([...hiringPriority, trimmed]);
+      setOtherPriority('');
+      setShowOtherInput(false);
+    }
   };
 
   const handleBack = () => {
@@ -387,74 +292,26 @@ const EmployerOnboarding: React.FC = () => {
           </h1>
 
           <form onSubmit={handleNext} className="space-y-8" autoComplete="off">
-            {/* Work type checkboxes */}
-            <div>
-              <label className="block text-sm font-semibold text-[#374151] mb-4">
-                What type of work do you primarily support?
-              </label>
-              <div className="space-y-3">
-                {WORK_TYPE_OPTIONS.map((option) => {
-                  const isSelected = workforceInfo.workTypes.includes(option);
-                  return (
-                    <div
-                      key={option}
-                      className="flex items-center gap-3 cursor-pointer group"
-                      onClick={() => {
-                        setWorkforceInfo(prev => ({
-                          ...prev,
-                          workTypes: isSelected
-                            ? prev.workTypes.filter(w => w !== option)
-                            : [...prev.workTypes, option]
-                        }));
-                      }}
-                    >
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-brand-blue border-brand-blue' : 'border-[#D1D5DB] bg-white group-hover:border-brand-blue'}`}>
-                        {isSelected && (
-                          <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5" d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </div>
-                      <span className="text-sm text-text-secondary group-hover:text-text-main transition-colors">{option}</span>
-                    </div>
-                  );
-                })}
-              </div>
+            {/* Work type MultiSelect */}
+            <div className="space-y-4">
+              <MultiSelect
+                label="What type of work do you primarily support?"
+                options={WORK_TYPE_OPTIONS}
+                selected={workforceInfo.workTypes}
+                onChange={(selected) => setWorkforceInfo(prev => ({ ...prev, workTypes: selected }))}
+                placeholder="Select work types"
+              />
             </div>
 
-            {/* Role setting checkboxes */}
-            <div>
-              <label className="block text-sm font-semibold text-[#374151] mb-4">
-                How are most of your roles
-              </label>
-              <div className="space-y-3">
-                {ROLE_SETTING_OPTIONS.map((option) => {
-                  const isSelected = workforceInfo.roleSettings.includes(option);
-                  return (
-                    <div
-                      key={option}
-                      className="flex items-center gap-3 cursor-pointer group"
-                      onClick={() => {
-                        setWorkforceInfo(prev => ({
-                          ...prev,
-                          roleSettings: isSelected
-                            ? prev.roleSettings.filter(r => r !== option)
-                            : [...prev.roleSettings, option]
-                        }));
-                      }}
-                    >
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-[#0052cc] border-[#0052cc]' : 'border-[#D1D5DB] bg-white group-hover:border-[#0052cc]'}`}>
-                        {isSelected && (
-                          <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5" d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </div>
-                      <span className="text-sm text-[#374151] group-hover:text-[#1C1C1C] transition-colors">{option}</span>
-                    </div>
-                  );
-                })}
-              </div>
+            {/* Role setting MultiSelect */}
+            <div className="space-y-4">
+              <MultiSelect
+                label="How are most of your roles"
+                options={ROLE_SETTING_OPTIONS}
+                selected={workforceInfo.roleSettings}
+                onChange={(selected) => setWorkforceInfo(prev => ({ ...prev, roleSettings: selected }))}
+                placeholder="Select role settings"
+              />
             </div>
 
             <div className="flex gap-4 pt-4">
@@ -564,48 +421,122 @@ const EmployerOnboarding: React.FC = () => {
           </p>
 
           <form onSubmit={handleNext} className="space-y-8" autoComplete="off">
-            {/* Ranking list */}
-            <div className="space-y-3">
-              {hiringPriority.map((item, index) => (
-                <div
-                  key={item}
-                  draggable
-                  onDragStart={() => handleDragStart(index)}
-                  onDragOver={(e) => handleDragOver(e, index)}
-                  onDrop={() => handleDrop(index)}
-                  className={`flex items-center justify-between px-4 py-3.5 bg-white border rounded-lg group transition-all cursor-move ${draggedIndex === index ? 'opacity-40 border-brand-blue' : 'border-border-default hover:border-brand-blue'}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <svg className="w-4 h-4 text-gray-300 group-hover:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8h16M4 16h16" />
-                    </svg>
-                    <span className="text-sm font-medium text-text-secondary">{item}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
+            {/* Pool of options */}
+            <div className="space-y-4">
+              <label className="text-sm font-semibold text-[#374151]">
+                Select priorities to rank
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {hiringPool.map((item) => {
+                  const isSelected = hiringPriority.includes(item);
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => togglePrioritySelection(item)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${isSelected ? 'bg-[#0052cc] text-white border-[#0052cc]' : 'bg-white text-[#4B5563] border-[#E5E7EB] hover:border-[#0052cc]'}`}
+                    >
+                      {item}
+                    </button>
+                  );
+                })}
+                {!showOtherInput ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowOtherInput(true)}
+                    className="px-4 py-2 rounded-full text-sm font-medium border border-dashed border-[#0052cc] text-[#0052cc] hover:bg-[#ebf5ff] transition-colors"
+                  >
+                    + Add Other
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0 animate-in fade-in slide-in-from-left-2">
+                    <input
+                      type="text"
+                      value={otherPriority}
+                      onChange={(e) => setOtherPriority(e.target.value)}
+                      placeholder="Enter custom priority"
+                      className="px-4 py-2 rounded-full text-sm border border-[#0052cc] focus:ring-2 focus:ring-[#0052cc] focus:outline-none w-full sm:w-64"
+                      autoFocus
+                      onKeyPress={(e) => e.key === 'Enter' && handleAddOtherPriority()}
+                    />
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); movePriority(index, 'up'); }}
-                      disabled={index === 0}
-                      className={`p-1 rounded hover:bg-gray-100 transition-colors ${index === 0 ? 'text-gray-200 cursor-not-allowed' : 'text-gray-400 hover:text-brand-blue'}`}
+                      onClick={handleAddOtherPriority}
+                      className="px-4 py-2 bg-[#0052cc] text-white rounded-full text-sm font-medium hover:bg-[#003d99]"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />
-                      </svg>
+                      Add
                     </button>
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); movePriority(index, 'down'); }}
-                      disabled={index === hiringPriority.length - 1}
-                      className={`p-1 rounded hover:bg-gray-100 transition-colors ${index === hiringPriority.length - 1 ? 'text-gray-200 cursor-not-allowed' : 'text-gray-400 hover:text-brand-blue'}`}
+                      onClick={() => { setShowOtherInput(false); setOtherPriority(''); }}
+                      className="text-[#6B7280] hover:text-[#1C1C1C]"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
                   </div>
-                </div>
-              ))}
+                )}
+              </div>
             </div>
+
+            {/* Ranked list */}
+            {hiringPriority.length > 0 && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                <label className="text-sm font-semibold text-[#374151]">
+                  Ranked Order (1 is highest)
+                </label>
+                <div className="space-y-3">
+                  {hiringPriority.map((item, index) => (
+                    <div
+                      key={item}
+                      className="flex items-center justify-between px-4 py-3.5 bg-white border border-[#E5E7EB] rounded-lg group hover:border-[#0052cc] transition-all"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-6 h-6 rounded-full bg-[#ebf5ff] text-[#0052cc] text-xs font-bold flex items-center justify-center">
+                          {index + 1}
+                        </div>
+                        <span className="text-sm font-medium text-[#374151]">{item}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center border-r pr-2 mr-2 border-gray-100">
+                          <button
+                            type="button"
+                            onClick={() => movePriority(index, 'up')}
+                            disabled={index === 0}
+                            className={`p-1 rounded hover:bg-gray-100 transition-colors ${index === 0 ? 'text-gray-200 cursor-not-allowed' : 'text-[#6B7280] hover:text-[#0052cc]'}`}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => movePriority(index, 'down')}
+                            disabled={index === hiringPriority.length - 1}
+                            className={`p-1 rounded hover:bg-gray-100 transition-colors ${index === hiringPriority.length - 1 ? 'text-gray-200 cursor-not-allowed' : 'text-[#6B7280] hover:text-[#0052cc]'}`}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => togglePrioritySelection(item)}
+                          className="text-[#9CA3AF] hover:text-red-500 transition-colors"
+                          title="Remove from ranking"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="pt-4">
               <MultiSelect

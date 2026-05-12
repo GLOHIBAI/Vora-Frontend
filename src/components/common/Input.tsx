@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-import { InputProps } from '../../types';
+import type { InputProps } from '../../types';
 
 const Input: React.FC<InputProps> = ({ 
   label, 

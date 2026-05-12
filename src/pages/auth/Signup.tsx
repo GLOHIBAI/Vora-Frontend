@@ -4,21 +4,8 @@ import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
 import { validateEmail, validateWorkEmail, validatePassword, validateAccountType } from '../../utils/validation';
+import { GoogleIcon, AppleIcon } from '../../components/common/Icons';
 
-const GoogleIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 18 18">
-    <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285f4"/>
-    <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34a853"/>
-    <path d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.96H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.041l3.007-2.334z" fill="#fbbc05"/>
-    <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.96L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z" fill="#ea4335"/>
-  </svg>
-);
-
-const AppleIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 18 18">
-    <path d="M14.654 12.016c-.76.76-1.52 1.52-2.394 1.52-.844 0-1.14-.506-2.109-.506-.97 0-1.266.506-2.109.506-.875 0-1.634-.76-2.394-1.52-1.554-1.554-2.67-4.397-1.14-6.938.76-1.266 2.067-2.067 3.29-2.067 1.266 0 1.984.76 2.744.76s1.477-.76 2.744-.76c1.055 0 2.394.633 3.123 1.554-2.109 1.266-1.758 3.882.38 4.71-.348.97-.844 1.984-1.554 2.743zM10.198 3.55c0-1.554 1.266-2.743 2.743-2.743 0 1.554-1.266 2.743-2.743 2.743z" fill="currentColor"/>
-  </svg>
-);
 
 const Signup: React.FC = () => {
   const navigate = useNavigate();

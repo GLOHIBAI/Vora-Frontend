@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-import { MultiSelectProps } from '../../types';
+import type { MultiSelectProps } from '../../types';
 
 const MultiSelect: React.FC<MultiSelectProps> = ({
   label,
@@ -12,6 +12,8 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
   helperText = '',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [showOtherInput, setShowOtherInput] = useState(false);
+  const [otherValue, setOtherValue] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -24,7 +26,22 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleAddOther = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (otherValue.trim()) {
+      if (!selected.includes(otherValue.trim())) {
+        onChange([...selected, otherValue.trim()]);
+      }
+      setOtherValue('');
+      setShowOtherInput(false);
+    }
+  };
+
   const toggleOption = (value: string) => {
+    if (value === 'other') {
+      setShowOtherInput(!showOtherInput);
+      return;
+    }
     if (selected.includes(value)) {
       onChange(selected.filter(v => v !== value));
     } else {
@@ -94,8 +111,8 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                 className="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer group mb-0.5 last:mb-0"
                 onClick={() => toggleOption(option.value)}
               >
-                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${selected.includes(option.value) ? 'bg-[#0052cc] border-[#0052cc]' : 'border-gray-300 bg-white group-hover:border-[#0052cc]'}`}>
-                  {selected.includes(option.value) && (
+                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${selected.includes(option.value) || (option.value === 'other' && showOtherInput) ? 'bg-[#0052cc] border-[#0052cc]' : 'border-gray-300 bg-white group-hover:border-[#0052cc]'}`}>
+                  {(selected.includes(option.value) || (option.value === 'other' && showOtherInput)) && (
                     <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
                     </svg>
@@ -104,6 +121,37 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                 <span className="text-sm text-[#374151]">{option.label}</span>
               </div>
             ))}
+            {showOtherInput && (
+              <div className="mt-1 px-2 pb-1 border-t border-gray-100 pt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                <div 
+                  className="flex gap-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <input
+                    type="text"
+                    value={otherValue}
+                    onChange={(e) => setOtherValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddOther();
+                      }
+                    }}
+                    placeholder="Type and press Enter..."
+                    className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0052cc]/20 focus:border-[#0052cc] transition-all"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleAddOther()}
+                    disabled={!otherValue.trim()}
+                    className="px-3 py-2 text-xs font-bold bg-[#0052cc] text-white rounded-lg hover:bg-[#003d99] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

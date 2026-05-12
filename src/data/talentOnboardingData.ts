@@ -1,4 +1,4 @@
-import { StudyHoursMap } from '../types';
+import type { StudyHoursMap } from '../types';
 
 // =============================================
 // AREAS OF INTEREST
