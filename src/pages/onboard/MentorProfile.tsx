@@ -22,6 +22,7 @@ import {
   COURSE_TYPE_OPTIONS,
   PREFERRED_FORMAT_OPTIONS
 } from '../../data/mentorOnboardingData';
+import { UploadIcon, TrashIcon, FileIcon } from '../../components/common/Icons';
 
 const TOTAL_STEPS = 5;
 
@@ -530,9 +531,7 @@ const MentorProfile: React.FC = () => {
                   className="border-2 border-dashed border-[#E5E7EB] rounded-xl p-8 text-center cursor-pointer hover:border-[#0052cc] hover:bg-blue-50/20 transition-all group"
                 >
                   <div className="flex flex-col items-center gap-2">
-                    <svg className="w-8 h-8 text-gray-400 group-hover:text-[#0052cc] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
+                    <UploadIcon className="w-8 h-8 text-gray-400 group-hover:text-[#0052cc] transition-colors" />
                     <span className="text-sm font-medium text-[#374151]">Click to upload or drag and drop</span>
                     <span className="text-xs text-[#9CA3AF]">PDF, DOCX (Max 10MB per file)</span>
                   </div>
@@ -565,20 +564,14 @@ const MentorProfile: React.FC = () => {
                           className="text-[#6B7280] hover:text-red-500 transition-colors cursor-pointer p-1"
                           title="Remove section"
                         >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M3 6h18"></path>
-                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                          </svg>
+                          <TrashIcon size={16} />
                         </button>
                       </div>
                       <div className="p-3 space-y-2">
                         {cert.files.map((file) => (
                           <div key={file.name} className="flex items-center gap-3 p-2 rounded-lg bg-[#F3F4F6] group">
                             <div className="w-8 h-8 rounded bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
-                              <svg className="w-4 h-4 text-[#0052cc]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                              </svg>
+                              <FileIcon className="w-4 h-4 text-[#0052cc]" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium text-[#1C1C1C] truncate">{file.name}</p>
@@ -590,11 +583,7 @@ const MentorProfile: React.FC = () => {
                               className="text-gray-400 hover:text-red-500 transition-colors cursor-pointer p-1"
                               title="Remove file"
                             >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M3 6h18"></path>
-                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                              </svg>
+                              <TrashIcon size={14} />
                             </button>
                           </div>
                         ))}

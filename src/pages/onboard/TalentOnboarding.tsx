@@ -6,6 +6,13 @@ import Select from '../../components/common/Select';
 import MultiSelect from '../../components/common/MultiSelect';
 import SearchableSelect from '../../components/common/SearchableSelect';
 import NationalityTagger from '../../components/common/NationalityTagger';
+import { 
+  ChevronLeftIcon, 
+  ShieldIcon, 
+  GraduationCapIcon, 
+  InfoIcon, 
+  AlertTriangleIcon 
+} from '../../components/common/Icons';
 import {
   INTEREST_OPTIONS,
   EXPERIENCE_OPTIONS,
@@ -169,13 +176,7 @@ const TalentOnboarding: React.FC = () => {
               onClick={() => setStep(1)}
               className="flex items-center gap-1 text-sm font-bold text-[#6B7280] hover:text-[#0052cc] transition-colors cursor-pointer group"
             >
-              <svg 
-                width="14" height="14" viewBox="0 0 24 24" fill="none" 
-                stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                className="transition-transform group-hover:-translate-x-0.5"
-              >
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
+              <ChevronLeftIcon className="transition-transform group-hover:-translate-x-0.5" />
               Back
             </button>
           )}
@@ -271,9 +272,7 @@ const TalentOnboarding: React.FC = () => {
             {/* ===== WORK AUTHORISATION SECTION ===== */}
             <div className="border-t border-[#E6E6E6] mt-3 pt-6">
               <div className="flex items-center gap-2 mb-1">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0052cc" strokeWidth="2.5">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                </svg>
+                <ShieldIcon stroke="#0052cc" />
                 <h2 className="text-base font-extrabold text-[#1A1A1A]">Work authorisation</h2>
               </div>
               <p className="text-[13px] text-[#808080] leading-relaxed mb-6">
@@ -405,9 +404,7 @@ const TalentOnboarding: React.FC = () => {
             {/* Study permit callout */}
             {showStudyPanel && (
               <div className="flex gap-2.5 items-start bg-[#F5F3FF] border border-[#DDD6FE] rounded-lg p-3.5">
-                <svg className="flex-shrink-0 mt-0.5" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4C1D95" strokeWidth="2.3">
-                  <path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c3 3 9 3 12 0v-5" />
-                </svg>
+                <GraduationCapIcon className="flex-shrink-0 mt-0.5" stroke="#4C1D95" />
                 <p className="text-[13px] text-[#4A4A4A] leading-relaxed">
                   <strong className="text-[#4C1D95]">Study permit matched roles only:</strong> VORA will filter your results to roles where the employer has confirmed they accept candidates on a student visa within your permitted hours.
                 </p>
@@ -479,9 +476,7 @@ const TalentOnboarding: React.FC = () => {
             {/* PR override callout */}
             {showPRPanel && (
               <div className="flex gap-2.5 items-start bg-[#EBF6FF] border border-[#BDD9FF] rounded-lg p-3.5">
-                <svg className="flex-shrink-0 mt-0.5" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0052cc" strokeWidth="2.3">
-                  <circle cx="12" cy="12" r="10" /><path d="M12 8v4m0 4h.01" />
-                </svg>
+                <InfoIcon className="flex-shrink-0 mt-0.5" stroke="#0052cc" />
                 <p className="text-[13px] text-[#4A4A4A] leading-relaxed">
                   <strong className="text-[#182348]">Permanent Residence Override applies.</strong> VORA will treat you as fully eligible for roles in the country of your permanent status, equivalent to any other local resident.
                 </p>
@@ -491,10 +486,7 @@ const TalentOnboarding: React.FC = () => {
             {/* Sponsorship callout */}
             {showSponsorCallout && (
               <div className="flex gap-2.5 items-start bg-[#FFFBEB] border border-[#FDE68A] rounded-lg p-3.5">
-                <svg className="flex-shrink-0 mt-0.5" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2.3">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
+                <AlertTriangleIcon className="flex-shrink-0 mt-0.5" stroke="#92400E" />
                 <p className="text-[13px] text-[#4A4A4A] leading-relaxed">
                   <strong className="text-[#92400E]">Sponsorship required:</strong> Only roles where the employer has confirmed they will support visa acquisition will appear in your results. This significantly limits your matched pool.
                 </p>

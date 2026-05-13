@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { FlashIcon, RefreshIcon, GridIcon } from '../components/common/Icons';
 
 const Dashboard: React.FC = () => {
   return (
@@ -15,9 +16,7 @@ const Dashboard: React.FC = () => {
         {/* Performance Card */}
         <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-3 hover:shadow-md transition-shadow">
           <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-[#0052cc]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
+            <FlashIcon className="w-5 h-5 text-[#0052cc]" />
             <h3 className="text-lg font-semibold text-[#1C1C1C]">Performance</h3>
           </div>
           <p className="text-sm text-gray-500 flex-1">
@@ -31,9 +30,7 @@ const Dashboard: React.FC = () => {
         {/* Reusability Card */}
         <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-3 hover:shadow-md transition-shadow">
           <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-[#7C3AED]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
+            <RefreshIcon className="w-5 h-5 text-[#7C3AED]" />
             <h3 className="text-lg font-semibold text-[#1C1C1C]">Reusability</h3>
           </div>
           <p className="text-sm text-gray-500 flex-1">
@@ -47,9 +44,7 @@ const Dashboard: React.FC = () => {
         {/* Structure Card */}
         <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-3 hover:shadow-md transition-shadow">
           <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-            </svg>
+            <GridIcon className="w-5 h-5 text-gray-500" />
             <h3 className="text-lg font-semibold text-[#1C1C1C]">Structure</h3>
           </div>
           <p className="text-sm text-gray-500 flex-1">

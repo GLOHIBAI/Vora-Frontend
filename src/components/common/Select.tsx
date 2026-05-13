@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { ChevronDownIcon } from './Icons';
 
 import type { Option, OptionGroup, SelectProps } from '../../types';
 
@@ -91,12 +92,9 @@ const Select: React.FC<SelectProps> = ({
           <span className={value ? 'text-text-secondary' : 'text-gray-400'}>
             {selectedLabel || placeholder}
           </span>
-          <svg
+          <ChevronDownIcon
             className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-            fill="none" stroke="currentColor" viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-          </svg>
+          />
         </button>
 
         {isOpen && (

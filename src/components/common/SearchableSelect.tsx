@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { ChevronDownIcon } from './Icons';
 
 import type { SearchableSelectProps } from '../../types';
 
@@ -63,12 +64,9 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
           autoComplete="off"
         />
         <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
-          <svg
+          <ChevronDownIcon
             className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-            fill="none" stroke="currentColor" viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-          </svg>
+          />
         </div>
 
         {isOpen && filtered.length > 0 && (

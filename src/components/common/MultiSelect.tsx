@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 import type { MultiSelectProps } from '../../types';
+import Tag from './Tag';
+import { ChevronDownIcon, CheckIcon } from './Icons';
 
 const MultiSelect: React.FC<MultiSelectProps> = ({
   label,
@@ -49,8 +51,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
     }
   };
 
-  const removeTag = (value: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const removeTag = (value: string) => {
     onChange(selected.filter(v => v !== value));
   };
 
@@ -72,21 +73,11 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
               <>
                 <div className="flex flex-wrap gap-1.5">
                   {selected.map(value => (
-                    <span
+                    <Tag
                       key={value}
-                      className="inline-flex items-center gap-1.5 bg-white border border-[#0052cc] text-[#0052cc] text-xs font-semibold px-3 py-1.5 rounded-full"
-                    >
-                      {getLabel(value)}
-                      <button
-                        type="button"
-                        onClick={(e) => removeTag(value, e)}
-                        className="text-[#0052cc] cursor-pointer"
-                      >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </span>
+                      label={getLabel(value)}
+                      onRemove={() => removeTag(value)}
+                    />
                   ))}
                 </div>
                 <span className="text-xs text-gray-400">{selected.length} option{selected.length !== 1 ? 's' : ''} selected</span>
@@ -95,12 +86,9 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
               <span className="text-gray-400">{placeholder}</span>
             )}
           </div>
-          <svg
+          <ChevronDownIcon
             className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-            fill="none" stroke="currentColor" viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-          </svg>
+          />
         </button>
 
         {isOpen && (
@@ -113,9 +101,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
               >
                 <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${selected.includes(option.value) || (option.value === 'other' && showOtherInput) ? 'bg-[#0052cc] border-[#0052cc]' : 'border-gray-300 bg-white group-hover:border-[#0052cc]'}`}>
                   {(selected.includes(option.value) || (option.value === 'other' && showOtherInput)) && (
-                    <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                    </svg>
+                    <CheckIcon className="w-2.5 h-2.5 text-white" />
                   )}
                 </div>
                 <span className="text-sm text-[#374151]">{option.label}</span>
