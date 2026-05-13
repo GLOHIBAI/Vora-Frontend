@@ -1,5 +1,3 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
 import { FlashIcon, RefreshIcon, GridIcon } from '../components/common/Icons';
 
 const Dashboard: React.FC = () => {

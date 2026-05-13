@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ChevronDownIcon } from './Icons';
 
-import type { Option, OptionGroup, SelectProps } from '../../types';
+import type { Option, SelectProps } from '../../types';
 
 const Select: React.FC<SelectProps> = ({ 
   label, 

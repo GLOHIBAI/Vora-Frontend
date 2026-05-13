@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
@@ -127,14 +127,6 @@ const EmployerOnboarding: React.FC = () => {
     );
   }, [matchInfo]);
 
-  const getStepValidity = () => {
-    if (step === 1) return isStep1Valid;
-    if (step === 2) return isStep2Valid;
-    if (step === 3) return isStep3Valid;
-    if (step === 4) return isStep4Valid;
-    if (step === 5) return isStep5Valid;
-    return false;
-  };
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault();

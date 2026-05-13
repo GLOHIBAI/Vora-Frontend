@@ -1,6 +1,5 @@
-import React, { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
 import MultiSelect from '../../components/common/MultiSelect';
@@ -245,7 +244,6 @@ const MentorProfile: React.FC = () => {
     }
   };
 
-  const isValid = getStepValidity();
 
   return (
     <div className="max-w-3xl mx-auto py-12 px-4 sm:px-6">
