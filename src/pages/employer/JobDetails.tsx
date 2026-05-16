@@ -7,7 +7,7 @@ import {
   ChevronRightIcon,
   EditIcon
 } from '../../components/common/Icons';
-import EditRoleModal from '../../components/employer/EditRoleModal';
+import JobEditModal from '../../components/employer/JobEditModal';
 import ApplicantDetailsModal from '../../components/employer/ApplicantDetailsModal';
 import ApplicantsTabView from '../../components/employer/ApplicantsTabView';
 import HiredTabView from '../../components/employer/HiredTabView';
@@ -53,12 +53,16 @@ const JobDetails: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('Details');
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editSection, setEditSection] = useState<'details' | 'responsibilities' | 'experience' | 'compensation' | 'collaboration' | null>(null);
   const [selectedApplicant, setSelectedApplicant] = useState<any>(null);
   const [isApplicantModalOpen, setIsApplicantModalOpen] = useState(false);
 
   const tabs = JOB_DETAILS_TABS;
   const data = SAMPLE_JOB_DETAILS;
+
+  const handleEdit = (section: any) => {
+    setEditSection(section);
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
@@ -86,6 +90,9 @@ const JobDetails: React.FC = () => {
             if (tab === 'Hired') {
               return <span className="bg-[#0047CC] text-white text-[10px] font-black px-2 py-0.5 rounded-full">2</span>;
             }
+            if (tab === 'Applicants') {
+              return <span className="bg-gray-100 text-gray-500 text-[10px] font-black px-2 py-0.5 rounded-full">8</span>;
+            }
             return null;
           }}
         />
@@ -101,12 +108,12 @@ const JobDetails: React.FC = () => {
       ) : activeTab === 'Hired' ? (
         <HiredTabView />
       ) : (
-        <div className="columns-1 md:columns-2 gap-6 space-y-6 items-start">
-          {/* Role Details Card */}
-          <div className="break-inside-avoid">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {/* Column 1 */}
+          <div className="space-y-6">
             <DetailCard 
               title="Role details" 
-              onEdit={() => setIsEditModalOpen(true)}
+              onEdit={() => handleEdit('details')}
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
                 <InfoField label="Role type" value={data.roleDetails.type} />
@@ -128,11 +135,52 @@ const JobDetails: React.FC = () => {
                 </div>
               </div>
             </DetailCard>
+
+            <DetailCard 
+              title="Experience & background"
+              onEdit={() => handleEdit('experience')}
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+                <InfoField label="Minimum qualification" value={data.experience.academyLevel} />
+                <InfoField label="Relevant field(s)" value={data.experience.relevantField} />
+                <InfoField label="Years of experience" value={data.experience.years} />
+                <InfoField label="Sector background" value={data.experience.sectorBackground || ''} />
+                <InfoField label="Geographic experience" value={data.experience.geographicExperience || ''} />
+                <InfoField label="Security clearance" value={data.experience.securityClearance || ''} />
+              </div>
+            </DetailCard>
+
+            <DetailCard 
+              title="Compensation & documentation"
+              onEdit={() => handleEdit('compensation')}
+            >
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+                  <InfoField label="Compensation type" value={data.compensation.type} />
+                  <InfoField label="Salary range" value={data.compensation.range} />
+                  <InfoField label="Salary midpoint" value={data.compensation.midpoint} />
+                  <div className="text-[#0047CC]">
+                    <InfoField label="Escrow locked" value={data.compensation.escrow} />
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">Candidate eligibility</p>
+                  <div className="flex flex-wrap gap-2">
+                    {data.compensation.eligibility?.map((item, i) => (
+                      <Tag key={i} label={item.label} variant={item.variant as any} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </DetailCard>
           </div>
 
-          {/* Responsibilities & Skills Card */}
-          <div className="break-inside-avoid">
-            <DetailCard title="Responsibilities & skills">
+          {/* Column 2 */}
+          <div className="space-y-6">
+            <DetailCard 
+              title="Responsibilities & skills"
+              onEdit={() => handleEdit('responsibilities')}
+            >
               <div className="space-y-6">
                 <InfoField 
                   label="Role/Problem to solve" 
@@ -145,7 +193,7 @@ const JobDetails: React.FC = () => {
                   isLongText 
                 />
                 <div className="space-y-3 pt-2">
-                  <p className="text-[12px] font-bold text-gray-900 uppercase tracking-tight">Technical skills required</p>
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">Technical skills required</p>
                   <div className="flex flex-wrap gap-3">
                     {data.responsibilities.technicalSkills.map((skill, i) => (
                       <Tag key={i} label={skill.label} variant={skill.variant as any} />
@@ -153,7 +201,7 @@ const JobDetails: React.FC = () => {
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <p className="text-[12px] font-bold text-gray-900 uppercase tracking-tight">Tools required</p>
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">Tools required</p>
                   <div className="flex flex-wrap gap-3">
                     {data.responsibilities.tools.map((tool, i) => (
                       <Tag key={i} label={tool.label} variant={tool.variant as any} />
@@ -162,55 +210,14 @@ const JobDetails: React.FC = () => {
                 </div>
               </div>
             </DetailCard>
-          </div>
 
-          {/* Experience & Background Card */}
-          <div className="break-inside-avoid">
-            <DetailCard title="Experience & background">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
-                <InfoField label="Academy level" value={data.experience.academyLevel} />
-                <InfoField label="Relevant field" value={data.experience.relevantField} />
-                <div className="col-span-2">
-                  <InfoField label="Years of experience" value={data.experience.years} />
-                </div>
-              </div>
-            </DetailCard>
-          </div>
-
-          {/* Compensation & Documentation Card */}
-          <div className="break-inside-avoid">
-            <DetailCard title="Compensation & documentation">
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
-                  <InfoField label="Duration" value={data.compensation.duration} />
-                  <InfoField label="Amount" value={data.compensation.amount} />
-                </div>
-                <div className="space-y-3">
-                  <p className="text-[12px] font-bold text-gray-900 uppercase tracking-tight">Personality traits</p>
-                  <div className="flex flex-wrap gap-2">
-                    {data.compensation.personalityTraits.map((trait, i) => (
-                      <Tag key={i} label={trait.label} variant={trait.variant as any} />
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <p className="text-[12px] font-bold text-gray-900 uppercase tracking-tight">Work culture</p>
-                  <div className="flex flex-wrap gap-2">
-                    {data.compensation.workCulture.map((culture, i) => (
-                      <Tag key={i} label={culture.label} variant={culture.variant as any} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </DetailCard>
-          </div>
-
-          {/* Team Collaboration Card */}
-          <div className="break-inside-avoid">
-            <DetailCard title="Team collaboration & communication">
+            <DetailCard 
+              title="Team collaboration & communication"
+              onEdit={() => handleEdit('collaboration')}
+            >
               <div className="space-y-6">
                 <div className="space-y-3">
-                  <p className="text-[12px] font-bold text-gray-900 uppercase tracking-tight">Preffered work style</p>
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">Preferred work style</p>
                   <div className="flex flex-wrap gap-2">
                     {data.collaboration.preferredStyle.map((style, i) => (
                       <Tag key={i} label={style.label} variant={style.variant as any} />
@@ -218,11 +225,11 @@ const JobDetails: React.FC = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
-                  <InfoField label="Comunication/collaboration style" value={data.collaboration.communicationStyle} />
-                  <InfoField label="Comunication language" value={data.collaboration.communicationLanguage} />
+                  <InfoField label="Communication style" value={data.collaboration.communicationStyle} />
+                  <InfoField label="Communication language" value={data.collaboration.communicationLanguage} />
                 </div>
                 <div className="space-y-3">
-                  <p className="text-[12px] font-bold text-gray-900 uppercase tracking-tight">Personality traits</p>
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">Personality traits</p>
                   <div className="flex flex-wrap gap-2">
                     {data.collaboration.personalityTraits.map((trait, i) => (
                       <Tag key={i} label={trait.label} variant={trait.variant as any} />
@@ -230,7 +237,7 @@ const JobDetails: React.FC = () => {
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <p className="text-[12px] font-bold text-gray-900 uppercase tracking-tight">Work culture</p>
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">Work culture</p>
                   <div className="flex flex-wrap gap-2">
                     {data.collaboration.workCulture.map((culture, i) => (
                       <Tag key={i} label={culture.label} variant={culture.variant as any} />
@@ -243,12 +250,15 @@ const JobDetails: React.FC = () => {
         </div>
       )}
 
-      {/* Edit Role Modal */}
-      <EditRoleModal 
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        initialData={data}
-      />
+      {/* Edit Modal */}
+      {editSection && (
+        <JobEditModal 
+          isOpen={!!editSection}
+          onClose={() => setEditSection(null)}
+          section={editSection}
+          data={data}
+        />
+      )}
 
       {/* Applicant Details Modal */}
       <ApplicantDetailsModal 

@@ -97,16 +97,14 @@ export const SAMPLE_JOBS = [
 ];
 
 export const SAMPLE_TALENTS = [
-  { id: 'APP-22345345', name: 'APP-22345345', academicLevel: 'Undergraduate', location: 'Lagos, Nigeria', course: 'Nursing', dateApplied: 'October 21, 2025', status: 'Pending review' },
-  { id: 'APP-22345346', name: 'APP-22345345', academicLevel: 'Graduate', location: 'Johannesburg, South Africa', course: 'Data Analysis', dateApplied: 'October 21, 2025', status: 'Under review' },
-  { id: 'APP-22345347', name: 'Huan, Chan', academicLevel: 'Post-graduate', location: 'Beijing, China', course: 'Medicine & Surgery', dateApplied: 'October 21, 2025', status: 'Hired' },
-  { id: 'APP-22345348', name: 'APP-22345345', academicLevel: 'Post-graduate', location: 'Tokyo, Japan', course: 'Nursing', dateApplied: 'October 21, 2025', status: 'Pending review' },
-  { id: 'APP-22345349', name: 'APP-22345345', academicLevel: 'Graduate', location: 'Sau Paulo, Brazil', course: 'Medicine & Surgery', dateApplied: 'October 21, 2025', status: 'Rejected' },
-  { id: 'APP-22345350', name: 'Milenkovic Santos', academicLevel: 'Post-graduate', location: 'Moscow, Russia', course: 'Nursing', dateApplied: 'October 21, 2025', status: 'Hired' },
-  { id: 'APP-22345351', name: 'APP-22345345', academicLevel: 'Graduate', location: 'Chicago, USA', course: 'Medicine & Surgery', dateApplied: 'October 21, 2025', status: 'Rejected' },
-  { id: 'APP-22345352', name: 'APP-22345345', academicLevel: 'Post-graduate', location: 'Manchester, UK', course: 'Nursing', dateApplied: 'October 21, 2025', status: 'Rejected' },
-  { id: 'APP-22345353', name: 'APP-22345345', academicLevel: 'Undergraduate', location: 'Mumbai, India', course: 'Medicine & Surgery', dateApplied: 'October 21, 2025', status: 'Rejected' },
-  { id: 'APP-22345354', name: 'APP-22345345', academicLevel: 'Graduate', location: 'Los Angeles, USA', course: 'Nursing', dateApplied: 'October 21, 2025', status: 'Hired' },
+  { id: 'APP-VORA-001', name: 'APP-VORA-001', academicLevel: 'Postgraduate', location: 'Lagos, Nigeria', course: 'Epidemiology', dateApplied: 'Jan 16, 2025', status: 'Passed', psych: 91, sjt: 88, video: 87, overall: 89, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4' },
+  { id: 'APP-VORA-002', name: 'APP-VORA-002', academicLevel: 'Graduate', location: 'Nairobi, Kenya', course: 'Public Health', dateApplied: 'Jan 17, 2025', status: 'Passed', psych: 85, sjt: 92, video: 83, overall: 87, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4' },
+  { id: 'APP-VORA-003', name: 'APP-VORA-003', academicLevel: 'Postgraduate', location: 'Accra, Ghana', course: 'Epidemiology', dateApplied: 'Jan 18, 2025', status: 'Passed', psych: 88, sjt: 86, video: 90, overall: 88, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4' },
+  { id: 'APP-VORA-004', name: 'APP-VORA-004', academicLevel: 'Postgraduate', location: 'Cape Town, South Africa', course: 'Medicine', dateApplied: 'Jan 19, 2025', status: 'Failed', psych: 72, sjt: 65, video: null, overall: 68, failedAt: 'Situational Judgement', rec: 'mentorship' },
+  { id: 'APP-VORA-005', name: 'APP-VORA-005', academicLevel: 'Graduate', location: 'Kampala, Uganda', course: 'Public Health', dateApplied: 'Jan 20, 2025', status: 'Failed', psych: 55, sjt: null, video: null, overall: 55, failedAt: 'Psychometric', rec: 'course' },
+  { id: 'APP-VORA-006', name: 'APP-VORA-006', academicLevel: 'Postgraduate', location: 'Dar es Salaam, Tanzania', course: 'Epidemiology', dateApplied: 'Jan 21, 2025', status: 'Passed', psych: 83, sjt: 81, video: 85, overall: 83, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4' },
+  { id: 'APP-VORA-007', name: 'APP-VORA-007', academicLevel: 'Graduate', location: 'Kigali, Rwanda', course: 'Nursing', dateApplied: 'Jan 22, 2025', status: 'Failed', psych: 79, sjt: 80, video: null, overall: 60, failedAt: 'Video Test', rec: 'both' },
+  { id: 'APP-VORA-008', name: 'APP-VORA-008', academicLevel: 'Postgraduate', location: 'Addis Ababa, Ethiopia', course: 'Epidemiology', dateApplied: 'Jan 23, 2025', status: 'Passed', psych: 94, sjt: 90, video: 92, overall: 92, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4' },
 ];
 
 export const SAMPLE_APPLICANTS = SAMPLE_TALENTS;
@@ -143,63 +141,68 @@ export const TALENT_SAMPLE_JOBS = [
 
 export const SAMPLE_JOB_DETAILS = {
   id: '0',
-  title: 'Global Health Policy Analyst Intern',
+  title: 'Senior Epidemiologist – Field Operations',
   roleDetails: {
-    type: 'Internship',
-    level: '--',
-    positions: '3 positions',
-    applicantsCount: '30 applicants',
-    commitment: '20hrs/week',
-    timePreference: 'GMT + 1',
-    format: 'Onsite',
-    location: 'Lagos, Nigeria',
-    startDate: 'October 21st, 2025',
-    endDate: 'January 21st 2026',
-    summary: 'Lorem ipsum dolor sit amet consectetur. Vierra lectus rutrum luesnh...'
+    type: 'Full-time employment',
+    level: 'Senior level',
+    positions: '2 positions',
+    applicantsCount: '47 applicants',
+    commitment: 'Full-time',
+    timePreference: 'UTC+1 (CET), UTC+2 (EET)',
+    format: 'Hybrid',
+    location: 'Brazzaville, Republic of Congo',
+    startDate: 'March 1st, 2025',
+    endDate: 'March 1st, 2025',
+    summary: 'Lead field epidemiology operations for MSF\'s DRC-Congo corridor programme. Responsible for outbreak surveillance, rapid response coordination, and training of national health staff.'
   },
   responsibilities: {
     problem: 'Lorem ipsum dolor sit amet consectetur. Viverra lectus rutrum lorem sit amet. Amet morbi massa proin...',
     core: 'Lorem ipsum dolor sit amet consectetur. Viverra lectus rutrum lorem sit amet...',
     technicalSkills: [
       { label: 'Research Analysis', variant: 'blue' as const },
-      { label: 'Communication & Writing', variant: 'green' as const }
+      { label: 'Communication & Writing', variant: 'blue' as const }
     ],
     tools: [
-      { label: 'Statistical Softwares', variant: 'green' as const },
+      { label: 'Statistical Softwares', variant: 'blue' as const },
       { label: 'GIS Mapping Softwares', variant: 'blue' as const }
     ]
   },
   experience: {
-    academyLevel: 'Undergraduate',
-    relevantField: 'Nursing, Midfery',
-    years: '0 - 6 months'
+    academyLevel: 'Postgraduate (MPH, MSc or equivalent)',
+    relevantField: 'Epidemiology, Public Health, Medicine',
+    years: '5 to 8 years',
+    sectorBackground: 'NGO, Government / Ministry of Health',
+    geographicExperience: 'Sub-Saharan Africa, LMIC',
+    securityClearance: 'Not required'
   },
   compensation: {
-    duration: 'Weekly',
-    amount: '120 USD',
-    personalityTraits: [
-      { label: 'Empathetic', variant: 'blue-light' as const },
-      { label: 'Curious', variant: 'green-light' as const }
+    type: 'Annual salary',
+    range: 'USD 55,000 to 75,000',
+    midpoint: 'USD 65,000',
+    escrow: 'USD 19,500',
+    eligibility: [
+      { label: 'Open to all nationalities', variant: 'blue' as const },
+      { label: 'Work permit sponsorship available', variant: 'blue' as const }
     ],
-    workCulture: [
-      { label: 'Collaborative', variant: 'green-light' as const },
-      { label: 'Remote-first', variant: 'blue-light' as const }
+    preAssessment: [
+      { label: 'Field report or situation report', variant: 'green' as const },
+      { label: 'Published research (if any)', variant: 'green' as const }
     ]
   },
   collaboration: {
     preferredStyle: [
-      { label: 'Independent', variant: 'green-light' as const },
-      { label: 'Field-oriented', variant: 'blue-light' as const }
+      { label: 'Independent', variant: 'blue' as const },
+      { label: 'Field-oriented', variant: 'blue' as const }
     ],
     communicationStyle: 'Weekly check-ins',
     communicationLanguage: 'English',
     personalityTraits: [
-      { label: 'Empathetic', variant: 'blue-light' as const },
-      { label: 'Curious', variant: 'green-light' as const }
+      { label: 'Empathetic', variant: 'green' as const },
+      { label: 'Curious', variant: 'green' as const }
     ],
     workCulture: [
-      { label: 'Collaborative', variant: 'green-light' as const },
-      { label: 'Remote-first', variant: 'blue-light' as const }
+      { label: 'Collaborative', variant: 'green' as const },
+      { label: 'Remote-first', variant: 'green' as const }
     ]
   }
 };
