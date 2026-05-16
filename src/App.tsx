@@ -8,18 +8,18 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Signup = lazy(() => import('./pages/auth/Signup'))
 const Login = lazy(() => import('./pages/auth/Login'))
 const VerifyOTP = lazy(() => import('./pages/auth/VerifyOTP'))
-const EmployerOnboarding = lazy(() => import('./pages/onboard/EmployerOnboarding'))
-const TalentOnboarding = lazy(() => import('./pages/onboard/TalentOnboarding'))
-const MentorApply = lazy(() => import('./pages/onboard/MentorApply'))
-const MentorProfile = lazy(() => import('./pages/onboard/MentorProfile'))
-const Welcome = lazy(() => import('./pages/onboard/Welcome'))
+const EmployerOnboarding = lazy(() => import('./pages/employer/EmployerOnboarding'))
+const TalentOnboarding = lazy(() => import('./pages/talent/TalentOnboarding'))
+const MentorApply = lazy(() => import('./pages/mentor/MentorApply'))
+const MentorProfile = lazy(() => import('./pages/mentor/MentorOnboarding'))
+const Welcome = lazy(() => import('./pages/onboarding/Welcome'))
 const SelectAccountType = lazy(() => import('./pages/auth/SelectAccountType'))
-const Jobs = lazy(() => import('./pages/Jobs'))
-const Talents = lazy(() => import('./pages/Talents'))
-const JobDetails = lazy(() => import('./pages/JobDetails'))
-const Rejection = lazy(() => import('./pages/Rejection'))
-const TalentProfile = lazy(() => import('./pages/TalentProfile'))
-const FinalAlignmentSession = lazy(() => import('./pages/FinalAlignmentSession'))
+const Jobs = lazy(() => import('./pages/employer/Jobs'))
+const Talents = lazy(() => import('./pages/talent/TalentList'))
+const JobDetails = lazy(() => import('./pages/employer/JobDetails'))
+const Rejection = lazy(() => import('./pages/employer/Rejection'))
+const TalentProfile = lazy(() => import('./pages/talent/TalentProfile'))
+const FinalAlignmentSession = lazy(() => import('./pages/employer/FinalAlignmentSession'))
 
 const App = () => {
   return (
@@ -47,11 +47,11 @@ const App = () => {
           <Route path="/select-type" element={<SelectAccountType />} />
 
           {/* Onboarding Routes */}
-          <Route path="/onboard/employer" element={<EmployerOnboarding />} />
-          <Route path="/onboard/talent" element={<TalentOnboarding />} />
-          <Route path="/onboard/mentor-apply" element={<MentorApply />} />
-          <Route path="/onboard/mentor-apply/profile" element={<MentorProfile />} />
-          <Route path="/onboard/welcome" element={<Welcome />} />
+          <Route path="/onboarding/employer" element={<EmployerOnboarding />} />
+          <Route path="/onboarding/talent" element={<TalentOnboarding />} />
+          <Route path="/onboarding/mentor-apply" element={<MentorApply />} />
+          <Route path="/onboarding/mentor-apply/profile" element={<MentorProfile />} />
+          <Route path="/onboarding/welcome" element={<Welcome />} />
 
           <Route path="/settings" element={<div className="text-center py-20 text-gray-500 text-lg">Settings Page (Coming Soon)</div>} />
         </Routes>

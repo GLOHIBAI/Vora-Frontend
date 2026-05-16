@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   MenuIcon,
+  CloseIcon,
 } from '../components/common/Icons';
 import { useAuth } from '../context/AuthContext';
 
@@ -58,10 +59,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       `}>
         <div className="flex flex-col h-full">
           {/* Logo Section */}
-          <div className="px-8 py-10">
+          <div className="px-8 py-10 flex items-center justify-between">
             <Link to="/dashboard" className="text-[32px] font-black text-[#0047CC] no-underline tracking-tight cursor-pointer font-['Nunito_Sans']">
               VORA
             </Link>
+            <button 
+              className="lg:hidden text-gray-500 hover:text-gray-700 p-1 cursor-pointer"
+              onClick={() => setIsSidebarOpen(false)}
+            >
+              <CloseIcon size={24} />
+            </button>
           </div>
 
           {/* Navigation Links */}
@@ -70,6 +77,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               <Link
                 key={item.name}
                 to={item.path}
+                onClick={() => setIsSidebarOpen(false)}
                 className={`
                   flex items-center gap-4 px-8 py-4 text-[15px] font-bold transition-all duration-200 cursor-pointer relative group
                   ${isActive(item.path) 

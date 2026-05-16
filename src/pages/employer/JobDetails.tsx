@@ -1,31 +1,35 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { SAMPLE_JOB_DETAILS } from '../constants/mockData';
-import { JOB_DETAILS_TABS } from '../constants/tabs';
+import { SAMPLE_JOB_DETAILS } from '../../constants/mockData';
+import { JOB_DETAILS_TABS } from '../../constants/tabs';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
   EditIcon
-} from '../components/common/Icons';
-import EditRoleModal from '../components/dashboard/EditRoleModal';
-import ApplicantDetailsModal from '../components/dashboard/ApplicantDetailsModal';
-import ApplicantsTabView from '../components/dashboard/ApplicantsTabView';
-import HiredTabView from '../components/dashboard/HiredTabView';
-import TabSlider from '../components/common/TabSlider';
+} from '../../components/common/Icons';
+import EditRoleModal from '../../components/employer/EditRoleModal';
+import ApplicantDetailsModal from '../../components/employer/ApplicantDetailsModal';
+import ApplicantsTabView from '../../components/employer/ApplicantsTabView';
+import HiredTabView from '../../components/employer/HiredTabView';
+import TabSlider from '../../components/common/TabSlider';
+import Button from '../../components/common/Button';
+import Tag from '../../components/common/Tag';
 
 // --- Sub-components for Job Details ---
 
 const DetailCard: React.FC<{ title: string; children: React.ReactNode; onEdit?: () => void }> = ({ title, children, onEdit }) => (
-  <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm relative group">
+  <div className="bg-white border border-gray-100 rounded-2xl p-5 sm:p-6 shadow-sm relative group">
     <div className="flex items-center justify-between mb-8">
       <h3 className="text-[17px] font-bold text-gray-900 font-['Nunito_Sans'] tracking-tight">{title}</h3>
-      <button 
+      <Button 
+        variant="outline"
         onClick={onEdit}
-        className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-gray-200 text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all cursor-pointer active:scale-95"
+        fullWidth={false}
+        className="px-4 py-1.5 min-h-[32px] text-[13px] font-bold text-gray-700"
       >
         <EditIcon size={14} className="text-gray-900" />
         Edit
-      </button>
+      </Button>
     </div>
     {children}
   </div>
@@ -43,20 +47,7 @@ const InfoField: React.FC<{ label: string; value: string; isLongText?: boolean }
   </div>
 );
 
-const SkillPill: React.FC<{ label: string; variant: 'blue' | 'green' | 'blue-light' | 'green-light' }> = ({ label, variant }) => {
-  const styles = {
-    blue: 'bg-[#EBF6FF] text-[#0047CC] border-transparent',
-    green: 'bg-[#EEFBEE] text-[#2CA62C] border-transparent',
-    'blue-light': 'bg-[#EBF6FF] text-[#0047CC] border-transparent',
-    'green-light': 'bg-[#EEFBEE] text-[#2CA62C] border-transparent',
-  };
 
-  return (
-    <span className={`px-4 py-1.5 rounded-full text-[12px] font-bold ${styles[variant]}`}>
-      {label}
-    </span>
-  );
-};
 
 const JobDetails: React.FC = () => {
   const { id } = useParams();
@@ -78,9 +69,9 @@ const JobDetails: React.FC = () => {
         <div className="flex items-center gap-3 text-[14px]">
           <button
             onClick={() => navigate('/jobs')}
-            className="flex items-center gap-1.5 text-gray-400 hover:text-[#0047CC] transition-colors group cursor-pointer font-bold"
+            className="flex items-center gap-1 text-gray-400 hover:text-[#0047CC] transition-colors font-bold cursor-pointer bg-transparent border-none p-0 shadow-none"
           >
-            <ChevronLeftIcon size={16} strokeWidth={3} className="group-hover:-translate-x-0.5 transition-transform" />
+            <ChevronLeftIcon size={16} strokeWidth={3} />
             All jobs
           </button>
           <ChevronRightIcon size={14} className="text-gray-300" />
@@ -123,7 +114,7 @@ const JobDetails: React.FC = () => {
               title="Role details" 
               onEdit={() => setIsEditModalOpen(true)}
             >
-              <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
                 <InfoField label="Role type" value={data.roleDetails.type} />
                 <InfoField label="Employment level" value={data.roleDetails.level} />
                 <InfoField label="Available positions" value={data.roleDetails.positions} />
@@ -163,7 +154,7 @@ const JobDetails: React.FC = () => {
                   <p className="text-[12px] font-bold text-gray-900 uppercase tracking-tight">Technical skills required</p>
                   <div className="flex flex-wrap gap-3">
                     {data.responsibilities.technicalSkills.map((skill, i) => (
-                      <SkillPill key={i} label={skill.label} variant={skill.variant} />
+                      <Tag key={i} label={skill.label} variant={skill.variant as any} />
                     ))}
                   </div>
                 </div>
@@ -171,7 +162,7 @@ const JobDetails: React.FC = () => {
                   <p className="text-[12px] font-bold text-gray-900 uppercase tracking-tight">Tools required</p>
                   <div className="flex flex-wrap gap-3">
                     {data.responsibilities.tools.map((tool, i) => (
-                      <SkillPill key={i} label={tool.label} variant={tool.variant} />
+                      <Tag key={i} label={tool.label} variant={tool.variant as any} />
                     ))}
                   </div>
                 </div>
@@ -182,7 +173,7 @@ const JobDetails: React.FC = () => {
           {/* Experience & Background Card */}
           <div className="break-inside-avoid">
             <DetailCard title="Experience & background">
-              <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
                 <InfoField label="Academy level" value={data.experience.academyLevel} />
                 <InfoField label="Relevant field" value={data.experience.relevantField} />
                 <div className="col-span-2">
@@ -196,7 +187,7 @@ const JobDetails: React.FC = () => {
           <div className="break-inside-avoid">
             <DetailCard title="Compensation & documentation">
               <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
                   <InfoField label="Duration" value={data.compensation.duration} />
                   <InfoField label="Amount" value={data.compensation.amount} />
                 </div>
@@ -204,7 +195,7 @@ const JobDetails: React.FC = () => {
                   <p className="text-[12px] font-bold text-gray-900 uppercase tracking-tight">Personality traits</p>
                   <div className="flex flex-wrap gap-2">
                     {data.compensation.personalityTraits.map((trait, i) => (
-                      <SkillPill key={i} label={trait.label} variant={trait.variant} />
+                      <Tag key={i} label={trait.label} variant={trait.variant as any} />
                     ))}
                   </div>
                 </div>
@@ -212,7 +203,7 @@ const JobDetails: React.FC = () => {
                   <p className="text-[12px] font-bold text-gray-900 uppercase tracking-tight">Work culture</p>
                   <div className="flex flex-wrap gap-2">
                     {data.compensation.workCulture.map((culture, i) => (
-                      <SkillPill key={i} label={culture.label} variant={culture.variant} />
+                      <Tag key={i} label={culture.label} variant={culture.variant as any} />
                     ))}
                   </div>
                 </div>
@@ -228,11 +219,11 @@ const JobDetails: React.FC = () => {
                   <p className="text-[12px] font-bold text-gray-900 uppercase tracking-tight">Preffered work style</p>
                   <div className="flex flex-wrap gap-2">
                     {data.collaboration.preferredStyle.map((style, i) => (
-                      <SkillPill key={i} label={style.label} variant={style.variant} />
+                      <Tag key={i} label={style.label} variant={style.variant as any} />
                     ))}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
                   <InfoField label="Comunication/collaboration style" value={data.collaboration.communicationStyle} />
                   <InfoField label="Comunication language" value={data.collaboration.communicationLanguage} />
                 </div>
@@ -240,7 +231,7 @@ const JobDetails: React.FC = () => {
                   <p className="text-[12px] font-bold text-gray-900 uppercase tracking-tight">Personality traits</p>
                   <div className="flex flex-wrap gap-2">
                     {data.collaboration.personalityTraits.map((trait, i) => (
-                      <SkillPill key={i} label={trait.label} variant={trait.variant} />
+                      <Tag key={i} label={trait.label} variant={trait.variant as any} />
                     ))}
                   </div>
                 </div>
@@ -248,7 +239,7 @@ const JobDetails: React.FC = () => {
                   <p className="text-[12px] font-bold text-gray-900 uppercase tracking-tight">Work culture</p>
                   <div className="flex flex-wrap gap-2">
                     {data.collaboration.workCulture.map((culture, i) => (
-                      <SkillPill key={i} label={culture.label} variant={culture.variant} />
+                      <Tag key={i} label={culture.label} variant={culture.variant as any} />
                     ))}
                   </div>
                 </div>

@@ -1,5 +1,4 @@
-import React from 'react';
-
+import React, { useState } from 'react';
 import {
   UserIcon,
   BellIcon,
@@ -15,6 +14,7 @@ import {
   WalletIcon
 } from '../common/Icons';
 import PostJobWizard from './PostJobWizard';
+import Tag from '../common/Tag';
 
 // --- Sub-components for Employer Dashboard ---
 
@@ -23,13 +23,12 @@ const KPICard: React.FC<{ label: string; value: string; delta: string; deltaType
     className={`bg-white border border-gray-100 rounded-[14px] p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer relative overflow-hidden group`}
     onClick={onClick}
   >
-    <div className={`absolute top-0 left-0 right-0 h-1 ${colorClass}`} />
     <div className={`w-10 h-10 ${bgColor} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
       <Icon size={18} className={iconColor} />
     </div>
-    <p className={`text-[30px] font-black text-gray-900 leading-none mb-1`}>{value}</p>
+    <p className={`text-[24px] lg:text-[30px] font-black text-gray-900 leading-none mb-1`}>{value}</p>
     <p className="text-[13px] font-bold text-gray-500">{label}</p>
-    <p className={`text-[11px] font-black mt-2 ${deltaType === 'up' ? 'text-green-600' : 'text-amber-600'}`}>
+    <p className={`text-[11px] font-black mt-2 ${deltaType === 'up' ? 'text-green-600' : 'text-gray-400'}`}>
       {deltaType === 'up' ? '↑' : '↓'} {delta}
     </p>
   </div>
@@ -70,45 +69,45 @@ const EmployerDashboard: React.FC = () => {
 
   // Mock data based on provided HTML
   const activeJobs = [
-    { title: 'Global Health Policy Analyst Intern – Malaria Program', id: 'JOB-001', loc: 'Addis Ababa', date: 'Jan 8', applicants: 42, status: 'Live', statusClass: 'bg-green-50 text-green-700 border-green-100', dot: 'bg-green-500' },
-    { title: 'Senior Epidemiologist – TB Response Unit', id: 'JOB-002', loc: 'Nairobi', date: 'Jan 12', applicants: 18, status: 'Alignment', statusClass: 'bg-purple-50 text-purple-700 border-purple-100', dot: 'bg-purple-500' },
-    { title: 'Community Health Nurse – Kano State Programme', id: 'JOB-003', loc: 'Kano', date: 'Jan 15', applicants: 31, status: 'Live', statusClass: 'bg-green-50 text-green-700 border-green-100', dot: 'bg-green-500' },
-    { title: 'M&E Officer – Nutrition Programme', id: 'JOB-004', loc: 'Accra', date: 'Jan 18', applicants: 27, status: 'Live', statusClass: 'bg-green-50 text-green-700 border-green-100', dot: 'bg-green-500' },
-    { title: 'Research Fellow – One Health Initiative', id: 'JOB-005', loc: 'Remote', date: 'Draft', applicants: 0, status: 'Draft', statusClass: 'bg-gray-50 text-gray-500 border-gray-100', dot: 'bg-gray-300' }
+    { title: 'Global Health Policy Analyst Intern – Malaria Program', id: 'JOB-001', loc: 'Addis Ababa', date: 'Jan 8', applicants: 42, status: 'Live', variant: 'green' },
+    { title: 'Senior Epidemiologist – TB Response Unit', id: 'JOB-002', loc: 'Nairobi', date: 'Jan 12', applicants: 18, status: 'Alignment', variant: 'blue' },
+    { title: 'Community Health Nurse – Kano State Programme', id: 'JOB-003', loc: 'Kano', date: 'Jan 15', applicants: 31, status: 'Live', variant: 'green' },
+    { title: 'M&E Officer – Nutrition Programme', id: 'JOB-004', loc: 'Accra', date: 'Jan 18', applicants: 27, status: 'Live', variant: 'green' },
+    { title: 'Research Fellow – One Health Initiative', id: 'JOB-005', loc: 'Remote', date: 'Draft', applicants: 0, status: 'Draft', variant: 'yellow' }
   ];
 
   const recentActivity = [
-    { title: 'True-up #TU-2025-0008 awaiting payment', sub: '$750.00 due · Dr. Kofi Mensah hire confirmed', time: '2h ago', icon: AlertTriangleIcon, iconBg: 'bg-amber-50', iconColor: 'text-amber-600' },
+    { title: 'True-up #TU-2025-0008 awaiting payment', sub: '$750.00 due · Dr. Kofi Mensah hire confirmed', time: '2h ago', icon: AlertTriangleIcon, iconBg: 'bg-blue-50', iconColor: 'text-[#0047CC]' },
     { title: 'Dr. Yusuf Ibrahim — Hire confirmed', sub: 'Public Health Advisor · $150 alignment fee refunded', time: 'Yesterday', icon: CheckIcon, iconBg: 'bg-green-50', iconColor: 'text-green-600' },
     { title: 'Alignment session scheduled — Priya Sharma', sub: 'Senior Epidemiologist · Session #ALN-2025-0014', time: 'Yesterday', icon: BellIcon, iconBg: 'bg-purple-50', iconColor: 'text-purple-600' },
-    { title: 'New job posted — Senior Epidemiologist', sub: 'JOB-002 · TB Response Unit · 18 applicants', time: 'Jan 12', icon: BriefcaseIcon, iconBg: 'bg-blue-50', iconColor: 'text-blue-600' }
+    { title: 'New job posted — Senior Epidemiologist', sub: 'JOB-002 · TB Response Unit · 18 applicants', time: 'Jan 12', icon: BriefcaseIcon, iconBg: 'bg-blue-50', iconColor: 'text-[#0047CC]' }
   ];
 
   const alignmentSessions = [
-    { name: 'Priya Sharma', role: 'Senior Epidemiologist', id: '#ALN-2025-0014', status: 'Scheduled – Jan 22', statusClass: 'bg-blue-50 text-blue-600 border-blue-100', initial: 'PS', initialBg: 'bg-blue-500' },
-    { name: 'Dr. Amara Osei', role: 'Public Health Advisor', id: '#ALN-2025-0015', status: 'Awaiting confirmation', statusClass: 'bg-amber-50 text-amber-600 border-amber-100', initial: 'AO', initialBg: 'bg-purple-500' },
-    { name: 'Dr. Kofi Mensah', role: 'Field Epidemiologist', id: '#ALN-2025-0013', status: 'Completed', statusClass: 'bg-green-50 text-green-700 border-green-100', initial: 'KM', initialBg: 'bg-amber-500' }
+    { name: 'Priya Sharma', role: 'Senior Epidemiologist', id: '#ALN-2025-0014', status: 'Scheduled – Jan 22', variant: 'blue', initial: 'PS', initialBg: 'bg-blue-500' },
+    { name: 'Dr. Amara Osei', role: 'Public Health Advisor', id: '#ALN-2025-0015', status: 'Awaiting confirmation', variant: 'gray', initial: 'AO', initialBg: 'bg-purple-500' },
+    { name: 'Dr. Kofi Mensah', role: 'Field Epidemiologist', id: '#ALN-2025-0013', status: 'Completed', variant: 'green', initial: 'KM', initialBg: 'bg-blue-500' }
   ];
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="space-y-1">
-          <h1 className="text-[26px] font-black text-[#0047CC] font-['Nunito_Sans'] tracking-tight">
+          <h1 className="text-[20px] lg:text-[26px] font-black text-[#0047CC] font-['Nunito_Sans'] tracking-tight">
             Dashboard
           </h1>
-          <p className="text-[14px] font-bold text-gray-400">
+          <p className="text-[12px] lg:text-[14px] font-bold text-gray-400">
             Tuesday, 10 March 2026 · Welcome back, Eric
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-100 rounded-full text-[13px] font-black text-gray-700 hover:bg-gray-50 transition-all shadow-sm cursor-pointer">
+        <div className="flex flex-wrap items-center gap-2 lg:gap-3">
+          <button className="flex items-center gap-2 px-4 lg:px-5 py-2 lg:py-2.5 bg-white border border-gray-100 rounded-full text-[11px] lg:text-[13px] font-black text-gray-700 hover:bg-gray-50 transition-all shadow-sm cursor-pointer">
             <BellIcon size={14} /> Alerts <span className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full ml-1">3</span>
           </button>
           <button 
             onClick={() => setIsPostJobOpen(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-[#0047CC] text-white rounded-full text-[13px] font-black hover:bg-[#003d99] transition-all shadow-lg shadow-blue-500/20 cursor-pointer"
+            className="flex items-center gap-2 px-4 lg:px-5 py-2 lg:py-2.5 bg-[#0047CC] text-white rounded-full text-[11px] lg:text-[13px] font-black hover:bg-[#003d99] transition-all shadow-lg shadow-blue-500/20 cursor-pointer"
           >
             <PlusIcon size={14} /> Post a Job
           </button>
@@ -139,23 +138,23 @@ const EmployerDashboard: React.FC = () => {
             />
             <KPICard 
               label="Total Applicants" value="247" delta="34 new this week" deltaType="up" 
-              icon={UsersIcon} colorClass="bg-green-500" bgColor="bg-green-50" iconColor="text-green-600" 
+              icon={UsersIcon} colorClass="bg-[#0047CC]" bgColor="bg-blue-50" iconColor="text-[#0047CC]" 
             />
             <KPICard 
               label="Alignment Sessions" value="5" delta="2 awaiting confirmation" deltaType="warn" 
-              icon={ClockIcon} colorClass="bg-purple-500" bgColor="bg-purple-50" iconColor="text-purple-600" 
+              icon={ClockIcon} colorClass="bg-[#0047CC]" bgColor="bg-blue-50" iconColor="text-[#0047CC]" 
             />
             <KPICard 
               label="Wallet Balance" value="$3,240" delta="$750 true-up due" deltaType="warn" 
-              icon={WalletIcon} colorClass="bg-amber-500" bgColor="bg-amber-50" iconColor="text-amber-600" 
+              icon={WalletIcon} colorClass="bg-[#0047CC]" bgColor="bg-blue-50" iconColor="text-[#0047CC]" 
             />
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <QuickActionBtn label="Post a Job" sub="Create a new listing" icon={PlusIcon} bgColor="bg-blue-50" iconColor="text-[#0047CC]" onClick={() => setIsPostJobOpen(true)} />
-            <QuickActionBtn label="Confirm Hire" sub="Send offer & lock escrow" icon={CheckIcon} bgColor="bg-green-50" iconColor="text-green-600" />
-            <QuickActionBtn label="Bulk Hire" sub="Confirm multiple hires" icon={UsersIcon} bgColor="bg-purple-50" iconColor="text-purple-600" />
-            <QuickActionBtn label="Top Up Wallet" sub="Add funds for escrow" icon={TrendingUpIcon} bgColor="bg-amber-50" iconColor="text-amber-600" />
+            <QuickActionBtn label="Confirm Hire" sub="Send offer & lock escrow" icon={CheckIcon} bgColor="bg-blue-50" iconColor="text-[#0047CC]" />
+            <QuickActionBtn label="Bulk Hire" sub="Confirm multiple hires" icon={UsersIcon} bgColor="bg-blue-50" iconColor="text-[#0047CC]" />
+            <QuickActionBtn label="Top Up Wallet" sub="Add funds for escrow" icon={TrendingUpIcon} bgColor="bg-blue-50" iconColor="text-[#0047CC]" />
           </div>
 
           {/* Active Jobs Card */}
@@ -169,16 +168,13 @@ const EmployerDashboard: React.FC = () => {
             <div className="divide-y divide-gray-50">
               {activeJobs.map((job, i) => (
                 <div key={i} className="flex items-center gap-4 p-5 hover:bg-gray-50 transition-all cursor-pointer group">
-                  <div className={`w-2 h-2 rounded-full shrink-0 ${job.dot}`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-[14px] font-black text-gray-900 truncate group-hover:text-[#0047CC] transition-colors">{job.title}</p>
                     <p className="text-[11px] font-bold text-gray-400 mt-0.5">{job.id} · {job.loc} · Posted {job.date}</p>
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-[12px] font-black text-gray-700">{job.applicants} applicants</p>
-                    <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase mt-1 border ${job.statusClass}`}>
-                      {job.status}
-                    </span>
+                    <Tag label={job.status} variant={job.variant as any} />
                   </div>
                 </div>
               ))}
@@ -203,9 +199,7 @@ const EmployerDashboard: React.FC = () => {
                     <p className="text-[14px] font-black text-gray-900 truncate group-hover:text-[#0047CC] transition-colors">{session.name}</p>
                     <p className="text-[11px] font-bold text-gray-400 mt-0.5">{session.role} · {session.id}</p>
                   </div>
-                  <span className={`inline-block px-3 py-1 rounded-full text-[11px] font-black border ${session.statusClass}`}>
-                    {session.status}
-                  </span>
+                  <Tag label={session.status} variant={session.variant as any} />
                 </div>
               ))}
             </div>
@@ -241,16 +235,16 @@ const EmployerDashboard: React.FC = () => {
               </div>
 
               {/* Pending */}
-              <div className="p-4 rounded-[14px] bg-[#FFFBEB] border border-[#FDE68A]">
+              <div className="p-4 rounded-[14px] bg-blue-50 border border-blue-100">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-amber-600 text-white flex items-center justify-center text-[11px] font-black shrink-0">FC</div>
+                  <div className="w-8 h-8 rounded-full bg-[#0047CC] text-white flex items-center justify-center text-[11px] font-black shrink-0">FC</div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[12px] font-black text-gray-900 truncate">Fatou Camara</p>
                     <p className="text-[10px] font-bold text-gray-500 truncate">Benchmarks not yet set</p>
                   </div>
-                  <span className="text-[9px] font-black text-amber-600 uppercase">3 days left</span>
+                  <span className="text-[9px] font-black text-[#0047CC] uppercase">3 days left</span>
                 </div>
-                <button className="w-full py-2 bg-amber-600 text-white text-[12px] font-black rounded-lg hover:bg-amber-700 transition-all cursor-pointer">
+                <button className="w-full py-2 bg-[#0047CC] text-white text-[12px] font-black rounded-lg hover:bg-[#003d99] transition-all cursor-pointer">
                   Set Benchmarks
                 </button>
               </div>
@@ -263,7 +257,6 @@ const EmployerDashboard: React.FC = () => {
                   <p className="text-[10px] font-bold text-gray-500 truncate">60-day due Mar 19</p>
                 </div>
                 <div className="flex items-center gap-1.5 px-2 py-1 bg-green-50 border border-green-100 rounded-full shrink-0">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
                   <span className="text-[9px] font-black text-green-700 uppercase">On track</span>
                 </div>
               </div>
@@ -296,11 +289,11 @@ const EmployerDashboard: React.FC = () => {
               </div>
               <div className="flex justify-between items-center text-[13px]">
                 <span className="font-bold text-gray-500">Alignment fees pending</span>
-                <span className="font-black text-purple-600">$300.00</span>
+                <span className="font-black text-[#0047CC]">$300.00</span>
               </div>
               <div className="flex justify-between items-center text-[13px]">
                 <span className="font-bold text-gray-500">True-up owed</span>
-                <span className="font-black text-amber-600">$750.00</span>
+                <span className="font-black text-gray-400">$750.00</span>
               </div>
               <div className="pt-4 border-t border-gray-50 flex justify-between items-center">
                 <span className="text-[14px] font-black text-gray-900">Total committed</span>

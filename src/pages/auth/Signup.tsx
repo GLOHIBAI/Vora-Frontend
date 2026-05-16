@@ -54,9 +54,9 @@ const Signup: React.FC = () => {
         // Route to OTP verification ONLY for Employers
         navigate('/verify-otp', { state: { email, accountType } });
       } else if (accountType === 'Talent') {
-        navigate('/onboard/talent');
+        navigate('/onboarding/talent');
       } else if (accountType === 'Mentor') {
-        navigate('/onboard/mentor-apply');
+        navigate('/onboarding/mentor-apply');
       }
     }, 1200);
   };

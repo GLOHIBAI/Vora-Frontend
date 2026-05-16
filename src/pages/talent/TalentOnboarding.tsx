@@ -146,7 +146,7 @@ const TalentOnboarding: React.FC = () => {
           lastName: formData.lastName,
           role: 'talent'
         });
-        navigate('/onboard/welcome', { state: { firstName: formData.firstName, role: 'talent' } });
+        navigate('/onboarding/welcome', { state: { firstName: formData.firstName, role: 'talent' } });
       }
     }, 1200);
   };

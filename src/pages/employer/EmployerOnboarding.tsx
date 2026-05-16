@@ -23,6 +23,7 @@ import {
   EXPERIENCE_DOC_OPTIONS,
   HIRING_PRIORITY_OPTIONS
 } from '../../data/employerOnboardingData';
+import Button from '../../components/common/Button';
 import { CloseIcon, ArrowUpIcon, ArrowDownIcon, TrashIcon } from '../../components/common/Icons';
 
 const TOTAL_STEPS = 5;
@@ -146,7 +147,7 @@ const EmployerOnboarding: React.FC = () => {
         lastName: '',
         role: 'employer'
       });
-      navigate('/onboard/welcome', { state: { firstName: orgInfo.organizationName, role: 'employer' } });
+      navigate('/onboarding/welcome', { state: { firstName: orgInfo.organizationName, role: 'employer' } });
     }
   };
 
@@ -264,20 +265,20 @@ const EmployerOnboarding: React.FC = () => {
             />
 
             <div className="flex gap-4 pt-4">
-              <button
-                type="button"
+              <Button
+                variant="outline"
                 onClick={handleBack}
-                className="flex-1 py-3.5 rounded-full border border-[#E5E7EB] text-sm font-semibold text-[#374151] hover:bg-gray-50 transition-colors cursor-pointer"
+                className="min-h-[48px]"
               >
                 Back
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 disabled={!isStep1Valid}
-                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep1Valid ? 'bg-[#0047CC] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
+                className="min-h-[48px]"
               >
                 Proceed
-              </button>
+              </Button>
             </div>
           </form>
         </>
@@ -314,20 +315,20 @@ const EmployerOnboarding: React.FC = () => {
             </div>
 
             <div className="flex gap-4 pt-4">
-              <button
-                type="button"
+              <Button
+                variant="outline"
                 onClick={handleBack}
-                className="flex-1 py-3.5 rounded-full border border-[#E5E7EB] text-sm font-semibold text-[#374151] hover:bg-gray-50 transition-colors cursor-pointer"
+                className="min-h-[48px]"
               >
                 Back
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 disabled={!isStep2Valid}
-                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep2Valid ? 'bg-[#0047CC] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
+                className="min-h-[48px]"
               >
                 Proceed
-              </button>
+              </Button>
             </div>
           </form>
         </>
@@ -390,20 +391,20 @@ const EmployerOnboarding: React.FC = () => {
             />
 
             <div className="flex gap-4 pt-4">
-              <button
-                type="button"
+              <Button
+                variant="outline"
                 onClick={handleBack}
-                className="flex-1 py-3.5 rounded-full border border-[#E5E7EB] text-sm font-semibold text-[#374151] hover:bg-gray-50 transition-colors cursor-pointer"
+                className="min-h-[48px]"
               >
                 Back
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 disabled={!isStep3Valid}
-                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep3Valid ? 'bg-[#0047CC] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
+                className="min-h-[48px]"
               >
                 Proceed
-              </button>
+              </Button>
             </div>
           </form>
         </>
@@ -449,26 +450,27 @@ const EmployerOnboarding: React.FC = () => {
                   </button>
                 ) : (
                   <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0 animate-in fade-in slide-in-from-left-2">
-                    <input
-                      type="text"
+                    <Input
+                      label=""
                       value={otherPriority}
                       onChange={(e) => setOtherPriority(e.target.value)}
                       placeholder="Enter custom priority"
-                      className="px-4 py-2 rounded-full text-sm border border-[#0047CC] focus:ring-2 focus:ring-[#0047CC] focus:outline-none w-full sm:w-64"
+                      className="rounded-full w-full sm:w-64"
                       autoFocus
                       onKeyPress={(e) => e.key === 'Enter' && handleAddOtherPriority()}
                     />
-                    <button
-                      type="button"
+                    <Button
+                      variant="primary"
+                      fullWidth={false}
                       onClick={handleAddOtherPriority}
-                      className="px-4 py-2 bg-[#0047CC] text-white rounded-full text-sm font-medium hover:bg-[#003d99]"
+                      className="px-6 min-h-[40px] text-sm"
                     >
                       Add
-                    </button>
+                    </Button>
                     <button
                       type="button"
                       onClick={() => { setShowOtherInput(false); setOtherPriority(''); }}
-                      className="text-[#6B7280] hover:text-[#1C1C1C]"
+                      className="text-[#6B7280] hover:text-[#1C1C1C] cursor-pointer"
                     >
                       <CloseIcon className="w-5 h-5" />
                     </button>
@@ -540,20 +542,20 @@ const EmployerOnboarding: React.FC = () => {
             </div>
 
             <div className="flex gap-4 pt-4">
-              <button
-                type="button"
+              <Button
+                variant="outline"
                 onClick={handleBack}
-                className="flex-1 py-3.5 rounded-full border border-[#E5E7EB] text-sm font-semibold text-[#374151] hover:bg-gray-50 transition-colors cursor-pointer"
+                className="min-h-[48px]"
               >
                 Back
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 disabled={!isStep4Valid}
-                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep4Valid ? 'bg-[#0047CC] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
+                className="min-h-[48px]"
               >
                 Proceed
-              </button>
+              </Button>
             </div>
           </form>
         </>
@@ -604,20 +606,20 @@ const EmployerOnboarding: React.FC = () => {
             />
 
             <div className="flex gap-4 pt-4">
-              <button
-                type="button"
+              <Button
+                variant="outline"
                 onClick={handleBack}
-                className="flex-1 py-3.5 rounded-full border border-[#E5E7EB] text-sm font-semibold text-[#374151] hover:bg-gray-50 transition-colors cursor-pointer"
+                className="min-h-[48px]"
               >
                 Back
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 disabled={!isStep5Valid}
-                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep5Valid ? 'bg-brand-blue text-white hover:bg-brand-blue-hover' : 'bg-border-default text-[#9CA3AF] cursor-not-allowed'}`}
+                className="min-h-[48px]"
               >
                 Proceed
-              </button>
+              </Button>
             </div>
           </form>
         </>

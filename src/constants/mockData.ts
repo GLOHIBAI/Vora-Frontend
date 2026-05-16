@@ -253,3 +253,86 @@ export const SAMPLE_TALENT_PROFILE = {
     }
   ]
 };
+export const TRACKED_TALENTS = [
+  { 
+    name: 'Amaka Okonkwo', 
+    role: 'Malaria Program Intern', 
+    hired: 'Jan 16', 
+    score: '86/100', 
+    nextAction: '30-day overdue', 
+    actionSub: 'Was due Feb 15', 
+    status: 'Check-in overdue', 
+    statusType: 'error', 
+    btnText: 'Check-in', 
+    btnColor: 'bg-[#D97706]',
+    initials: 'AO',
+    initialBg: 'bg-[#0047CC]'
+  },
+  { 
+    name: 'Kwame Osei', 
+    role: 'Malaria Program Intern', 
+    hired: 'Jan 18', 
+    score: '79/100', 
+    nextAction: '60-day check-in', 
+    actionSub: 'Mar 19, 2025', 
+    status: 'On track', 
+    statusType: 'success', 
+    btnText: 'View', 
+    btnColor: 'bg-white border border-gray-200 !text-gray-700 hover:bg-gray-50',
+    initials: 'KO',
+    initialBg: 'bg-[#1D871D]'
+  },
+  { 
+    name: 'Fatou Camara', 
+    role: 'TB Response Unit', 
+    hired: 'Feb 3', 
+    score: '91/100', 
+    nextAction: 'Set benchmarks', 
+    actionSub: '3 days left', 
+    status: 'Setup pending', 
+    statusType: 'warning', 
+    btnText: 'Set up', 
+    btnColor: 'bg-[#0047CC]',
+    initials: 'FC',
+    initialBg: 'bg-gray-500'
+  },
+  { 
+    name: 'Dr. Yusuf Ibrahim', 
+    role: 'Public Health Advisor', 
+    hired: 'Aug 12', 
+    score: '83/100', 
+    nextAction: 'Report ready', 
+    actionSub: 'Completed Jul 2024', 
+    status: 'Cycle complete', 
+    statusType: 'purple', 
+    btnText: 'Report', 
+    btnColor: 'bg-[#7C3AED]',
+    initials: 'YI',
+    initialBg: 'bg-[#7C3AED]'
+  }
+];
+
+export const UPCOMING_SESSIONS = [
+  { name: 'Chiamaka Obi', time: 'Today · 14:00 WAT', status: 'Live', type: 'Assessment Referred', tier: 'T3 · Nigeria', fee: '$150', date: '8', mon: 'MAR', isLive: true },
+  { name: 'Dr. Emeka Nwosu', time: 'Wed · 10:00 CET', status: 'Confirmed', type: 'Direct', tier: 'T1 · Switzerland', fee: '$1,200', date: '11', mon: 'MAR' },
+  { name: 'Fatima Al-Rashidi', time: 'Sat · 11:00 AST', status: 'Confirmed', type: 'Assessment Referred', tier: 'T3 · Yemen', fee: '$120', date: '14', mon: 'MAR' },
+  { name: 'Kofi Mensah-Asante', time: 'Wed · TBC', status: 'Pending', type: 'VORA Matched', tier: 'T3 · Ghana', fee: '$150', date: '18', mon: 'MAR' }
+];
+
+export const ACTIVE_COURSES = [
+  { title: 'Global Health Policy Masterclass', enrolled: 487, status: 'Published', rating: '4.9', revenue: '$19,480', gradient: 'from-[#18234B] to-[#387DFF]' },
+  { title: 'Epidemiology in Crisis Response', enrolled: 312, status: 'Published', rating: '4.8', revenue: '$12,480', gradient: 'from-[#135813] to-[#2CA62C]' }
+];
+
+export const PENDING_REQUESTS = [
+  { name: 'Kofi Mensah-Asante', role: 'Health Systems Analyst · GHS Ghana', tags: ['VORA Matched', 'T3 · Ghana'], note: 'Failed Psychometric (41%) after passing SJT (68%). VORA matched him to you for executive reasoning coaching.', initial: 'KM', color: 'from-red-300 to-red-500' },
+  { name: 'Taiwo Adeyemi', role: 'Programme Analyst · UNICEF Nigeria', tags: ['Assessment Referred', 'T3 · Nigeria'], note: 'Failed Psychometric ×3 and Video ×2 across WHO + UNICEF applications. Critical case.', initial: 'TA', color: 'from-amber-300 to-amber-500', isCritical: true }
+];
+
+import { UserIcon, BookIcon, InfoIcon } from '../components/common/Icons';
+
+export const RECENT_ACTIVITY = [
+  { text: 'James Okello rated your session ★★★★★ and left a review', time: '2 hours ago', icon: UserIcon, color: 'bg-green-50 text-green-600' },
+  { text: '34 new enrollments in Epidemiology in Crisis Response', time: '5 hours ago', icon: BookIcon, color: 'bg-blue-50 text-blue-600' },
+  { text: 'Taiwo Adeyemi sent a new mentorship request — critical priority', time: '8 hours ago', icon: InfoIcon, color: 'bg-amber-50 text-amber-600' }
+];

@@ -8,10 +8,10 @@ import {
   CheckIcon,
   AlertTriangleIcon,
   InfoIcon
-} from '../components/common/Icons';
-import Button from '../components/common/Button';
-import Input from '../components/common/Input';
-import { SAMPLE_JOB_DETAILS } from '../constants/mockData';
+} from '../../components/common/Icons';
+import Button from '../../components/common/Button';
+import Input from '../../components/common/Input';
+import { SAMPLE_JOB_DETAILS } from '../../constants/mockData';
 
 type Step = 'choose' | 'video-setup' | 'inperson-setup' | 'confirm';
 type SessionType = 'video' | 'inperson';
@@ -104,11 +104,11 @@ const FinalAlignmentSession: React.FC = () => {
           </div>
 
           {sessionType === 'inperson' && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 flex gap-4 mb-8">
-              <AlertTriangleIcon size={20} className="text-amber-600 shrink-0 mt-0.5" />
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 flex gap-4 mb-8">
+              <AlertTriangleIcon size={20} className="text-blue-600 shrink-0 mt-0.5" />
               <div>
-                <p className="text-[13px] font-black text-amber-900 mb-1">Note on travel costs:</p>
-                <p className="text-[13px] font-bold text-amber-800 leading-relaxed">
+                <p className="text-[13px] font-black text-blue-900 mb-1">Note on travel costs:</p>
+                <p className="text-[13px] font-bold text-gray-800 leading-relaxed">
                   As this candidate is based in {candidate.location}, you will be required to fund travel and accommodation. Funds will be loaded through the VORA platform before the session is confirmed. <span className="font-black">Same-city visits require no transport coverage.</span>
                 </p>
               </div>
@@ -169,18 +169,18 @@ const FinalAlignmentSession: React.FC = () => {
           </div>
 
           {step === 'video-setup' ? (
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-5 flex gap-4">
-              <InfoIcon size={20} className="text-[#0047CC] shrink-0 mt-0.5" />
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 flex gap-4 mb-8">
+              <AlertTriangleIcon size={20} className="text-blue-600 shrink-0 mt-0.5" />
               <div>
-                <p className="text-[13px] font-black text-[#0047CC] mb-1">Session deposit:</p>
-                <p className="text-[13px] font-bold text-blue-800 leading-relaxed">
-                  A refundable $150 deposit will be charged to your payment method on file. This is credited back against your VORA commission upon confirmed hire. It is forfeited if the candidate is rejected without documented cause.
+                <p className="text-[13px] font-black text-blue-900 mb-1">Note on travel costs:</p>
+                <p className="text-[12px] font-bold text-gray-500 leading-relaxed">
+                  In-person alignment sessions require the employer to cover standard transport and/or lodging.
                 </p>
               </div>
             </div>
           ) : (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
-              <p className="text-[13px] font-bold text-amber-800 leading-relaxed">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
+              <p className="text-[13px] font-bold text-gray-800 leading-relaxed">
                 The employer has <span className="font-black">5 business days</span> after the visit to confirm hire or submit a documented rejection. If no decision is received, VORA will intervene and the candidate will be notified.
               </p>
             </div>

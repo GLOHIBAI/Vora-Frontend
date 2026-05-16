@@ -4,9 +4,11 @@ import {
   ChevronRightIcon, 
   AlertTriangleIcon,
   CheckIcon,
-} from '../components/common/Icons';
+} from '../../components/common/Icons';
+import Input from '../../components/common/Input';
+import Button from '../../components/common/Button';
 
-import { REJECTION_REASONS, FLAGGED_WORDS } from '../constants/rejection';
+import { REJECTION_REASONS, FLAGGED_WORDS } from '../../constants/rejection';
 
 const Rejection: React.FC = () => {
   const { id, applicantId } = useParams();
@@ -94,11 +96,10 @@ const Rejection: React.FC = () => {
 
             {selectedReason === 'other' && (
               <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                <label className="block text-[14px] font-bold text-gray-900">Specify reason</label>
-                <input 
+                <Input 
+                  label="Specify reason"
                   type="text"
                   placeholder="Describe the rejection reason"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-100 focus:outline-none focus:ring-2 focus:ring-[#0047CC]/5 focus:border-[#0047CC]/20 transition-all text-[14px] font-medium"
                   value={otherReason}
                   onChange={(e) => setOtherReason(e.target.value)}
                 />
@@ -132,23 +133,27 @@ const Rejection: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-end gap-4 pt-4">
-            <button 
+            <Button 
+              variant="outline" 
+              fullWidth={false}
               onClick={() => navigate(-1)}
-              className="px-6 py-3 text-[14px] font-bold text-gray-500 hover:text-gray-700 transition-colors"
+              className="px-6 min-h-[44px] border-none text-gray-500 hover:text-gray-700"
             >
               Cancel
-            </button>
-            <button 
+            </Button>
+            <Button 
+              variant="secondary"
+              fullWidth={false}
               disabled={!isFormValid}
               onClick={handleSubmit}
-              className={`px-8 py-3 rounded-full text-[14px] font-bold transition-all ${
+              className={`px-8 min-h-[44px] transition-all ${
                 isFormValid 
                   ? 'bg-[#DC2626] text-white hover:bg-[#B91C1C] shadow-lg shadow-red-500/20' 
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
               }`}
             >
               Submit Rejection
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -183,18 +188,21 @@ const Rejection: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-end gap-4">
-            <button 
+            <Button 
+              variant="outline"
+              fullWidth={false}
               onClick={() => setStep('form')}
-              className="px-6 py-3 text-[14px] font-bold text-gray-500 hover:text-gray-700 transition-colors"
+              className="px-6 min-h-[44px] border-none text-gray-500 hover:text-gray-700"
             >
               Edit Submission
-            </button>
-            <button 
+            </Button>
+            <Button 
+              fullWidth={false}
               onClick={() => setStep('confirmed')}
-              className="px-8 py-3 bg-[#DC2626] text-white rounded-full text-[14px] font-bold hover:bg-[#B91C1C] transition-all shadow-lg shadow-red-500/20"
+              className="px-8 min-h-[44px] bg-[#DC2626] text-white hover:bg-[#B91C1C] transition-all shadow-lg shadow-red-500/20"
             >
               Proceed Anyway
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -210,12 +218,13 @@ const Rejection: React.FC = () => {
               {applicantId || 'APP-008'} has been moved to your Rejected pipeline. The candidate has been notified and the rejection documentation has been logged in your audit trail.
             </p>
           </div>
-          <button 
+          <Button 
             onClick={() => navigate('/talents')}
-            className="px-10 py-4 bg-[#0047CC] text-white rounded-full text-[15px] font-bold hover:bg-[#003d99] transition-all shadow-lg shadow-blue-500/20"
+            fullWidth={false}
+            className="px-10 min-h-[56px] text-[15px]"
           >
             Return to Talents
-          </button>
+          </Button>
         </div>
       )}
     </div>

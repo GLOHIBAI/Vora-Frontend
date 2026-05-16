@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-
 import {
   PlusIcon,
   PlayIcon,
@@ -12,10 +11,20 @@ import {
   ClockIcon,
   ChevronDownIcon,
   DownloadIcon,
+  MoreVerticalIcon,
   InfoIcon,
-  MoreVerticalIcon
+  BellIcon,
+  VideoIcon
 } from '../common/Icons';
 import { useAuth } from '../../context/AuthContext';
+import Button from '../common/Button';
+import Tag from '../common/Tag';
+import { 
+  UPCOMING_SESSIONS, 
+  ACTIVE_COURSES, 
+  PENDING_REQUESTS, 
+  RECENT_ACTIVITY 
+} from '../../constants/mockData';
 
 // --- Sub-components for Mentor Dashboard ---
 
@@ -23,15 +32,14 @@ const StatCard: React.FC<{ label: string; value: string; trend?: string; trendTy
   <div className="bg-white border border-gray-100 rounded-[18px] p-6 shadow-sm hover:shadow-md transition-all duration-300">
     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">{label}</p>
     <div className="flex items-baseline gap-2">
-      <p className={`text-[28px] font-extrabold text-gray-900 tracking-tight ${trendType === 'warn' ? 'text-amber-600' : ''}`}>{value}</p>
+      <p className={`text-[22px] lg:text-[28px] font-extrabold text-gray-900 tracking-tight`}>{value}</p>
     </div>
     {trend && (
-      <div className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full mt-2 ${
-        trendType === 'up' ? 'bg-green-50 text-green-600' : 
-        trendType === 'warn' ? 'bg-amber-50 text-amber-600' : 
-        'bg-gray-50 text-gray-500'
-      }`}>
-        {trend}
+      <div className={`inline-flex items-center gap-1 mt-2`}>
+        <Tag 
+          label={trend} 
+          variant={trendType === 'up' ? 'green' : trendType === 'warn' ? 'blue' : 'gray'} 
+        />
       </div>
     )}
     {children}
@@ -61,29 +69,6 @@ const SectionHeader: React.FC<{ title: string; icon: React.ElementType; linkText
 const MentorDashboard: React.FC = () => {
   const [isCiOpen, setIsCiOpen] = useState(false);
 
-  // Mock data based on provided HTML
-  const upcomingSessions = [
-    { name: 'Chiamaka Obi', time: 'Today · 14:00 WAT', status: 'Live', type: 'Assessment Referred', tier: 'T3 · Nigeria', fee: '$150', date: '8', mon: 'MAR', isLive: true },
-    { name: 'Dr. Emeka Nwosu', time: 'Wed · 10:00 CET', status: 'Confirmed', type: 'Direct', tier: 'T1 · Switzerland', fee: '$1,200', date: '11', mon: 'MAR' },
-    { name: 'Fatima Al-Rashidi', time: 'Sat · 11:00 AST', status: 'Confirmed', type: 'Assessment Referred', tier: 'T3 · Yemen', fee: '$120', date: '14', mon: 'MAR' },
-    { name: 'Kofi Mensah-Asante', time: 'Wed · TBC', status: 'Pending', type: 'VORA Matched', tier: 'T3 · Ghana', fee: '$150', date: '18', mon: 'MAR' }
-  ];
-
-  const activeCourses = [
-    { title: 'Global Health Policy Masterclass', enrolled: 487, status: 'Published', rating: '4.9', revenue: '$19,480', gradient: 'from-[#18234B] to-[#387DFF]' },
-    { title: 'Epidemiology in Crisis Response', enrolled: 312, status: 'Published', rating: '4.8', revenue: '$12,480', gradient: 'from-[#135813] to-[#2CA62C]' }
-  ];
-
-  const pendingRequests = [
-    { name: 'Kofi Mensah-Asante', role: 'Health Systems Analyst · GHS Ghana', tags: ['VORA Matched', 'T3 · Ghana'], note: 'Failed Psychometric (41%) after passing SJT (68%). VORA matched him to you for executive reasoning coaching.', initial: 'KM', color: 'from-red-300 to-red-500' },
-    { name: 'Taiwo Adeyemi', role: 'Programme Analyst · UNICEF Nigeria', tags: ['Assessment Referred', 'T3 · Nigeria'], note: 'Failed Psychometric ×3 and Video ×2 across WHO + UNICEF applications. Critical case.', initial: 'TA', color: 'from-amber-300 to-amber-500', isCritical: true }
-  ];
-
-  const recentActivity = [
-    { text: 'James Okello rated your session ★★★★★ and left a review', time: '2 hours ago', icon: UserIcon, color: 'bg-green-50 text-green-600' },
-    { text: '34 new enrollments in Epidemiology in Crisis Response', time: '5 hours ago', icon: BookIcon, color: 'bg-blue-50 text-blue-600' },
-    { text: 'Taiwo Adeyemi sent a new mentorship request — critical priority', time: '8 hours ago', icon: InfoIcon, color: 'bg-amber-50 text-amber-600' }
-  ];
 
   const { user } = useAuth();
   if (!user) return null;
@@ -100,27 +85,42 @@ const MentorDashboard: React.FC = () => {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="space-y-1">
-          <h1 className="text-[28px] font-black text-gray-900 font-['Nunito_Sans'] tracking-tight">
-            {getGreeting()}, {displayName} 👋
+          <h1 className="text-[22px] lg:text-[28px] font-black text-gray-900 font-['Nunito_Sans'] tracking-tight">
+            {getGreeting()}, {displayName}
           </h1>
-          <p className="text-[14px] font-bold text-gray-400">
+          <p className="text-[12px] lg:text-[14px] font-bold text-gray-400">
             Tuesday, 10 March 2026 · You have 1 live session in 42 minutes
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-100 rounded-full text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all shadow-sm cursor-pointer">
-            <BookIcon size={14} /> Create Course
-          </button>
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-[#0047CC] text-white rounded-full text-[13px] font-bold hover:bg-[#003d99] transition-all shadow-lg shadow-blue-500/20 cursor-pointer">
-            <PlusIcon size={14} /> Schedule Session
-          </button>
+        <div className="flex flex-wrap items-center gap-2 lg:gap-3">
+          <Button
+            variant="outline"
+            fullWidth={false}
+            className="px-3 lg:px-4 min-h-[40px] lg:min-h-[44px] text-[11px] lg:text-[13px] shadow-sm bg-white"
+          >
+            <BellIcon size={14} className="text-gray-500" /> Notifications
+            <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full -ml-1">8</span>
+          </Button>
+          <Button
+            variant="outline"
+            fullWidth={false}
+            className="px-3 lg:px-5 min-h-[40px] lg:min-h-[44px] text-[11px] lg:text-[13px] shadow-sm bg-white"
+          >
+            <BookIcon size={14} className="text-gray-900" /> Create Course
+          </Button>
+          <Button
+            fullWidth={false}
+            className="px-4 lg:px-5 min-h-[40px] lg:min-h-[44px] text-[11px] lg:text-[13px] shadow-lg shadow-blue-500/20"
+          >
+            <PlusIcon size={14} className="text-white" /> Schedule Session
+          </Button>
         </div>
       </div>
 
       {/* Live Session Hero Strip */}
-      <div className="bg-gradient-to-r from-[#064E3B] via-[#065F46] to-[#059669] rounded-[24px] p-6 md:p-8 flex flex-col md:flex-row items-center gap-6 relative overflow-hidden group cursor-pointer shadow-xl shadow-green-900/10 transition-transform active:scale-[0.99]">
+      <div className="bg-gradient-to-r from-[#064E3B] via-[#065F46] to-[#059669] rounded-[24px] p-6 lg:p-8 flex flex-col lg:flex-row items-center lg:items-center gap-6 relative overflow-hidden group cursor-pointer shadow-xl shadow-green-900/10 transition-transform active:scale-[0.99]">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3 pointer-events-none" />
         
         <div className="relative flex items-center justify-center shrink-0">
@@ -128,25 +128,34 @@ const MentorDashboard: React.FC = () => {
           <div className="w-3.5 h-3.5 bg-green-400 rounded-full relative" />
         </div>
 
-        <div className="flex-1 space-y-1 relative z-10 text-center md:text-left">
-          <p className="text-[11px] font-bold text-green-100/70 uppercase tracking-widest">Next Session — Live in 42 minutes</p>
-          <h2 className="text-[22px] font-extrabold text-white">Chiamaka Obi</h2>
-          <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 pt-1">
-            <span className="text-[13px] font-bold text-white/80">Today · 14:00 WAT · 60 min</span>
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-0.5 rounded-full bg-white/10 border border-white/20 text-[10px] font-bold text-white uppercase">⚠ Assessment Referred</span>
-              <span className="px-3 py-0.5 rounded-full bg-amber-400/20 border border-amber-400/30 text-[10px] font-bold text-amber-200 uppercase">T3 · Nigeria · $150</span>
+        <div className="flex-1 space-y-1 relative z-10 text-center lg:text-left">
+          <p className="text-[10px] lg:text-[11px] font-bold text-green-100/70 uppercase tracking-widest">Next Session — Live in 42 minutes</p>
+          <h2 className="text-[20px] lg:text-[24px] font-extrabold text-white">Chiamaka Obi</h2>
+          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2 lg:gap-3 pt-1">
+            <span className="text-[12px] lg:text-[13px] font-bold text-white/80">Today · 14:00 WAT · 60 min</span>
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
+              <Tag label="Assessment Referred" variant="blue-light" className="bg-white/10 border-white/20 text-white" />
+              <Tag label="T3 · Nigeria · $150" variant="blue-light" className="bg-blue-400/20 border-blue-400/30 text-blue-200" />
+              <Tag label="Session 3 of 6" variant="gray" className="bg-black/10 border-white/10 text-white" />
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 relative z-10">
-          <button className="flex items-center gap-2 px-6 py-3 bg-white text-[#065F46] rounded-full text-[14px] font-black hover:scale-105 transition-transform cursor-pointer shadow-lg shadow-black/10">
-            <PlayIcon size={16} fill="currentColor" /> Join Session
-          </button>
-          <button className="px-6 py-3 bg-white/10 border border-white/20 text-white rounded-full text-[14px] font-bold hover:bg-white/20 transition-all cursor-pointer">
+        <div className="flex flex-col sm:flex-row items-center gap-3 relative z-10 w-full lg:w-auto">
+          <Button
+            fullWidth={true}
+            className="px-6 py-3 bg-white text-[#065F46] hover:bg-green-50 shadow-lg shadow-black/10 border-none sm:w-auto"
+          >
+            <VideoIcon size={16} fill="none" stroke="currentColor" strokeWidth={2.5} className="text-[#065F46]" />
+            <span className="text-[#065F46]">Join Session</span>
+          </Button>
+          <Button
+            variant="outline"
+            fullWidth={true}
+            className="px-6 py-3 bg-white/10 border border-white/20 text-white hover:bg-white/20 min-h-0 sm:w-auto"
+          >
             View Brief
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -154,9 +163,9 @@ const MentorDashboard: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard label="March Revenue" value="$3,940">
           <div className="flex flex-wrap gap-2 mt-4">
-            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-[#0047CC] border border-blue-100 text-[9px] font-bold">T1 $2,400</span>
-            <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-100 text-[9px] font-bold">T2 $1,000</span>
-            <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100 text-[9px] font-bold">T3 $540</span>
+            <Tag label="T1 $2,400" variant="blue-light" />
+            <Tag label="T2 $1,000" variant="blue-light" />
+            <Tag label="T3 $540" variant="blue-light" />
           </div>
         </StatCard>
         <StatCard label="Upcoming Sessions" value="5" trend="1 live today" trendType="neutral" />
@@ -173,7 +182,7 @@ const MentorDashboard: React.FC = () => {
             <SectionHeader title="Upcoming Sessions" icon={CalendarIcon} linkText="View all" onLinkClick={() => {}} />
             
             <div className="space-y-2">
-              {upcomingSessions.map((session, i) => (
+              {UPCOMING_SESSIONS.map((session, i) => (
                 <div key={i} className="flex items-center gap-5 p-3 hover:bg-gray-50 rounded-2xl transition-all cursor-pointer group border-b border-gray-50 last:border-0">
                   <div className={`w-12 h-14 rounded-xl flex flex-col items-center justify-center shrink-0 border ${
                     session.isLive ? 'bg-green-100 border-green-200 text-green-700' : 'bg-gray-50 border-gray-100 text-gray-500'
@@ -185,21 +194,18 @@ const MentorDashboard: React.FC = () => {
                     <p className="text-[14px] font-bold text-gray-900 truncate">{session.name}</p>
                     <div className="flex flex-wrap items-center gap-3 pt-1">
                       <span className="text-[12px] font-bold text-gray-400">{session.time}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border ${
-                        session.type === 'Assessment Referred' ? 'bg-amber-50 text-amber-600 border-amber-100' : 
-                        session.type === 'Direct' ? 'bg-green-50 text-green-600 border-green-100' :
-                        'bg-blue-50 text-blue-600 border-blue-100'
-                      }`}>
-                        {session.type}
-                      </span>
+                      <Tag 
+                        label={session.type} 
+                        variant={session.type === 'Assessment Referred' ? 'blue-light' : 
+                                 session.type === 'Direct' ? 'green' : 'blue-light'} 
+                      />
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <span className={`text-[10px] font-black px-2 py-1 rounded-full ${
-                      session.isLive ? 'bg-green-50 text-green-600 animate-pulse' : 'bg-blue-50 text-[#0047CC]'
-                    }`}>
-                      {session.isLive ? '● Live' : session.status}
-                    </span>
+                    <Tag 
+                      label={session.isLive ? 'Live' : session.status} 
+                      variant={session.isLive ? 'green' : 'blue'} 
+                    />
                     <p className="text-[14px] font-black text-gray-900 mt-1">{session.fee}</p>
                   </div>
                 </div>
@@ -212,7 +218,7 @@ const MentorDashboard: React.FC = () => {
             <SectionHeader title="Active Courses" icon={BookIcon} linkText="Manage" onLinkClick={() => {}} />
             
             <div className="grid grid-cols-1 gap-4">
-              {activeCourses.map((course, i) => (
+              {ACTIVE_COURSES.map((course, i) => (
                 <div key={i} className="flex items-center gap-5 p-4 bg-gray-50/50 hover:bg-gray-50 rounded-2xl transition-all cursor-pointer border border-gray-100 group">
                   <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${course.gradient} flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/10`}>
                     <PlayIcon size={20} className="text-white" />
@@ -222,7 +228,7 @@ const MentorDashboard: React.FC = () => {
                     <div className="flex items-center gap-4 pt-1">
                       <span className="text-[12px] font-bold text-gray-400">{course.enrolled} enrolled</span>
                       <span className="text-[11px] font-bold text-green-600">Published</span>
-                      <span className="text-[11px] font-black text-amber-500">★ {course.rating}</span>
+                      <span className="text-[11px] font-black text-blue-500">★ {course.rating}</span>
                     </div>
                   </div>
                   <div className="text-right shrink-0">
@@ -233,11 +239,11 @@ const MentorDashboard: React.FC = () => {
               ))}
             </div>
 
-            <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3">
-              <div className="bg-amber-400 p-1.5 rounded-lg text-white">
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-2xl flex items-center gap-3">
+              <div className="bg-[#0047CC] p-1.5 rounded-lg text-white">
                 <InfoIcon size={14} />
               </div>
-              <p className="text-[12px] font-bold text-amber-800">
+              <p className="text-[12px] font-bold text-blue-800">
                 2 drafts waiting to be published — <span className="underline cursor-pointer">review now</span>
               </p>
             </div>
@@ -248,8 +254,8 @@ const MentorDashboard: React.FC = () => {
             <SectionHeader title="Pending Requests" icon={BriefcaseIcon} linkText="See all" onLinkClick={() => {}} />
             
             <div className="space-y-5">
-              {pendingRequests.map((req, i) => (
-                <div key={i} className={`p-6 rounded-[20px] border transition-all ${req.isCritical ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
+              {PENDING_REQUESTS.map((req, i) => (
+                <div key={i} className={`p-6 rounded-[20px] border transition-all ${req.isCritical ? 'bg-blue-50/50 border-blue-200' : 'bg-white border-gray-100'}`}>
                   <div className="flex items-start gap-4 mb-4">
                     <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${req.color} flex items-center justify-center text-white font-black text-sm shrink-0 shadow-sm`}>
                       {req.initial}
@@ -266,18 +272,25 @@ const MentorDashboard: React.FC = () => {
                   </div>
                   
                   <div className={`p-4 rounded-xl text-[12px] font-medium leading-relaxed mb-5 border ${
-                    req.isCritical ? 'bg-white/80 text-amber-900 border-amber-100' : 'bg-gray-50 text-gray-600 border-gray-100'
+                    req.isCritical ? 'bg-white/80 text-blue-900 border-blue-100' : 'bg-gray-50 text-gray-600 border-gray-100'
                   }`}>
                     {req.note}
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <button className="flex-1 py-2.5 bg-[#0047CC] text-white rounded-full text-[12px] font-black hover:bg-[#003d99] transition-all cursor-pointer">
+                    <Button
+                      className="flex-1 py-2.5 text-[12px]"
+                      onClick={() => {}}
+                    >
                       ✓ Accept
-                    </button>
-                    <button className="flex-1 py-2.5 bg-white border border-gray-100 text-gray-500 rounded-full text-[12px] font-bold hover:bg-gray-50 transition-all cursor-pointer">
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1 py-2.5 text-[12px] text-gray-500 bg-white"
+                      onClick={() => {}}
+                    >
                       Decline
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -317,12 +330,19 @@ const MentorDashboard: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap gap-4 pt-4 border-t border-gray-50">
-              <button className="px-6 py-3 border border-gray-100 rounded-full text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all cursor-pointer">
+              <Button
+                variant="outline"
+                fullWidth={false}
+                className="px-6 py-3 border-gray-100 text-gray-700 hover:bg-gray-50"
+              >
                 View Breakdown
-              </button>
-              <button className="flex items-center gap-2 px-6 py-3 bg-[#0047CC] text-white rounded-full text-[14px] font-bold hover:bg-[#003d99] transition-all shadow-lg shadow-blue-500/20 cursor-pointer">
+              </Button>
+              <Button
+                fullWidth={false}
+                className="px-6 py-3 shadow-lg shadow-blue-500/20"
+              >
                 <DownloadIcon size={14} /> Withdraw $3,152
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -366,12 +386,17 @@ const MentorDashboard: React.FC = () => {
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <button className="w-full py-3.5 bg-white text-[#18234B] rounded-full text-[13px] font-black hover:scale-[1.02] transition-transform cursor-pointer">
+                  <Button
+                    className="w-full py-3.5 bg-white text-[#18234B] hover:bg-gray-50 min-h-0"
+                  >
                     Explore Gap Intelligence
-                  </button>
-                  <button className="w-full py-3.5 bg-white/10 border border-white/20 text-white rounded-full text-[13px] font-black hover:bg-white/20 transition-all cursor-pointer">
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full py-3.5 bg-white/10 border border-white/20 text-white hover:bg-white/20 min-h-0"
+                  >
                     + Create Course
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -381,7 +406,7 @@ const MentorDashboard: React.FC = () => {
           <div className="bg-white border border-gray-100 rounded-[24px] p-8 shadow-sm">
             <SectionHeader title="Recent Activity" icon={ClockIcon} linkText="All" onLinkClick={() => {}} />
             <div className="space-y-6">
-              {recentActivity.map((act, i) => (
+              {RECENT_ACTIVITY.map((act, i) => (
                 <div key={i} className="flex gap-4 group">
                   <div className={`w-10 h-10 rounded-xl ${act.color} flex items-center justify-center shrink-0 border border-current opacity-20`} />
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 absolute pointer-events-none">
@@ -400,30 +425,42 @@ const MentorDashboard: React.FC = () => {
           <div className="bg-white border border-gray-100 rounded-[24px] p-8 shadow-sm">
             <SectionHeader title="Quick Actions" icon={MoreVerticalIcon} />
             <div className="columns-2 gap-3 space-y-3">
-              <button className="w-full break-inside-avoid p-5 bg-white border border-gray-100 rounded-[20px] flex flex-col items-center gap-3 hover:border-[#0047CC] hover:bg-blue-50 transition-all group cursor-pointer shadow-sm">
+              <Button
+                variant="outline"
+                className="w-full h-auto p-5 bg-white border border-gray-100 rounded-[20px] flex flex-col items-center gap-3 hover:border-[#0047CC] hover:bg-blue-50 group shadow-sm min-h-0"
+              >
                 <div className="p-3 bg-blue-50 rounded-xl text-[#0047CC] group-hover:scale-110 transition-transform">
                   <CalendarIcon size={20} />
                 </div>
                 <span className="text-[12px] font-black text-gray-900">Schedule</span>
-              </button>
-              <button className="w-full break-inside-avoid p-5 bg-white border border-gray-100 rounded-[20px] flex flex-col items-center gap-3 hover:border-green-600 hover:bg-green-50 transition-all group cursor-pointer shadow-sm">
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full h-auto p-5 bg-white border border-gray-100 rounded-[20px] flex flex-col items-center gap-3 hover:border-green-600 hover:bg-green-50 group shadow-sm min-h-0"
+              >
                 <div className="p-3 bg-green-50 rounded-xl text-green-600 group-hover:scale-110 transition-transform">
                   <PlusIcon size={20} />
                 </div>
                 <span className="text-[12px] font-black text-gray-900">Course</span>
-              </button>
-              <button className="w-full break-inside-avoid p-5 bg-white border border-gray-100 rounded-[20px] flex flex-col items-center gap-3 hover:border-emerald-600 hover:bg-emerald-50 transition-all group cursor-pointer shadow-sm">
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full h-auto p-5 bg-white border border-gray-100 rounded-[20px] flex flex-col items-center gap-3 hover:border-emerald-600 hover:bg-emerald-50 group shadow-sm min-h-0"
+              >
                 <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600 group-hover:scale-110 transition-transform">
                   <TrendingUpIcon size={20} />
                 </div>
                 <span className="text-[12px] font-black text-gray-900">Withdraw</span>
-              </button>
-              <button className="w-full break-inside-avoid p-5 bg-white border border-gray-100 rounded-[20px] flex flex-col items-center gap-3 hover:border-amber-600 hover:bg-amber-50 transition-all group cursor-pointer shadow-sm">
-                <div className="p-3 bg-amber-50 rounded-xl text-amber-600 group-hover:scale-110 transition-transform">
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full h-auto p-5 bg-white border border-gray-100 rounded-[20px] flex flex-col items-center gap-3 hover:border-gray-400 hover:bg-gray-50 group shadow-sm min-h-0"
+              >
+                <div className="p-3 bg-gray-50 rounded-xl text-gray-400 group-hover:scale-110 transition-transform">
                   <UserIcon size={20} />
                 </div>
                 <span className="text-[12px] font-black text-gray-900">Profile</span>
-              </button>
+              </Button>
             </div>
           </div>
         </div>

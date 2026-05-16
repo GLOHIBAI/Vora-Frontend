@@ -6,7 +6,7 @@ const MentorApply: React.FC = () => {
   const navigate = useNavigate();
 
   const handleProceed = () => {
-    navigate('/onboard/mentor-apply/profile');
+    navigate('/onboarding/mentor-apply/profile');
   };
 
   return (

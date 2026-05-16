@@ -16,7 +16,7 @@ export interface OptionGroup {
 }
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'social';
+  variant?: 'primary' | 'secondary' | 'outline' | 'social' | 'link';
   fullWidth?: boolean;
   pill?: boolean;
   isLoading?: boolean;
@@ -27,6 +27,7 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   showPasswordToggle?: boolean;
   error?: boolean;
   helperText?: string;
+  icon?: React.ElementType;
 }
 
 export interface SelectProps {

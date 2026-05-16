@@ -9,7 +9,6 @@ const Welcome: React.FC = () => {
 
   const isMentor = role === 'mentor';
   const isEmployer = role === 'employer';
-  // const isSpecialRole = isMentor || isEmployer;
 
   const handleGoHome = () => {
     navigate('/dashboard');

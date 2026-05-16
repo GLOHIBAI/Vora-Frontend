@@ -5,66 +5,10 @@ import {
   TrendingUpIcon, 
   ClockIcon
 } from '../common/Icons';
+import Button from '../common/Button';
+import { TRACKED_TALENTS } from '../../constants/mockData';
 
 const PostHireTrackingView: React.FC = () => {
-  const trackedTalents = [
-    { 
-      name: 'Amaka Okonkwo', 
-      role: 'Malaria Program Intern', 
-      hired: 'Jan 16', 
-      score: '86/100', 
-      nextAction: '30-day overdue', 
-      actionSub: 'Was due Feb 15', 
-      status: 'Check-in overdue', 
-      statusType: 'error', 
-      btnText: 'Check-in', 
-      btnColor: 'bg-[#D97706]',
-      initials: 'AO',
-      initialBg: 'bg-[#0047CC]'
-    },
-    { 
-      name: 'Kwame Osei', 
-      role: 'Malaria Program Intern', 
-      hired: 'Jan 18', 
-      score: '79/100', 
-      nextAction: '60-day check-in', 
-      actionSub: 'Mar 19, 2025', 
-      status: 'On track', 
-      statusType: 'success', 
-      btnText: 'View', 
-      btnColor: 'bg-white border border-gray-200 !text-gray-700 hover:bg-gray-50',
-      initials: 'KO',
-      initialBg: 'bg-[#1D871D]'
-    },
-    { 
-      name: 'Fatou Camara', 
-      role: 'TB Response Unit', 
-      hired: 'Feb 3', 
-      score: '91/100', 
-      nextAction: 'Set benchmarks', 
-      actionSub: '3 days left', 
-      status: 'Setup pending', 
-      statusType: 'warning', 
-      btnText: 'Set up', 
-      btnColor: 'bg-[#0047CC]',
-      initials: 'FC',
-      initialBg: 'bg-gray-500'
-    },
-    { 
-      name: 'Dr. Yusuf Ibrahim', 
-      role: 'Public Health Advisor', 
-      hired: 'Aug 12', 
-      score: '83/100', 
-      nextAction: 'Report ready', 
-      actionSub: 'Completed Jul 2024', 
-      status: 'Cycle complete', 
-      statusType: 'purple', 
-      btnText: 'Report', 
-      btnColor: 'bg-[#7C3AED]',
-      initials: 'YI',
-      initialBg: 'bg-[#7C3AED]'
-    }
-  ];
 
   const getStatusStyles = (type: string) => {
     switch(type) {
@@ -96,9 +40,14 @@ const PostHireTrackingView: React.FC = () => {
         <p className="text-[13px] font-bold text-[#991B1B] flex-1">
           <strong>1 overdue check-in.</strong> Amaka Okonkwo's 30-day check-in has not been completed. Your next candidate pipeline access will be paused in 3 days if not resolved.
         </p>
-        <button className="px-6 py-2 bg-[#DC2626] text-white text-[12px] font-black rounded-full hover:bg-[#b91c1c] transition-all whitespace-nowrap cursor-pointer">
+        <Button 
+          variant="outline"
+          fullWidth={false}
+          className="px-6 py-2 bg-[#DC2626] text-white text-[12px] font-black border-none hover:bg-[#b91c1c] whitespace-nowrap min-h-0"
+          onClick={() => {}}
+        >
           Complete Now
-        </button>
+        </Button>
       </div>
 
       {/* Stats Grid */}
@@ -128,7 +77,7 @@ const PostHireTrackingView: React.FC = () => {
           <div className="w-24"></div>
         </div>
         <div className="divide-y divide-gray-50">
-          {trackedTalents.map((talent, idx) => (
+          {TRACKED_TALENTS.map((talent, idx) => (
             <div key={idx} className="px-8 py-6 flex items-center hover:bg-gray-50/50 transition-colors cursor-pointer group">
               <div className="flex-[2.5] flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-full ${talent.initialBg} text-white flex items-center justify-center font-black text-[12px] shrink-0`}>
@@ -152,9 +101,14 @@ const PostHireTrackingView: React.FC = () => {
                 </div>
               </div>
               <div className="w-24 flex justify-end">
-                <button className={`px-4 py-2 rounded-lg text-[12px] font-black text-white transition-all hover:scale-105 active:scale-95 ${talent.btnColor}`}>
+                <Button 
+                  variant={talent.btnText === 'View' ? 'outline' : 'primary'}
+                  fullWidth={false}
+                  className={`px-4 py-2 min-h-0 text-[12px] ${talent.btnColor} ${talent.btnText === 'View' ? 'border-gray-200' : 'border-none'}`}
+                  onClick={() => {}}
+                >
                   {talent.btnText}
-                </button>
+                </Button>
               </div>
             </div>
           ))}

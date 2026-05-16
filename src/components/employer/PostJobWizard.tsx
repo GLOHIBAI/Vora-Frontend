@@ -9,6 +9,8 @@ import {
   TrendingUpIcon
 } from '../common/Icons';
 import Select from '../common/Select';
+import Button from '../common/Button';
+import Input from '../common/Input';
 
 interface PostJobWizardProps {
   isOpen: boolean;
@@ -167,16 +169,13 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose }) => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[13px] font-black text-gray-900">Role Title</label>
-                    <input 
-                      type="text" 
-                      placeholder="e.g. Public Health Research Intern"
-                      className="w-full px-5 py-4 bg-white border border-gray-100 rounded-xl focus:border-[#0047CC] focus:ring-4 focus:ring-blue-50 transition-all outline-none text-[14px] font-bold shadow-sm"
-                      value={formData.roleTitle}
-                      onChange={(e) => setFormData({...formData, roleTitle: e.target.value})}
-                    />
-                  </div>
+                  <Input 
+                    label="Role Title"
+                    name="roleTitle"
+                    placeholder="e.g. Public Health Research Intern"
+                    value={formData.roleTitle}
+                    onChange={(e) => setFormData({...formData, roleTitle: e.target.value})}
+                  />
                   <Select 
                     label="Role Type"
                     name="roleType"
@@ -201,47 +200,45 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose }) => {
                       { label: 'Executive', value: 'Executive' },
                     ]}
                   />
-                  <div className="space-y-2">
-                    <label className="text-[13px] font-black text-gray-900">Number of Positions</label>
-                    <input 
-                      type="number" 
-                      className="w-full px-5 py-4 bg-white border border-gray-100 rounded-xl focus:border-[#0047CC] outline-none text-[14px] font-bold shadow-sm"
-                      value={formData.positions}
-                      onChange={(e) => setFormData({...formData, positions: e.target.value})}
-                    />
-                  </div>
+                  <Input 
+                    label="Number of Positions"
+                    type="number"
+                    value={formData.positions}
+                    onChange={(e) => setFormData({...formData, positions: e.target.value})}
+                  />
                   <div className="space-y-2 md:col-span-2">
-                    <label className="text-[13px] font-black text-gray-900">Work Format & Location</label>
-                    <div className="grid grid-cols-3 gap-3 mb-4">
+                    <label className="text-[13px] font-black text-gray-900 mb-8">Work Format & Location</label>
+                    <div className="grid grid-cols-3 gap-3 my-4">
                       {['Onsite', 'Remote', 'Hybrid'].map((fmt) => (
-                        <button
+                        <Button
                           key={fmt}
+                          variant={formData.format === fmt ? 'primary' : 'outline'}
                           onClick={() => setFormData({...formData, format: fmt})}
-                          className={`py-4 rounded-xl text-[13px] font-black border transition-all ${
+                          fullWidth={true}
+                          className={`min-h-[48px] text-[13px] ${
                             formData.format === fmt 
-                              ? 'bg-[#0047CC] text-white border-[#0047CC] shadow-lg shadow-blue-500/20' 
-                              : 'bg-white text-gray-500 border-gray-100 hover:border-gray-200'
+                              ? 'shadow-lg shadow-blue-500/20' 
+                              : 'text-gray-500 border-gray-100 hover:border-gray-200'
                           }`}
                         >
                           {fmt}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                     {formData.format !== 'Remote' && (
-                      <input 
-                        type="text" 
+                      <Input 
+                        label=""
                         placeholder="City, Country"
-                        className="w-full px-5 py-4 bg-white border border-gray-100 rounded-xl focus:border-[#0047CC] outline-none text-[14px] font-bold shadow-sm"
                         value={formData.location}
                         onChange={(e) => setFormData({...formData, location: e.target.value})}
                       />
                     )}
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <label className="text-[13px] font-black text-gray-900">Role Summary</label>
+                    <label className="text-[13px] font-black text-gray-900 mb-8">Role Summary</label>
                     <textarea 
                       placeholder="Briefly describe the purpose of this role..."
-                      className="w-full px-5 py-4 bg-white border border-gray-100 rounded-xl focus:border-[#0047CC] outline-none text-[14px] font-bold shadow-sm h-32 resize-none"
+                      className="w-full px-5 py-4 bg-white border border-gray-100 rounded-xl focus:border-[#0047CC] outline-none text-[14px] font-bold shadow-sm h-32 resize-none mt-4"
                       value={formData.summary}
                       onChange={(e) => setFormData({...formData, summary: e.target.value})}
                     />
@@ -265,7 +262,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose }) => {
                     <label className="text-[13px] font-black text-gray-900">Core Responsibilities</label>
                     <textarea 
                       placeholder="Enter responsibilities, one per line..."
-                      className="w-full px-5 py-4 bg-white border border-gray-100 rounded-xl focus:border-[#0047CC] outline-none text-[14px] font-bold shadow-sm h-48 resize-none"
+                      className="w-full px-5 py-4 mt-4 bg-white border border-gray-100 rounded-xl focus:border-[#0047CC] outline-none text-[14px] font-bold shadow-sm h-48 resize-none"
                       value={formData.responsibilities}
                       onChange={(e) => setFormData({...formData, responsibilities: e.target.value})}
                     />
@@ -274,20 +271,21 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose }) => {
                   <div className="space-y-4">
                     <label className="text-[13px] font-black text-gray-900">Required Skills</label>
                     <div className="flex gap-2">
-                      <input 
-                        type="text" 
+                      <Input 
+                        label=""
                         placeholder="e.g. Data Analysis, Stata, Python"
-                        className="flex-1 px-5 py-4 bg-white border border-gray-100 rounded-xl focus:border-[#0047CC] outline-none text-[14px] font-bold shadow-sm"
                         value={formData.newSkill}
                         onChange={(e) => setFormData({...formData, newSkill: e.target.value})}
                         onKeyPress={(e) => e.key === 'Enter' && addSkill()}
                       />
-                      <button 
+                      <Button 
                         onClick={addSkill}
-                        className="px-6 bg-gray-900 text-white rounded-xl text-[14px] font-black hover:bg-black transition-all"
+                        fullWidth={false}
+                        variant="outline"
+                        className="px-8 text-gray-500 hover:bg-[#0047CC] hover:text-white hover:border-[#0047CC] transition-all shadow-sm"
                       >
                         Add
-                      </button>
+                      </Button>
                     </div>
                     <div className="flex flex-wrap gap-2 pt-2">
                       {formData.skills.map(skill => (
@@ -377,27 +375,30 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose }) => {
 
       {/* Footer Actions */}
       <div className="h-[96px] bg-white border-t border-gray-100 px-8 flex items-center justify-between shrink-0">
-        <button 
+        <Button 
+          variant="outline"
+          fullWidth={false}
           onClick={prevStep}
           disabled={currentStep === 1}
-          className={`flex items-center gap-2 px-6 py-3 rounded-full text-[14px] font-black transition-all ${
-            currentStep === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-900 hover:bg-gray-50'
+          className={`px-6 min-h-[44px] border-none text-[14px] ${
+            currentStep === 1 ? 'text-gray-300' : 'text-gray-900'
           }`}
         >
           <ChevronLeftIcon size={18} /> Back
-        </button>
+        </Button>
 
         <div className="flex items-center gap-4">
           <button className="text-[14px] font-black text-[#0047CC] hover:underline px-4">
             Save as Draft
           </button>
-          <button 
+          <Button 
             onClick={currentStep === 6 ? handleClose : nextStep}
-            className="flex items-center gap-2 px-8 py-3.5 bg-[#0047CC] text-white rounded-full text-[14px] font-black hover:bg-[#003d99] shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5 active:scale-95"
+            fullWidth={false}
+            className="px-8 min-h-[48px] text-[14px] shadow-lg shadow-blue-500/20"
           >
             {currentStep === 6 ? 'Post Job Now' : 'Continue'}
             {currentStep !== 6 && <ChevronRightIcon size={18} />}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

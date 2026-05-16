@@ -9,40 +9,85 @@ interface TabSliderProps {
 }
 
 const TabSlider: React.FC<TabSliderProps> = ({ tabs, activeTab, onTabChange, renderTabExtra }) => {
+  const [showSlider, setShowSlider] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [thumbWidth, setThumbWidth] = useState(0);
+
+  // Drag state for content
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeftState, setScrollLeftState] = useState(0);
+  const [hasMoved, setHasMoved] = useState(false);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollRef.current) return;
+    setIsDragging(true);
+    setHasMoved(false);
+    setStartX(e.pageX - scrollRef.current.offsetLeft);
+    setScrollLeftState(scrollRef.current.scrollLeft);
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !scrollRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - scrollRef.current.offsetLeft;
+    const walk = (x - startX) * 2;
+    if (Math.abs(walk) > 5) setHasMoved(true);
+    scrollRef.current.scrollLeft = scrollLeftState - walk;
+  };
 
   const handleScroll = () => {
     if (scrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
       const progress = (scrollLeft / (scrollWidth - clientWidth)) * 100;
-      setScrollProgress(progress);
+      setScrollProgress(isNaN(progress) ? 0 : progress);
     }
   };
 
-  const updateThumbWidth = () => {
+  const updateScrollState = () => {
     if (scrollRef.current) {
       const { scrollWidth, clientWidth } = scrollRef.current;
+      setShowSlider(scrollWidth > clientWidth + 2);
       const width = (clientWidth / scrollWidth) * 100;
       setThumbWidth(width);
     }
   };
 
   useEffect(() => {
-    updateThumbWidth();
-    window.addEventListener('resize', updateThumbWidth);
-    return () => window.removeEventListener('resize', updateThumbWidth);
+    updateScrollState();
+    const timeout = setTimeout(updateScrollState, 100);
+    window.addEventListener('resize', updateScrollState);
+    return () => {
+      window.removeEventListener('resize', updateScrollState);
+      clearTimeout(timeout);
+    };
   }, [tabs]);
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
-      const scrollAmount = 200;
+      const scrollAmount = scrollRef.current.clientWidth * 0.6;
       scrollRef.current.scrollBy({
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth',
       });
     }
+  };
+
+  const handleTrackClick = (e: React.MouseEvent) => {
+    if (!trackRef.current || !scrollRef.current) return;
+    const rect = trackRef.current.getBoundingClientRect();
+    const clickPos = (e.clientX - rect.left) / rect.width;
+    const targetScroll = clickPos * (scrollRef.current.scrollWidth - scrollRef.current.clientWidth);
+    scrollRef.current.scrollTo({
+      left: targetScroll,
+      behavior: 'smooth'
+    });
   };
 
   return (
@@ -51,13 +96,20 @@ const TabSlider: React.FC<TabSliderProps> = ({ tabs, activeTab, onTabChange, ren
       <div 
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex items-center gap-0 overflow-x-auto scrollbar-hide scroll-smooth"
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onMouseMove={handleMouseMove}
+        className={`flex items-center gap-0 overflow-x-auto scrollbar-hide select-none ${
+          isDragging ? 'cursor-grabbing active:cursor-grabbing' : 'scroll-smooth cursor-grab'
+        }`}
       >
         {tabs.map((tab) => (
           <button
             key={tab}
-            onClick={() => onTabChange(tab)}
-            className={`pb-4 px-5 text-[13px] font-bold transition-all relative cursor-pointer whitespace-nowrap flex items-center gap-2 ${
+            onClick={() => !hasMoved && onTabChange(tab)}
+            onDragStart={(e) => e.preventDefault()}
+            className={`pb-4 px-5 text-[13px] font-bold transition-all relative whitespace-nowrap flex items-center gap-2 pointer-events-auto ${
               activeTab === tab ? 'text-[#0047CC]' : 'text-gray-400 hover:text-gray-600'
             }`}
           >
@@ -71,31 +123,37 @@ const TabSlider: React.FC<TabSliderProps> = ({ tabs, activeTab, onTabChange, ren
       </div>
 
       {/* Visual Slider Bar (The "Yellow Mouse" component) */}
-      <div className="flex items-center gap-3 mt-4">
-        <button 
-          onClick={() => scroll('left')}
-          className="text-gray-300 hover:text-gray-600 transition-colors cursor-pointer"
-        >
-          <ChevronLeftIcon size={14} strokeWidth={3} />
-        </button>
-        
-        <div className="flex-1 h-[6px] bg-gray-200 rounded-full relative overflow-hidden">
+      {showSlider && (
+        <div className="flex items-center gap-3 mt-[-8px]">
+          <button 
+            onClick={() => scroll('left')}
+            className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer p-1"
+          >
+            <ChevronLeftIcon size={14} strokeWidth={3} />
+          </button>
+          
           <div 
-            className="absolute top-0 bottom-0 bg-gray-400 rounded-full transition-all duration-100 ease-out"
-            style={{ 
-              width: `${thumbWidth}%`, 
-              left: `${(scrollProgress * (100 - thumbWidth)) / 100}%` 
-            }}
-          />
-        </div>
+            ref={trackRef}
+            onClick={handleTrackClick}
+            className="flex-1 h-[3px] bg-gray-100 rounded-full relative cursor-pointer group"
+          >
+            <div 
+              className="absolute top-[-1px] bottom-[-1px] bg-[#0047CC] lg:bg-gray-400 rounded-full transition-all duration-150 ease-out shadow-sm group-hover:bg-[#0047CC]"
+              style={{ 
+                width: `${thumbWidth}%`, 
+                left: `${(scrollProgress * (100 - thumbWidth)) / 100}%` 
+              }}
+            />
+          </div>
 
-        <button 
-          onClick={() => scroll('right')}
-          className="text-gray-300 hover:text-gray-600 transition-colors cursor-pointer"
-        >
-          <ChevronRightIcon size={14} strokeWidth={3} />
-        </button>
-      </div>
+          <button 
+            onClick={() => scroll('right')}
+            className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer p-1"
+          >
+            <ChevronRightIcon size={14} strokeWidth={3} />
+          </button>
+        </div>
+      )}
     </div>
   );
 };

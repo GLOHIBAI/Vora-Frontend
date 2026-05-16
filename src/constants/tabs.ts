@@ -4,5 +4,5 @@ export const JOBS_TABS = [
   'Traineeship', 'Residency', 'PhD Studentship', 'Research post', 
   'Teaching post', 'Volunteer', 'VSO / Gov placement', 'Scheduled'
 ];
-export const TALENTS_TABS = ['All talents', 'Pending review', 'Hired', 'Rejected', 'Post-Hire Tracking'];
+export const TALENTS_TABS = ['All talents', 'Pending review', 'Under review', 'Hired', 'Rejected', 'Post-Hire Tracking'];
 export const JOB_DETAILS_TABS = ['Details', 'Applicants', 'Hired'];

@@ -51,7 +51,7 @@ const VerifyOTP: React.FC = () => {
     setTimeout(() => {
       setIsLoading(false);
       // Route to Employer onboarding
-      navigate('/onboard/employer');
+      navigate('/onboarding/employer');
     }, 1000);
   };
 
@@ -96,13 +96,14 @@ const VerifyOTP: React.FC = () => {
               Resend a new otp in <span className="text-[#0047CC] font-bold">{timer} secs</span>
             </p>
           ) : (
-            <button 
-              type="button"
+            <Button 
+              variant="outline"
               onClick={handleResend}
-              className="text-[#0047CC] text-sm font-bold underline decoration-2 underline-offset-4 hover:text-blue-700 transition-colors cursor-pointer"
+              fullWidth={false}
+              className="border-none text-[#0047CC] text-sm font-bold underline decoration-2 underline-offset-4 hover:bg-transparent hover:text-blue-700 p-0"
             >
               Resend OTP
-            </button>
+            </Button>
           )}
         </div>
 

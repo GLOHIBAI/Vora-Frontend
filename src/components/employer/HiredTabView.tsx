@@ -44,7 +44,7 @@ const HiredTabView: React.FC = () => {
         <p className="text-[13px] font-bold text-[#92400E] flex-1">
           <strong>1 check-in overdue.</strong> Amaka Okonkwo's 30-day check-in was due Feb 15. Complete it to keep your pipeline access active.
         </p>
-        <button className="px-6 py-2 bg-[#D97706] text-white text-[12px] font-black rounded-full hover:bg-[#b45309] transition-all whitespace-nowrap cursor-pointer">
+        <button className="px-6 py-2 bg-red-600 text-white text-[12px] font-black rounded-full hover:bg-red-700 transition-all whitespace-nowrap cursor-pointer">
           Complete Now
         </button>
       </div>
@@ -60,7 +60,7 @@ const HiredTabView: React.FC = () => {
         </div>
         <div className="divide-y divide-gray-50">
           {hired.map((candidate, idx) => (
-            <div key={idx} className={`px-8 py-6 flex items-center transition-colors cursor-pointer group ${candidate.overdue ? 'bg-[#FFFBEB]/30 hover:bg-[#FFFBEB]/50' : 'hover:bg-gray-50/50'}`}>
+            <div key={idx} className={`px-8 py-6 flex items-center transition-colors cursor-pointer group ${candidate.overdue ? 'bg-red-50/30 hover:bg-red-50/50' : 'hover:bg-gray-50/50'}`}>
               <div className="flex-[2] flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-full ${candidate.initialBg} text-white flex items-center justify-center font-black text-[12px] shrink-0`}>
                   {candidate.initials}
@@ -76,13 +76,13 @@ const HiredTabView: React.FC = () => {
                 <p className="text-[10px] font-bold text-gray-400 mt-0.5">{candidate.actionSub}</p>
               </div>
               <div className="flex-[1.2]">
-                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${candidate.overdue ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-green-50 text-green-700 border-green-100'}`}>
-                  <div className={`w-1.5 h-1.5 rounded-full ${candidate.overdue ? 'bg-amber-500' : 'bg-green-500'}`} />
+                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${candidate.overdue ? 'bg-red-50 text-red-700 border-red-100' : 'bg-green-50 text-green-700 border-green-100'}`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${candidate.overdue ? 'bg-red-500' : 'bg-green-500'}`} />
                   <span className="text-[11px] font-black tracking-tight">{candidate.status}</span>
                 </div>
               </div>
               <div className="w-24 flex justify-end">
-                <button className={`px-4 py-2 rounded-lg text-[12px] font-black transition-all hover:scale-105 active:scale-95 ${candidate.overdue ? 'bg-[#D97706] text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
+                <button className={`px-4 py-2 rounded-lg text-[12px] font-black transition-all hover:scale-105 active:scale-95 ${candidate.overdue ? 'bg-red-600 text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
                   {candidate.overdue ? 'Check-in' : 'View'}
                 </button>
               </div>

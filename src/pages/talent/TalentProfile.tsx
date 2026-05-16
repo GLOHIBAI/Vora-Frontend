@@ -1,12 +1,14 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { SAMPLE_TALENT_PROFILE } from '../constants/mockData';
+import { SAMPLE_TALENT_PROFILE } from '../../constants/mockData';
 import { 
   ChevronLeftIcon, 
   PlayIcon, 
   ArrowUpIcon,
   BriefcaseIcon
-} from '../components/common/Icons';
+} from '../../components/common/Icons';
+import Button from '../../components/common/Button';
+import Tag from '../../components/common/Tag';
 
 // --- Sub-components ---
 
@@ -17,22 +19,7 @@ const ProfileCard: React.FC<{ title?: string; children: React.ReactNode; classNa
   </div>
 );
 
-const SkillPill: React.FC<{ label: string; variant: string }> = ({ label, variant }) => {
-  const styles: Record<string, string> = {
-    blue: 'bg-[#EBF6FF] text-[#0047CC] border-transparent',
-    green: 'bg-[#EEFBEE] text-[#2CA62C] border-transparent',
-    'green-light': 'bg-[#F0FFF4] text-[#38A169] border-[#C6F6D5]',
-    red: 'bg-[#FEF2F2] text-[#DC2626] border-[#FECACA]',
-    gray: 'bg-[#F9FAFB] text-gray-600 border-gray-200',
-    'blue-light': 'bg-[#EBF6FF] text-[#0047CC] border-transparent',
-  };
 
-  return (
-    <span className={`px-4 py-2 rounded-full text-[12px] font-bold border ${styles[variant] || styles.gray}`}>
-      {label}
-    </span>
-  );
-};
 
 const TalentProfile: React.FC = () => {
   const { id } = useParams();
@@ -47,12 +34,10 @@ const TalentProfile: React.FC = () => {
         
         <button
           onClick={() => navigate('/talents')}
-          className="flex items-center gap-2 text-gray-500 hover:text-[#0047CC] transition-colors group cursor-pointer self-start"
+          className="flex items-center gap-2 text-gray-400 hover:text-[#0047CC] transition-colors cursor-pointer bg-transparent border-none p-0 self-start group"
         >
-          <div className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm group-hover:border-blue-100 group-hover:bg-blue-50 transition-all">
-            <ChevronLeftIcon size={16} strokeWidth={3} className="text-gray-400 group-hover:text-[#0047CC]" />
-          </div>
-          <span className="text-[14px] font-black tracking-tight">{id || data.id}</span>
+          <ChevronLeftIcon size={18} strokeWidth={3} className="transition-transform group-hover:-translate-x-1" />
+          <span className="text-[15px] font-black tracking-tight">{id || data.id}</span>
         </button>
       </div>
 
@@ -74,10 +59,10 @@ const TalentProfile: React.FC = () => {
                 <p className="text-[16px] font-bold text-gray-400 truncate">{data.role}</p>
                 <div className="flex items-center gap-4 text-[12px] font-black text-gray-400 pt-2">
                   <span className="flex items-center gap-1.5 shrink-0 bg-gray-50 px-3 py-1 rounded-full">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> {data.location}
+                    {data.location}
                   </span>
                   <span className="flex items-center gap-1.5 shrink-0 bg-gray-50 px-3 py-1 rounded-full">
-                    <div className="w-1.5 h-1.5 rounded-full bg-gray-300" /> {data.experienceYears}
+                    {data.experienceYears}
                   </span>
                 </div>
               </div>
@@ -93,7 +78,7 @@ const TalentProfile: React.FC = () => {
               </p>
               <div className="flex items-center gap-2 pt-1">
                 <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Status:</span>
-                <span className="px-3 py-1 rounded-full bg-[#FFF8F1] text-[#FF9500] text-[11px] font-black border border-[#FF9500]/10">
+                <span className="px-3 py-1 rounded-full bg-blue-50 text-[#0047CC] text-[11px] font-black border border-blue-100">
                   {data.status}
                 </span>
               </div>
@@ -157,7 +142,7 @@ const TalentProfile: React.FC = () => {
             <div className="space-y-10 pt-4">
               <div className="space-y-4">
                 <p className="text-[12px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-3">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#0047CC]" /> About
+                  About
                 </p>
                 <p className="text-[16px] text-gray-600 leading-relaxed font-medium">
                   {data.about}
@@ -166,11 +151,11 @@ const TalentProfile: React.FC = () => {
 
               <div className="space-y-6">
                 <p className="text-[12px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-3">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#0047CC]" /> Skills
+                  Skills
                 </p>
                 <div className="flex flex-wrap gap-3 pt-2">
                   {data.skills.map((skill, idx) => (
-                    <SkillPill key={idx} label={skill.label} variant={skill.variant} />
+                    <Tag key={idx} label={skill.label} variant={skill.variant as any} />
                   ))}
                 </div>
               </div>
@@ -181,15 +166,19 @@ const TalentProfile: React.FC = () => {
         {/* Action Buttons */}
         <div className="break-inside-avoid mb-8">
           <div className="flex flex-col gap-4">
-            <button className="w-full py-6 bg-[#0047CC] text-white rounded-full text-[18px] font-black hover:bg-[#003d99] transition-all shadow-xl shadow-blue-500/20 cursor-pointer active:scale-[0.98] transform">
+            <Button
+              onClick={() => {}} // Handle hire logic
+              className="py-6 text-[18px] shadow-xl shadow-blue-500/20"
+            >
               Hire applicant
-            </button>
-            <button 
+            </Button>
+            <Button 
+              variant="outline"
               onClick={() => navigate(`/jobs/0/reject/${id || data.id}`)}
-              className="w-full py-6 bg-white text-gray-700 rounded-full text-[18px] font-black hover:bg-gray-50 transition-all border border-gray-100 shadow-sm cursor-pointer active:scale-[0.98] transform"
+              className="py-6 bg-white text-gray-700 text-[18px] shadow-sm"
             >
               Reject applicant
-            </button>
+            </Button>
           </div>
         </div>
 

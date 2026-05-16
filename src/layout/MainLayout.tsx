@@ -14,7 +14,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   
   const isFullPage = 
     hideLayoutPaths.includes(currentPath) || 
-    currentPath.startsWith('/onboard') ||
+    currentPath.startsWith('/onboarding') ||
     currentPath.startsWith('/dashboard') ||
     currentPath.startsWith('/jobs/') ||
     currentPath.startsWith('/talents/') ||
@@ -46,7 +46,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       )}
 
       <main className={`flex-1 ${isFullPage ? '' : 'py-8'}`}>
-        {/* <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"> */}
         <div>
           {children}
         </div>

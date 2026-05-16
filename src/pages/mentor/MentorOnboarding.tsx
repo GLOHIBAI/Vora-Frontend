@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
 import MultiSelect from '../../components/common/MultiSelect';
+import Button from '../../components/common/Button';
 import { capitalizeFirstLetter } from '../../utils/stringUtils';
 import { validatePortfolioUrl } from '../../utils/validation';
 import {
@@ -220,13 +221,13 @@ const MentorProfile: React.FC = () => {
         lastName: personalInfo.lastName,
         role: 'mentor'
       });
-      navigate('/onboard/welcome', { state: { firstName: `${personalInfo.firstName} ${personalInfo.lastName}`, role: 'mentor' } });
+      navigate('/onboarding/welcome', { state: { firstName: `${personalInfo.firstName} ${personalInfo.lastName}`, role: 'mentor' } });
     }
   };
 
   const handleBack = () => {
     if (step === 1) {
-      navigate('/onboard/mentor-apply');
+      navigate('/onboarding/mentor-apply');
     } else {
       setStep(prev => prev - 1);
     }
@@ -304,20 +305,20 @@ const MentorProfile: React.FC = () => {
             </div>
 
             <div className="flex gap-4 pt-4">
-              <button
-                type="button"
+              <Button
+                variant="outline"
                 onClick={handleBack}
-                className="flex-1 py-3.5 rounded-full border border-[#E5E7EB] text-sm font-semibold text-[#374151] hover:bg-gray-50 transition-colors cursor-pointer"
+                className="min-h-[48px]"
               >
                 Back
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 disabled={!isStep1Valid}
-                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep1Valid ? 'bg-[#0047CC] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
+                className="min-h-[48px]"
               >
                 Proceed
-              </button>
+              </Button>
             </div>
           </form>
         </>
@@ -362,20 +363,20 @@ const MentorProfile: React.FC = () => {
             />
 
             <div className="flex gap-4 pt-4">
-              <button
-                type="button"
+              <Button
+                variant="outline"
                 onClick={handleBack}
-                className="flex-1 py-3.5 rounded-full border border-[#E5E7EB] text-sm font-semibold text-[#374151] hover:bg-gray-50 transition-colors cursor-pointer"
+                className="min-h-[48px]"
               >
                 Back
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 disabled={!isStep2Valid}
-                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep2Valid ? 'bg-[#0047CC] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
+                className="min-h-[48px]"
               >
                 Proceed
-              </button>
+              </Button>
             </div>
           </form>
         </>
@@ -536,20 +537,20 @@ const MentorProfile: React.FC = () => {
             )}
 
             <div className="flex gap-4 pt-4">
-              <button
-                type="button"
+              <Button
+                variant="outline"
                 onClick={handleBack}
-                className="flex-1 py-3.5 rounded-full border border-[#E5E7EB] text-sm font-semibold text-[#374151] hover:bg-gray-50 transition-colors cursor-pointer"
+                className="min-h-[48px]"
               >
                 Back
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 disabled={!isStep3Valid}
-                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep3Valid ? 'bg-[#0047CC] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
+                className="min-h-[48px]"
               >
                 Proceed
-              </button>
+              </Button>
             </div>
           </form>
         </>
@@ -653,20 +654,20 @@ const MentorProfile: React.FC = () => {
             </div>
 
             <div className="flex gap-4 pt-4">
-              <button
-                type="button"
+              <Button
+                variant="outline"
                 onClick={handleBack}
-                className="flex-1 py-3.5 rounded-full border border-[#E5E7EB] text-sm font-semibold text-[#374151] hover:bg-gray-50 transition-colors cursor-pointer"
+                className="min-h-[48px]"
               >
                 Back
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 disabled={!isStep4Valid}
-                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep4Valid ? 'bg-[#0047CC] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
+                className="min-h-[48px]"
               >
                 Proceed
-              </button>
+              </Button>
             </div>
           </form>
         </>
@@ -769,20 +770,20 @@ const MentorProfile: React.FC = () => {
             )}
 
             <div className="flex gap-4 pt-4">
-              <button
-                type="button"
+              <Button
+                variant="outline"
                 onClick={handleBack}
-                className="flex-1 py-3.5 rounded-full border border-[#E5E7EB] text-sm font-semibold text-[#374151] hover:bg-gray-50 transition-colors cursor-pointer"
+                className="min-h-[48px]"
               >
                 Back
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 disabled={!getStepValidity()}
-                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${getStepValidity() ? 'bg-[#0047CC] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
+                className="min-h-[48px]"
               >
                 Save & Continue
-              </button>
+              </Button>
             </div>
           </form>
         </>

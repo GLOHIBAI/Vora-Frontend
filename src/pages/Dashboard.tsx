@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
-import TalentDashboard from '../components/dashboard/TalentDashboard';
-import MentorDashboard from '../components/dashboard/MentorDashboard';
-import EmployerDashboard from '../components/dashboard/EmployerDashboard';
+import TalentDashboard from '../components/talent/TalentDashboard';
+import MentorDashboard from '../components/mentor/MentorDashboard';
+import EmployerDashboard from '../components/employer/EmployerDashboard';
 
 const Dashboard: React.FC = () => {
   // Get role from localStorage or default to talent

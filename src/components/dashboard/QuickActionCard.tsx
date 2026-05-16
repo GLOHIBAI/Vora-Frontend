@@ -1,5 +1,6 @@
 import React from 'react';
 import { LockIcon } from '../common/Icons';
+import Button from '../common/Button';
 
 import type { QuickActionCardProps } from '../../types';
 
@@ -30,17 +31,19 @@ const QuickActionCard: React.FC<QuickActionCardProps> = ({
       </div>
 
       <div className="mt-auto flex items-center justify-between">
-        <button 
+        <Button 
+          variant="link"
           onClick={onClick}
           disabled={isLocked}
+          fullWidth={false}
           className={`
-            flex items-center gap-1.5 text-[13px] font-bold transition-all group cursor-pointer
-            ${isPrimary ? 'text-white' : isLocked ? 'text-gray-300 cursor-not-allowed' : 'text-[#0047CC]'}
+            flex items-center gap-1.5 text-[13px] font-bold transition-all group hover:bg-transparent
+            ${isPrimary ? 'text-white hover:text-white' : isLocked ? 'text-gray-300' : 'text-[#0047CC]'}
           `}
         >
           <span>{buttonText}</span>
           {!isLocked && <span className="group-hover:translate-x-1 transition-transform">→</span>}
-        </button>
+        </Button>
         {isLocked && (
           <div className="text-blue-500">
             <LockIcon size={18} />

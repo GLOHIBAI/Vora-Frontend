@@ -18,9 +18,9 @@ const SelectAccountType: React.FC = () => {
     setTimeout(() => {
       setIsLoading(false);
       if (accountType === 'Talent') {
-        navigate('/onboard/talent', { state: { email, firstName: 'Social User' } });
+        navigate('/onboarding/talent', { state: { email, firstName: 'Social User' } });
       } else {
-        navigate('/onboard/mentor-apply', { state: { email, firstName: 'Social User' } });
+        navigate('/onboarding/mentor-apply', { state: { email, firstName: 'Social User' } });
       }
     }, 1000);
   };
