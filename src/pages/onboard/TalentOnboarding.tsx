@@ -34,6 +34,7 @@ const RTW_PR = ['ilr_uk', 'green_card', 'pr_canada', 'pr_aus_nz', 'pr_eu', 'pr_o
 const TalentOnboarding: React.FC = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Step 1 state
   const [formData, setFormData] = useState({
@@ -44,6 +45,7 @@ const TalentOnboarding: React.FC = () => {
   // Step 2 state — Profile
   const [professionalTitle, setProfessionalTitle] = useState('');
   const [areasOfInterest, setAreasOfInterest] = useState<string[]>([]);
+  const [otherInterest, setOtherInterest] = useState('');
   const [experienceLevel, setExperienceLevel] = useState('');
   const [country, setCountry] = useState('');
 
@@ -56,6 +58,7 @@ const TalentOnboarding: React.FC = () => {
   const [relocationDestinations, setRelocationDestinations] = useState('');
   const [workArrangement, setWorkArrangement] = useState('');
   const [integrityChecked, setIntegrityChecked] = useState(false);
+  const [isCountryLoading, setIsCountryLoading] = useState(false);
 
   // Study permit sub-panel
   const [studyPermitType, setStudyPermitType] = useState('');
@@ -100,6 +103,7 @@ const TalentOnboarding: React.FC = () => {
   const isStep2Valid = useMemo(() => {
     // Profile fields
     if (!professionalTitle || areasOfInterest.length === 0 || !experienceLevel || !country) return false;
+    if (areasOfInterest.includes('others') && !otherInterest.trim()) return false;
     // Work auth fields
     if (nationalities.length === 0 || !residence || !city || !rightToWork || !relocation || !workArrangement || !integrityChecked) return false;
     // Conditional relocation
@@ -118,38 +122,29 @@ const TalentOnboarding: React.FC = () => {
       if (!prType || !prCountry || !prValidity) return false;
     }
     return true;
-  }, [professionalTitle, areasOfInterest, experienceLevel, country, nationalities, residence, city, rightToWork, relocation, relocationDestinations, workArrangement, integrityChecked, showStudyPanel, studyPermitType, studyCountry, studyValidity, studyHoursData, studyHoursManual, showPermitPanel, permitType, permitCountry, permitValidity, showPRPanel, prType, prCountry, prValidity]);
+  }, [professionalTitle, areasOfInterest, otherInterest, experienceLevel, country, nationalities, residence, city, rightToWork, relocation, relocationDestinations, workArrangement, integrityChecked, showStudyPanel, studyPermitType, studyCountry, studyValidity, studyHoursData, studyHoursManual, showPermitPanel, permitType, permitCountry, permitValidity, showPRPanel, prType, prCountry, prValidity]);
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault();
-    if (step === 1 && isStep1Valid) {
-      setStep(2);
-    } else if (step === 2 && isStep2Valid) {
-      console.log('Talent Onboarding Completed:', {
-        ...formData,
-        professionalTitle,
-        areasOfInterest,
-        experienceLevel,
-        country,
-        nationalities,
-        residence,
-        city,
-        rightToWork,
-        relocation,
-        relocationDestinations,
-        workArrangement,
-        studyPermitType,
-        studyCountry,
-        studyValidity,
-        permitType,
-        permitCountry,
-        permitValidity,
-        prType,
-        prCountry,
-        prValidity,
-      });
-      navigate('/onboard/welcome', { state: { firstName: formData.firstName, role: 'talent' } });
-    }
+    setIsLoading(true);
+
+    // Simulate API delay
+    setTimeout(() => {
+      setIsLoading(false);
+      if (step === 1 && isStep1Valid) {
+        setStep(2);
+        window.scrollTo(0, 0);
+      } else if (step === 2 && isStep2Valid) {
+        const userData = {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          role: 'talent'
+        };
+        localStorage.setItem('vora_user', JSON.stringify(userData));
+        localStorage.setItem('vora_role', 'talent');
+        navigate('/onboard/welcome', { state: { firstName: formData.firstName, role: 'talent' } });
+      }
+    }, 1200);
   };
 
   // Auto-fill PR country for deterministic statuses
@@ -174,7 +169,7 @@ const TalentOnboarding: React.FC = () => {
             <button
               type="button"
               onClick={() => setStep(1)}
-              className="flex items-center gap-1 text-sm font-bold text-[#6B7280] hover:text-[#0052cc] transition-colors cursor-pointer group"
+              className="flex items-center gap-1 text-sm font-bold text-[#6B7280] hover:text-[#0047CC] transition-colors cursor-pointer group"
             >
               <ChevronLeftIcon className="transition-transform group-hover:-translate-x-0.5" />
               Back
@@ -183,8 +178,8 @@ const TalentOnboarding: React.FC = () => {
           <span className="text-sm font-bold text-[#1C1C1C]">{step}/2</span>
         </div>
         <div className="flex gap-1 w-full h-1.5">
-          <div className={`flex-1 h-full rounded-full transition-all duration-500 ${step >= 1 ? 'bg-[#0052cc]' : 'bg-[#F3F4F6]'}`} />
-          <div className={`flex-1 h-full rounded-full transition-all duration-500 ${step >= 2 ? 'bg-[#0052cc]' : 'bg-[#F3F4F6]'}`} />
+          <div className={`flex-1 h-full rounded-full transition-all duration-500 ${step >= 1 ? 'bg-[#0047CC]' : 'bg-[#F3F4F6]'}`} />
+          <div className={`flex-1 h-full rounded-full transition-all duration-500 ${step >= 2 ? 'bg-[#0047CC]' : 'bg-[#F3F4F6]'}`} />
         </div>
       </div>
 
@@ -272,7 +267,7 @@ const TalentOnboarding: React.FC = () => {
             {/* ===== WORK AUTHORISATION SECTION ===== */}
             <div className="border-t border-[#E6E6E6] mt-3 pt-6">
               <div className="flex items-center gap-2 mb-1">
-                <ShieldIcon stroke="#0052cc" />
+                <ShieldIcon stroke="#0047CC" />
                 <h2 className="text-base font-extrabold text-[#1A1A1A]">Work authorisation</h2>
               </div>
               <p className="text-[13px] text-[#808080] leading-relaxed mb-6">
@@ -300,6 +295,7 @@ const TalentOnboarding: React.FC = () => {
               placeholder="Search country..."
               error={touched.residence && !residence}
               helperText={touched.residence && !residence ? 'Residence country is required' : ''}
+              isLoading={isCountryLoading}
             />
             {residence && (
               <div className="-mt-1">
@@ -476,7 +472,7 @@ const TalentOnboarding: React.FC = () => {
             {/* PR override callout */}
             {showPRPanel && (
               <div className="flex gap-2.5 items-start bg-[#EBF6FF] border border-[#BDD9FF] rounded-lg p-3.5">
-                <InfoIcon className="flex-shrink-0 mt-0.5" stroke="#0052cc" />
+                <InfoIcon className="flex-shrink-0 mt-0.5" stroke="#0047CC" />
                 <p className="text-[13px] text-[#4A4A4A] leading-relaxed">
                   <strong className="text-[#182348]">Permanent Residence Override applies.</strong> VORA will treat you as fully eligible for roles in the country of your permanent status, equivalent to any other local resident.
                 </p>
@@ -532,7 +528,7 @@ const TalentOnboarding: React.FC = () => {
                 id="integrityChk"
                 checked={integrityChecked}
                 onChange={(e) => setIntegrityChecked(e.target.checked)}
-                className="w-4 h-4 mt-0.5 flex-shrink-0 cursor-pointer accent-[#0052cc]"
+                className="w-4 h-4 mt-0.5 flex-shrink-0 cursor-pointer accent-[#0047CC]"
               />
               <label htmlFor="integrityChk" className="text-[13px] text-[#1A1A1A] leading-relaxed cursor-pointer">
                 <strong className="text-[#991B1B]">I confirm this information is truthful and accurate.</strong>{' '}
@@ -547,8 +543,9 @@ const TalentOnboarding: React.FC = () => {
           variant={(step === 1 ? isStep1Valid : isStep2Valid) ? 'primary' : 'secondary'}
           type="submit"
           disabled={step === 1 ? !isStep1Valid : !isStep2Valid}
+          isLoading={isLoading}
         >
-          Proceed
+          {step === 1 ? 'Next' : 'Complete Profile'}
         </Button>
 
 

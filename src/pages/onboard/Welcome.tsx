@@ -9,10 +9,10 @@ const Welcome: React.FC = () => {
 
   const isMentor = role === 'mentor';
   const isEmployer = role === 'employer';
-  const isSpecialRole = isMentor || isEmployer;
+  // const isSpecialRole = isMentor || isEmployer;
 
   const handleGoHome = () => {
-    navigate('/');
+    navigate('/dashboard');
   };
 
   const getHeading = () => {
@@ -32,7 +32,7 @@ const Welcome: React.FC = () => {
   };
 
   const getButtonText = () => {
-    return isSpecialRole ? 'Proceed to Dashboard' : 'Go to Home';
+    return 'Go to Dashboard';
   };
 
   return (

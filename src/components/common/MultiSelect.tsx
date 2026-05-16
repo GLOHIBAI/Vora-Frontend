@@ -99,7 +99,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                 className="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer group mb-0.5 last:mb-0"
                 onClick={() => toggleOption(option.value)}
               >
-                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${selected.includes(option.value) || (option.value === 'other' && showOtherInput) ? 'bg-[#0052cc] border-[#0052cc]' : 'border-gray-300 bg-white group-hover:border-[#0052cc]'}`}>
+                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${selected.includes(option.value) || (option.value === 'other' && showOtherInput) ? 'bg-[#0047CC] border-[#0047CC]' : 'border-gray-300 bg-white group-hover:border-[#0047CC]'}`}>
                   {(selected.includes(option.value) || (option.value === 'other' && showOtherInput)) && (
                     <CheckIcon className="w-2.5 h-2.5 text-white" />
                   )}
@@ -108,11 +108,11 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
               </div>
             ))}
             {showOtherInput && (
-              <div className="mt-1 px-2 pb-1 border-t border-gray-100 pt-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                <div 
-                  className="flex gap-2"
-                  onClick={(e) => e.stopPropagation()}
-                >
+              <div 
+                className="px-4 py-3 bg-gray-50/50 border-t border-gray-100 animate-in fade-in slide-in-from-top-1 duration-200"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex gap-2">
                   <input
                     type="text"
                     value={otherValue}
@@ -124,14 +124,18 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                       }
                     }}
                     placeholder="Type and press Enter..."
-                    className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0052cc]/20 focus:border-[#0052cc] transition-all"
+                    className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#0047CC]/20 focus:border-[#0047CC] transition-all placeholder:text-gray-400"
                     autoFocus
                   />
                   <button
                     type="button"
                     onClick={() => handleAddOther()}
                     disabled={!otherValue.trim()}
-                    className="px-3 py-2 text-xs font-bold bg-[#0052cc] text-white rounded-lg hover:bg-[#003d99] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                      otherValue.trim() 
+                        ? 'bg-[#0047CC] text-white hover:bg-[#003d99]' 
+                        : 'bg-[#E5E7EB] text-[#374151] opacity-70 cursor-not-allowed'
+                    }`}
                   >
                     Add
                   </button>

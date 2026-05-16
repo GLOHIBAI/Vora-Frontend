@@ -139,7 +139,13 @@ const EmployerOnboarding: React.FC = () => {
     } else if (step === 4 && isStep4Valid) {
       setStep(5);
     } else if (step === 5 && isStep5Valid) {
-      console.log('Employer Onboarding Completed:', { orgInfo, workforceInfo, regulatoryInfo, hiringPriority, experienceDocs, matchInfo });
+      const userData = {
+        firstName: orgInfo.organizationName,
+        lastName: '',
+        role: 'employer'
+      };
+      localStorage.setItem('vora_user', JSON.stringify(userData));
+      localStorage.setItem('vora_role', 'employer');
       navigate('/onboard/welcome', { state: { firstName: orgInfo.organizationName, role: 'employer' } });
     }
   };
@@ -190,7 +196,7 @@ const EmployerOnboarding: React.FC = () => {
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
             <div
               key={i}
-              className={`flex-1 h-full rounded-full transition-all duration-500 ${i < step ? 'bg-[#0052cc]' : 'bg-[#F3F4F6]'}`}
+              className={`flex-1 h-full rounded-full transition-all duration-500 ${i < step ? 'bg-[#0047CC]' : 'bg-[#F3F4F6]'}`}
             ></div>
           ))}
         </div>
@@ -268,7 +274,7 @@ const EmployerOnboarding: React.FC = () => {
               <button
                 type="submit"
                 disabled={!isStep1Valid}
-                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep1Valid ? 'bg-[#0052cc] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
+                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep1Valid ? 'bg-[#0047CC] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
               >
                 Proceed
               </button>
@@ -318,7 +324,7 @@ const EmployerOnboarding: React.FC = () => {
               <button
                 type="submit"
                 disabled={!isStep2Valid}
-                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep2Valid ? 'bg-[#0052cc] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
+                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep2Valid ? 'bg-[#0047CC] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
               >
                 Proceed
               </button>
@@ -394,7 +400,7 @@ const EmployerOnboarding: React.FC = () => {
               <button
                 type="submit"
                 disabled={!isStep3Valid}
-                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep3Valid ? 'bg-[#0052cc] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
+                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep3Valid ? 'bg-[#0047CC] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
               >
                 Proceed
               </button>
@@ -427,7 +433,7 @@ const EmployerOnboarding: React.FC = () => {
                       key={item}
                       type="button"
                       onClick={() => togglePrioritySelection(item)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${isSelected ? 'bg-[#0052cc] text-white border-[#0052cc]' : 'bg-white text-[#4B5563] border-[#E5E7EB] hover:border-[#0052cc]'}`}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${isSelected ? 'bg-[#0047CC] text-white border-[#0047CC]' : 'bg-white text-[#4B5563] border-[#E5E7EB] hover:border-[#0047CC]'}`}
                     >
                       {item}
                     </button>
@@ -437,7 +443,7 @@ const EmployerOnboarding: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowOtherInput(true)}
-                    className="px-4 py-2 rounded-full text-sm font-medium border border-dashed border-[#0052cc] text-[#0052cc] hover:bg-[#ebf5ff] transition-colors"
+                    className="px-4 py-2 rounded-full text-sm font-medium border border-dashed border-[#0047CC] text-[#0047CC] hover:bg-[#ebf5ff] transition-colors"
                   >
                     + Add Other
                   </button>
@@ -448,14 +454,14 @@ const EmployerOnboarding: React.FC = () => {
                       value={otherPriority}
                       onChange={(e) => setOtherPriority(e.target.value)}
                       placeholder="Enter custom priority"
-                      className="px-4 py-2 rounded-full text-sm border border-[#0052cc] focus:ring-2 focus:ring-[#0052cc] focus:outline-none w-full sm:w-64"
+                      className="px-4 py-2 rounded-full text-sm border border-[#0047CC] focus:ring-2 focus:ring-[#0047CC] focus:outline-none w-full sm:w-64"
                       autoFocus
                       onKeyPress={(e) => e.key === 'Enter' && handleAddOtherPriority()}
                     />
                     <button
                       type="button"
                       onClick={handleAddOtherPriority}
-                      className="px-4 py-2 bg-[#0052cc] text-white rounded-full text-sm font-medium hover:bg-[#003d99]"
+                      className="px-4 py-2 bg-[#0047CC] text-white rounded-full text-sm font-medium hover:bg-[#003d99]"
                     >
                       Add
                     </button>
@@ -481,10 +487,10 @@ const EmployerOnboarding: React.FC = () => {
                   {hiringPriority.map((item, index) => (
                     <div
                       key={item}
-                      className="flex items-center justify-between px-4 py-3.5 bg-white border border-[#E5E7EB] rounded-lg group hover:border-[#0052cc] transition-all"
+                      className="flex items-center justify-between px-4 py-3.5 bg-white border border-[#E5E7EB] rounded-lg group hover:border-[#0047CC] transition-all"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-6 h-6 rounded-full bg-[#ebf5ff] text-[#0052cc] text-xs font-bold flex items-center justify-center">
+                        <div className="w-6 h-6 rounded-full bg-[#ebf5ff] text-[#0047CC] text-xs font-bold flex items-center justify-center">
                           {index + 1}
                         </div>
                         <span className="text-sm font-medium text-[#374151]">{item}</span>
@@ -495,7 +501,7 @@ const EmployerOnboarding: React.FC = () => {
                             type="button"
                             onClick={() => movePriority(index, 'up')}
                             disabled={index === 0}
-                            className={`p-1 rounded hover:bg-gray-100 transition-colors ${index === 0 ? 'text-gray-200 cursor-not-allowed' : 'text-[#6B7280] hover:text-[#0052cc]'}`}
+                            className={`p-1 rounded hover:bg-gray-100 transition-colors ${index === 0 ? 'text-gray-200 cursor-not-allowed' : 'text-[#6B7280] hover:text-[#0047CC]'}`}
                           >
                             <ArrowUpIcon className="w-4 h-4" />
                           </button>
@@ -503,7 +509,7 @@ const EmployerOnboarding: React.FC = () => {
                             type="button"
                             onClick={() => movePriority(index, 'down')}
                             disabled={index === hiringPriority.length - 1}
-                            className={`p-1 rounded hover:bg-gray-100 transition-colors ${index === hiringPriority.length - 1 ? 'text-gray-200 cursor-not-allowed' : 'text-[#6B7280] hover:text-[#0052cc]'}`}
+                            className={`p-1 rounded hover:bg-gray-100 transition-colors ${index === hiringPriority.length - 1 ? 'text-gray-200 cursor-not-allowed' : 'text-[#6B7280] hover:text-[#0047CC]'}`}
                           >
                             <ArrowDownIcon className="w-4 h-4" />
                           </button>
@@ -544,7 +550,7 @@ const EmployerOnboarding: React.FC = () => {
               <button
                 type="submit"
                 disabled={!isStep4Valid}
-                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep4Valid ? 'bg-[#0052cc] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
+                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep4Valid ? 'bg-[#0047CC] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
               >
                 Proceed
               </button>

@@ -17,6 +17,7 @@ export const INTEREST_OPTIONS = [
   { label: 'Mental Health', value: 'mental-health' },
   { label: 'Communication & Writing', value: 'communication-writing' },
   { label: 'Project Management', value: 'project-management' },
+  { label: 'Other', value: 'other' },
 ];
 
 // =============================================

@@ -19,6 +19,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   variant?: 'primary' | 'secondary' | 'outline' | 'social';
   fullWidth?: boolean;
   pill?: boolean;
+  isLoading?: boolean;
 }
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -62,6 +63,7 @@ export interface SearchableSelectProps {
   placeholder?: string;
   error?: boolean;
   helperText?: string;
+  isLoading?: boolean;
 }
 
 export interface NationalityTaggerProps {
@@ -215,4 +217,42 @@ export interface EmployerHiringNeeds {
   hiringRoles: string[];
   engagementFormat: string[];
   urgency: string;
+}
+// =============================================
+// DASHBOARD COMPONENT TYPES
+// =============================================
+
+export interface CircularProgressProps {
+  percentage: number;
+  size?: number;
+  strokeWidth?: number;
+  color?: string;
+}
+
+export interface StatCardProps {
+  title: string;
+  value: string | number;
+  subtitle?: string;
+  linkText?: string;
+  onLinkClick?: () => void;
+}
+
+export interface QuickActionCardProps {
+  title: string;
+  description: string;
+  buttonText: string;
+  isLocked?: boolean;
+  variant?: 'primary' | 'white';
+  onClick?: () => void;
+}
+
+export interface JobCardProps {
+  logo?: string;
+  title: string;
+  company: string;
+  location: string;
+  postedAt: string;
+  salary: string;
+  description: string;
+  tags: string[];
 }

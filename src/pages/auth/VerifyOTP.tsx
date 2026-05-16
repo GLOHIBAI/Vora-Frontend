@@ -5,10 +5,11 @@ import Button from '../../components/common/Button';
 const VerifyOTP: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { email, accountType } = location.state || { email: 'test@vora.com', accountType: 'Talent' };
+  const { email } = location.state || { email: 'test@vora.com' };
   
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(60);
+  const [isLoading, setIsLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -43,18 +44,15 @@ const VerifyOTP: React.FC = () => {
     e.preventDefault();
     if (!isComplete) return;
 
+    setIsLoading(true);
     console.log('Verifying OTP:', otp.join(''));
     
-    // Future: API call to verify OTP
-    
-    // Route to onboarding
-    if (accountType === 'Talent') {
-      navigate('/onboard/talent');
-    } else if (accountType === 'Employer') {
+    // Simulate API delay
+    setTimeout(() => {
+      setIsLoading(false);
+      // Route to Employer onboarding
       navigate('/onboard/employer');
-    } else if (accountType === 'Mentor') {
-      navigate('/onboard/mentor-apply');
-    }
+    }, 1000);
   };
 
   const handleResend = () => {
@@ -95,13 +93,13 @@ const VerifyOTP: React.FC = () => {
         <div className="text-center">
           {timer > 0 ? (
             <p className="text-[#6B7280] text-sm font-medium">
-              Resend a new otp in <span className="text-[#0052cc] font-bold">{timer} secs</span>
+              Resend a new otp in <span className="text-[#0047CC] font-bold">{timer} secs</span>
             </p>
           ) : (
             <button 
               type="button"
               onClick={handleResend}
-              className="text-[#0052cc] text-sm font-bold underline decoration-2 underline-offset-4 hover:text-blue-700 transition-colors cursor-pointer"
+              className="text-[#0047CC] text-sm font-bold underline decoration-2 underline-offset-4 hover:text-blue-700 transition-colors cursor-pointer"
             >
               Resend OTP
             </button>
@@ -112,6 +110,7 @@ const VerifyOTP: React.FC = () => {
           variant={isComplete ? 'primary' : 'secondary'}
           type="submit"
           disabled={!isComplete}
+          isLoading={isLoading}
         >
           Verify email
         </Button>

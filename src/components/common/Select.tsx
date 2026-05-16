@@ -68,7 +68,7 @@ const Select: React.FC<SelectProps> = ({
       onClick={() => handleSelect(option.value)}
       className={`w-full text-left px-4 py-3 text-sm rounded-lg transition-colors cursor-pointer mb-0.5 last:mb-0 ${
         option.value === value
-          ? 'bg-[#0052cc] text-white font-semibold'
+          ? 'bg-[#0047CC] text-white font-semibold'
           : option.italic
             ? 'text-[#808080] italic hover:bg-gray-50'
             : 'text-[#374151] hover:bg-gray-50'

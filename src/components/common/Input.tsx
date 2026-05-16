@@ -33,12 +33,12 @@ const Input: React.FC<InputProps> = ({
           <button 
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute inset-y-0 right-0 flex items-center px-4 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+            className="absolute inset-y-0 right-0 flex items-center px-4 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer group"
           >
             {showPassword ? (
-              <EyeOffIcon className="w-5 h-5" />
+              <EyeOffIcon size={22} className="group-hover:scale-110 transition-transform" />
             ) : (
-              <EyeIcon className="w-5 h-5" />
+              <EyeIcon size={22} className="group-hover:scale-110 transition-transform" />
             )}
           </button>
         )}

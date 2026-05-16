@@ -231,7 +231,13 @@ const MentorProfile: React.FC = () => {
     } else if (step === 4 && isStep4Valid) {
       setStep(5);
     } else if (step === 5 && courseInterest) {
-      console.log('Mentor Onboarding Completed:', { personalInfo, expertiseInfo, experienceInfo, availabilityInfo, courseInterest });
+      const userData = {
+        firstName: personalInfo.firstName,
+        lastName: personalInfo.lastName,
+        role: 'mentor'
+      };
+      localStorage.setItem('vora_user', JSON.stringify(userData));
+      localStorage.setItem('vora_role', 'mentor');
       navigate('/onboard/welcome', { state: { firstName: `${personalInfo.firstName} ${personalInfo.lastName}`, role: 'mentor' } });
     }
   };
@@ -256,7 +262,7 @@ const MentorProfile: React.FC = () => {
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
             <div
               key={i}
-              className={`flex-1 h-full rounded-full transition-all duration-500 ${i < step ? 'bg-[#0052cc]' : 'bg-[#F3F4F6]'}`}
+              className={`flex-1 h-full rounded-full transition-all duration-500 ${i < step ? 'bg-[#0047CC]' : 'bg-[#F3F4F6]'}`}
             ></div>
           ))}
         </div>
@@ -371,7 +377,7 @@ const MentorProfile: React.FC = () => {
               <button
                 type="submit"
                 disabled={!isStep1Valid}
-                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep1Valid ? 'bg-[#0052cc] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
+                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep1Valid ? 'bg-[#0047CC] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
               >
                 Proceed
               </button>
@@ -429,7 +435,7 @@ const MentorProfile: React.FC = () => {
               <button
                 type="submit"
                 disabled={!isStep2Valid}
-                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep2Valid ? 'bg-[#0052cc] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
+                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep2Valid ? 'bg-[#0047CC] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
               >
                 Proceed
               </button>
@@ -526,10 +532,10 @@ const MentorProfile: React.FC = () => {
                 </label>
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-[#E5E7EB] rounded-xl p-8 text-center cursor-pointer hover:border-[#0052cc] hover:bg-blue-50/20 transition-all group"
+                  className="border-2 border-dashed border-[#E5E7EB] rounded-xl p-8 text-center cursor-pointer hover:border-[#0047CC] hover:bg-blue-50/20 transition-all group"
                 >
                   <div className="flex flex-col items-center gap-2">
-                    <UploadIcon className="w-8 h-8 text-gray-400 group-hover:text-[#0052cc] transition-colors" />
+                    <UploadIcon className="w-8 h-8 text-gray-400 group-hover:text-[#0047CC] transition-colors" />
                     <span className="text-sm font-medium text-[#374151]">Click to upload or drag and drop</span>
                     <span className="text-xs text-[#9CA3AF]">PDF, DOCX (Max 10MB per file)</span>
                   </div>
@@ -569,7 +575,7 @@ const MentorProfile: React.FC = () => {
                         {cert.files.map((file) => (
                           <div key={file.name} className="flex items-center gap-3 p-2 rounded-lg bg-[#F3F4F6] group">
                             <div className="w-8 h-8 rounded bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
-                              <FileIcon className="w-4 h-4 text-[#0052cc]" />
+                              <FileIcon className="w-4 h-4 text-[#0047CC]" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium text-[#1C1C1C] truncate">{file.name}</p>
@@ -603,7 +609,7 @@ const MentorProfile: React.FC = () => {
               <button
                 type="submit"
                 disabled={!isStep3Valid}
-                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep3Valid ? 'bg-[#0052cc] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
+                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep3Valid ? 'bg-[#0047CC] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
               >
                 Proceed
               </button>
@@ -694,7 +700,7 @@ const MentorProfile: React.FC = () => {
                   type="button"
                   onClick={() => setAvailabilityInfo(prev => ({ ...prev, regionalEquityPricing: !prev.regionalEquityPricing }))}
                   className={`relative w-11 h-6 rounded-full transition-colors duration-200 cursor-pointer flex-shrink-0 ${
-                    availabilityInfo.regionalEquityPricing ? 'bg-[#0052cc]' : 'bg-gray-300'
+                    availabilityInfo.regionalEquityPricing ? 'bg-[#0047CC]' : 'bg-gray-300'
                   }`}
                 >
                   <span
@@ -720,7 +726,7 @@ const MentorProfile: React.FC = () => {
               <button
                 type="submit"
                 disabled={!isStep4Valid}
-                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep4Valid ? 'bg-[#0052cc] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
+                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${isStep4Valid ? 'bg-[#0047CC] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
               >
                 Proceed
               </button>
@@ -783,7 +789,7 @@ const MentorProfile: React.FC = () => {
                 onClick={() => setCourseInterest('later')}
                 className={`flex-1 py-4 px-4 rounded-lg border-2 text-sm font-medium text-center transition-all cursor-pointer ${
                   courseInterest === 'later'
-                    ? 'border-[#0052cc] bg-[#EBF0FA] text-[#0052cc]'
+                    ? 'border-[#0047CC] bg-[#EBF0FA] text-[#0047CC]'
                     : 'border-[#E5E7EB] text-[#374151] hover:border-gray-300'
                 }`}
               >
@@ -794,7 +800,7 @@ const MentorProfile: React.FC = () => {
                 onClick={() => setCourseInterest('interested')}
                 className={`flex-1 py-4 px-4 rounded-lg border-2 text-sm font-medium text-center transition-all cursor-pointer ${
                   courseInterest === 'interested'
-                    ? 'border-[#0052cc] bg-[#EBF0FA] text-[#0052cc]'
+                    ? 'border-[#0047CC] bg-[#EBF0FA] text-[#0047CC]'
                     : 'border-[#E5E7EB] text-[#374151] hover:border-gray-300'
                 }`}
               >
@@ -836,7 +842,7 @@ const MentorProfile: React.FC = () => {
               <button
                 type="submit"
                 disabled={!getStepValidity()}
-                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${getStepValidity() ? 'bg-[#0052cc] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
+                className={`flex-1 py-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${getStepValidity() ? 'bg-[#0047CC] text-white hover:bg-[#003d99]' : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'}`}
               >
                 Save & Continue
               </button>

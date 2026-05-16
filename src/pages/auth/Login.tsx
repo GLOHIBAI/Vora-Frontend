@@ -10,6 +10,7 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [touched, setTouched] = useState({ email: false, password: false });
 
   const emailError = useMemo(() => {
@@ -31,11 +32,22 @@ const Login: React.FC = () => {
     e.preventDefault();
     if (!isFormValid) return;
 
+    setIsLoading(true);
     console.log('Logging in user:', { email, password });
     
-    // Future: API call to authenticate user
-    
-    navigate('/');
+    // Simulate API delay
+    setTimeout(() => {
+      setIsLoading(false);
+      const nameFromEmail = email.split('@')[0];
+      const userData = {
+        firstName: nameFromEmail.charAt(0).toUpperCase() + nameFromEmail.slice(1),
+        lastName: '',
+        role: 'talent' // Default role for mock login
+      };
+      localStorage.setItem('vora_user', JSON.stringify(userData));
+      localStorage.setItem('vora_role', 'talent');
+      navigate('/dashboard');
+    }, 1000);
   };
 
   const handleBlur = (field: keyof typeof touched) => {
@@ -84,6 +96,7 @@ const Login: React.FC = () => {
           type="submit"
           onClick={handleLogin}
           disabled={!isFormValid}
+          isLoading={isLoading}
         >
           Log in
         </Button>

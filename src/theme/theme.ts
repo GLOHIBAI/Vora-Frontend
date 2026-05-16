@@ -2,7 +2,7 @@
 // and global styles in index.css. This file is kept as a reference for design tokens.
 
 export const colors = {
-  primary: '#0052cc',
+  primary: '#0047CC',
   primaryLight: '#3B82F6',
   primaryDark: '#003d99',
   secondary: '#7C3AED',

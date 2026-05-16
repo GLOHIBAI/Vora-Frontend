@@ -10,7 +10,7 @@ interface TagProps {
 const Tag: React.FC<TagProps> = ({ label, onRemove, className = '' }) => {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 bg-white border border-[#0052cc] text-[#0052cc] text-xs font-semibold px-3 py-1.5 rounded-full animate-in fade-in zoom-in-95 duration-200 ${className}`}
+      className={`inline-flex items-center gap-1.5 bg-white border border-[#0047CC] text-[#0047CC] text-xs font-semibold px-3 py-1.5 rounded-full animate-in fade-in zoom-in-95 duration-200 ${className}`}
     >
       {label}
       {onRemove && (
@@ -20,7 +20,7 @@ const Tag: React.FC<TagProps> = ({ label, onRemove, className = '' }) => {
             e.stopPropagation();
             onRemove();
           }}
-          className="text-[#0052cc] cursor-pointer hover:text-[#003d99] transition-colors focus:outline-none"
+          className="text-[#0047CC] cursor-pointer hover:text-[#003d99] transition-colors focus:outline-none"
         >
           <CloseIcon className="w-3 h-3" />
         </button>

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 import type { NationalityTaggerProps } from '../../types';
+import { ChevronDownIcon } from './Icons';
 
 const NationalityTagger: React.FC<NationalityTaggerProps> = ({
   label,
@@ -10,6 +11,8 @@ const NationalityTagger: React.FC<NationalityTaggerProps> = ({
   options,
   popularOptions = [],
   placeholder = 'Search and add nationality...',
+  error = false,
+  helperText = '',
 }) => {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -49,7 +52,7 @@ const NationalityTagger: React.FC<NationalityTaggerProps> = ({
     return (
       <>
         {text.slice(0, idx)}
-        <strong className="text-[#0052cc] font-bold">{text.slice(idx, idx + q.length)}</strong>
+        <strong className="text-[#0047CC] font-bold">{text.slice(idx, idx + q.length)}</strong>
         {text.slice(idx + q.length)}
       </>
     );
@@ -57,11 +60,11 @@ const NationalityTagger: React.FC<NationalityTaggerProps> = ({
 
   return (
     <div className="w-full" ref={containerRef}>
-      <label className="block text-sm font-bold text-[#1A1A1A] mb-2">
+      <label className="block text-sm font-semibold text-text-secondary mb-2.5">
         {label}
       </label>
       {hint && (
-        <p className="text-xs text-[#808080] mb-2.5 leading-relaxed">{hint}</p>
+        <p className="text-xs text-[#808080] mb-2.5 ml-0.5 leading-relaxed">{hint}</p>
       )}
 
       {/* Tags */}
@@ -70,7 +73,7 @@ const NationalityTagger: React.FC<NationalityTaggerProps> = ({
           {selected.map((nat, idx) => (
             <span
               key={nat}
-              className="inline-flex items-center gap-1.5 bg-white text-[#0052cc] border border-[#0052cc] text-xs font-bold px-3 py-1.5 rounded-full"
+              className="inline-flex items-center gap-1.5 bg-white text-[#0047CC] border border-[#0047CC] text-xs font-bold px-3 py-1.5 rounded-full"
             >
               <span className="overflow-hidden text-ellipsis whitespace-nowrap max-w-[200px]">
                 {nat}
@@ -81,7 +84,7 @@ const NationalityTagger: React.FC<NationalityTaggerProps> = ({
               <button
                 type="button"
                 onClick={() => removeNationality(nat)}
-                className="text-[#0052cc] cursor-pointer text-sm font-bold leading-none"
+                className="text-[#0047CC] cursor-pointer text-sm font-bold leading-none"
                 title="Remove"
               >
                 ×
@@ -102,9 +105,15 @@ const NationalityTagger: React.FC<NationalityTaggerProps> = ({
           }}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          className="w-full px-4 py-3 rounded-lg border border-border-default bg-white focus:outline-none focus:ring-2 focus:ring-[#0052cc]/20 focus:border-[#0052cc] transition-all placeholder:text-gray-400 text-sm"
+          className={`w-full px-4 pr-10 py-3 sm:py-3.5 rounded-lg border ${error ? 'border-red-500 bg-red-50' : 'border-border-default bg-white'} focus:outline-none focus:ring-2 ${error ? 'focus:ring-red-500/20 focus:border-red-500' : 'focus:ring-[#0047CC]/20 focus:border-[#0047CC]'} transition-all placeholder:text-gray-400 text-sm`}
           autoComplete="off"
         />
+
+        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none z-10">
+          <ChevronDownIcon
+            className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+          />
+        </div>
 
         {isOpen && available.length > 0 && (
           <div className="absolute z-10 mt-1.5 w-full rounded-xl border border-border-default bg-white shadow-lg p-1.5 max-h-48 overflow-y-auto custom-scrollbar">
@@ -121,6 +130,11 @@ const NationalityTagger: React.FC<NationalityTaggerProps> = ({
           </div>
         )}
       </div>
+      {error && helperText && (
+        <p className="mt-1.5 text-xs text-red-500 font-medium ml-1">
+          {helperText}
+        </p>
+      )}
     </div>
   );
 };

@@ -12,6 +12,7 @@ const Signup: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [accountType, setAccountType] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   
   const [touched, setTouched] = useState({
     email: false,
@@ -42,12 +43,46 @@ const Signup: React.FC = () => {
     e.preventDefault();
     if (!isFormValid) return;
 
+    setIsLoading(true);
     console.log('Registering user:', { email, password, accountType });
     
-    // Future: API call to register user
+    // Simulate API delay
+    setTimeout(() => {
+      setIsLoading(false);
+      
+      if (accountType === 'Employer') {
+        // Route to OTP verification ONLY for Employers
+        navigate('/verify-otp', { state: { email, accountType } });
+      } else if (accountType === 'Talent') {
+        navigate('/onboard/talent');
+      } else if (accountType === 'Mentor') {
+        navigate('/onboard/mentor-apply');
+      }
+    }, 1200);
+  };
+
+  const handleSocialSignup = (provider: 'Google' | 'Apple') => {
+    // Simulate getting email from social provider
+    // For demo purposes, we use the email in the input if present, or a default
+    // const signupEmail = email || `user@vora.com`; // default to work-like email for demo if empty
+    const signupEmail = email || `user@gmail.com`; 
     
-    // Route to OTP verification
-    navigate('/verify-otp', { state: { email, accountType } });
+    setIsLoading(true);
+    console.log(`Signing up with ${provider}:`, signupEmail);
+
+    // Simulate API delay
+    setTimeout(() => {
+      setIsLoading(false);
+      const isWorkEmail = validateWorkEmail(signupEmail) === '';
+      
+      if (isWorkEmail) {
+        // Employers (work emails) MUST verify OTP
+        navigate('/verify-otp', { state: { email: signupEmail, accountType: 'Employer' } });
+      } else {
+        // Talent/Mentor (personal emails) go to type selection
+        navigate('/select-type', { state: { email: signupEmail } });
+      }
+    }, 1500);
   };
 
   const handleBlur = (field: keyof typeof touched) => {
@@ -111,6 +146,7 @@ const Signup: React.FC = () => {
           type="submit"
           onClick={handleSignup}
           disabled={!isFormValid}
+          isLoading={isLoading}
         >
           Get started
         </Button>
@@ -122,11 +158,11 @@ const Signup: React.FC = () => {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
-          <Button variant="social">
+          <Button variant="social" onClick={() => handleSocialSignup('Google')} disabled={isLoading}>
             <GoogleIcon />
             <span>Sign up with Google</span>
           </Button>
-          <Button variant="social">
+          <Button variant="social" onClick={() => handleSocialSignup('Apple')} disabled={isLoading}>
             <AppleIcon />
             <span>Sign up with Apple</span>
           </Button>

@@ -11,6 +11,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   placeholder = 'Type to search...',
   error = false,
   helperText = '',
+  isLoading = false,
 }) => {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -69,18 +70,29 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
           />
         </div>
 
-        {isOpen && filtered.length > 0 && (
+        {isOpen && (
           <div className="absolute z-10 mt-1.5 w-full rounded-xl border border-border-default bg-white shadow-lg p-1.5 max-h-48 overflow-y-auto custom-scrollbar">
-            {filtered.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => handleSelect(option.value, option.label)}
-                className={`w-full text-left px-4 py-2.5 text-sm rounded-lg transition-colors cursor-pointer mb-0.5 last:mb-0 ${option.value === value ? 'bg-[#0052cc] text-white font-semibold' : 'text-[#374151] hover:bg-gray-100'}`}
-              >
-                {option.label}
-              </button>
-            ))}
+            {isLoading ? (
+              <div className="flex items-center justify-center py-4 gap-2 text-gray-500">
+                <div className="w-4 h-4 border-2 border-gray-300 border-t-[#0047CC] rounded-full animate-spin"></div>
+                <span className="text-sm">Searching...</span>
+              </div>
+            ) : filtered.length > 0 ? (
+              filtered.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => handleSelect(option.value, option.label)}
+                  className={`w-full text-left px-4 py-2.5 text-sm rounded-lg transition-colors cursor-pointer mb-0.5 last:mb-0 ${option.value === value ? 'bg-[#0047CC] text-white font-semibold' : 'text-[#374151] hover:bg-gray-100'}`}
+                >
+                  {option.label}
+                </button>
+              ))
+            ) : (
+              <div className="py-3 px-4 text-sm text-gray-500 italic">
+                No results found
+              </div>
+            )}
           </div>
         )}
       </div>
