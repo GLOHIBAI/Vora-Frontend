@@ -59,7 +59,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
 
   return (
     <div className="w-full" ref={containerRef}>
-      <label className="block text-sm font-semibold text-[#374151] mb-2.5">
+      <label className="block text-sm font-medium text-[#374151] mb-2.5">
         {label}
       </label>
       <div className="relative">
@@ -131,7 +131,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                     type="button"
                     onClick={() => handleAddOther()}
                     disabled={!otherValue.trim()}
-                    className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                    className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
                       otherValue.trim() 
                         ? 'bg-[#0047CC] text-white hover:bg-[#003d99]' 
                         : 'bg-[#E5E7EB] text-[#374151] opacity-70 cursor-not-allowed'

@@ -60,7 +60,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         <div className="flex flex-col h-full">
           {/* Logo Section */}
           <div className="px-8 py-10 flex items-center justify-between">
-            <Link to="/dashboard" className="text-[32px] font-black text-[#0047CC] no-underline tracking-tight cursor-pointer font-['Nunito_Sans']">
+            <Link to="/dashboard" className="text-[32px] font-medium text-[#0047CC] no-underline tracking-tight cursor-pointer ">
               VORA
             </Link>
             <button 
@@ -79,7 +79,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                 to={item.path}
                 onClick={() => setIsSidebarOpen(false)}
                 className={`
-                  flex items-center gap-4 px-8 py-4 text-[15px] font-bold transition-all duration-200 cursor-pointer relative group
+                  flex items-center gap-4 px-8 py-4 text-[15px] font-medium transition-all duration-200 cursor-pointer relative group
                   ${isActive(item.path) 
                     ? 'bg-[#E8EFFF] text-[#0047CC]' 
                     : 'text-gray-500 hover:text-gray-700'}
@@ -97,11 +97,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           {/* User Profile Bottom Section */}
           <div className="p-8 mt-auto border-t border-gray-200">
             <div className="flex items-center gap-3.5 cursor-pointer group">
-              <div className="w-10 h-10 rounded-full bg-[#0047CC] flex items-center justify-center text-white font-black text-[13px] shrink-0 uppercase tracking-tighter shadow-lg shadow-blue-500/20">
+              <div className="w-10 h-10 rounded-full bg-[#0047CC] flex items-center justify-center text-white font-medium text-[13px] shrink-0 uppercase tracking-tighter shadow-lg shadow-blue-500/20">
                 {user.firstName.charAt(0)}{user.lastName ? user.lastName.charAt(0) : ''}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-bold text-gray-900 truncate font-['Nunito_Sans']">{fullName}</p>
+                <p className="text-[14px] font-medium text-gray-900 truncate ">{fullName}</p>
                 <p className="text-[12px] text-gray-400 font-medium truncate">{roleLabel === 'Employer' ? 'Admin Manager' : roleLabel}</p>
               </div>
             </div>
@@ -119,7 +119,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           >
             <MenuIcon />
           </button>
-          <Link to="/dashboard" className="text-[22px] font-black text-[#0047CC] tracking-tight font-['Nunito_Sans'] no-underline">
+          <Link to="/dashboard" className="text-[22px] font-medium text-[#0047CC] tracking-tight  no-underline">
             VORA
           </Link>
         </header>

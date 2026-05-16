@@ -103,8 +103,8 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose }) => {
             <BriefcaseIcon size={18} className="text-white" />
           </div>
           <div>
-            <h2 className="text-[16px] font-black text-gray-900 tracking-tight leading-none">Post a Job</h2>
-            <p className="text-[11px] font-bold text-gray-400 mt-1">Draft saved automatically</p>
+            <h2 className="text-[16px] font-medium text-gray-900 tracking-tight leading-none">Post a Job</h2>
+            <p className="text-[11px] font-medium text-gray-400 mt-1">Draft saved automatically</p>
           </div>
         </div>
         <button 
@@ -122,7 +122,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose }) => {
             {STEPS.map((step) => (
               <div key={step.id} className="flex gap-4 group">
                 <div className="flex flex-col items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-black transition-all duration-300 ${
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-medium transition-all duration-300 ${
                     currentStep === step.id 
                       ? 'bg-[#0047CC] text-white shadow-lg shadow-blue-500/30' 
                       : currentStep > step.id 
@@ -136,10 +136,10 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose }) => {
                   )}
                 </div>
                 <div className="pt-0.5">
-                  <p className={`text-[14px] font-black tracking-tight ${currentStep === step.id ? 'text-[#0047CC]' : 'text-gray-900 opacity-60'}`}>
+                  <p className={`text-[14px] font-medium tracking-tight ${currentStep === step.id ? 'text-[#0047CC]' : 'text-gray-900 opacity-60'}`}>
                     {step.title}
                   </p>
-                  <p className="text-[11px] font-bold text-gray-400 mt-0.5">{step.sub}</p>
+                  <p className="text-[11px] font-medium text-gray-400 mt-0.5">{step.sub}</p>
                 </div>
               </div>
             ))}
@@ -148,7 +148,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose }) => {
           <div className="mt-auto p-6 bg-blue-50/50 rounded-2xl border border-blue-100/50">
             <div className="flex gap-3">
               <InfoIcon size={16} className="text-[#0047CC] shrink-0 mt-0.5" />
-              <p className="text-[11px] font-bold text-[#0047CC] leading-relaxed">
+              <p className="text-[11px] font-medium text-[#0047CC] leading-relaxed">
                 Tip: Clearer job descriptions attract 40% more qualified candidates. Be specific about the goals.
               </p>
             </div>
@@ -163,9 +163,9 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose }) => {
             {currentStep === 1 && (
               <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
                 <div className="space-y-2">
-                  <span className="bg-blue-50 text-[#0047CC] text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded">Step 01</span>
-                  <h3 className="text-[28px] font-black text-gray-900 tracking-tight leading-tight">Tell us about the role</h3>
-                  <p className="text-[14px] font-bold text-gray-400">Provide basic information to help candidates find your job.</p>
+                  <span className="bg-blue-50 text-[#0047CC] text-[10px] font-medium uppercase tracking-widest px-2 py-0.5 rounded">Step 01</span>
+                  <h3 className="text-[28px] font-medium text-gray-900 tracking-tight leading-tight">Tell us about the role</h3>
+                  <p className="text-[14px] font-medium text-gray-400">Provide basic information to help candidates find your job.</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -207,7 +207,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose }) => {
                     onChange={(e) => setFormData({...formData, positions: e.target.value})}
                   />
                   <div className="space-y-2 md:col-span-2">
-                    <label className="text-[13px] font-black text-gray-900 mb-8">Work Format & Location</label>
+                    <label className="text-[13px] font-medium text-gray-900 mb-8">Work Format & Location</label>
                     <div className="grid grid-cols-3 gap-3 my-4">
                       {['Onsite', 'Remote', 'Hybrid'].map((fmt) => (
                         <Button
@@ -235,14 +235,14 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose }) => {
                     )}
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <label className="text-[13px] font-black text-gray-900 mb-8">Role Summary</label>
+                    <label className="text-[13px] font-medium text-gray-900 mb-8">Role Summary</label>
                     <textarea 
                       placeholder="Briefly describe the purpose of this role..."
-                      className="w-full px-5 py-4 bg-white border border-gray-100 rounded-xl focus:border-[#0047CC] outline-none text-[14px] font-bold shadow-sm h-32 resize-none mt-4"
+                      className="w-full px-5 py-4 bg-white border border-gray-100 rounded-xl focus:border-[#0047CC] outline-none text-[14px] font-medium shadow-sm h-32 resize-none mt-4"
                       value={formData.summary}
                       onChange={(e) => setFormData({...formData, summary: e.target.value})}
                     />
-                    <p className="text-[11px] font-bold text-gray-400 text-right">0 / 500 characters</p>
+                    <p className="text-[11px] font-medium text-gray-400 text-right">0 / 500 characters</p>
                   </div>
                 </div>
               </div>
@@ -252,24 +252,24 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose }) => {
             {currentStep === 2 && (
               <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
                 <div className="space-y-2">
-                  <span className="bg-blue-50 text-[#0047CC] text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded">Step 02</span>
-                  <h3 className="text-[28px] font-black text-gray-900 tracking-tight leading-tight">What will they do?</h3>
-                  <p className="text-[14px] font-bold text-gray-400">Define the core responsibilities and technical requirements.</p>
+                  <span className="bg-blue-50 text-[#0047CC] text-[10px] font-medium uppercase tracking-widest px-2 py-0.5 rounded">Step 02</span>
+                  <h3 className="text-[28px] font-medium text-gray-900 tracking-tight leading-tight">What will they do?</h3>
+                  <p className="text-[14px] font-medium text-gray-400">Define the core responsibilities and technical requirements.</p>
                 </div>
 
                 <div className="space-y-6">
                   <div className="space-y-2">
-                    <label className="text-[13px] font-black text-gray-900">Core Responsibilities</label>
+                    <label className="text-[13px] font-medium text-gray-900">Core Responsibilities</label>
                     <textarea 
                       placeholder="Enter responsibilities, one per line..."
-                      className="w-full px-5 py-4 mt-4 bg-white border border-gray-100 rounded-xl focus:border-[#0047CC] outline-none text-[14px] font-bold shadow-sm h-48 resize-none"
+                      className="w-full px-5 py-4 mt-4 bg-white border border-gray-100 rounded-xl focus:border-[#0047CC] outline-none text-[14px] font-medium shadow-sm h-48 resize-none"
                       value={formData.responsibilities}
                       onChange={(e) => setFormData({...formData, responsibilities: e.target.value})}
                     />
                   </div>
 
                   <div className="space-y-4">
-                    <label className="text-[13px] font-black text-gray-900">Required Skills</label>
+                    <label className="text-[13px] font-medium text-gray-900">Required Skills</label>
                     <div className="flex gap-2">
                       <Input 
                         label=""
@@ -290,14 +290,14 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose }) => {
                     <div className="flex flex-wrap gap-2 pt-2">
                       {formData.skills.map(skill => (
                         <div key={skill} className="flex items-center gap-2 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-lg">
-                          <span className="text-[12px] font-black text-[#0047CC]">{skill}</span>
+                          <span className="text-[12px] font-medium text-[#0047CC]">{skill}</span>
                           <button onClick={() => removeSkill(skill)} className="text-[#0047CC]/50 hover:text-[#0047CC]">
                             <CloseIcon size={12} strokeWidth={3} />
                           </button>
                         </div>
                       ))}
                       {formData.skills.length === 0 && (
-                        <p className="text-[12px] font-bold text-gray-300 italic">No skills added yet</p>
+                        <p className="text-[12px] font-medium text-gray-300 italic">No skills added yet</p>
                       )}
                     </div>
                   </div>
@@ -312,8 +312,8 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose }) => {
                   <TrendingUpIcon size={40} className="text-gray-300" />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-[20px] font-black text-gray-900 tracking-tight">Step {currentStep} UI In Progress</h3>
-                  <p className="text-[14px] font-bold text-gray-400">We're building the specialized inputs for this step.</p>
+                  <h3 className="text-[20px] font-medium text-gray-900 tracking-tight">Step {currentStep} UI In Progress</h3>
+                  <p className="text-[14px] font-medium text-gray-400">We're building the specialized inputs for this step.</p>
                 </div>
               </div>
             )}
@@ -321,18 +321,18 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose }) => {
             {currentStep === 6 && (
               <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
                 <div className="space-y-2">
-                  <span className="bg-green-50 text-green-600 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded">Final Step</span>
-                  <h3 className="text-[28px] font-black text-gray-900 tracking-tight leading-tight">Preview your job</h3>
-                  <p className="text-[14px] font-bold text-gray-400">Last check before you publish to the talent pool.</p>
+                  <span className="bg-green-50 text-green-600 text-[10px] font-medium uppercase tracking-widest px-2 py-0.5 rounded">Final Step</span>
+                  <h3 className="text-[28px] font-medium text-gray-900 tracking-tight leading-tight">Preview your job</h3>
+                  <p className="text-[14px] font-medium text-gray-400">Last check before you publish to the talent pool.</p>
                 </div>
 
                 <div className="bg-white border border-gray-100 rounded-[24px] shadow-sm overflow-hidden">
                   <div className="bg-gradient-to-r from-[#0047CC] to-[#387DFF] p-8 text-white">
                     <div className="flex justify-between items-start">
                       <div className="space-y-1">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-white/70">Role Posting</span>
-                        <h4 className="text-[24px] font-black tracking-tight">{formData.roleTitle || 'Untitled Role'}</h4>
-                        <p className="text-[13px] font-bold text-white/80">{formData.roleType} · {formData.level} · {formData.format}</p>
+                        <span className="text-[10px] font-medium uppercase tracking-widest text-white/70">Role Posting</span>
+                        <h4 className="text-[24px] font-medium tracking-tight">{formData.roleTitle || 'Untitled Role'}</h4>
+                        <p className="text-[13px] font-medium text-white/80">{formData.roleType} · {formData.level} · {formData.format}</p>
                       </div>
                       <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                         <BriefcaseIcon size={24} />
@@ -342,25 +342,25 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose }) => {
                   <div className="p-8 space-y-8">
                     <div className="grid grid-cols-2 gap-8">
                       <div className="space-y-1">
-                        <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Location</p>
-                        <p className="text-[14px] font-black text-gray-900">{formData.location || 'Remote'}</p>
+                        <p className="text-[11px] font-medium text-gray-400 uppercase tracking-widest">Location</p>
+                        <p className="text-[14px] font-medium text-gray-900">{formData.location || 'Remote'}</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Positions</p>
-                        <p className="text-[14px] font-black text-gray-900">{formData.positions} Available</p>
+                        <p className="text-[11px] font-medium text-gray-400 uppercase tracking-widest">Positions</p>
+                        <p className="text-[14px] font-medium text-gray-900">{formData.positions} Available</p>
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Summary</p>
-                      <p className="text-[14px] font-bold text-gray-700 leading-relaxed">
+                      <p className="text-[11px] font-medium text-gray-400 uppercase tracking-widest">Summary</p>
+                      <p className="text-[14px] font-medium text-gray-700 leading-relaxed">
                         {formData.summary || 'No summary provided.'}
                       </p>
                     </div>
                     <div className="space-y-2">
-                      <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Skills</p>
+                      <p className="text-[11px] font-medium text-gray-400 uppercase tracking-widest">Skills</p>
                       <div className="flex flex-wrap gap-2">
                         {formData.skills.map(skill => (
-                          <span key={skill} className="px-3 py-1 bg-gray-50 border border-gray-100 rounded-lg text-[12px] font-bold text-gray-600">{skill}</span>
+                          <span key={skill} className="px-3 py-1 bg-gray-50 border border-gray-100 rounded-lg text-[12px] font-medium text-gray-600">{skill}</span>
                         ))}
                       </div>
                     </div>
@@ -388,7 +388,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose }) => {
         </Button>
 
         <div className="flex items-center gap-4">
-          <button className="text-[14px] font-black text-[#0047CC] hover:underline px-4">
+          <button className="text-[14px] font-medium text-[#0047CC] hover:underline px-4">
             Save as Draft
           </button>
           <Button 

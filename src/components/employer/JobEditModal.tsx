@@ -431,7 +431,7 @@ const JobEditModal: React.FC<JobEditModalProps> = ({ isOpen, onClose, section, d
               />
             </div>
 
-            <div className="bg-[#EBF6FF] border border-[#BDD9FF] rounded-xl p-4 text-[13px] text-[#1e3a8a] leading-relaxed font-semibold">
+            <div className="bg-[#EBF6FF] border border-[#BDD9FF] rounded-xl p-4 text-[13px] text-[#1e3a8a] leading-relaxed font-medium">
               <strong>Escrow note:</strong> Changing the salary band triggers an automatic escrow recalculation. Any top-up or refund will fire to your payment method within 24 hours of this edit being confirmed.
             </div>
 
@@ -494,7 +494,7 @@ const JobEditModal: React.FC<JobEditModalProps> = ({ isOpen, onClose, section, d
         
         {/* Header */}
         <div className="px-8 py-6 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
-          <h2 className="text-[18px] font-bold text-gray-900 font-['Nunito_Sans']">{getTitle()}</h2>
+          <h2 className="text-[18px] font-medium text-gray-900 ">{getTitle()}</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-50 rounded-full transition-colors text-gray-400 hover:text-gray-600 cursor-pointer border-none bg-transparent">
             <CloseIcon size={20} strokeWidth={2.5} />
           </button>

@@ -51,7 +51,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose }) => {
       <div className="relative bg-white w-full max-w-[520px] max-h-[90vh] overflow-y-auto rounded-[24px] shadow-2xl animate-in zoom-in-95 duration-500 scrollbar-hide">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-100 p-6 flex items-center justify-between z-10">
-          <h2 className="text-[18px] font-black text-gray-900 font-['Nunito_Sans']">Post a Job</h2>
+          <h2 className="text-[18px] font-medium text-gray-900 ">Post a Job</h2>
           <button onClick={resetModal} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 cursor-pointer">
             <CloseIcon size={20} strokeWidth={3} />
           </button>
@@ -60,7 +60,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose }) => {
         <div className="p-6 space-y-8">
           {/* STEP 1: Hiring Mode */}
           <section className="space-y-4">
-            <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">When do you want to hire?</p>
+            <p className="text-[11px] font-medium text-gray-400 uppercase tracking-widest">When do you want to hire?</p>
             
             <div className="space-y-2">
               <button 
@@ -73,8 +73,8 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose }) => {
                   {hiringMode === 'live' && <div className="w-2.5 h-2.5 rounded-full bg-[#0047CC]" />}
                 </div>
                 <div>
-                  <p className="text-[14px] font-black text-gray-900">Post live now</p>
-                  <p className="text-[12px] font-bold text-gray-400 mt-0.5">Role goes live immediately on submission. Matching fires the same day.</p>
+                  <p className="text-[14px] font-medium text-gray-900">Post live now</p>
+                  <p className="text-[12px] font-medium text-gray-400 mt-0.5">Role goes live immediately on submission. Matching fires the same day.</p>
                 </div>
               </button>
 
@@ -90,10 +90,10 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose }) => {
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="text-[14px] font-black text-gray-900">Schedule for later — Vault mode</p>
-                      <span className="bg-blue-100 text-[#0047CC] text-[9px] font-black px-2 py-0.5 rounded-full">RECOMMENDED</span>
+                      <p className="text-[14px] font-medium text-gray-900">Schedule for later — Vault mode</p>
+                      <span className="bg-blue-100 text-[#0047CC] text-[9px] font-medium px-2 py-0.5 rounded-full">RECOMMENDED</span>
                     </div>
-                    <p className="text-[12px] font-bold text-gray-400 mt-0.5 leading-relaxed">
+                    <p className="text-[12px] font-medium text-gray-400 mt-0.5 leading-relaxed">
                       Lock in your rate today. VORA silently matches candidates while the role stays invisible until your go-live date.
                     </p>
                   </div>
@@ -102,16 +102,16 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose }) => {
                 {hiringMode === 'vault' && (
                   <div className="mt-4 pt-4 border-t border-blue-100 space-y-4 animate-in slide-in-from-top-2 duration-300">
                     <div className="space-y-2">
-                      <label className="text-[12px] font-black text-[#0047CC]">Go-live date *</label>
+                      <label className="text-[12px] font-medium text-[#0047CC]">Go-live date *</label>
                       <input 
                         type="date" 
-                        className="w-full p-3 bg-white border border-blue-200 rounded-xl outline-none text-[14px] font-bold text-gray-900"
+                        className="w-full p-3 bg-white border border-blue-200 rounded-xl outline-none text-[14px] font-medium text-gray-900"
                         value={goLiveDate}
                         onChange={(e) => setGoLiveDate(e.target.value)}
                       />
                     </div>
                     <div className="bg-white/60 p-4 rounded-xl space-y-2">
-                      <p className="text-[11px] font-bold text-blue-900 leading-relaxed">
+                      <p className="text-[11px] font-medium text-blue-900 leading-relaxed">
                         ① Complete the full spec today — lock in current fees.<br/>
                         ② Role enters Vault — completely invisible to candidates.<br/>
                         ③ VORA silently pre-qualifies candidates against your spec.<br/>
@@ -127,7 +127,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose }) => {
           {/* STEP 2: Entry Method (Unfurls) */}
           {(hiringMode === 'live' || (hiringMode === 'vault' && goLiveDate)) && (
             <section className="space-y-4 border-t border-gray-100 pt-8 animate-in slide-in-from-top-4 duration-500">
-              <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">How would you like to fill in the role details?</p>
+              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-widest">How would you like to fill in the role details?</p>
               
               <div className="space-y-3">
                 <div className={`p-4 rounded-2xl border-2 transition-all ${
@@ -141,8 +141,8 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose }) => {
                       {entryMethod === 'upload' && <div className="w-2.5 h-2.5 rounded-full bg-[#0047CC]" />}
                     </div>
                     <div>
-                      <p className="text-[14px] font-black text-gray-900">Upload job document</p>
-                      <p className="text-[12px] font-bold text-gray-400 mt-0.5">Upload your existing JD — VORA extracts and pre-fills all role details.</p>
+                      <p className="text-[14px] font-medium text-gray-900">Upload job document</p>
+                      <p className="text-[12px] font-medium text-gray-400 mt-0.5">Upload your existing JD — VORA extracts and pre-fills all role details.</p>
                     </div>
                   </button>
 
@@ -158,8 +158,8 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose }) => {
                           <>
                             <UploadIcon size={24} className="text-[#0047CC]" />
                             <div className="text-center">
-                              <p className="text-[13px] font-black text-gray-800">Drop PDF or DOCX here</p>
-                              <p className="text-[11px] font-bold text-gray-400 mt-1">or click to browse — Max 10MB</p>
+                              <p className="text-[13px] font-medium text-gray-800">Drop PDF or DOCX here</p>
+                              <p className="text-[11px] font-medium text-gray-400 mt-1">or click to browse — Max 10MB</p>
                             </div>
                           </>
                         ) : (
@@ -168,8 +168,8 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose }) => {
                               <FileIcon size={20} />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-[13px] font-black text-gray-900 truncate">Role_Spec_Final.pdf</p>
-                              <p className="text-[11px] font-bold text-gray-400">1.4 MB</p>
+                              <p className="text-[13px] font-medium text-gray-900 truncate">Role_Spec_Final.pdf</p>
+                              <p className="text-[11px] font-medium text-gray-400">1.4 MB</p>
                             </div>
                             <button className="text-gray-300 hover:text-red-500 p-2" onClick={(e) => { e.stopPropagation(); setUploadState('idle'); }}>
                               <CloseIcon size={14} strokeWidth={3} />
@@ -180,7 +180,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose }) => {
 
                       <div className="flex items-center gap-4">
                         <div className="h-px bg-blue-100 flex-1" />
-                        <span className="text-[10px] font-black text-blue-300 uppercase tracking-widest">OR</span>
+                        <span className="text-[10px] font-medium text-blue-300 uppercase tracking-widest">OR</span>
                         <div className="h-px bg-blue-100 flex-1" />
                       </div>
 
@@ -188,7 +188,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose }) => {
                         <input 
                           type="url" 
                           placeholder="Paste a link (https://...)" 
-                          className="w-full p-3 bg-white border border-blue-100 rounded-xl outline-none text-[13px] font-bold text-gray-900 placeholder:text-gray-300"
+                          className="w-full p-3 bg-white border border-blue-100 rounded-xl outline-none text-[13px] font-medium text-gray-900 placeholder:text-gray-300"
                           value={documentLink}
                           onChange={(e) => setDocumentLink(e.target.value)}
                         />
@@ -207,8 +207,8 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose }) => {
                     {entryMethod === 'manual' && <div className="w-2.5 h-2.5 rounded-full bg-[#0047CC]" />}
                   </div>
                   <div>
-                    <p className="text-[14px] font-black text-gray-900">Fill out manually</p>
-                    <p className="text-[12px] font-bold text-gray-400 mt-0.5">Start from scratch and complete all steps yourself.</p>
+                    <p className="text-[14px] font-medium text-gray-900">Fill out manually</p>
+                    <p className="text-[12px] font-medium text-gray-400 mt-0.5">Start from scratch and complete all steps yourself.</p>
                   </div>
                 </button>
               </div>
@@ -223,7 +223,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose }) => {
                 // Navigate to full wizard or process
                 resetModal();
               }}
-              className={`w-full py-4 rounded-full text-[15px] font-black transition-all shadow-xl ${
+              className={`w-full py-4 rounded-full text-[15px] font-medium transition-all shadow-xl ${
                 isReady() ? 'bg-[#0047CC] text-white hover:bg-[#003d99] shadow-blue-500/20' : 'bg-gray-100 text-gray-300 cursor-not-allowed shadow-none'
               }`}
             >

@@ -45,7 +45,7 @@ const Jobs: React.FC = () => {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-[28px] font-black text-[#0047CC] font-['Nunito_Sans'] tracking-tight">Jobs</h1>
+        <h1 className="text-[28px] font-medium text-[#0047CC]  tracking-tight">Jobs</h1>
         <Button 
           onClick={() => setIsPostModalOpen(true)}
           fullWidth={false}
@@ -64,7 +64,7 @@ const Jobs: React.FC = () => {
         renderTabExtra={(tab) => {
           const count = SAMPLE_JOBS.filter(j => tab === 'All jobs' || j.type === tab || (tab === 'Scheduled' && j.status === 'Scheduled')).length;
           return (
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black transition-colors ${
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors ${
               activeTab === tab ? 'bg-blue-50 text-[#0047CC]' : 'bg-gray-100 text-gray-400'
             }`}>
               {count}
@@ -74,7 +74,7 @@ const Jobs: React.FC = () => {
       />
 
       {/* Search Bar */}
-      <div className="max-w-sm">
+      <div className="w-full">
         <Input 
           label=""
           placeholder="Search jobs..." 
@@ -89,7 +89,7 @@ const Jobs: React.FC = () => {
       <div className="bg-white border border-gray-100 rounded-[24px] overflow-hidden shadow-sm">
         <div className="w-full">
           {/* Table Header - Hidden on mobile */}
-          <div className="hidden lg:flex bg-[#F9FAFB] px-8 py-4 items-center text-[11px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50">
+          <div className="hidden lg:flex bg-[#F9FAFB] px-8 py-4 items-center text-[11px] font-medium text-gray-400 uppercase tracking-widest border-b border-gray-50">
             <div className="flex-[3]">Job listings</div>
             <div className="flex-1">Job type</div>
             <div className="flex-[1.2]">Date posted</div>
@@ -110,12 +110,12 @@ const Jobs: React.FC = () => {
                 >
                   <div className="flex-[3] lg:pr-6">
                     <div className="flex items-start justify-between lg:block">
-                      <p className="text-[15px] lg:text-[14px] font-black text-gray-900 group-hover:text-[#0047CC] transition-colors">{job.title}</p>
+                      <p className="text-[15px] lg:text-[14px] font-medium text-gray-900 group-hover:text-[#0047CC] transition-colors">{job.title}</p>
                       <div className="lg:hidden">
                         <Tag label={job.status} variant={getJobStatusVariant(job.status)} />
                       </div>
                     </div>
-                    <p className="text-[12px] lg:text-[11px] font-bold text-gray-400 mt-1">{job.org} — {job.location}</p>
+                    <p className="text-[12px] lg:text-[11px] font-medium text-gray-400 mt-1">{job.org} — {job.location}</p>
                     {job.subStatus && (
                       <div className="flex flex-wrap gap-2 mt-3 lg:mt-2">
                         {job.subStatus.split(' · ').map((tag, i) => (
@@ -133,30 +133,30 @@ const Jobs: React.FC = () => {
                   {/* Mobile-only info grid */}
                   <div className="grid grid-cols-2 gap-4 lg:hidden py-2 border-y border-gray-50/50 my-1">
                     <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Type</p>
-                      <p className="text-[13px] font-bold text-gray-600">{job.type}</p>
+                      <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mb-1">Type</p>
+                      <p className="text-[13px] font-medium text-gray-600">{job.type}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Applicants</p>
-                      <p className={`text-[13px] font-black ${job.applicants > 0 ? 'text-[#0047CC]' : 'text-gray-300'}`}>
+                      <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mb-1">Applicants</p>
+                      <p className={`text-[13px] font-medium ${job.applicants > 0 ? 'text-[#0047CC]' : 'text-gray-300'}`}>
                         {job.applicants || 'None'}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Posted</p>
-                      <p className="text-[13px] font-bold text-gray-400">{job.datePosted}</p>
+                      <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mb-1">Posted</p>
+                      <p className="text-[13px] font-medium text-gray-400">{job.datePosted}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Expires</p>
-                      <p className="text-[13px] font-bold text-gray-400">{job.expiryDate}</p>
+                      <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mb-1">Expires</p>
+                      <p className="text-[13px] font-medium text-gray-400">{job.expiryDate}</p>
                     </div>
                   </div>
 
                   {/* Desktop columns - hidden on mobile */}
-                  <div className="hidden lg:block flex-1 text-[13px] font-bold text-gray-600">{job.type}</div>
-                  <div className="hidden lg:block flex-[1.2] text-[13px] font-bold text-gray-400">{job.datePosted}</div>
-                  <div className="hidden lg:block flex-[1.2] text-[13px] font-bold text-gray-400">{job.expiryDate}</div>
-                  <div className={`hidden lg:block w-32 text-center text-[14px] font-black ${job.applicants > 0 ? 'text-[#0047CC]' : 'text-gray-300'}`}>
+                  <div className="hidden lg:block flex-1 text-[13px] font-medium text-gray-600">{job.type}</div>
+                  <div className="hidden lg:block flex-[1.2] text-[13px] font-medium text-gray-400">{job.datePosted}</div>
+                  <div className="hidden lg:block flex-[1.2] text-[13px] font-medium text-gray-400">{job.expiryDate}</div>
+                  <div className={`hidden lg:block w-32 text-center text-[14px] font-medium ${job.applicants > 0 ? 'text-[#0047CC]' : 'text-gray-300'}`}>
                     {job.applicants || '-'}
                   </div>
                   <div className="hidden lg:block flex-1 pl-4">
@@ -174,8 +174,8 @@ const Jobs: React.FC = () => {
                 <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
                   <BriefcaseIcon size={24} className="text-[#0047CC]" />
                 </div>
-                <p className="text-[15px] font-black text-gray-900">No jobs found</p>
-                <p className="text-[13px] font-bold text-gray-400 mt-1">Try adjusting your search or filters</p>
+                <p className="text-[15px] font-medium text-gray-900">No jobs found</p>
+                <p className="text-[13px] font-medium text-gray-400 mt-1">Try adjusting your search or filters</p>
               </div>
             )}
           </div>
@@ -183,7 +183,7 @@ const Jobs: React.FC = () => {
 
         {/* Pagination Footer */}
         <div className="border-t border-gray-50 px-8 py-5 flex items-center justify-between">
-          <p className="text-[12px] font-bold text-gray-400 tracking-tight">
+          <p className="text-[12px] font-medium text-gray-400 tracking-tight">
             Showing 1 - {filteredJobs.length} of {filteredJobs.length} jobs
           </p>
           <div className="flex items-center gap-6">

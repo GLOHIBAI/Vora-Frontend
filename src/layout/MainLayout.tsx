@@ -26,7 +26,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
-              <Link to="/" className="text-xl font-bold text-[#0047CC] no-underline">
+              <Link to="/" className="text-xl font-medium text-[#0047CC] no-underline">
                 VORA
               </Link>
               <div className="flex items-center gap-2">
@@ -36,7 +36,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <Link to="/settings" className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
                   Settings
                 </Link>
-                <button className="px-5 py-2 text-sm font-semibold text-white bg-[#0047CC] rounded-lg hover:bg-[#003d99] transition-colors cursor-pointer">
+                <button className="px-5 py-2 text-sm font-medium text-white bg-[#0047CC] rounded-lg hover:bg-[#003d99] transition-colors cursor-pointer">
                   Connect Wallet
                 </button>
               </div>

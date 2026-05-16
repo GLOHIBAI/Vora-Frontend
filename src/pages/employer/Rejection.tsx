@@ -47,16 +47,16 @@ const Rejection: React.FC = () => {
         <ChevronRightIcon size={14} />
         <Link to={`/jobs/${id}`} className="text-[#0047CC] hover:underline truncate max-w-[150px]">Global Health Policy Analyst Intern</Link>
         <ChevronRightIcon size={14} />
-        <span className="text-gray-900 font-bold">Rejection</span>
+        <span className="text-gray-900 font-medium">Rejection</span>
       </nav>
 
       {/* Candidate Chip */}
       <div className="bg-[#FEF2F2] border border-[#FECACA] rounded-xl p-4 flex items-center gap-4">
-        <div className="w-10 h-10 rounded-full bg-[#DC2626] text-white flex items-center justify-center font-bold text-lg shrink-0">
+        <div className="w-10 h-10 rounded-full bg-[#DC2626] text-white flex items-center justify-center font-medium text-lg shrink-0">
           !
         </div>
         <div>
-          <div className="text-[14px] font-bold text-gray-900">{applicantId || 'APP-008'}</div>
+          <div className="text-[14px] font-medium text-gray-900">{applicantId || 'APP-008'}</div>
           <div className="text-[12px] text-gray-500 font-medium">Global Health Policy Analyst Intern – Malaria Program</div>
         </div>
       </div>
@@ -64,14 +64,14 @@ const Rejection: React.FC = () => {
       {step === 'form' && (
         <div className="bg-white border border-gray-100 rounded-2xl p-8 shadow-sm space-y-8">
           <div className="space-y-2">
-            <h2 className="text-xl font-bold text-gray-900 font-['Nunito_Sans']">Document Rejection Reason</h2>
+            <h2 className="text-xl font-medium text-gray-900 ">Document Rejection Reason</h2>
             <p className="text-[13px] text-gray-500 leading-relaxed font-medium">
               A rejection reason is required. VORA reviews all rejections against the candidate's verified assessment record. Reasons that reference competency, communication ability, or professional judgment — already assessed and passed — will trigger an automatic review.
             </p>
           </div>
 
           <div className="space-y-4">
-            <label className="block text-[14px] font-bold text-gray-900">Select primary rejection reason</label>
+            <label className="block text-[14px] font-medium text-gray-900">Select primary rejection reason</label>
             <div className="space-y-2">
               {reasons.map((reason) => (
                 <label 
@@ -89,7 +89,7 @@ const Rejection: React.FC = () => {
                     checked={selectedReason === reason.id}
                     onChange={() => setSelectedReason(reason.id)}
                   />
-                  <span className="text-[14px] font-bold text-gray-700">{reason.label}</span>
+                  <span className="text-[14px] font-medium text-gray-700">{reason.label}</span>
                 </label>
               ))}
             </div>
@@ -108,7 +108,7 @@ const Rejection: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <label className="block text-[14px] font-bold text-gray-900">
+            <label className="block text-[14px] font-medium text-gray-900">
               Additional details <span className="font-normal text-gray-400 ml-1">(required)</span>
             </label>
             <textarea 
@@ -119,7 +119,7 @@ const Rejection: React.FC = () => {
               onChange={(e) => handleDetailsChange(e.target.value)}
             />
             {isFlagged && (
-              <div className="flex items-center gap-2 text-[#DC2626] text-[12px] font-bold animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-center gap-2 text-[#DC2626] text-[12px] font-medium animate-in fade-in slide-in-from-top-1">
                 <AlertTriangleIcon size={14} />
                 Your details appear to reference competency or assessment-related criteria already verified by VORA. This will trigger a review.
               </div>
@@ -164,14 +164,14 @@ const Rejection: React.FC = () => {
             <AlertTriangleIcon size={24} className="text-[#DC2626]" />
           </div>
           <div className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-900 font-['Nunito_Sans']">Rejection Flagged for Review</h2>
+            <h2 className="text-xl font-medium text-gray-900 ">Rejection Flagged for Review</h2>
             <p className="text-[14px] text-gray-500 leading-relaxed font-medium">
               Your rejection documentation references criteria that overlap with competencies already verified through VORA's three-stage assessment. This has been automatically flagged for review by the VORA compliance team.
             </p>
           </div>
 
           <div className="bg-[#FEF2F2] rounded-xl p-6 space-y-4">
-            <h4 className="text-[12px] font-black text-[#DC2626] uppercase tracking-wider">What this means</h4>
+            <h4 className="text-[12px] font-medium text-[#DC2626] uppercase tracking-wider">What this means</h4>
             <ul className="space-y-3">
               {[
                 'The escrow will not be released until the review concludes',
@@ -179,7 +179,7 @@ const Rejection: React.FC = () => {
                 'The VORA compliance team will contact you within 48 hours',
                 'If the rejection is found to be without documented cause, the session deposit is forfeited'
               ].map((item, idx) => (
-                <li key={idx} className="flex items-start gap-3 text-[13px] font-bold text-gray-700">
+                <li key={idx} className="flex items-start gap-3 text-[13px] font-medium text-gray-700">
                   <div className="w-1.5 h-1.5 rounded-full bg-[#DC2626] mt-1.5 shrink-0" />
                   {item}
                 </li>
@@ -213,7 +213,7 @@ const Rejection: React.FC = () => {
             <CheckIcon size={32} className="text-gray-400" />
           </div>
           <div className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-900 font-['Nunito_Sans']">Rejection Submitted</h2>
+            <h2 className="text-xl font-medium text-gray-900 ">Rejection Submitted</h2>
             <p className="text-[14px] text-gray-500 leading-relaxed font-medium max-w-sm mx-auto">
               {applicantId || 'APP-008'} has been moved to your Rejected pipeline. The candidate has been notified and the rejection documentation has been logged in your audit trail.
             </p>

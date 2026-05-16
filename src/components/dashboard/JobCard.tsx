@@ -20,16 +20,16 @@ const JobCard: React.FC<JobCardProps> = ({
             {logo ? (
               <img src={logo} alt={company} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-[#0047CC] font-bold text-lg">{company.charAt(0)}</span>
+              <span className="text-[#0047CC] font-medium text-lg">{company.charAt(0)}</span>
             )}
           </div>
           <div>
-            <h3 className="font-bold text-gray-900 group-hover:text-[#0047CC] transition-colors">{title}</h3>
+            <h3 className="font-medium text-gray-900 group-hover:text-[#0047CC] transition-colors">{title}</h3>
             <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">{company}</p>
           </div>
         </div>
         <div className="text-right">
-          <p className="text-[#0047CC] font-bold">{salary}</p>
+          <p className="text-[#0047CC] font-medium">{salary}</p>
           <p className="text-[10px] text-gray-400 font-medium">monthly</p>
         </div>
       </div>
@@ -48,7 +48,7 @@ const JobCard: React.FC<JobCardProps> = ({
         {tags.map((tag, idx) => (
           <span 
             key={idx} 
-            className="px-3 py-1 bg-[#0047CC] text-white text-[10px] font-bold rounded-lg tracking-wide hover:bg-[#003d99] transition-colors cursor-default"
+            className="px-3 py-1 bg-[#0047CC] text-white text-[10px] font-medium rounded-lg tracking-wide hover:bg-[#003d99] transition-colors cursor-default"
           >
             {tag}
           </span>

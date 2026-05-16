@@ -16,7 +16,7 @@ const TalentDashboard: React.FC = () => {
     <div className="space-y-10 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Header Section */}
       <section>
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-1 font-['Nunito_Sans']">Welcome, {firstName}.</h1>
+        <h1 className="text-2xl lg:text-3xl font-medium text-gray-900 mb-1 ">Welcome, {firstName}.</h1>
         <p className="text-[13px] lg:text-sm text-gray-500 font-medium">Upload your CV to begin your career journey and unlock your score.</p>
       </section>
 
@@ -24,7 +24,7 @@ const TalentDashboard: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Career Readiness Score Card */}
         <div className="bg-[#EBF5FF] rounded-2xl p-6 flex flex-col items-center justify-between transition-all duration-300 min-h-[190px]">
-          <p className="text-[14px] font-bold text-[#0047CC] w-full text-left">Career Readiness Score</p>
+          <p className="text-[14px] font-medium text-[#0047CC] w-full text-left">Career Readiness Score</p>
           <div className="py-2">
             <CircularProgress percentage={0} size={140} strokeWidth={15} />
           </div>
@@ -51,7 +51,7 @@ const TalentDashboard: React.FC = () => {
 
       {/* Quick Actions Section */}
       <section>
-        <h2 className="text-lg font-bold text-gray-900 mb-6 font-['Nunito_Sans']">Quick actions</h2>
+        <h2 className="text-lg font-medium text-gray-900 mb-6 ">Quick actions</h2>
         <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
           <div className="break-inside-avoid">
             <QuickActionCard 
@@ -84,7 +84,7 @@ const TalentDashboard: React.FC = () => {
       <section>
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-lg font-bold text-gray-900 mb-1">Sample Opportunities on the Platform</h2>
+            <h2 className="text-lg font-medium text-gray-900 mb-1">Sample Opportunities on the Platform</h2>
             <p className="text-sm text-gray-500 font-medium">Upload your CV to get jobs tailored specifically for you.</p>
           </div>
         </div>

@@ -54,7 +54,7 @@ const Talents: React.FC = () => {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-[28px] font-black text-[#0047CC] font-['Nunito_Sans'] tracking-tight">Talents</h1>
+        <h1 className="text-[28px] font-medium text-[#0047CC]  tracking-tight">Talents</h1>
       </div>
 
       {/* Tabs System */}
@@ -64,14 +64,14 @@ const Talents: React.FC = () => {
         onTabChange={setActiveTab}
         renderTabExtra={(tab) => {
           if (tab === 'Post-Hire Tracking') {
-            return <span className="bg-[#DC2626] text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center">1</span>;
+            return <span className="bg-[#DC2626] text-white text-[10px] font-medium w-4 h-4 rounded-full flex items-center justify-center">1</span>;
           }
           return null;
         }}
       />
 
       {activeTab !== 'Post-Hire Tracking' && (
-        <div className="max-w-lg">
+        <div className="w-full">
           <Input 
             label=""
             placeholder="Search"
@@ -90,13 +90,13 @@ const Talents: React.FC = () => {
         <div className="bg-white border border-gray-100 rounded-2xl flex flex-col overflow-hidden shadow-sm">
           <div className="w-full">
             {/* Table Header Bar - Hidden on mobile */}
-            <div className="hidden lg:flex bg-[#F9FAFB] px-8 py-4 items-center justify-between text-[11px] font-black text-gray-400 uppercase tracking-widest gap-4 border-b border-gray-50">
+            <div className="hidden lg:flex bg-[#F9FAFB] px-8 py-4 items-center justify-between text-[11px] font-medium text-gray-400 uppercase tracking-widest gap-4 border-b border-gray-50">
               <div className="flex-[2]">Applicant ID</div>
               <div className="flex-[2]">Academic level</div>
               <div className="flex-[2]">Location</div>
               <div className="flex-[2]">Course</div>
               <div className="flex-[2]">Date applied</div>
-              <div className="w-40 text-right">Status</div>
+              <div className="w-48">Status</div>
             </div>
 
             {/* Table Content / Mobile List */}
@@ -113,7 +113,7 @@ const Talents: React.FC = () => {
                         onClick={() => navigate(`/talents/${talent.id}`)}
                       >
                         <div>
-                          <p className="text-[15px] lg:text-[14px] font-black text-gray-900 group-hover:text-[#0047CC] transition-colors">{talent.id}</p>
+                          <p className="text-[15px] lg:text-[14px] font-medium text-gray-900 group-hover:text-[#0047CC] transition-colors">{talent.id}</p>
                         </div>
                         <div className="lg:hidden">
                           <div className={`w-2.5 h-2.5 rounded-full ${getStatusColor(talent.status)}`} />
@@ -121,19 +121,21 @@ const Talents: React.FC = () => {
                       </div>
 
                       {/* Desktop Only Columns */}
-                      <div className="hidden lg:block flex-[2] text-[14px] font-bold text-gray-500">{talent.academicLevel}</div>
-                      <div className="hidden lg:block flex-[2] text-[14px] font-bold text-gray-500">{talent.location}</div>
-                      <div className="hidden lg:block flex-[2] text-[14px] font-bold text-gray-500">{talent.course}</div>
-                      <div className="hidden lg:block flex-[2] text-[14px] font-bold text-gray-500">{talent.dateApplied}</div>
+                      <div className="hidden lg:block flex-[2] text-[14px] font-medium text-gray-500">{talent.academicLevel}</div>
+                      <div className="hidden lg:block flex-[2] text-[14px] font-medium text-gray-500">{talent.location}</div>
+                      <div className="hidden lg:block flex-[2] text-[14px] font-medium text-gray-500">{talent.course}</div>
+                      <div className="hidden lg:block flex-[2] text-[14px] font-medium text-gray-500">{talent.dateApplied}</div>
 
-                      <div className="hidden lg:flex items-center justify-end lg:w-40 relative shrink-0">
+                      <div className="hidden lg:flex items-center justify-between lg:w-48 relative shrink-0">
                         <Tag 
                           label={talent.status} 
-                          variant={talent.status.toLowerCase() === 'pending review' ? 'gray' : 
-                                   talent.status.toLowerCase() === 'under review' ? 'yellow' : 
-                                   talent.status.toLowerCase() === 'hired' ? 'green' : 
-                                   talent.status.toLowerCase() === 'rejected' ? 'red' : 'gray'}
-                          className="min-w-[130px] justify-center"
+                          variant={
+                            talent.status.toLowerCase() === 'pending review' ? 'gray' : 
+                            talent.status.toLowerCase() === 'under review' ? 'yellow' : 
+                            ['hired', 'passed'].includes(talent.status.toLowerCase()) ? 'green' : 
+                            ['rejected', 'failed'].includes(talent.status.toLowerCase()) ? 'red' : 'gray'
+                          }
+                          className="min-w-[110px] justify-center"
                         />
                         
                         <div className="flex items-center gap-4 ml-auto">
@@ -164,7 +166,7 @@ const Talents: React.FC = () => {
                                   e.stopPropagation();
                                   navigate(`/talents/${talent.id}`);
                                 }}
-                                className="w-full px-4 py-2.5 text-left text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"
+                                className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"
                               >
                                 View details
                               </button>
@@ -175,7 +177,7 @@ const Talents: React.FC = () => {
                                   setIsApplicantModalOpen(true);
                                   setOpenMenuIdx(null);
                                 }}
-                                className="w-full px-4 py-2.5 text-left text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"
+                                className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"
                               >
                                 Hire applicant
                               </button>
@@ -184,7 +186,7 @@ const Talents: React.FC = () => {
                                   e.stopPropagation();
                                   navigate(`/jobs/0/reject/${talent.id}`);
                                 }}
-                                className="w-full px-4 py-2.5 text-left text-[13px] font-bold text-red-600 hover:bg-red-50 transition-colors"
+                                className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-red-600 hover:bg-red-50 transition-colors"
                               >
                                 Reject applicant
                               </button>
@@ -201,7 +203,7 @@ const Talents: React.FC = () => {
                   <div className="w-16 h-16 bg-[#EBF5FF] rounded-full flex items-center justify-center mb-6">
                     <UsersIcon size={20} className="text-[#0047CC]" strokeWidth={2.5} />
                   </div>
-                  <h3 className="text-[17px] font-bold text-gray-900 mb-2 font-['Nunito_Sans']">You do not have any talent yet</h3>
+                  <h3 className="text-[17px] font-medium text-gray-900 mb-2 ">You do not have any talent yet</h3>
                   <p className="text-gray-400 text-[13px] font-medium text-center max-w-sm">
                     All applied talents will appear here.
                   </p>

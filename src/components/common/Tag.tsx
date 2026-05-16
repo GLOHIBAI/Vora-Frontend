@@ -5,7 +5,7 @@ interface TagProps {
   label: string;
   onRemove?: () => void;
   className?: string;
-  variant?: 'blue' | 'green' | 'red' | 'gray' | 'yellow' | 'blue-light' | 'green-light' | 'outline';
+  variant?: 'blue' | 'green' | 'red' | 'gray' | 'yellow' | 'blue-light' | 'green-light' | 'outline' | 'purple';
 }
 
 const Tag: React.FC<TagProps> = ({ label, onRemove, className = '', variant = 'blue' }) => {
@@ -18,11 +18,12 @@ const Tag: React.FC<TagProps> = ({ label, onRemove, className = '', variant = 'b
     'blue-light': 'bg-[#F0F7FF] text-[#0047CC] border-transparent',
     'green-light': 'bg-[#F0FFF4] text-[#38A169] border-[#C6F6D5]',
     outline: 'bg-white border border-[#0047CC] text-[#0047CC]',
+    purple: 'bg-purple-50 text-purple-700 border-transparent',
   };
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-full animate-in fade-in zoom-in-95 duration-200 border ${styles[variant] || styles.blue} ${className}`}
+      className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-full animate-in fade-in zoom-in-95 duration-200 border ${styles[variant] || styles.blue} ${className}`}
     >
       {label}
       {onRemove && (

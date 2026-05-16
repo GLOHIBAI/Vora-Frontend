@@ -239,7 +239,7 @@ const MentorProfile: React.FC = () => {
       {/* Progress Bar */}
       <div className="mb-10">
         <div className="flex items-center mb-3">
-          <span className="text-sm font-bold text-[#1C1C1C]">Step {step} of {TOTAL_STEPS}</span>
+          <span className="text-sm font-medium text-[#1C1C1C]">Step {step} of {TOTAL_STEPS}</span>
         </div>
         <div className="flex gap-2 w-full h-1.5">
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
@@ -254,7 +254,7 @@ const MentorProfile: React.FC = () => {
       {/* Step 1: Personal Information */}
       {step === 1 && (
         <>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#1C1C1C] font-['Nunito_Sans'] mb-8">
+          <h1 className="text-xl sm:text-2xl font-medium text-[#1C1C1C]  mb-8">
             Personal Information
           </h1>
 
@@ -327,7 +327,7 @@ const MentorProfile: React.FC = () => {
       {/* Step 2: Expertise and Focus Area */}
       {step === 2 && (
         <>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#1C1C1C] font-['Nunito_Sans'] mb-8">
+          <h1 className="text-xl sm:text-2xl font-medium text-[#1C1C1C]  mb-8">
             Expertise and Focus Area
           </h1>
 
@@ -385,7 +385,7 @@ const MentorProfile: React.FC = () => {
       {/* Step 3: Professional Experience */}
       {step === 3 && (
         <>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#1C1C1C] font-['Nunito_Sans'] mb-8">
+          <h1 className="text-xl sm:text-2xl font-medium text-[#1C1C1C]  mb-8">
             Professional Experience
           </h1>
 
@@ -465,7 +465,7 @@ const MentorProfile: React.FC = () => {
             {/* Upload Document Section */}
             {currentCertType && (
               <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                <label className="block text-sm font-semibold text-[#374151] mb-2.5">
+                <label className="block text-sm font-medium text-[#374151] mb-2.5">
                   Upload files for {currentCertType === 'other' ? (otherCertName || 'this certification') : LICENSE_OPTIONS.find(o => o.value === currentCertType)?.label}
                 </label>
                 <div
@@ -492,12 +492,12 @@ const MentorProfile: React.FC = () => {
             {/* List of Added Certificates */}
             {certificates.length > 0 && (
               <div className="space-y-4 pt-4 border-t border-[#F3F4F6]">
-                <h4 className="text-sm font-bold text-[#1C1C1C]">Added Certifications</h4>
+                <h4 className="text-sm font-medium text-[#1C1C1C]">Added Certifications</h4>
                 <div className="grid gap-4">
                   {certificates.map((cert) => (
                     <div key={cert.id} className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden">
                       <div className="bg-[#F9FAFB] px-4 py-2 flex justify-between items-center border-b border-[#E5E7EB]">
-                        <span className="text-xs font-extrabold text-[#4A4A4A] uppercase tracking-wider">
+                        <span className="text-xs font-medium text-[#4A4A4A] uppercase tracking-wider">
                           {cert.displayLabel}
                         </span>
                         <button 
@@ -559,7 +559,7 @@ const MentorProfile: React.FC = () => {
       {/* Step 4: Availability and Engagement Preferences */}
       {step === 4 && (
         <>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#1C1C1C] font-['Nunito_Sans'] mb-8">
+          <h1 className="text-xl sm:text-2xl font-medium text-[#1C1C1C]  mb-8">
             Availability and Engagement Preferences
           </h1>
 
@@ -633,7 +633,7 @@ const MentorProfile: React.FC = () => {
             {/* Regional Equity Pricing Toggle */}
             <div>
               <div className="flex items-center gap-3 mb-1.5">
-                <span className="text-sm font-semibold text-[#374151]">Regional Equity Pricing</span>
+                <span className="text-sm font-medium text-[#374151]">Regional Equity Pricing</span>
                 <button
                   type="button"
                   onClick={() => setAvailabilityInfo(prev => ({ ...prev, regionalEquityPricing: !prev.regionalEquityPricing }))}
@@ -675,7 +675,7 @@ const MentorProfile: React.FC = () => {
       {/* Step 5: Teach at Scale */}
       {step === 5 && (
         <>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#1C1C1C] font-['Nunito_Sans'] mb-2">
+          <h1 className="text-xl sm:text-2xl font-medium text-[#1C1C1C]  mb-2">
             Teach at Scale, On your Terms
           </h1>
 
@@ -685,7 +685,7 @@ const MentorProfile: React.FC = () => {
             </p>
 
             <div>
-              <h3 className="text-sm font-bold text-[#1C1C1C] mb-2">Courses help candidates:</h3>
+              <h3 className="text-sm font-medium text-[#1C1C1C] mb-2">Courses help candidates:</h3>
               <ul className="space-y-1.5 text-sm text-[#374151]">
                 <li className="flex items-start gap-2">
                   <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#374151] flex-shrink-0"></span>
@@ -703,7 +703,7 @@ const MentorProfile: React.FC = () => {
             </div>
 
             <div>
-              <h3 className="text-sm font-bold text-[#1C1C1C] mb-2">You will decide:</h3>
+              <h3 className="text-sm font-medium text-[#1C1C1C] mb-2">You will decide:</h3>
               <ul className="space-y-1.5 text-sm text-[#374151]">
                 <li className="flex items-start gap-2">
                   <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#374151] flex-shrink-0"></span>

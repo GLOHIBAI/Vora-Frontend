@@ -47,7 +47,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
   return (
     <div className="w-full" ref={containerRef}>
-      <label className="block text-sm font-semibold text-[#374151] mb-2.5">
+      <label className="block text-sm font-medium text-[#374151] mb-2.5">
         {label}
       </label>
       <div className="relative">
@@ -83,7 +83,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                   key={option.value}
                   type="button"
                   onClick={() => handleSelect(option.value, option.label)}
-                  className={`w-full text-left px-4 py-2.5 text-sm rounded-lg transition-colors cursor-pointer mb-0.5 last:mb-0 ${option.value === value ? 'bg-[#0047CC] text-white font-semibold' : 'text-[#374151] hover:bg-gray-100'}`}
+                  className={`w-full text-left px-4 py-2.5 text-sm rounded-lg transition-colors cursor-pointer mb-0.5 last:mb-0 ${option.value === value ? 'bg-[#0047CC] text-white font-medium' : 'text-[#374151] hover:bg-gray-100'}`}
                 >
                   {option.label}
                 </button>

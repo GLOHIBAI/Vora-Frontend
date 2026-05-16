@@ -38,7 +38,7 @@ const App = () => {
           <Route path="/jobs/:id/alignment/:candidateId" element={<DashboardLayout><FinalAlignmentSession /></DashboardLayout>} />
           <Route path="/talents" element={<DashboardLayout><Talents /></DashboardLayout>} />
           <Route path="/talents/:id" element={<DashboardLayout><TalentProfile /></DashboardLayout>} />
-          <Route path="/payments" element={<DashboardLayout><div className="text-center py-20 text-gray-500 text-lg font-bold">Payments Page (Coming Soon)</div></DashboardLayout>} />
+          <Route path="/payments" element={<DashboardLayout><div className="text-center py-20 text-gray-500 text-lg font-medium">Payments Page (Coming Soon)</div></DashboardLayout>} />
 
           {/* Auth Routes */}
           <Route path="/signup" element={<Signup />} />

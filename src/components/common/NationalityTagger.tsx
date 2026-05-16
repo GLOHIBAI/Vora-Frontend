@@ -52,7 +52,7 @@ const NationalityTagger: React.FC<NationalityTaggerProps> = ({
     return (
       <>
         {text.slice(0, idx)}
-        <strong className="text-[#0047CC] font-bold">{text.slice(idx, idx + q.length)}</strong>
+        <strong className="text-[#0047CC] font-medium">{text.slice(idx, idx + q.length)}</strong>
         {text.slice(idx + q.length)}
       </>
     );
@@ -60,7 +60,7 @@ const NationalityTagger: React.FC<NationalityTaggerProps> = ({
 
   return (
     <div className="w-full" ref={containerRef}>
-      <label className="block text-sm font-semibold text-text-secondary mb-2.5">
+      <label className="block text-sm font-medium text-text-secondary mb-2.5">
         {label}
       </label>
       {hint && (
@@ -73,18 +73,18 @@ const NationalityTagger: React.FC<NationalityTaggerProps> = ({
           {selected.map((nat, idx) => (
             <span
               key={nat}
-              className="inline-flex items-center gap-1.5 bg-white text-[#0047CC] border border-[#0047CC] text-xs font-bold px-3 py-1.5 rounded-full"
+              className="inline-flex items-center gap-1.5 bg-white text-[#0047CC] border border-[#0047CC] text-xs font-medium px-3 py-1.5 rounded-full"
             >
               <span className="overflow-hidden text-ellipsis whitespace-nowrap max-w-[200px]">
                 {nat}
               </span>
               {idx === 0 && (
-                <span className="text-[10px] opacity-60 font-semibold">(primary)</span>
+                <span className="text-[10px] opacity-60 font-medium">(primary)</span>
               )}
               <button
                 type="button"
                 onClick={() => removeNationality(nat)}
-                className="text-[#0047CC] cursor-pointer text-sm font-bold leading-none"
+                className="text-[#0047CC] cursor-pointer text-sm font-medium leading-none"
                 title="Remove"
               >
                 ×

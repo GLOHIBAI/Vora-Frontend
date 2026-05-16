@@ -59,7 +59,7 @@ const EditRoleModal: React.FC<EditRoleModalProps> = ({ isOpen, onClose, initialD
       <div className="relative bg-white w-full max-w-2xl rounded-[24px] shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-300">
         {/* Header */}
         <div className="px-8 py-6 flex items-center justify-between border-b border-gray-50">
-          <h2 className="text-[18px] font-bold text-gray-900 font-['Nunito_Sans']">Edit Role Details</h2>
+          <h2 className="text-[18px] font-medium text-gray-900 ">Edit Role Details</h2>
           <button 
             onClick={onClose}
             className="p-2 hover:bg-gray-50 rounded-full transition-colors text-gray-400 hover:text-gray-600 cursor-pointer"
@@ -73,7 +73,7 @@ const EditRoleModal: React.FC<EditRoleModalProps> = ({ isOpen, onClose, initialD
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
             {/* Role Title */}
             <div className="space-y-2">
-              <label className="text-[13px] font-bold text-gray-900">Role title</label>
+              <label className="text-[13px] font-medium text-gray-900">Role title</label>
               <input 
                 type="text" 
                 placeholder="e.g. Global Health Research Intern"
@@ -104,7 +104,7 @@ const EditRoleModal: React.FC<EditRoleModalProps> = ({ isOpen, onClose, initialD
 
             {/* Available Positions */}
             <div className="space-y-2">
-              <label className="text-[13px] font-bold text-gray-900">Available positions</label>
+              <label className="text-[13px] font-medium text-gray-900">Available positions</label>
               <input 
                 type="text" 
                 placeholder="e.g. 1, 2, 3 etc"
@@ -114,7 +114,7 @@ const EditRoleModal: React.FC<EditRoleModalProps> = ({ isOpen, onClose, initialD
 
             {/* Time Commitment */}
             <div className="space-y-2">
-              <label className="text-[13px] font-bold text-gray-900">Time commitment</label>
+              <label className="text-[13px] font-medium text-gray-900">Time commitment</label>
               <input 
                 type="text" 
                 placeholder="e.g. 20hrs per week"
@@ -154,7 +154,7 @@ const EditRoleModal: React.FC<EditRoleModalProps> = ({ isOpen, onClose, initialD
 
             {/* Start date */}
             <div className="space-y-2">
-              <label className="text-[13px] font-bold text-gray-900">Start date</label>
+              <label className="text-[13px] font-medium text-gray-900">Start date</label>
               <input 
                 type="text" 
                 placeholder="Select date"
@@ -166,7 +166,7 @@ const EditRoleModal: React.FC<EditRoleModalProps> = ({ isOpen, onClose, initialD
 
             {/* End date */}
             <div className="space-y-2">
-              <label className="text-[13px] font-bold text-gray-900">End date</label>
+              <label className="text-[13px] font-medium text-gray-900">End date</label>
               <input 
                 type="text" 
                 placeholder="End date"
@@ -178,7 +178,7 @@ const EditRoleModal: React.FC<EditRoleModalProps> = ({ isOpen, onClose, initialD
 
             {/* Role summary */}
             <div className="col-span-2 space-y-2 pt-2">
-              <label className="text-[13px] font-bold text-gray-900">Role summary</label>
+              <label className="text-[13px] font-medium text-gray-900">Role summary</label>
               <textarea 
                 rows={4}
                 placeholder="Briefly describe what the role is about"
@@ -192,7 +192,7 @@ const EditRoleModal: React.FC<EditRoleModalProps> = ({ isOpen, onClose, initialD
         <div className="px-8 py-8">
           <button 
             onClick={onClose}
-            className="w-full py-4 bg-[#0047CC] text-white rounded-full text-[15px] font-bold hover:bg-[#003d99] transition-all shadow-lg shadow-blue-500/20 cursor-pointer active:scale-[0.98]"
+            className="w-full py-4 bg-[#0047CC] text-white rounded-full text-[15px] font-medium hover:bg-[#003d99] transition-all shadow-lg shadow-blue-500/20 cursor-pointer active:scale-[0.98]"
           >
             Confirm
           </button>

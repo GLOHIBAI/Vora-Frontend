@@ -173,13 +173,13 @@ const TalentOnboarding: React.FC = () => {
             <button
               type="button"
               onClick={() => setStep(1)}
-              className="flex items-center gap-1 text-sm font-bold text-[#6B7280] hover:text-[#0047CC] transition-colors cursor-pointer group"
+              className="flex items-center gap-1 text-sm font-medium text-[#6B7280] hover:text-[#0047CC] transition-colors cursor-pointer group"
             >
               <ChevronLeftIcon className="transition-transform group-hover:-translate-x-0.5" />
               Back
             </button>
           )}
-          <span className="text-sm font-bold text-[#1C1C1C]">{step}/2</span>
+          <span className="text-sm font-medium text-[#1C1C1C]">{step}/2</span>
         </div>
         <div className="flex gap-1 w-full h-1.5">
           <div className={`flex-1 h-full rounded-full transition-all duration-500 ${step >= 1 ? 'bg-[#0047CC]' : 'bg-[#F3F4F6]'}`} />
@@ -188,7 +188,7 @@ const TalentOnboarding: React.FC = () => {
       </div>
 
       <div className="text-center mb-10">
-        <h1 className="text-2xl sm:text-[26px] font-extrabold mb-2 text-[#1A1A1A] leading-[32px] tracking-tight font-['Nunito_Sans']">
+        <h1 className="text-2xl sm:text-[26px] font-medium mb-2 text-[#1A1A1A] leading-[32px] tracking-tight ">
           Let's personalise your experience
         </h1>
         <p className="text-[#808080] text-sm sm:text-base max-w-md mx-auto leading-relaxed">
@@ -272,7 +272,7 @@ const TalentOnboarding: React.FC = () => {
             <div className="border-t border-[#E6E6E6] mt-3 pt-6">
               <div className="flex items-center gap-2 mb-1">
                 <ShieldIcon stroke="#0047CC" />
-                <h2 className="text-base font-extrabold text-[#1A1A1A]">Work authorisation</h2>
+                <h2 className="text-base font-medium text-[#1A1A1A]">Work authorisation</h2>
               </div>
               <p className="text-[13px] text-[#808080] leading-relaxed mb-6">
                 VORA uses this to match you <em>only</em> to roles you are legally eligible to work in. Your work authorisation is verified against IP data and identity documents before any match is confirmed. False declarations result in a <strong className="text-red-600">permanent ban</strong> with no right of appeal.
@@ -328,7 +328,7 @@ const TalentOnboarding: React.FC = () => {
             {/* Study permit sub-panel */}
             {showStudyPanel && (
               <div className="bg-[#F7F7F7] border border-[#E6E6E6] rounded-xl p-4 space-y-3.5">
-                <p className="text-[13px] font-bold text-[#4A4A4A]">Study permit details</p>
+                <p className="text-[13px] font-medium text-[#4A4A4A]">Study permit details</p>
                 <Input
                   label="Study permit / student visa type"
                   name="studyPermitType"
@@ -354,23 +354,23 @@ const TalentOnboarding: React.FC = () => {
                 {/* Per-country study hours table */}
                 {studyHoursData && (
                   <div className="mt-2">
-                    <p className="text-[11px] font-extrabold text-[#4A4A4A] uppercase tracking-wider mb-1.5">
+                    <p className="text-[11px] font-medium text-[#4A4A4A] uppercase tracking-wider mb-1.5">
                       Permitted working hours in your country of study
                     </p>
                     <div className="overflow-x-auto custom-scrollbar">
                       <table className="w-full text-xs border-collapse">
                         <thead>
                           <tr>
-                            <th className="text-left py-1.5 px-2 bg-[#E6E6E6] text-[#4A4A4A] font-extrabold text-[11px] uppercase tracking-wider rounded-tl-md">Country</th>
-                            <th className="text-left py-1.5 px-2 bg-[#E6E6E6] text-[#4A4A4A] font-extrabold text-[11px] uppercase tracking-wider">Term time</th>
-                            <th className="text-left py-1.5 px-2 bg-[#E6E6E6] text-[#4A4A4A] font-extrabold text-[11px] uppercase tracking-wider rounded-tr-md">Holidays</th>
+                            <th className="text-left py-1.5 px-2 bg-[#E6E6E6] text-[#4A4A4A] font-medium text-[11px] uppercase tracking-wider rounded-tl-md">Country</th>
+                            <th className="text-left py-1.5 px-2 bg-[#E6E6E6] text-[#4A4A4A] font-medium text-[11px] uppercase tracking-wider">Term time</th>
+                            <th className="text-left py-1.5 px-2 bg-[#E6E6E6] text-[#4A4A4A] font-medium text-[11px] uppercase tracking-wider rounded-tr-md">Holidays</th>
                           </tr>
                         </thead>
                         <tbody>
                           <tr>
                             <td className="py-2 px-2 border-b border-[#E6E6E6] text-[#4A4A4A]">{studyCountry}</td>
                             <td className="py-2 px-2 border-b border-[#E6E6E6]">
-                              <span className="inline-block bg-[#F5F3FF] border border-[#DDD6FE] text-[#4C1D95] rounded px-1.5 py-0.5 text-[11px] font-extrabold">
+                              <span className="inline-block bg-[#F5F3FF] border border-[#DDD6FE] text-[#4C1D95] rounded px-1.5 py-0.5 text-[11px] font-medium">
                                 {studyHoursData.term}
                               </span>
                             </td>
@@ -414,7 +414,7 @@ const TalentOnboarding: React.FC = () => {
             {/* Work permit sub-panel */}
             {showPermitPanel && (
               <div className="bg-[#F7F7F7] border border-[#E6E6E6] rounded-xl p-4 space-y-3.5">
-                <p className="text-[13px] font-bold text-[#4A4A4A]">Permit details</p>
+                <p className="text-[13px] font-medium text-[#4A4A4A]">Permit details</p>
                 <Input
                   label="Permit / visa type"
                   name="permitType"
@@ -445,7 +445,7 @@ const TalentOnboarding: React.FC = () => {
             {/* PR / ILR sub-panel */}
             {showPRPanel && (
               <div className="bg-[#F7F7F7] border border-[#E6E6E6] rounded-xl p-4 space-y-3.5">
-                <p className="text-[13px] font-bold text-[#4A4A4A]">Permanent status details</p>
+                <p className="text-[13px] font-medium text-[#4A4A4A]">Permanent status details</p>
                 <Input
                   label="Status type"
                   name="prType"

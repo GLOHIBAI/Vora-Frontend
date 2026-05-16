@@ -22,7 +22,7 @@ const QuickActionCard: React.FC<QuickActionCardProps> = ({
         : 'bg-white text-gray-900'}
     `}>
       <div className="flex-1">
-        <h3 className={`text-[17px] font-bold leading-tight mb-4 ${isPrimary ? 'text-white' : 'text-gray-800'}`}>
+        <h3 className={`text-[17px] font-medium leading-tight mb-4 ${isPrimary ? 'text-white' : 'text-gray-800'}`}>
           {title}
         </h3>
         <p className={`text-[13px] leading-relaxed mb-6 ${isPrimary ? 'text-blue-50' : 'text-gray-400 font-medium'}`}>
@@ -37,7 +37,7 @@ const QuickActionCard: React.FC<QuickActionCardProps> = ({
           disabled={isLocked}
           fullWidth={false}
           className={`
-            flex items-center gap-1.5 text-[13px] font-bold transition-all group hover:bg-transparent
+            flex items-center gap-1.5 text-[13px] font-medium transition-all group hover:bg-transparent
             ${isPrimary ? 'text-white hover:text-white' : isLocked ? 'text-gray-300' : 'text-[#0047CC]'}
           `}
         >

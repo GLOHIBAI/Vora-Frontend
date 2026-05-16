@@ -191,7 +191,7 @@ const EmployerOnboarding: React.FC = () => {
       {/* Progress Bar */}
       <div className="mb-10">
         <div className="flex items-center mb-3">
-          <span className="text-sm font-bold text-[#1C1C1C]">Step {step} of {TOTAL_STEPS}</span>
+          <span className="text-sm font-medium text-[#1C1C1C]">Step {step} of {TOTAL_STEPS}</span>
         </div>
         <div className="flex gap-2 w-full h-1.5">
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
@@ -206,7 +206,7 @@ const EmployerOnboarding: React.FC = () => {
       {/* Step 1: Tell us about your organization */}
       {step === 1 && (
         <>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#1C1C1C] font-['Nunito_Sans'] mb-8">
+          <h1 className="text-xl sm:text-2xl font-medium text-[#1C1C1C]  mb-8">
             Tell us about your organization
           </h1>
 
@@ -287,7 +287,7 @@ const EmployerOnboarding: React.FC = () => {
       {/* Step 2: Workforce Model */}
       {step === 2 && (
         <>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#1C1C1C] font-['Nunito_Sans'] mb-8">
+          <h1 className="text-xl sm:text-2xl font-medium text-[#1C1C1C]  mb-8">
             Workforce Model
           </h1>
 
@@ -337,7 +337,7 @@ const EmployerOnboarding: React.FC = () => {
       {/* Step 3: Regulatory and professional standards */}
       {step === 3 && (
         <>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#1C1C1C] font-['Nunito_Sans'] mb-8">
+          <h1 className="text-xl sm:text-2xl font-medium text-[#1C1C1C]  mb-8">
             Regulatory and professional standards
           </h1>
 
@@ -413,17 +413,17 @@ const EmployerOnboarding: React.FC = () => {
       {/* Step 4: Hiring Priority */}
       {step === 4 && (
         <>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#1C1C1C] font-['Nunito_Sans'] mb-2">
+          <h1 className="text-xl sm:text-2xl font-medium text-[#1C1C1C]  mb-2">
             Hiring Priority
           </h1>
-          <p className="text-sm text-[#6B7280] mb-8 font-['Nunito_Sans']">
+          <p className="text-sm text-[#6B7280] mb-8 ">
             Rank in order of importance
           </p>
 
           <form onSubmit={handleNext} className="space-y-8" autoComplete="off">
             {/* Pool of options */}
             <div className="space-y-4">
-              <label className="text-sm font-semibold text-[#374151]">
+              <label className="text-sm font-medium text-[#374151]">
                 Select priorities to rank
               </label>
               <div className="flex flex-wrap gap-2">
@@ -482,7 +482,7 @@ const EmployerOnboarding: React.FC = () => {
             {/* Ranked list */}
             {hiringPriority.length > 0 && (
               <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
-                <label className="text-sm font-semibold text-[#374151]">
+                <label className="text-sm font-medium text-[#374151]">
                   Ranked Order (1 is highest)
                 </label>
                 <div className="space-y-3">
@@ -492,7 +492,7 @@ const EmployerOnboarding: React.FC = () => {
                       className="flex items-center justify-between px-4 py-3.5 bg-white border border-[#E5E7EB] rounded-lg group hover:border-[#0047CC] transition-all"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-6 h-6 rounded-full bg-[#ebf5ff] text-[#0047CC] text-xs font-bold flex items-center justify-center">
+                        <div className="w-6 h-6 rounded-full bg-[#ebf5ff] text-[#0047CC] text-xs font-medium flex items-center justify-center">
                           {index + 1}
                         </div>
                         <span className="text-sm font-medium text-[#374151]">{item}</span>
@@ -564,7 +564,7 @@ const EmployerOnboarding: React.FC = () => {
       {/* Step 5: How should VORA match professionals to you? */}
       {step === 5 && (
         <>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#1C1C1C] font-['Nunito_Sans'] mb-8">
+          <h1 className="text-xl sm:text-2xl font-medium text-[#1C1C1C]  mb-8">
             How should VORA match professionals to you?
           </h1>
 

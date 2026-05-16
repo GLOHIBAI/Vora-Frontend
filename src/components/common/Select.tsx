@@ -68,7 +68,7 @@ const Select: React.FC<SelectProps> = ({
       onClick={() => handleSelect(option.value)}
       className={`w-full text-left px-4 py-3 text-sm rounded-lg transition-colors cursor-pointer mb-0.5 last:mb-0 ${
         option.value === value
-          ? 'bg-[#0047CC] text-white font-semibold'
+          ? 'bg-[#0047CC] text-white font-medium'
           : option.italic
             ? 'text-[#808080] italic hover:bg-gray-50'
             : 'text-[#374151] hover:bg-gray-50'
@@ -80,7 +80,7 @@ const Select: React.FC<SelectProps> = ({
 
   return (
     <div className="w-full" ref={containerRef}>
-      <label className="block text-sm font-semibold text-text-secondary mb-2.5">
+      <label className="block text-sm font-medium text-text-secondary mb-2.5">
         {label}
       </label>
       <div className="relative">
@@ -105,7 +105,7 @@ const Select: React.FC<SelectProps> = ({
                   {gIdx > 0 && (
                     <div className="h-px bg-[#E6E6E6] my-1" />
                   )}
-                  <div className="px-4 py-2 text-[11px] font-extrabold text-[#ADADAD] uppercase tracking-wider">
+                  <div className="px-4 py-2 text-[11px] font-medium text-[#ADADAD] uppercase tracking-wider">
                     {group.label}
                   </div>
                   {group.options.map(renderOption)}

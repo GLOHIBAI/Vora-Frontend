@@ -11,10 +11,10 @@ const MentorApply: React.FC = () => {
 
   return (
     <div className="max-w-2xl mx-auto py-12 sm:py-16 px-4 sm:px-6">
-      <h1 className="text-2xl sm:text-[28px] font-bold text-[#1C1C1C] leading-[36px] tracking-[-1%] font-['Nunito_Sans'] mb-2">
+      <h1 className="text-2xl sm:text-[28px] font-medium text-[#1C1C1C] leading-[36px] tracking-[-1%]  mb-2">
         Welcome to VORA,
       </h1>
-      <h2 className="text-lg sm:text-xl font-bold text-[#1C1C1C] font-['Nunito_Sans'] mb-8">
+      <h2 className="text-lg sm:text-xl font-medium text-[#1C1C1C]  mb-8">
         Let's set up your mentor profile
       </h2>
 
@@ -31,7 +31,7 @@ const MentorApply: React.FC = () => {
       </div>
 
       <div className="mb-8">
-        <h3 className="text-base font-bold text-[#1C1C1C] font-['Nunito_Sans'] mb-3">
+        <h3 className="text-base font-medium text-[#1C1C1C]  mb-3">
           What You'll Do
         </h3>
         <ul className="space-y-2 text-sm text-[#374151] leading-relaxed">
@@ -51,7 +51,7 @@ const MentorApply: React.FC = () => {
       </div>
 
       <div className="mb-12">
-        <h3 className="text-base font-bold text-[#1C1C1C] font-['Nunito_Sans'] mb-3">
+        <h3 className="text-base font-medium text-[#1C1C1C]  mb-3">
           What You'll Get
         </h3>
         <ul className="space-y-2 text-sm text-[#374151] leading-relaxed">

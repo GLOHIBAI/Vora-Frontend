@@ -109,7 +109,7 @@ const TabSlider: React.FC<TabSliderProps> = ({ tabs, activeTab, onTabChange, ren
             key={tab}
             onClick={() => !hasMoved && onTabChange(tab)}
             onDragStart={(e) => e.preventDefault()}
-            className={`pb-4 px-5 text-[13px] font-bold transition-all relative whitespace-nowrap flex items-center gap-2 pointer-events-auto ${
+            className={`pb-4 px-5 text-[13px] font-medium transition-all relative whitespace-nowrap flex items-center gap-2 pointer-events-auto ${
               activeTab === tab ? 'text-[#0047CC]' : 'text-gray-400 hover:text-gray-600'
             }`}
           >

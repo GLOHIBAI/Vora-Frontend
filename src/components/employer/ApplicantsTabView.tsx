@@ -32,9 +32,9 @@ const AccordionItem: React.FC<{
           <Icon size={18} />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[16px] font-black text-gray-900 font-['Nunito_Sans'] tracking-tight">{title}</span>
+          <span className="text-[16px] font-medium text-gray-900  tracking-tight">{title}</span>
           {count !== undefined && (
-            <span className="bg-[#F7F7F7] text-gray-500 text-[11px] font-black px-2 py-0.5 rounded-full border border-gray-200">
+            <span className="bg-[#F7F7F7] text-gray-500 text-[11px] font-medium px-2 py-0.5 rounded-full border border-gray-200">
               {count}
             </span>
           )}
@@ -75,9 +75,9 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ onHire }) => {
           { label: 'TOP CANDIDATE', value: 'APP-VORA-008', sub: 'Overall score 92%', icon: CheckIcon, color: 'text-[#0047CC]' }
         ].map((stat, i) => (
           <div key={i} className="bg-white border border-gray-100 rounded-[14px] p-5 shadow-sm">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">{stat.label}</p>
-            <p className={`text-[24px] font-black ${stat.color} leading-none mb-1`}>{stat.value}</p>
-            <p className="text-[11px] font-bold text-gray-400">{stat.sub}</p>
+            <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mb-3">{stat.label}</p>
+            <p className={`text-[24px] font-medium ${stat.color} leading-none mb-1`}>{stat.value}</p>
+            <p className="text-[11px] font-medium text-gray-400">{stat.sub}</p>
           </div>
         ))}
       </div>
@@ -95,17 +95,17 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ onHire }) => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-[13px] font-black text-gray-900 uppercase tracking-tight">Geo Distribution</h4>
+                  <h4 className="text-[13px] font-medium text-gray-900 uppercase tracking-tight">Geo Distribution</h4>
                 </div>
                 <div className="h-48 bg-gray-50 rounded-xl flex items-center justify-center border border-dashed border-gray-200">
                   <div className="text-center">
                     <LocationIcon size={32} className="text-gray-300 mx-auto mb-2" />
-                    <p className="text-[12px] font-bold text-gray-400">Interactive Map Visualization</p>
+                    <p className="text-[12px] font-medium text-gray-400">Interactive Map Visualization</p>
                   </div>
                 </div>
               </div>
               <div className="space-y-4">
-                <h4 className="text-[13px] font-black text-gray-900 uppercase tracking-tight">Top Countries</h4>
+                <h4 className="text-[13px] font-medium text-gray-900 uppercase tracking-tight">Top Countries</h4>
                 <div className="space-y-3">
                   {[
                     { name: 'Nigeria', count: 3, percentage: 37 },
@@ -113,7 +113,7 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ onHire }) => {
                     { name: 'Ethiopia', count: 1, percentage: 12 },
                   ].map((c, i) => (
                     <div key={i} className="space-y-1">
-                      <div className="flex justify-between text-[12px] font-bold">
+                      <div className="flex justify-between text-[12px] font-medium">
                         <span className="text-gray-700">{c.name}</span>
                         <span className="text-gray-400">{c.count} app(s)</span>
                       </div>
@@ -129,25 +129,25 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ onHire }) => {
             <div className="overflow-x-auto -mx-6 px-6">
               <table className="w-full text-left">
                 <thead>
-                  <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50">
-                    <th className="pb-4 font-black">Applicant ID</th>
-                    <th className="pb-4 font-black">Qualification</th>
-                    <th className="pb-4 font-black">Location</th>
-                    <th className="pb-4 font-black">Specialization</th>
-                    <th className="pb-4 font-black">Applied On</th>
-                    <th className="pb-4 font-black text-right">Overall Status</th>
+                  <tr className="text-[10px] font-medium text-gray-400 uppercase tracking-widest border-b border-gray-50">
+                    <th className="pb-4 font-medium">Applicant ID</th>
+                    <th className="pb-4 font-medium">Qualification</th>
+                    <th className="pb-4 font-medium">Location</th>
+                    <th className="pb-4 font-medium">Specialization</th>
+                    <th className="pb-4 font-medium">Applied On</th>
+                    <th className="pb-4 font-medium text-right">Overall Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {SAMPLE_APPLICANTS.map((applicant, i) => (
                     <tr key={i} className="group hover:bg-gray-50/50 transition-colors">
                       <td className="py-4">
-                        <span className="text-[14px] font-black text-gray-900 group-hover:text-[#0047CC] transition-colors">{applicant.id}</span>
+                        <span className="text-[14px] font-medium text-gray-900 group-hover:text-[#0047CC] transition-colors">{applicant.id}</span>
                       </td>
-                      <td className="py-4 text-[13px] font-bold text-gray-500">{applicant.academicLevel}</td>
-                      <td className="py-4 text-[13px] font-bold text-gray-500">{applicant.location}</td>
-                      <td className="py-4 text-[13px] font-bold text-gray-500">{applicant.course}</td>
-                      <td className="py-4 text-[13px] font-bold text-gray-500">{applicant.dateApplied}</td>
+                      <td className="py-4 text-[13px] font-medium text-gray-500">{applicant.academicLevel}</td>
+                      <td className="py-4 text-[13px] font-medium text-gray-500">{applicant.location}</td>
+                      <td className="py-4 text-[13px] font-medium text-gray-500">{applicant.course}</td>
+                      <td className="py-4 text-[13px] font-medium text-gray-500">{applicant.dateApplied}</td>
                       <td className="py-4 text-right">
                         <Tag 
                           label={applicant.status} 
@@ -173,24 +173,24 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ onHire }) => {
           <div className="overflow-x-auto -mx-6 px-6">
             <table className="w-full text-left">
               <thead>
-                <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50">
-                  <th className="pb-4 font-black">Applicant ID</th>
-                  <th className="pb-4 font-black">Critical Thinking</th>
-                  <th className="pb-4 font-black">Numerical Reasoning</th>
-                  <th className="pb-4 font-black">Verbal Reasoning</th>
-                  <th className="pb-4 font-black text-right">Final Score</th>
+                <tr className="text-[10px] font-medium text-gray-400 uppercase tracking-widest border-b border-gray-50">
+                  <th className="pb-4 font-medium">Applicant ID</th>
+                  <th className="pb-4 font-medium">Critical Thinking</th>
+                  <th className="pb-4 font-medium">Numerical Reasoning</th>
+                  <th className="pb-4 font-medium">Verbal Reasoning</th>
+                  <th className="pb-4 font-medium text-right">Final Score</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {SAMPLE_APPLICANTS.map((applicant, i) => (
                   <tr key={i} className="group">
-                    <td className="py-4 text-[14px] font-black text-gray-900">{applicant.id}</td>
+                    <td className="py-4 text-[14px] font-medium text-gray-900">{applicant.id}</td>
                     <td className="py-4">
                       <div className="flex items-center gap-2">
                         <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div className="h-full bg-blue-400" style={{ width: `${applicant.psych || 0}%` }} />
                         </div>
-                        <span className="text-[12px] font-bold text-gray-500">{applicant.psych || 0}%</span>
+                        <span className="text-[12px] font-medium text-gray-500">{applicant.psych || 0}%</span>
                       </div>
                     </td>
                     <td className="py-4">
@@ -198,7 +198,7 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ onHire }) => {
                         <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div className="h-full bg-indigo-400" style={{ width: `${(applicant.psych || 0) - 5}%` }} />
                         </div>
-                        <span className="text-[12px] font-bold text-gray-500">{(applicant.psych || 0) - 5}%</span>
+                        <span className="text-[12px] font-medium text-gray-500">{(applicant.psych || 0) - 5}%</span>
                       </div>
                     </td>
                     <td className="py-4">
@@ -206,11 +206,11 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ onHire }) => {
                         <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div className="h-full bg-purple-400" style={{ width: `${(applicant.psych || 0) + 2}%` }} />
                         </div>
-                        <span className="text-[12px] font-bold text-gray-500">{(applicant.psych || 0) + 2}%</span>
+                        <span className="text-[12px] font-medium text-gray-500">{(applicant.psych || 0) + 2}%</span>
                       </div>
                     </td>
                     <td className="py-4 text-right">
-                      <span className={`text-[14px] font-black ${applicant.psych && applicant.psych > 70 ? 'text-green-600' : 'text-red-600'}`}>
+                      <span className={`text-[14px] font-medium ${applicant.psych && applicant.psych > 70 ? 'text-green-600' : 'text-red-600'}`}>
                         {applicant.psych || '--'}%
                       </span>
                     </td>
@@ -231,24 +231,24 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ onHire }) => {
           <div className="overflow-x-auto -mx-6 px-6">
             <table className="w-full text-left">
               <thead>
-                <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50">
-                  <th className="pb-4 font-black">Applicant ID</th>
-                  <th className="pb-4 font-black">Field Safety</th>
-                  <th className="pb-4 font-black">Ethical Decision Making</th>
-                  <th className="pb-4 font-black">Crisis Management</th>
-                  <th className="pb-4 font-black text-right">Final Score</th>
+                <tr className="text-[10px] font-medium text-gray-400 uppercase tracking-widest border-b border-gray-50">
+                  <th className="pb-4 font-medium">Applicant ID</th>
+                  <th className="pb-4 font-medium">Field Safety</th>
+                  <th className="pb-4 font-medium">Ethical Decision Making</th>
+                  <th className="pb-4 font-medium">Crisis Management</th>
+                  <th className="pb-4 font-medium text-right">Final Score</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {SAMPLE_APPLICANTS.map((applicant, i) => (
                   <tr key={i} className="group">
-                    <td className="py-4 text-[14px] font-black text-gray-900">{applicant.id}</td>
+                    <td className="py-4 text-[14px] font-medium text-gray-900">{applicant.id}</td>
                     <td className="py-4">
                       <div className="flex items-center gap-2">
                         <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div className="h-full bg-orange-400" style={{ width: `${applicant.sjt || 0}%` }} />
                         </div>
-                        <span className="text-[12px] font-bold text-gray-500">{applicant.sjt || 0}%</span>
+                        <span className="text-[12px] font-medium text-gray-500">{applicant.sjt || 0}%</span>
                       </div>
                     </td>
                     <td className="py-4">
@@ -256,7 +256,7 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ onHire }) => {
                         <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div className="h-full bg-amber-400" style={{ width: `${(applicant.sjt || 0) + 4}%` }} />
                         </div>
-                        <span className="text-[12px] font-bold text-gray-500">{(applicant.sjt || 0) + 4}%</span>
+                        <span className="text-[12px] font-medium text-gray-500">{(applicant.sjt || 0) + 4}%</span>
                       </div>
                     </td>
                     <td className="py-4">
@@ -264,11 +264,11 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ onHire }) => {
                         <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div className="h-full bg-yellow-400" style={{ width: `${(applicant.sjt || 0) - 2}%` }} />
                         </div>
-                        <span className="text-[12px] font-bold text-gray-500">{(applicant.sjt || 0) - 2}%</span>
+                        <span className="text-[12px] font-medium text-gray-500">{(applicant.sjt || 0) - 2}%</span>
                       </div>
                     </td>
                     <td className="py-4 text-right">
-                      <span className={`text-[14px] font-black ${applicant.sjt && applicant.sjt > 70 ? 'text-green-600' : 'text-red-600'}`}>
+                      <span className={`text-[14px] font-medium ${applicant.sjt && applicant.sjt > 70 ? 'text-green-600' : 'text-red-600'}`}>
                         {applicant.sjt || '--'}%
                       </span>
                     </td>
@@ -298,10 +298,10 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ onHire }) => {
                   </div>
                   <div className="absolute bottom-4 left-4 right-4 z-20 flex justify-between items-end">
                     <div>
-                      <p className="text-white text-[12px] font-black tracking-tight">{applicant.id}</p>
-                      <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest">Video Response</p>
+                      <p className="text-white text-[12px] font-medium tracking-tight">{applicant.id}</p>
+                      <p className="text-white/70 text-[10px] font-medium uppercase tracking-widest">Video Response</p>
                     </div>
-                    <div className="bg-green-500 text-white text-[11px] font-black px-2 py-0.5 rounded-lg shadow-md">
+                    <div className="bg-green-500 text-white text-[11px] font-medium px-2 py-0.5 rounded-lg shadow-md">
                       {applicant.video}%
                     </div>
                   </div>
@@ -316,8 +316,8 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ onHire }) => {
       <div className="bg-[#EBF6FF]/50 border border-[#387DFF]/10 rounded-2xl p-8 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-[18px] font-black text-[#0047CC] tracking-tight">VORA AI Recommendation</h3>
-            <p className="text-[13px] font-bold text-[#387DFF]/70">Top 3 candidates based on cross-sectional performance metrics</p>
+            <h3 className="text-[18px] font-medium text-[#0047CC] tracking-tight">VORA AI Recommendation</h3>
+            <p className="text-[13px] font-medium text-[#387DFF]/70">Top 3 candidates based on cross-sectional performance metrics</p>
           </div>
           <Tag label="AUTO-GENERATED" variant="blue" />
         </div>
@@ -326,25 +326,25 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ onHire }) => {
           {topCandidates.map((candidate, i) => (
             <div key={i} className="bg-white p-6 rounded-xl border border-[#387DFF]/10 shadow-sm relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-3">
-                <div className="text-[24px] font-black text-[#0047CC]/10 group-hover:text-[#0047CC]/20 transition-colors">#{i + 1}</div>
+                <div className="text-[24px] font-medium text-[#0047CC]/10 group-hover:text-[#0047CC]/20 transition-colors">#{i + 1}</div>
               </div>
               <div className="space-y-4">
                 <div>
-                  <p className="text-[14px] font-black text-gray-900">{candidate.id}</p>
-                  <p className="text-[12px] font-bold text-gray-400">{candidate.location}</p>
+                  <p className="text-[14px] font-medium text-gray-900">{candidate.id}</p>
+                  <p className="text-[12px] font-medium text-gray-400">{candidate.location}</p>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="flex-1 space-y-1">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Overall Fit</p>
+                    <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">Overall Fit</p>
                     <div className="h-2 bg-gray-50 rounded-full overflow-hidden">
                       <div className="h-full bg-green-500" style={{ width: `${candidate.overall}%` }} />
                     </div>
                   </div>
-                  <span className="text-[18px] font-black text-green-600">{candidate.overall}%</span>
+                  <span className="text-[18px] font-medium text-green-600">{candidate.overall}%</span>
                 </div>
                 <button 
                   onClick={() => onHire(candidate)}
-                  className="w-full py-2.5 bg-[#0047CC] text-white rounded-xl text-[13px] font-black hover:bg-[#387DFF] transition-all shadow-md active:scale-95 cursor-pointer border-none"
+                  className="w-full py-2.5 bg-[#0047CC] text-white rounded-xl text-[13px] font-medium hover:bg-[#387DFF] transition-all shadow-md active:scale-95 cursor-pointer border-none"
                 >
                   Hire Now
                 </button>

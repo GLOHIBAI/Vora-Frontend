@@ -20,7 +20,7 @@ const Input: React.FC<InputProps> = ({
 
   return (
     <div className="w-full">
-      <label className="block text-sm font-semibold text-text-secondary mb-2.5">
+      <label className="block text-sm font-medium text-text-secondary mb-2.5">
         {label}
       </label>
       <div className="relative">

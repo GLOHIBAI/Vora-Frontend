@@ -66,11 +66,11 @@ const VerifyOTP: React.FC = () => {
   return (
     <div className="max-w-xl mx-auto py-12 sm:py-20 px-4 flex flex-col items-center">
       <div className="text-center mb-10 sm:mb-12">
-        <h1 className="text-2xl sm:text-[24px] font-bold mb-4 text-[#1C1C1C] leading-[32px] tracking-[-1%] font-['Nunito_Sans']">
+        <h1 className="text-2xl sm:text-[24px] font-medium mb-4 text-[#1C1C1C] leading-[32px] tracking-[-1%] ">
           Verify your email
         </h1>
         <p className="text-[#6B7280] text-sm sm:text-base max-w-sm mx-auto leading-relaxed">
-          We've sent a 6-digit verification code to <span className="font-semibold text-gray-900">{email}</span>. Enter the code below to verify your email.
+          We've sent a 6-digit verification code to <span className="font-medium text-gray-900">{email}</span>. Enter the code below to verify your email.
         </p>
       </div>
 
@@ -85,7 +85,7 @@ const VerifyOTP: React.FC = () => {
               value={digit}
               onChange={(e) => handleChange(e.target.value, index)}
               onKeyDown={(e) => handleKeyDown(e, index)}
-              className="w-10 h-12 sm:w-16 sm:h-16 text-center text-xl sm:text-2xl font-bold rounded-xl border border-[#E5E7EB] bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              className="w-10 h-12 sm:w-16 sm:h-16 text-center text-xl sm:text-2xl font-medium rounded-xl border border-[#E5E7EB] bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
             />
           ))}
         </div>
@@ -93,14 +93,14 @@ const VerifyOTP: React.FC = () => {
         <div className="text-center">
           {timer > 0 ? (
             <p className="text-[#6B7280] text-sm font-medium">
-              Resend a new otp in <span className="text-[#0047CC] font-bold">{timer} secs</span>
+              Resend a new otp in <span className="text-[#0047CC] font-medium">{timer} secs</span>
             </p>
           ) : (
             <Button 
               variant="outline"
               onClick={handleResend}
               fullWidth={false}
-              className="border-none text-[#0047CC] text-sm font-bold underline decoration-2 underline-offset-4 hover:bg-transparent hover:text-blue-700 p-0"
+              className="border-none text-[#0047CC] text-sm font-medium underline decoration-2 underline-offset-4 hover:bg-transparent hover:text-blue-700 p-0"
             >
               Resend OTP
             </Button>

@@ -30,9 +30,9 @@ import {
 
 const StatCard: React.FC<{ label: string; value: string; trend?: string; trendType?: 'up' | 'down' | 'neutral' | 'warn'; children?: React.ReactNode }> = ({ label, value, trend, trendType, children }) => (
   <div className="bg-white border border-gray-100 rounded-[18px] p-6 shadow-sm hover:shadow-md transition-all duration-300">
-    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">{label}</p>
+    <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-2">{label}</p>
     <div className="flex items-baseline gap-2">
-      <p className={`text-[22px] lg:text-[28px] font-extrabold text-gray-900 tracking-tight`}>{value}</p>
+      <p className={`text-[22px] lg:text-[28px] font-medium text-gray-900 tracking-tight`}>{value}</p>
     </div>
     {trend && (
       <div className={`inline-flex items-center gap-1 mt-2`}>
@@ -52,12 +52,12 @@ const SectionHeader: React.FC<{ title: string; icon: React.ElementType; linkText
       <div className="p-1.5 bg-gray-50 rounded-lg text-gray-400">
         <Icon size={14} />
       </div>
-      <h3 className="text-[14px] font-extrabold text-gray-900 uppercase tracking-tight">{title}</h3>
+      <h3 className="text-[14px] font-medium text-gray-900 uppercase tracking-tight">{title}</h3>
     </div>
     {linkText && (
       <button 
         onClick={onLinkClick}
-        className="text-[12px] font-bold text-[#0047CC] hover:underline flex items-center gap-1 group cursor-pointer"
+        className="text-[12px] font-medium text-[#0047CC] hover:underline flex items-center gap-1 group cursor-pointer"
       >
         {linkText}
         <ChevronRightIcon size={12} className="group-hover:translate-x-0.5 transition-transform" />
@@ -87,10 +87,10 @@ const MentorDashboard: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="space-y-1">
-          <h1 className="text-[22px] lg:text-[28px] font-black text-gray-900 font-['Nunito_Sans'] tracking-tight">
+          <h1 className="text-[22px] lg:text-[28px] font-medium text-gray-900  tracking-tight">
             {getGreeting()}, {displayName}
           </h1>
-          <p className="text-[12px] lg:text-[14px] font-bold text-gray-400">
+          <p className="text-[12px] lg:text-[14px] font-medium text-gray-400">
             Tuesday, 10 March 2026 · You have 1 live session in 42 minutes
           </p>
         </div>
@@ -101,7 +101,7 @@ const MentorDashboard: React.FC = () => {
             className="px-3 lg:px-4 min-h-[40px] lg:min-h-[44px] text-[11px] lg:text-[13px] shadow-sm bg-white"
           >
             <BellIcon size={14} className="text-gray-500" /> Notifications
-            <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full -ml-1">8</span>
+            <span className="bg-red-500 text-white text-[10px] font-medium px-1.5 py-0.5 rounded-full -ml-1">8</span>
           </Button>
           <Button
             variant="outline"
@@ -129,10 +129,10 @@ const MentorDashboard: React.FC = () => {
         </div>
 
         <div className="flex-1 space-y-1 relative z-10 text-center lg:text-left">
-          <p className="text-[10px] lg:text-[11px] font-bold text-green-100/70 uppercase tracking-widest">Next Session — Live in 42 minutes</p>
-          <h2 className="text-[20px] lg:text-[24px] font-extrabold text-white">Chiamaka Obi</h2>
+          <p className="text-[10px] lg:text-[11px] font-medium text-green-100/70 uppercase tracking-widest">Next Session — Live in 42 minutes</p>
+          <h2 className="text-[20px] lg:text-[24px] font-medium text-white">Chiamaka Obi</h2>
           <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2 lg:gap-3 pt-1">
-            <span className="text-[12px] lg:text-[13px] font-bold text-white/80">Today · 14:00 WAT · 60 min</span>
+            <span className="text-[12px] lg:text-[13px] font-medium text-white/80">Today · 14:00 WAT · 60 min</span>
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
               <Tag label="Assessment Referred" variant="blue-light" className="bg-white/10 border-white/20 text-white" />
               <Tag label="T3 · Nigeria · $150" variant="blue-light" className="bg-blue-400/20 border-blue-400/30 text-blue-200" />
@@ -187,13 +187,13 @@ const MentorDashboard: React.FC = () => {
                   <div className={`w-12 h-14 rounded-xl flex flex-col items-center justify-center shrink-0 border ${
                     session.isLive ? 'bg-green-100 border-green-200 text-green-700' : 'bg-gray-50 border-gray-100 text-gray-500'
                   }`}>
-                    <span className="text-[18px] font-black leading-none">{session.date}</span>
-                    <span className="text-[9px] font-black uppercase tracking-tighter">{session.mon}</span>
+                    <span className="text-[18px] font-medium leading-none">{session.date}</span>
+                    <span className="text-[9px] font-medium uppercase tracking-tighter">{session.mon}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-bold text-gray-900 truncate">{session.name}</p>
+                    <p className="text-[14px] font-medium text-gray-900 truncate">{session.name}</p>
                     <div className="flex flex-wrap items-center gap-3 pt-1">
-                      <span className="text-[12px] font-bold text-gray-400">{session.time}</span>
+                      <span className="text-[12px] font-medium text-gray-400">{session.time}</span>
                       <Tag 
                         label={session.type} 
                         variant={session.type === 'Assessment Referred' ? 'blue-light' : 
@@ -206,7 +206,7 @@ const MentorDashboard: React.FC = () => {
                       label={session.isLive ? 'Live' : session.status} 
                       variant={session.isLive ? 'green' : 'blue'} 
                     />
-                    <p className="text-[14px] font-black text-gray-900 mt-1">{session.fee}</p>
+                    <p className="text-[14px] font-medium text-gray-900 mt-1">{session.fee}</p>
                   </div>
                 </div>
               ))}
@@ -224,16 +224,16 @@ const MentorDashboard: React.FC = () => {
                     <PlayIcon size={20} className="text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[15px] font-black text-gray-900 truncate">{course.title}</p>
+                    <p className="text-[15px] font-medium text-gray-900 truncate">{course.title}</p>
                     <div className="flex items-center gap-4 pt-1">
-                      <span className="text-[12px] font-bold text-gray-400">{course.enrolled} enrolled</span>
-                      <span className="text-[11px] font-bold text-green-600">Published</span>
-                      <span className="text-[11px] font-black text-blue-500">★ {course.rating}</span>
+                      <span className="text-[12px] font-medium text-gray-400">{course.enrolled} enrolled</span>
+                      <span className="text-[11px] font-medium text-green-600">Published</span>
+                      <span className="text-[11px] font-medium text-blue-500">★ {course.rating}</span>
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-[16px] font-black text-gray-900">{course.revenue}</p>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase">All-time</p>
+                    <p className="text-[16px] font-medium text-gray-900">{course.revenue}</p>
+                    <p className="text-[10px] font-medium text-gray-400 uppercase">All-time</p>
                   </div>
                 </div>
               ))}
@@ -243,7 +243,7 @@ const MentorDashboard: React.FC = () => {
               <div className="bg-[#0047CC] p-1.5 rounded-lg text-white">
                 <InfoIcon size={14} />
               </div>
-              <p className="text-[12px] font-bold text-blue-800">
+              <p className="text-[12px] font-medium text-blue-800">
                 2 drafts waiting to be published — <span className="underline cursor-pointer">review now</span>
               </p>
             </div>
@@ -257,15 +257,15 @@ const MentorDashboard: React.FC = () => {
               {PENDING_REQUESTS.map((req, i) => (
                 <div key={i} className={`p-6 rounded-[20px] border transition-all ${req.isCritical ? 'bg-blue-50/50 border-blue-200' : 'bg-white border-gray-100'}`}>
                   <div className="flex items-start gap-4 mb-4">
-                    <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${req.color} flex items-center justify-center text-white font-black text-sm shrink-0 shadow-sm`}>
+                    <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${req.color} flex items-center justify-center text-white font-medium text-sm shrink-0 shadow-sm`}>
                       {req.initial}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-black text-gray-900 truncate">{req.name}</p>
-                      <p className="text-[11px] font-bold text-gray-400 truncate mt-0.5">{req.role}</p>
+                      <p className="text-[14px] font-medium text-gray-900 truncate">{req.name}</p>
+                      <p className="text-[11px] font-medium text-gray-400 truncate mt-0.5">{req.role}</p>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {req.tags.map((tag, j) => (
-                          <span key={j} className="px-2 py-0.5 bg-white/80 border border-gray-100 rounded-full text-[9px] font-black text-gray-500 uppercase">{tag}</span>
+                          <span key={j} className="px-2 py-0.5 bg-white/80 border border-gray-100 rounded-full text-[9px] font-medium text-gray-500 uppercase">{tag}</span>
                         ))}
                       </div>
                     </div>
@@ -306,13 +306,13 @@ const MentorDashboard: React.FC = () => {
             
             <div className="flex items-start justify-between mb-8">
               <div>
-                <p className="text-[36px] font-black text-gray-900 leading-tight">$3,940</p>
-                <p className="text-[13px] font-bold text-gray-400 mt-1">March 2026 · 10 days in</p>
+                <p className="text-[36px] font-medium text-gray-900 leading-tight">$3,940</p>
+                <p className="text-[13px] font-medium text-gray-400 mt-1">March 2026 · 10 days in</p>
               </div>
               <div className="text-right">
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Pending payout</p>
-                <p className="text-[24px] font-black text-green-600">$3,152</p>
-                <p className="text-[10px] font-bold text-gray-400">after 20% platform fee</p>
+                <p className="text-[11px] font-medium text-gray-400 uppercase tracking-widest">Pending payout</p>
+                <p className="text-[24px] font-medium text-green-600">$3,152</p>
+                <p className="text-[10px] font-medium text-gray-400">after 20% platform fee</p>
               </div>
             </div>
 
@@ -324,7 +324,7 @@ const MentorDashboard: React.FC = () => {
                     className={`w-full rounded-t-lg transition-all duration-1000 ${i === 5 ? 'bg-[#0047CC]' : 'bg-blue-100'}`}
                     style={{ height: `${h}%` }}
                   />
-                  <span className="text-[9px] font-black text-gray-300 uppercase">{i === 6 ? 'TOD' : `${i + 5} MAR`}</span>
+                  <span className="text-[9px] font-medium text-gray-300 uppercase">{i === 6 ? 'TOD' : `${i + 5} MAR`}</span>
                 </div>
               ))}
             </div>
@@ -358,12 +358,12 @@ const MentorDashboard: React.FC = () => {
                 <ClockIcon size={20} className="text-white/90" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-black text-white/50 uppercase tracking-widest">Gap Intelligence &bull; Live</p>
-                <h3 className="text-[16px] font-black text-white leading-tight mt-0.5">7 critical gaps identified</h3>
+                <p className="text-[10px] font-medium text-white/50 uppercase tracking-widest">Gap Intelligence &bull; Live</p>
+                <h3 className="text-[16px] font-medium text-white leading-tight mt-0.5">7 critical gaps identified</h3>
                 {!isCiOpen && (
                   <div className="flex flex-wrap gap-2 mt-3">
-                    <span className="px-2 py-0.5 bg-white/10 border border-white/20 rounded-full text-[9px] font-bold text-white/80">89 failures</span>
-                    <span className="px-2 py-0.5 bg-white/10 border border-white/20 rounded-full text-[9px] font-bold text-white/80">114 psych gaps</span>
+                    <span className="px-2 py-0.5 bg-white/10 border border-white/20 rounded-full text-[9px] font-medium text-white/80">89 failures</span>
+                    <span className="px-2 py-0.5 bg-white/10 border border-white/20 rounded-full text-[9px] font-medium text-white/80">114 psych gaps</span>
                   </div>
                 )}
               </div>
@@ -377,12 +377,12 @@ const MentorDashboard: React.FC = () => {
                 <div className="h-px bg-white/10" />
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                    <p className="text-[20px] font-black text-red-400">7</p>
-                    <p className="text-[9px] font-black text-white/40 uppercase mt-1">Critical Gaps</p>
+                    <p className="text-[20px] font-medium text-red-400">7</p>
+                    <p className="text-[9px] font-medium text-white/40 uppercase mt-1">Critical Gaps</p>
                   </div>
                   <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                    <p className="text-[20px] font-black text-white">1,847</p>
-                    <p className="text-[9px] font-black text-white/40 uppercase mt-1">Analysed</p>
+                    <p className="text-[20px] font-medium text-white">1,847</p>
+                    <p className="text-[9px] font-medium text-white/40 uppercase mt-1">Analysed</p>
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -413,8 +413,8 @@ const MentorDashboard: React.FC = () => {
                     <act.icon size={16} className={act.color.split(' ')[1]} />
                   </div>
                   <div className="flex-1">
-                    <p className="text-[13px] font-medium text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: act.text.replace(/<strong>(.*?)<\/strong>/g, '<span class="font-black text-gray-900">$1</span>') }} />
-                    <p className="text-[10px] font-black text-gray-400 uppercase mt-1">{act.time}</p>
+                    <p className="text-[13px] font-medium text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: act.text.replace(/<strong>(.*?)<\/strong>/g, '<span class="font-medium text-gray-900">$1</span>') }} />
+                    <p className="text-[10px] font-medium text-gray-400 uppercase mt-1">{act.time}</p>
                   </div>
                 </div>
               ))}
@@ -432,7 +432,7 @@ const MentorDashboard: React.FC = () => {
                 <div className="p-3 bg-blue-50 rounded-xl text-[#0047CC] group-hover:scale-110 transition-transform">
                   <CalendarIcon size={20} />
                 </div>
-                <span className="text-[12px] font-black text-gray-900">Schedule</span>
+                <span className="text-[12px] font-medium text-gray-900">Schedule</span>
               </Button>
               <Button
                 variant="outline"
@@ -441,7 +441,7 @@ const MentorDashboard: React.FC = () => {
                 <div className="p-3 bg-green-50 rounded-xl text-green-600 group-hover:scale-110 transition-transform">
                   <PlusIcon size={20} />
                 </div>
-                <span className="text-[12px] font-black text-gray-900">Course</span>
+                <span className="text-[12px] font-medium text-gray-900">Course</span>
               </Button>
               <Button
                 variant="outline"
@@ -450,7 +450,7 @@ const MentorDashboard: React.FC = () => {
                 <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600 group-hover:scale-110 transition-transform">
                   <TrendingUpIcon size={20} />
                 </div>
-                <span className="text-[12px] font-black text-gray-900">Withdraw</span>
+                <span className="text-[12px] font-medium text-gray-900">Withdraw</span>
               </Button>
               <Button
                 variant="outline"
@@ -459,7 +459,7 @@ const MentorDashboard: React.FC = () => {
                 <div className="p-3 bg-gray-50 rounded-xl text-gray-400 group-hover:scale-110 transition-transform">
                   <UserIcon size={20} />
                 </div>
-                <span className="text-[12px] font-black text-gray-900">Profile</span>
+                <span className="text-[12px] font-medium text-gray-900">Profile</span>
               </Button>
             </div>
           </div>

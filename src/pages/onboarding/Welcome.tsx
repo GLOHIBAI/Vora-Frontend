@@ -36,7 +36,7 @@ const Welcome: React.FC = () => {
 
   return (
     <div className="min-h-screen max-w-xl mx-auto px-4 flex flex-col items-center justify-center text-center -mt-10 sm:-mt-16">
-      <h1 className="text-2xl sm:text-[28px] font-bold mb-4 text-[#1C1C1C] leading-[36px] tracking-[-1%] font-['Nunito_Sans']">
+      <h1 className="text-2xl sm:text-[28px] font-medium mb-4 text-[#1C1C1C] leading-[36px] tracking-[-1%] ">
         {getHeading()}
       </h1>
       <p className="text-[#6B7280] text-sm sm:text-base max-w-md mx-auto leading-relaxed mb-10">

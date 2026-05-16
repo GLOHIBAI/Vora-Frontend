@@ -17,7 +17,7 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
         color={color} 
       />
       <div className="absolute inset-0 flex items-center justify-center translate-y-2">
-        <span className="text-[32px] font-bold text-gray-900 tracking-tight mt-8">{percentage}%</span>
+        <span className="text-[32px] font-medium text-gray-900 tracking-tight mt-8">{percentage}%</span>
       </div>
     </div>
   );

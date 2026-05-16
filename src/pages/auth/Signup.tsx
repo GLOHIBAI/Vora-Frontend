@@ -92,7 +92,7 @@ const Signup: React.FC = () => {
   return (
     <div className="max-w-xl mx-auto py-12 sm:py-20 px-4">
       <div className="text-center mb-10 sm:mb-12">
-        <h1 className="text-2xl sm:text-[24px] font-bold mb-3 text-[#1C1C1C] leading-[32px] tracking-[-1%] font-['Nunito_Sans']">
+        <h1 className="text-2xl sm:text-[24px] font-medium mb-3 text-[#1C1C1C] leading-[32px] tracking-[-1%] ">
           Start your Journey in Global health
         </h1>
         <p className="text-[#6B7280] text-sm sm:text-lg max-w-md mx-auto">
@@ -153,7 +153,7 @@ const Signup: React.FC = () => {
 
         <div className="flex items-center gap-4 py-2">
           <div className="flex-1 h-px bg-[#F3F4F6]"></div>
-          <span className="text-xs font-bold text-[#6B7280]">OR</span>
+          <span className="text-xs font-medium text-[#6B7280]">OR</span>
           <div className="flex-1 h-px bg-[#F3F4F6]"></div>
         </div>
 
@@ -170,7 +170,7 @@ const Signup: React.FC = () => {
 
         <p className="text-center text-[0.95rem] text-[#374151] pt-4">
           Already have an account?{' '}
-          <Link to="/login" className="font-bold text-[#2563EB] hover:underline decoration-2 underline-offset-4 cursor-pointer">
+          <Link to="/login" className="font-medium text-[#2563EB] hover:underline decoration-2 underline-offset-4 cursor-pointer">
             Log in
           </Link>
         </p>
