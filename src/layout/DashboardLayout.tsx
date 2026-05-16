@@ -89,8 +89,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           {/* User Profile Bottom Section */}
           <div className="p-8 mt-auto border-t border-gray-200">
             <div className="flex items-center gap-3.5 cursor-pointer group">
-              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 font-bold text-sm shrink-0 overflow-hidden border border-gray-100">
-                <div className="w-full h-full bg-[#D1D5DB]" />
+              <div className="w-10 h-10 rounded-full bg-[#0047CC] flex items-center justify-center text-white font-black text-[13px] shrink-0 uppercase tracking-tighter shadow-lg shadow-blue-500/20">
+                {user.firstName.charAt(0)}{user.lastName ? user.lastName.charAt(0) : ''}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[14px] font-bold text-gray-900 truncate font-['Nunito_Sans']">{fullName}</p>
