@@ -6,8 +6,7 @@ import {
   VideoIcon, 
   LocationIcon, 
   CheckIcon,
-  AlertTriangleIcon,
-  InfoIcon
+  AlertTriangleIcon
 } from '../../components/common/Icons';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';

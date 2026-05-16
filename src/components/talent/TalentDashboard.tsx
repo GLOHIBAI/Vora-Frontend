@@ -3,8 +3,7 @@ import CircularProgress from './CircularProgress';
 import StatCard from '../dashboard/StatCard';
 import QuickActionCard from '../dashboard/QuickActionCard';
 import JobCard from '../dashboard/JobCard';
-import Button from '../common/Button';
-import { InfoIcon, CloseIcon } from '../common/Icons';
+import { InfoIcon } from '../common/Icons';
 import { TALENT_SAMPLE_JOBS } from '../../constants/mockData';
 import { useAuth } from '../../context/AuthContext';
 

@@ -93,15 +93,9 @@ const JobDetails: React.FC = () => {
 
       {activeTab === 'Applicants' ? (
         <ApplicantsTabView 
-          onHire={(a) => {
+          onHire={(a: any) => {
             setSelectedApplicant(a);
             setIsApplicantModalOpen(true);
-          }}
-          onAlign={(a) => {
-            navigate(`/jobs/${id}/alignment/${a.code}`);
-          }}
-          onReject={(a) => {
-            navigate(`/jobs/${id}/reject/${a.code}`);
           }}
         />
       ) : activeTab === 'Hired' ? (

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   UserIcon,
   BellIcon,
@@ -18,7 +18,7 @@ import Tag from '../common/Tag';
 
 // --- Sub-components for Employer Dashboard ---
 
-const KPICard: React.FC<{ label: string; value: string; delta: string; deltaType: 'up' | 'warn'; icon: React.ElementType; colorClass: string; bgColor: string; iconColor: string; onClick?: () => void }> = ({ label, value, delta, deltaType, icon: Icon, colorClass, bgColor, iconColor, onClick }) => (
+const KPICard: React.FC<{ label: string; value: string; delta: string; deltaType: 'up' | 'warn'; icon: React.ElementType; bgColor: string; iconColor: string; onClick?: () => void }> = ({ label, value, delta, deltaType, icon: Icon, bgColor, iconColor, onClick }) => (
   <div 
     className={`bg-white border border-gray-100 rounded-[14px] p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer relative overflow-hidden group`}
     onClick={onClick}
@@ -134,19 +134,19 @@ const EmployerDashboard: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <KPICard 
               label="Active Jobs" value="12" delta="3 this month" deltaType="up" 
-              icon={BriefcaseIcon} colorClass="bg-[#0047CC]" bgColor="bg-blue-50" iconColor="text-[#0047CC]" 
+              icon={BriefcaseIcon} bgColor="bg-blue-50" iconColor="text-[#0047CC]" 
             />
             <KPICard 
               label="Total Applicants" value="247" delta="34 new this week" deltaType="up" 
-              icon={UsersIcon} colorClass="bg-[#0047CC]" bgColor="bg-blue-50" iconColor="text-[#0047CC]" 
+              icon={UsersIcon} bgColor="bg-blue-50" iconColor="text-[#0047CC]" 
             />
             <KPICard 
               label="Alignment Sessions" value="5" delta="2 awaiting confirmation" deltaType="warn" 
-              icon={ClockIcon} colorClass="bg-[#0047CC]" bgColor="bg-blue-50" iconColor="text-[#0047CC]" 
+              icon={ClockIcon} bgColor="bg-blue-50" iconColor="text-[#0047CC]" 
             />
             <KPICard 
               label="Wallet Balance" value="$3,240" delta="$750 true-up due" deltaType="warn" 
-              icon={WalletIcon} colorClass="bg-[#0047CC]" bgColor="bg-blue-50" iconColor="text-[#0047CC]" 
+              icon={WalletIcon} bgColor="bg-blue-50" iconColor="text-[#0047CC]" 
             />
           </div>
           

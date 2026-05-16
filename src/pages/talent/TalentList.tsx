@@ -50,13 +50,6 @@ const Talents: React.FC = () => {
     return matchesTab && matchesSearch;
   });
 
-  const handleOpenModal = (e: React.MouseEvent, talent: any) => {
-    e.stopPropagation();
-    setSelectedApplicant(talent);
-    setIsApplicantModalOpen(true);
-    setOpenMenuIdx(null);
-  };
-
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
       {/* Header */}
@@ -176,7 +169,12 @@ const Talents: React.FC = () => {
                                 View details
                               </button>
                               <button 
-                                onClick={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedApplicant(talent);
+                                  setIsApplicantModalOpen(true);
+                                  setOpenMenuIdx(null);
+                                }}
                                 className="w-full px-4 py-2.5 text-left text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"
                               >
                                 Hire applicant

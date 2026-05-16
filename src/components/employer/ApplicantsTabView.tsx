@@ -11,11 +11,9 @@ import Tag from '../common/Tag';
 
 interface ApplicantsTabViewProps {
   onHire: (applicant: any) => void;
-  onAlign: (applicant: any) => void;
-  onReject: (applicant: any) => void;
 }
 
-const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ onHire, onAlign, onReject }) => {
+const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ onHire }) => {
   const navigate = useNavigate();
   const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(null);
 
