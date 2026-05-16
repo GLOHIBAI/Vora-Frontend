@@ -151,21 +151,6 @@ const TalentProfile: React.FC = () => {
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="break-inside-avoid mb-8">
-          <div className="flex flex-col gap-4">
-            <button className="w-full py-6 bg-[#0047CC] text-white rounded-full text-[18px] font-black hover:bg-[#003d99] transition-all shadow-xl shadow-blue-500/20 cursor-pointer active:scale-[0.98] transform">
-              Hire applicant
-            </button>
-            <button 
-              onClick={() => navigate(`/jobs/0/reject/${id || data.id}`)}
-              className="w-full py-6 bg-white text-gray-700 rounded-full text-[18px] font-black hover:bg-gray-50 transition-all border border-gray-100 shadow-sm cursor-pointer active:scale-[0.98] transform"
-            >
-              Reject applicant
-            </button>
-          </div>
-        </div>
-
         {/* Professional Information */}
         <div className="break-inside-avoid mb-8">
           <ProfileCard title="Professional Information">
@@ -191,6 +176,21 @@ const TalentProfile: React.FC = () => {
               </div>
             </div>
           </ProfileCard>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="break-inside-avoid mb-8">
+          <div className="flex flex-col gap-4">
+            <button className="w-full py-6 bg-[#0047CC] text-white rounded-full text-[18px] font-black hover:bg-[#003d99] transition-all shadow-xl shadow-blue-500/20 cursor-pointer active:scale-[0.98] transform">
+              Hire applicant
+            </button>
+            <button 
+              onClick={() => navigate(`/jobs/0/reject/${id || data.id}`)}
+              className="w-full py-6 bg-white text-gray-700 rounded-full text-[18px] font-black hover:bg-gray-50 transition-all border border-gray-100 shadow-sm cursor-pointer active:scale-[0.98] transform"
+            >
+              Reject applicant
+            </button>
+          </div>
         </div>
 
         {/* Experience */}
