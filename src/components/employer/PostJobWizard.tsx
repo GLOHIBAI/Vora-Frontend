@@ -695,7 +695,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                         <button 
                           type="button" 
                           onClick={() => handleAddLocation()}
-                          className="px-5 py-2.5 rounded-lg bg-[#0047CC] text-white hover:bg-[#003d99] text-xs font-extrabold transition-colors cursor-pointer"
+                          className="px-6 min-h-[42px] bg-white border border-[#E6E6E6] hover:border-[#0047CC] hover:bg-[#EBF6FF] text-[#0047CC] font-medium text-[13px] rounded-full transition-all duration-200 shadow-sm cursor-pointer flex items-center justify-center"
                         >
                           Add
                         </button>
@@ -1104,14 +1104,13 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                         onKeyPress={(e) => e.key === 'Enter' && addSkill()}
                         className="flex-1 px-4 py-2.5 rounded-lg border border-[#E6E6E6] bg-white outline-none focus:border-[#0047CC] transition-all text-sm font-semibold"
                       />
-                      <Button 
+                      <button 
+                        type="button" 
                         onClick={addSkill}
-                        fullWidth={false}
-                        variant="outline"
-                        className="px-6 text-gray-500 hover:bg-[#0047CC] hover:text-white hover:border-[#0047CC] transition-all shadow-sm font-extrabold text-xs"
+                        className="px-6 min-h-[42px] bg-white border border-[#E6E6E6] hover:border-[#0047CC] hover:bg-[#EBF6FF] text-[#0047CC] font-medium text-[13px] rounded-full transition-all duration-200 shadow-sm cursor-pointer flex items-center justify-center shrink-0"
                       >
                         Add
-                      </Button>
+                      </button>
                     </div>
                     <div className="flex flex-wrap gap-2 pt-2">
                       {skills.map(skill => (
