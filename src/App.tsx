@@ -48,7 +48,6 @@ const App = () => {
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
           <Route path="/verify-email" element={<VerifyOTP />} />
-          <Route path="/verify-email" element={<VerifyOTP />} />
           <Route path="/select-type" element={<SelectAccountType />} />
 
           {/* Onboarding Routes */}

@@ -6,6 +6,7 @@ import type {
   SignupRequest,
   VerifyOTPRequest,
   AuthResponse,
+  OAuthAuthResponse,
   User,
   GoogleLoginRequest,
   OAuthSelectRoleRequest,
@@ -16,6 +17,11 @@ import type {
 import { useAuth } from "../../../context/AuthContext";
 import { startTokenRefreshSchedule } from "../../api/scheduleRefreshToken";
 import { toast } from "react-hot-toast";
+import {
+  completeOAuthSession,
+  mapApiUserToContextUser,
+  getSetupToken,
+} from "../../../utils/oauth";
 
 export const useLoginMutation = () => {
   const { login } = useAuth();
@@ -27,25 +33,13 @@ export const useLoginMutation = () => {
         url: "/auth/login",
         body: data,
         auth: false,
+        credentials: "include",
       }),
     onSuccess: (response) => {
       const authData = response.data;
       const user = authData.user;
-      const mappedRole = ["talent", "mentor", "employer"].includes(
-        user?.role?.toLowerCase() || "",
-      )
-        ? user.role!.toLowerCase()
-        : "talent";
 
-      login(
-        {
-          firstName: user?.firstName || "User",
-          lastName: user?.lastName || "",
-          role: mappedRole as any,
-          email: user?.email,
-        },
-        authData.accessToken,
-      );
+      login(mapApiUserToContextUser(user), authData.accessToken);
 
       toast.success("Welcome back to VORA!");
       startTokenRefreshSchedule();
@@ -79,25 +73,11 @@ export const useVerifyOTPMutation = () => {
         url: "/auth/verify-email",
         body: data,
         auth: false,
+        credentials: "include",
       }),
     onSuccess: (response) => {
       const authData = response.data;
-      const user = authData.user;
-      const mappedRole = ["talent", "mentor", "employer"].includes(
-        user?.role?.toLowerCase() || "",
-      )
-        ? user.role!.toLowerCase()
-        : "talent";
-
-      login(
-        {
-          firstName: user?.firstName || "User",
-          lastName: user?.lastName || "",
-          role: mappedRole as any,
-          email: user?.email,
-        },
-        authData.accessToken,
-      );
+      login(mapApiUserToContextUser(authData.user), authData.accessToken);
 
       toast.success("Email verified successfully!");
       startTokenRefreshSchedule();
@@ -123,8 +103,9 @@ export const useGetCurrentUser = (options = {}) => {
           email: user.email,
         });
         return user;
-      } catch (err: any) {
-        if (err.status === 401) {
+      } catch (err: unknown) {
+        const error = err as { status?: number };
+        if (error.status === 401) {
           logout();
         }
         throw err;
@@ -137,52 +118,36 @@ export const useGetCurrentUser = (options = {}) => {
 };
 
 export const useGoogleLoginMutation = () => {
-  const { login } = useAuth();
-
   return useMutation({
     mutationKey: authKeys.googleLogin(),
     mutationFn: (data: GoogleLoginRequest) =>
-      apiClient.post<AuthResponse>({
+      apiClient.post<OAuthAuthResponse>({
         url: "/auth/google",
         body: data,
         auth: false,
+        credentials: "include",
       }),
-    onSuccess: (response) => {
-      const authData = response.data;
-      const user = authData.user;
-      const mappedRole = ["talent", "mentor", "employer"].includes(
-        user?.role?.toLowerCase() || "",
-      )
-        ? user.role!.toLowerCase()
-        : "talent";
-
-      login(
-        {
-          firstName: user?.firstName || "User",
-          lastName: user?.lastName || "",
-          role: mappedRole as any,
-          email: user?.email,
-        },
-        authData.accessToken,
-      );
-
-      toast.success("Welcome to VORA!");
-      startTokenRefreshSchedule();
-    },
   });
 };
 
 export const useOAuthSelectRoleMutation = () => {
+  const { login } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationKey: authKeys.oauthSelectRole(),
     mutationFn: (data: OAuthSelectRoleRequest) =>
-      apiClient.post<AuthResponse>({
+      apiClient.post<OAuthAuthResponse>({
         url: "/auth/oauth/select-role",
         body: data,
+        authToken: "setup",
       }),
-    onSuccess: () => {
+    onSuccess: (response) => {
+      const authData = response.data;
+      if (authData.accessToken) {
+        completeOAuthSession(authData, login);
+        startTokenRefreshSchedule();
+      }
       toast.success("Role configured successfully!");
       queryClient.invalidateQueries({ queryKey: authKeys.oauthStatus() });
       queryClient.invalidateQueries({ queryKey: authKeys.currentUser() });
@@ -190,27 +155,40 @@ export const useOAuthSelectRoleMutation = () => {
   });
 };
 
-export const useOAuthVerifyEmailMutation = () => {
+/** OAuth OTP verify — work/custom domain Google emails only (Gmail skips this step). */
+export const useOAuthVerifyMutation = () => {
+  const { setSetupToken } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationKey: authKeys.oauthVerifyEmail(),
+    mutationKey: authKeys.oauthVerify(),
     mutationFn: (data: OAuthVerifyEmailRequest) =>
-      apiClient.post<AuthResponse>({
-        url: "/auth/oauth/verify-email",
+      apiClient.post<OAuthAuthResponse>({
+        url: "/auth/oauth/verify",
         body: data,
+        authToken: "setup",
       }),
-    onSuccess: () => {
+    onSuccess: (response) => {
+      if (response.data.setupToken) {
+        setSetupToken(response.data.setupToken);
+      }
       toast.success("Email verified successfully!");
       queryClient.invalidateQueries({ queryKey: authKeys.oauthStatus() });
-      queryClient.invalidateQueries({ queryKey: authKeys.currentUser() });
     },
   });
 };
 
+/** @deprecated Use useOAuthVerifyMutation */
+export const useOAuthVerifyEmailMutation = useOAuthVerifyMutation;
+
 export const useOAuthResendOtpMutation = () => {
   return useMutation({
-    mutationFn: () => apiClient.post({ url: "/auth/oauth/resend-email" }),
+    mutationKey: authKeys.oauthResendOtp(),
+    mutationFn: () =>
+      apiClient.post({
+        url: "/auth/oauth/resend-otp",
+        authToken: "setup",
+      }),
     onSuccess: () => {
       toast.success("Verification code resent successfully!");
     },
@@ -228,17 +206,18 @@ export const useResendOTPMutation = () => {
 };
 
 export const useGetOAuthStatus = (options = {}) => {
-  const { isAuthenticated } = useAuth();
+  const { hasSetupToken } = useAuth();
 
   return useQuery({
     queryKey: authKeys.oauthStatus(),
     queryFn: async () => {
       const response = await apiClient.get<ApiResponse<OAuthStatusResponse>>({
         url: "/auth/oauth/status",
+        authToken: "setup",
       });
       return response.data;
     },
-    enabled: isAuthenticated,
+    enabled: hasSetupToken || !!getSetupToken(),
     ...options,
   });
 };

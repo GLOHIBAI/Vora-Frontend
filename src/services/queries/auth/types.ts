@@ -36,6 +36,20 @@ export interface AuthData {
 
 export type AuthResponse = ApiResponse<AuthData>;
 
+export type OAuthNextStep = 'VERIFY_EMAIL' | 'SELECT_ROLE' | 'COMPLETE';
+
+export interface OAuthAuthData {
+  accessToken?: string;
+  setupToken?: string;
+  nextStep?: OAuthNextStep;
+  user?: User;
+  allowedRoles?: Array<'TALENT' | 'EMPLOYER' | 'MENTOR'>;
+  emailSent?: boolean;
+  otpExpiresInMinutes?: number;
+}
+
+export type OAuthAuthResponse = ApiResponse<OAuthAuthData>;
+
 
 export interface GoogleLoginRequest {
   idToken: string;

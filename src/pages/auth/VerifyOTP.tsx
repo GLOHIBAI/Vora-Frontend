@@ -1,20 +1,46 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Button from '../../components/common/Button';
-import { useVerifyOTPMutation, useResendOTPMutation } from '../../services/queries/auth';
+import {
+  useVerifyOTPMutation,
+  useResendOTPMutation,
+  useOAuthVerifyMutation,
+  useOAuthResendOtpMutation,
+} from '../../services/queries/auth';
 import { routeAfterAuth } from '../../utils/auth';
+import { resolveOAuthNavigation } from '../../utils/oauth';
+import { useAuth } from '../../context/AuthContext';
+import { getSetupToken } from '../../utils/oauth';
+
+interface VerifyLocationState {
+  email?: string;
+  oauth?: boolean;
+  otpExpiresInMinutes?: number;
+}
 
 const VerifyOTP: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { email } = location.state || { email: 'test@vora.com' };
-  
+  const { login, setSetupToken } = useAuth();
+  const state = (location.state as VerifyLocationState) || {};
+  const { email = '', oauth = false, otpExpiresInMinutes = 10 } = state;
+
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [timer, setTimer] = useState(60);
+  const [timer, setTimer] = useState(oauth ? otpExpiresInMinutes * 60 : 60);
   const [formError, setFormError] = useState('');
   const verifyMutation = useVerifyOTPMutation();
   const resendMutation = useResendOTPMutation();
+  const oauthVerifyMutation = useOAuthVerifyMutation();
+  const oauthResendMutation = useOAuthResendOtpMutation();
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const isOAuthFlow = oauth || !!getSetupToken();
+
+  useEffect(() => {
+    if (isOAuthFlow && !getSetupToken()) {
+      navigate('/login', { replace: true });
+    }
+  }, [isOAuthFlow, navigate]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -25,12 +51,11 @@ const VerifyOTP: React.FC = () => {
 
   const handleChange = (value: string, index: number) => {
     if (isNaN(Number(value))) return;
-    
+
     const newOtp = [...otp];
     newOtp[index] = value.substring(value.length - 1);
     setOtp(newOtp);
 
-    // Auto-focus next
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
@@ -42,26 +67,42 @@ const VerifyOTP: React.FC = () => {
     }
   };
 
-  const isComplete = otp.every(digit => digit !== '');
+  const isComplete = otp.every((digit) => digit !== '');
+  const isPending = isOAuthFlow ? oauthVerifyMutation.isPending : verifyMutation.isPending;
+  const isResending = isOAuthFlow ? oauthResendMutation.isPending : resendMutation.isPending;
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isComplete) return;
 
     setFormError('');
+    const code = otp.join('');
+
     try {
-      const response = await verifyMutation.mutateAsync({ email, code: otp.join('') });
+      if (isOAuthFlow) {
+        const response = await oauthVerifyMutation.mutateAsync({ code });
+        const { route, state: navState } = resolveOAuthNavigation(
+          response.data,
+          login,
+          setSetupToken,
+        );
+        navigate(route, { state: navState });
+        return;
+      }
+
+      const response = await verifyMutation.mutateAsync({ email, code });
       const authData = response.data;
       const user = authData?.user;
-      
+
       if (user) {
         const targetRoute = routeAfterAuth(user);
         navigate(targetRoute, { state: { email, accountType: user.role } });
       } else {
         navigate('/dashboard');
       }
-    } catch (error: any) {
-      setFormError(error?.message || 'Invalid verification code. Please try again.');
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      setFormError(err?.message || 'Invalid verification code. Please try again.');
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     }
@@ -70,13 +111,19 @@ const VerifyOTP: React.FC = () => {
   const handleResend = async () => {
     if (timer > 0) return;
     setFormError('');
+
     try {
-      await resendMutation.mutateAsync({ email });
-      setTimer(60);
+      if (isOAuthFlow) {
+        await oauthResendMutation.mutateAsync();
+      } else {
+        await resendMutation.mutateAsync({ email });
+      }
+      setTimer(isOAuthFlow ? otpExpiresInMinutes * 60 : 60);
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
-    } catch (error: any) {
-      setFormError(error?.message || 'Failed to resend verification code. Please try again.');
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      setFormError(err?.message || 'Failed to resend verification code. Please try again.');
     }
   };
 
@@ -87,7 +134,9 @@ const VerifyOTP: React.FC = () => {
           Verify your email
         </h1>
         <p className="text-[#6B7280] text-sm sm:text-base max-w-sm mx-auto leading-relaxed">
-          We've sent a 6-digit verification code to <span className="font-medium text-gray-900">{email}</span>. Enter the code below to verify your email.
+          We've sent a 6-digit verification code to{' '}
+          <span className="font-medium text-gray-900">{email || 'your email'}</span>. Enter the code
+          below to verify your email.
         </p>
       </div>
 
@@ -102,7 +151,9 @@ const VerifyOTP: React.FC = () => {
           {otp.map((digit, index) => (
             <input
               key={index}
-              ref={(el) => { inputRefs.current[index] = el; }}
+              ref={(el) => {
+                inputRefs.current[index] = el;
+              }}
               type="text"
               maxLength={1}
               value={digit}
@@ -116,14 +167,15 @@ const VerifyOTP: React.FC = () => {
         <div className="text-center">
           {timer > 0 ? (
             <p className="text-[#6B7280] text-sm font-medium">
-              Resend a new otp in <span className="text-[#0047CC] font-medium">{timer} secs</span>
+              Resend a new otp in{' '}
+              <span className="text-[#0047CC] font-medium">{timer} secs</span>
             </p>
           ) : (
-            <Button 
+            <Button
               variant="link"
               onClick={handleResend}
               fullWidth={false}
-              isLoading={resendMutation.isPending}
+              isLoading={isResending}
               className="mx-auto text-[#0047CC] text-sm font-medium underline decoration-2 underline-offset-4 hover:bg-transparent hover:text-blue-700 p-0"
             >
               Resend OTP
@@ -131,11 +183,11 @@ const VerifyOTP: React.FC = () => {
           )}
         </div>
 
-        <Button 
+        <Button
           variant={isComplete ? 'primary' : 'secondary'}
           type="submit"
-          disabled={!isComplete || verifyMutation.isPending}
-          isLoading={verifyMutation.isPending}
+          disabled={!isComplete || isPending}
+          isLoading={isPending}
         >
           Verify email
         </Button>

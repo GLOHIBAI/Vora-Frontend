@@ -4,7 +4,8 @@ import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
 import { validateEmail, validateWorkEmail, validatePassword, validateAccountType } from '../../utils/validation';
-import { GoogleIcon, AppleIcon } from '../../components/common/Icons';
+import { AppleIcon } from '../../components/common/Icons';
+import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
 import { useSignupMutation } from '../../services/queries/auth';
 
 
@@ -55,23 +56,6 @@ const Signup: React.FC = () => {
       navigate('/verify-email', { state: { email, accountType } });
     } catch (error: any) {
       setFormError(error?.message || 'Registration failed. Please try again.');
-    }
-  };
-
-  const handleSocialSignup = (provider: 'Google' | 'Apple') => {
-    // Simulate getting email from social provider
-    // For demo purposes, we use the email in the input if present, or a default
-    const signupEmail = email || `user@gmail.com`;
-
-    console.log(`Signing up with ${provider}:`, signupEmail);
-    const isWorkEmail = validateWorkEmail(signupEmail) === '';
-
-    if (isWorkEmail) {
-      // Employers (work emails) MUST verify OTP
-      navigate('/verify-email', { state: { email: signupEmail, accountType: 'Employer' } });
-    } else {
-      // Talent/Mentor (personal emails) go to type selection
-      navigate('/select-type', { state: { email: signupEmail } });
     }
   };
 
@@ -154,11 +138,8 @@ const Signup: React.FC = () => {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
-          <Button variant="social" onClick={() => handleSocialSignup('Google')} disabled={signupMutation.isPending}>
-            <GoogleIcon />
-            <span>Sign up with Google</span>
-          </Button>
-          <Button variant="social" onClick={() => handleSocialSignup('Apple')} disabled={signupMutation.isPending}>
+          <GoogleSignInButton label="Sign up with Google" disabled={signupMutation.isPending} />
+          <Button variant="social" disabled={signupMutation.isPending}>
             <AppleIcon />
             <span>Sign up with Apple</span>
           </Button>

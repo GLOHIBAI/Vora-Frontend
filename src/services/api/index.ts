@@ -4,10 +4,23 @@ import { toast } from 'react-hot-toast';
 
 export const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.vora.com/v1';
 
+export type AuthTokenMode = 'access' | 'setup' | 'none';
+
 export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
   url: string;
   body?: any;
+  /** @deprecated Use authToken instead */
   auth?: boolean;
+  authToken?: AuthTokenMode;
+  credentials?: RequestCredentials;
+}
+
+function resolveAuthToken(mode: AuthTokenMode): string | null {
+  if (mode === 'none') return null;
+  if (mode === 'setup') {
+    return localStorage.getItem('oauth_setup_token');
+  }
+  return localStorage.getItem('auth_token');
 }
 
 export type ApiError = {
@@ -17,20 +30,31 @@ export type ApiError = {
 };
 
 async function fetchWithInterceptors(options: ApiRequestOptions): Promise<any> {
-  const { url, body, auth = true, ...fetchOptions } = options;
+  const {
+    url,
+    body,
+    auth,
+    authToken: authTokenOption,
+    credentials: credentialsOption,
+    ...fetchOptions
+  } = options;
+
+  const authToken: AuthTokenMode =
+    authTokenOption ?? (auth === false ? 'none' : 'access');
 
   let headers = new Headers(fetchOptions.headers || {});
   if (!headers.has('Content-Type') && !(body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
 
-  if (auth) {
-    const token = localStorage.getItem('auth_token');
+  if (authToken !== 'none') {
+    const token = resolveAuthToken(authToken);
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
     }
-    // Ensure cookies are sent for refresh endpoint if using HTTP-only cookies
-    fetchOptions.credentials = 'include';
+    fetchOptions.credentials = credentialsOption ?? 'include';
+  } else if (credentialsOption) {
+    fetchOptions.credentials = credentialsOption;
   }
 
   const fullUrl = url.startsWith('http') ? url : `${BASE_URL}${url}`;
@@ -45,7 +69,7 @@ async function fetchWithInterceptors(options: ApiRequestOptions): Promise<any> {
     body: reqBody,
   });
 
-  if (response.status === 401 && auth) {
+  if (response.status === 401 && authToken === 'access') {
     // Attempt token refresh
     const refreshed = await singleFlightRefresh();
     if (refreshed) {
