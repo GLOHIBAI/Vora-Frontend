@@ -310,6 +310,11 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
   // Prefill Banner State
   const [showPrefillBanner, setShowPrefillBanner] = useState(false);
 
+  // Step 2 placeholder state
+  const [responsibilities, setResponsibilities] = useState('');
+  const [skills, setSkills] = useState<string[]>([]);
+  const [newSkill, setNewSkill] = useState('');
+
   // Sync initial config from post modal choices
   useEffect(() => {
     if (isOpen && initialConfig) {
@@ -410,11 +415,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
   const showLocSection = workFormat === 'Fully onsite' || workFormat === 'Hybrid';
   const showTzSection = workFormat === 'Remote - specific timezone(s) required' || workFormat === 'Remote - no timezone restriction' || workFormat === 'Hybrid' || workFormat === 'Flexible / candidate preference';
 
-  // Step 2 placeholder state
-  const [responsibilities, setResponsibilities] = useState('');
-  const [skills, setSkills] = useState<string[]>([]);
-  const [newSkill, setNewSkill] = useState('');
-
+  // Step 2 placeholder helper functions
   const addSkill = () => {
     if (newSkill.trim() && !skills.includes(newSkill.trim())) {
       setSkills([...skills, newSkill.trim()]);
