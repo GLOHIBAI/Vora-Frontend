@@ -317,6 +317,30 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
       setGoLiveDate(initialConfig.goLiveDate || '');
       setShowPrefillBanner(initialConfig.isPrefilled);
       setCurrentStep(1);
+
+      if (initialConfig.isPrefilled) {
+        setRoleTitle('Global Health Research Intern');
+        setRoleType('Internship (paid)');
+        setLevel('student');
+        setPositions('3');
+        setTimeCommitment('20');
+        setWorkFormat('Fully onsite');
+        setLocation('Lagos, Nigeria');
+        setStartDate('2025-10-21');
+        setEndDate('2026-01-21');
+        setSummary('Lorem ipsum dolor sit amet consectetur. Vierra lectus rutrum luesnh...');
+      } else {
+        setRoleTitle('');
+        setRoleType('');
+        setLevel('');
+        setPositions('1');
+        setTimeCommitment('');
+        setWorkFormat('');
+        setLocation('');
+        setStartDate('');
+        setEndDate('');
+        setSummary('');
+      }
     }
   }, [isOpen, initialConfig]);
 
