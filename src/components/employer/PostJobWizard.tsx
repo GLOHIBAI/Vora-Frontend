@@ -431,7 +431,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
   const editsRemaining = 3 - editsCount;
 
   return (
-    <div className={`fixed inset-0 z-[600] flex flex-col bg-[#F7F7F7] font-['Nunito_Sans'] transition-all duration-500 ease-in-out ${isClosing ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}>
+    <div className={`fixed inset-y-0 right-0 left-0 lg:left-72 z-[40] flex flex-col bg-[#F7F7F7] font-nunito transition-all duration-500 ease-in-out ${isClosing ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}>
       {/* Top Header */}
       <div className="h-[72px] bg-white border-b border-[#E6E6E6] px-8 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4">
