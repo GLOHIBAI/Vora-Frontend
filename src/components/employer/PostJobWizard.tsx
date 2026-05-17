@@ -430,6 +430,23 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
   // Scheduled Hiring version segments
   const editsRemaining = 3 - editsCount;
 
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '--';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const day = d.getDate();
+      let suffix = 'th';
+      if (day === 1 || day === 21 || day === 31) suffix = 'st';
+      else if (day === 2 || day === 22) suffix = 'nd';
+      else if (day === 3 || day === 23) suffix = 'rd';
+      return `${months[d.getMonth()]} ${day}${suffix} ${d.getFullYear()}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
   return (
     <div className={`fixed inset-y-0 right-0 left-0 lg:left-72 z-[40] flex flex-col bg-[#F7F7F7] font-nunito transition-all duration-500 ease-in-out ${isClosing ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}>
       {/* Top Header */}
@@ -1135,56 +1152,191 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
             {/* STEP 6: PREVIEW */}
             {currentStep === 6 && (
               <div className="space-y-6 animate-in fade-in duration-300">
-                <div className="space-y-1">
-                  <span className="bg-[#EEFBEE] text-[#1D871D] text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded">Final Step</span>
-                  <h3 className="text-xl md:text-[22px] font-extrabold text-gray-900 tracking-tight leading-tight">Preview your job</h3>
-                  <p className="text-[13px] text-gray-400 font-semibold">Last check before you publish to the talent pool.</p>
-                </div>
+                <h3 className="text-xl font-bold text-[#1A1A1A] leading-tight">Job Preview</h3>
 
-                <div className="bg-white border border-[#E6E6E6] rounded-[24px] shadow-sm overflow-hidden">
-                  <div className="bg-gradient-to-r from-[#0047CC] to-[#387DFF] p-6 md:p-8 text-white">
-                    <div className="flex justify-between items-start gap-4">
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-white/70">Role Posting</span>
-                        <h4 className="text-xl md:text-2xl font-extrabold tracking-tight">{roleTitle || 'Untitled Role'}</h4>
-                        <p className="text-[13px] font-semibold text-white/85">
-                          {roleType || 'Full-time'} · {level || 'Entry level'} · {workFormat || 'Remote'}
+                <div className="bg-white border border-[#E6E6E6] rounded-[24px] p-6 md:p-8 space-y-6">
+                  {/* SECTION 1: Role details */}
+                  <div className="space-y-4">
+                    <h4 className="text-[14px] font-bold text-[#1A1A1A] pb-2 border-b border-gray-100">Role details</h4>
+                    <div className="grid grid-cols-3 gap-y-4 gap-x-6">
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Role type</p>
+                        <p className="text-[13px] font-medium text-gray-900 mt-1">{roleType || 'Internship'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Role title</p>
+                        <p className="text-[13px] font-medium text-gray-900 mt-1">{roleTitle || 'Global Health Research Intern'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Employment level</p>
+                        <p className="text-[13px] font-medium text-gray-900 mt-1">{level ? (level.charAt(0).toUpperCase() + level.slice(1)) : '--'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Available positions</p>
+                        <p className="text-[13px] font-medium text-gray-900 mt-1">{positions ? `${positions} positions` : '3 positions'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Time commitment</p>
+                        <p className="text-[13px] font-medium text-gray-900 mt-1">{timeCommitment ? `${timeCommitment}hrs/week` : '20hrs/week'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Time preference</p>
+                        <p className="text-[13px] font-medium text-gray-900 mt-1">GMT + 1</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Work format</p>
+                        <p className="text-[13px] font-medium text-gray-900 mt-1">{workFormat || 'Onsite'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Work location</p>
+                        <p className="text-[13px] font-medium text-gray-900 mt-1">{location || 'Lagos, Nigeria'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Start date</p>
+                        <p className="text-[13px] font-medium text-gray-900 mt-1">{formatDate(startDate) || 'October 21st, 2025'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">End date</p>
+                        <p className="text-[13px] font-medium text-gray-900 mt-1">{formatDate(endDate) || 'January 21st 2026'}</p>
+                      </div>
+                    </div>
+                    <div className="pt-2">
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Role summary</p>
+                      <p className="text-[13px] font-medium text-gray-700 mt-1 leading-relaxed">
+                        {summary || 'Lorem ipsum dolor sit amet consectetur. Vierra lectus rutrum luesnh...'} <span className="text-[#0047CC] font-bold cursor-pointer hover:underline">see more</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* SECTION 2: Responsibilities & skills */}
+                  <div className="space-y-4 pt-4 border-t border-gray-100">
+                    <h4 className="text-[14px] font-bold text-[#1A1A1A] pb-2 border-b border-gray-100">Responsibilities & skills</h4>
+                    <div className="grid grid-cols-2 gap-6">
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Role/Problem to solve</p>
+                        <p className="text-[13px] font-medium text-gray-700 mt-1 leading-relaxed">
+                          Lorem ipsum dolor sit amet consectetur. Viverra lectus rutrum lorem sit amet. Amet morbi massa proin... <span className="text-[#0047CC] font-bold cursor-pointer hover:underline">see more</span>
                         </p>
                       </div>
-                      <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
-                        <BriefcaseIcon size={24} />
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Core responsibilities</p>
+                        <p className="text-[13px] font-medium text-gray-700 mt-1 leading-relaxed">
+                          Lorem ipsum dolor sit amet consectetur. Viverra lectus rutrum lorem sit amet... <span className="text-[#0047CC] font-bold cursor-pointer hover:underline">see more</span>
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Technical skills required</p>
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {skills.length > 0 ? (
+                            skills.map((skill, idx) => (
+                              <span key={skill} className={`px-3 py-1 border rounded-full text-xs font-semibold ${
+                                idx % 2 === 0 
+                                  ? 'bg-[#EBF6FF] border-[#BDD9FF] text-[#0047CC]' 
+                                  : 'bg-[#EEFBEE] border-[#85E585] text-[#1D871D]'
+                              }`}>
+                                {skill}
+                              </span>
+                            ))
+                          ) : (
+                            <>
+                              <span className="px-3 py-1 bg-[#EBF6FF] border border-[#BDD9FF] rounded-full text-xs font-semibold text-[#0047CC]">Research Analysis</span>
+                              <span className="px-3 py-1 bg-[#EEFBEE] border border-[#85E585] rounded-full text-xs font-semibold text-[#1D871D]">Communication & Writing</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Tools required</p>
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          <span className="px-3 py-1 bg-[#EEFBEE] border border-[#85E585] rounded-full text-xs font-semibold text-[#1D871D]">Statistical Softwares</span>
+                          <span className="px-3 py-1 bg-[#EBF6FF] border border-[#BDD9FF] rounded-full text-xs font-semibold text-[#0047CC]">GIS Mapping Softwares</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div className="p-6 md:p-8 space-y-6">
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-1">
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Location</p>
-                        <p className="text-sm font-bold text-gray-900">{location || 'Remote'}</p>
+
+                  {/* SECTION 3: Experience & background */}
+                  <div className="space-y-4 pt-4 border-t border-gray-100">
+                    <h4 className="text-[14px] font-bold text-[#1A1A1A] pb-2 border-b border-gray-100">Experience & background</h4>
+                    <div className="grid grid-cols-3 gap-6">
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Academic level</p>
+                        <p className="text-[13px] font-medium text-gray-900 mt-1">Undergraduate</p>
                       </div>
-                      <div className="space-y-1">
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Positions</p>
-                        <p className="text-sm font-bold text-gray-900">{positions} Available</p>
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Relevant field</p>
+                        <p className="text-[13px] font-medium text-gray-900 mt-1">Nursing, Midwifery</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Years of experience</p>
+                        <p className="text-[13px] font-medium text-gray-900 mt-1">0 - 6 months</p>
                       </div>
                     </div>
-                    {summary && (
-                      <div className="space-y-2">
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Summary</p>
-                        <p className="text-sm font-semibold text-gray-700 leading-relaxed">
-                          {summary}
-                        </p>
-                      </div>
-                    )}
-                    {skills.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Skills Required</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {skills.map(skill => (
-                            <span key={skill} className="px-3 py-1 bg-gray-50 border border-gray-100 rounded-lg text-xs font-semibold text-gray-600">{skill}</span>
-                          ))}
+                  </div>
+
+                  {/* SECTION 4: Team collaboration & communication */}
+                  <div className="space-y-4 pt-4 border-t border-gray-100">
+                    <h4 className="text-[14px] font-bold text-[#1A1A1A] pb-2 border-b border-gray-100">Team collaboration & communication</h4>
+                    <div className="grid grid-cols-2 gap-6">
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Preferred work style</p>
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          <span className="px-3 py-1 bg-[#EEFBEE] border border-[#85E585] rounded-full text-xs font-semibold text-[#1D871D]">Independent</span>
+                          <span className="px-3 py-1 bg-[#EBF6FF] border border-[#BDD9FF] rounded-full text-xs font-semibold text-[#0047CC]">Field-oriented</span>
                         </div>
                       </div>
-                    )}
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Communication/collaboration style</p>
+                        <p className="text-[13px] font-medium text-gray-900 mt-1">Weekly check-ins</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Communication language</p>
+                        <p className="text-[13px] font-medium text-gray-900 mt-1">English</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Personality traits</p>
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          <span className="px-3 py-1 bg-[#EBF6FF] border border-[#BDD9FF] rounded-full text-xs font-semibold text-[#0047CC]">Empathetic</span>
+                          <span className="px-3 py-1 bg-[#EEFBEE] border border-[#85E585] rounded-full text-xs font-semibold text-[#1D871D]">Curious</span>
+                        </div>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Work culture</p>
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          <span className="px-3 py-1 bg-[#EEFBEE] border border-[#85E585] rounded-full text-xs font-semibold text-[#1D871D]">Collaborative</span>
+                          <span className="px-3 py-1 bg-[#EBF6FF] border border-[#BDD9FF] rounded-full text-xs font-semibold text-[#0047CC]">Remote-first</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SECTION 5: Compensation & documentation */}
+                  <div className="space-y-4 pt-4 border-t border-gray-100">
+                    <h4 className="text-[14px] font-bold text-[#1A1A1A] pb-2 border-b border-gray-100">Compensation & documentation</h4>
+                    <div className="grid grid-cols-2 gap-6">
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Duration</p>
+                        <p className="text-[13px] font-medium text-gray-900 mt-1">Weekly</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Amount</p>
+                        <p className="text-[13px] font-medium text-gray-900 mt-1">120 USD</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Personality traits</p>
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          <span className="px-3 py-1 bg-[#EBF6FF] border border-[#BDD9FF] rounded-full text-xs font-semibold text-[#0047CC]">Empathetic</span>
+                          <span className="px-3 py-1 bg-[#EEFBEE] border border-[#85E585] rounded-full text-xs font-semibold text-[#1D871D]">Curious</span>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Work culture</p>
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          <span className="px-3 py-1 bg-[#EEFBEE] border border-[#85E585] rounded-full text-xs font-semibold text-[#1D871D]">Collaborative</span>
+                          <span className="px-3 py-1 bg-[#EBF6FF] border border-[#BDD9FF] rounded-full text-xs font-semibold text-[#0047CC]">Remote-first</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1206,18 +1358,20 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
             </Button>
 
             <div className="flex items-center gap-4">
-              <button 
+              <Button
+                variant="outline"
+                fullWidth={false}
                 onClick={handleClose}
-                className="text-sm font-extrabold text-[#0047CC] hover:underline px-4 cursor-pointer"
+                className="px-6 min-h-[44px] text-sm font-bold text-gray-700 border-gray-200 hover:bg-gray-50 hover:text-gray-900 transition-colors"
               >
                 Save as draft
-              </button>
+              </Button>
               <Button 
                 onClick={currentStep === 6 ? handleClose : nextStep}
                 fullWidth={false}
-                className="px-8 min-h-[48px] text-sm font-extrabold shadow-lg shadow-blue-500/20"
+                className="px-8 min-h-[48px] text-sm font-bold shadow-lg shadow-blue-500/20"
               >
-                {currentStep === 6 ? 'Post Job Now' : 'Proceed'}
+                {currentStep === 6 ? 'Continue to payment' : 'Proceed'}
                 {currentStep !== 6 && <ChevronRightIcon size={18} />}
               </Button>
             </div>
