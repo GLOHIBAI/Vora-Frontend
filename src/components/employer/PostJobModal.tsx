@@ -131,7 +131,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
                 <ChevronLeftIcon size={20} strokeWidth={3} />
               </button>
             )}
-            <h2 className="text-[16px] lg:text-[18px] font-bold text-gray-900">{getHeaderTitle()}</h2>
+            <h2 className="text-[16px] lg:text-[18px] font-medium text-gray-900">{getHeaderTitle()}</h2>
           </div>
           <button onClick={resetModal} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 cursor-pointer">
             <CloseIcon size={20} strokeWidth={3} />
@@ -155,7 +155,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
                     {entryMethod === 'upload' && <div className="w-2.5 h-2.5 rounded-full bg-[#0047CC]" />}
                   </div>
                   <div>
-                    <p className="text-[14px] font-bold text-gray-900">Upload job document</p>
+                    <p className="text-[14px] font-medium text-gray-900">Upload job document</p>
                     <p className="text-[12px] font-medium text-gray-400 mt-1 leading-relaxed">
                       Upload your existing job description, we'll prefill details for you to review.
                     </p>
@@ -172,7 +172,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
                     {entryMethod === 'manual' && <div className="w-2.5 h-2.5 rounded-full bg-[#0047CC]" />}
                   </div>
                   <div>
-                    <p className="text-[14px] font-bold text-gray-900">Fill out manually</p>
+                    <p className="text-[14px] font-medium text-gray-900">Fill out manually</p>
                     <p className="text-[12px] font-medium text-gray-400 mt-1 leading-relaxed">
                       Start from scratch and fill out all steps yourself.
                     </p>
@@ -207,7 +207,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
                     <>
                       <UploadIcon size={24} className="text-[#0047CC]" />
                       <div className="text-center">
-                        <p className="text-[13px] font-bold text-gray-800">Choose file to upload</p>
+                        <p className="text-[13px] font-medium text-gray-800">Choose file to upload</p>
                         <p className="text-[11px] font-medium text-gray-400 mt-1">Supported formats: pdf, docx</p>
                       </div>
                     </>
@@ -217,7 +217,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
                         <FileIcon size={20} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-bold text-gray-900 truncate">{uploadedFile?.name || 'document.pdf'}</p>
+                        <p className="text-[13px] font-medium text-gray-900 truncate">{uploadedFile?.name || 'document.pdf'}</p>
                         <p className="text-[11px] font-medium text-gray-400">{uploadedFile?.size || '0.0 MB'}</p>
                       </div>
                       <button className="text-gray-300 hover:text-red-500 p-2 cursor-pointer" onClick={handleClearFile}>
@@ -229,7 +229,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
 
                 <div className="flex items-center gap-4">
                   <div className="h-px bg-gray-100 flex-1" />
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">OR</span>
+                  <span className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">OR</span>
                   <div className="h-px bg-gray-100 flex-1" />
                 </div>
 
@@ -255,50 +255,50 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
               <div className="bg-[#F7F7F7] border border-gray-100 rounded-2xl p-5 space-y-4">
                 <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                   <div>
-                    <p className="text-[10px] lg:text-[11px] font-bold text-gray-400 uppercase tracking-wider">Role title</p>
-                    <p className="text-[13px] font-bold text-gray-900 mt-0.5 truncate">Global Health Research Intern</p>
+                    <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">Role title</p>
+                    <p className="text-[13px] font-medium text-gray-900 mt-0.5 truncate">Global Health Research Intern</p>
                   </div>
                   <div>
-                    <p className="text-[10px] lg:text-[11px] font-bold text-gray-400 uppercase tracking-wider">Role type</p>
-                    <p className="text-[13px] font-bold text-gray-900 mt-0.5 truncate">Internship</p>
+                    <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">Role type</p>
+                    <p className="text-[13px] font-medium text-gray-900 mt-0.5 truncate">Internship</p>
                   </div>
                   <div>
-                    <p className="text-[10px] lg:text-[11px] font-bold text-gray-400 uppercase tracking-wider">Employment level</p>
-                    <p className="text-[13px] font-bold text-gray-900 mt-0.5 truncate">--</p>
+                    <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">Employment level</p>
+                    <p className="text-[13px] font-medium text-gray-900 mt-0.5 truncate">--</p>
                   </div>
                   <div>
-                    <p className="text-[10px] lg:text-[11px] font-bold text-gray-400 uppercase tracking-wider">Available positions</p>
-                    <p className="text-[13px] font-bold text-gray-900 mt-0.5 truncate">3 positions</p>
+                    <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">Available positions</p>
+                    <p className="text-[13px] font-medium text-gray-900 mt-0.5 truncate">3 positions</p>
                   </div>
                   <div>
-                    <p className="text-[10px] lg:text-[11px] font-bold text-gray-400 uppercase tracking-wider">Time commitment</p>
-                    <p className="text-[13px] font-bold text-gray-900 mt-0.5 truncate">20hrs/week</p>
+                    <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">Time commitment</p>
+                    <p className="text-[13px] font-medium text-gray-900 mt-0.5 truncate">20hrs/week</p>
                   </div>
                   <div>
-                    <p className="text-[10px] lg:text-[11px] font-bold text-gray-400 uppercase tracking-wider">Time preference</p>
-                    <p className="text-[13px] font-bold text-gray-900 mt-0.5 truncate">GMT + 1</p>
+                    <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">Time preference</p>
+                    <p className="text-[13px] font-medium text-gray-900 mt-0.5 truncate">GMT + 1</p>
                   </div>
                   <div>
-                    <p className="text-[10px] lg:text-[11px] font-bold text-gray-400 uppercase tracking-wider">Work format</p>
-                    <p className="text-[13px] font-bold text-gray-900 mt-0.5 truncate">Onsite</p>
+                    <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">Work format</p>
+                    <p className="text-[13px] font-medium text-gray-900 mt-0.5 truncate">Onsite</p>
                   </div>
                   <div>
-                    <p className="text-[10px] lg:text-[11px] font-bold text-gray-400 uppercase tracking-wider">Work location</p>
-                    <p className="text-[13px] font-bold text-gray-900 mt-0.5 truncate">Lagos, Nigeria</p>
+                    <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">Work location</p>
+                    <p className="text-[13px] font-medium text-gray-900 mt-0.5 truncate">Lagos, Nigeria</p>
                   </div>
                   <div>
-                    <p className="text-[10px] lg:text-[11px] font-bold text-gray-400 uppercase tracking-wider">Start date</p>
-                    <p className="text-[13px] font-bold text-gray-900 mt-0.5 truncate">October 21st, 2025</p>
+                    <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">Start date</p>
+                    <p className="text-[13px] font-medium text-gray-900 mt-0.5 truncate">October 21st, 2025</p>
                   </div>
                   <div>
-                    <p className="text-[10px] lg:text-[11px] font-bold text-gray-400 uppercase tracking-wider">End date</p>
-                    <p className="text-[13px] font-bold text-gray-900 mt-0.5 truncate">January 21st 2026</p>
+                    <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">End date</p>
+                    <p className="text-[13px] font-medium text-gray-900 mt-0.5 truncate">January 21st 2026</p>
                   </div>
                 </div>
                 <div className="border-t border-gray-200/60 pt-3">
-                  <p className="text-[10px] lg:text-[11px] font-bold text-gray-400 uppercase tracking-wider">Role summary</p>
+                  <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">Role summary</p>
                   <p className="text-[13px] font-medium text-gray-700 mt-1 leading-relaxed">
-                    Lorem ipsum dolor sit amet consectetur. Vierra lectus rutrum luesnh... <span className="text-[#0047CC] font-bold cursor-pointer hover:underline">see more</span>
+                    Lorem ipsum dolor sit amet consectetur. Vierra lectus rutrum luesnh... <span className="text-[#0047CC] font-semibold cursor-pointer hover:underline">see more</span>
                   </p>
                 </div>
               </div>
