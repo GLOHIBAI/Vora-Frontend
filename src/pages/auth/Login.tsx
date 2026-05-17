@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import { validateEmail } from '../../utils/validation';
-import { GoogleIcon, AppleIcon } from '../../components/common/Icons';
+import { AppleIcon } from '../../components/common/Icons';
+import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
 import { useLoginMutation } from '../../services/queries/auth';
 import { routeAfterAuth } from '../../utils/auth';
 
@@ -63,12 +64,6 @@ const Login: React.FC = () => {
         setFormError(errMsg);
       }
     }
-  };
-
-  const handleSocialLogin = (provider: 'Google' | 'Apple') => {
-    console.log(`Signing in with ${provider}`);
-    // Omitted real social logic for now, redirecting to dashboard
-    navigate('/dashboard');
   };
 
   const handleBlur = (field: keyof typeof touched) => {
@@ -135,11 +130,8 @@ const Login: React.FC = () => {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
-          <Button variant="social" onClick={() => handleSocialLogin('Google')} disabled={loginMutation.isPending}>
-            <GoogleIcon />
-            <span>Sign in with Google</span>
-          </Button>
-          <Button variant="social" onClick={() => handleSocialLogin('Apple')} disabled={loginMutation.isPending}>
+          <GoogleSignInButton disabled={loginMutation.isPending} />
+          <Button variant="social" disabled={loginMutation.isPending}>
             <AppleIcon />
             <span>Sign in with Apple</span>
           </Button>

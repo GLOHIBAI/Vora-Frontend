@@ -7,5 +7,6 @@ export const authKeys = {
   oauthStatus: () => [...authKeys.all, 'oauthStatus'] as const,
   googleLogin: () => [...authKeys.all, 'googleLogin'] as const,
   oauthSelectRole: () => [...authKeys.all, 'oauthSelectRole'] as const,
-  oauthVerifyEmail: () => [...authKeys.all, 'oauthVerifyEmail'] as const,
+  oauthVerify: () => [...authKeys.all, 'oauthVerify'] as const,
+  oauthResendOtp: () => [...authKeys.all, 'oauthResendOtp'] as const,
 };

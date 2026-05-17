@@ -1,14 +1,26 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import type { User, AuthContextType } from '../types';
+import { SETUP_TOKEN_KEY, clearSetupToken as clearStoredSetupToken } from '../utils/oauth';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasSetupToken, setHasSetupToken] = useState(
+    () => !!localStorage.getItem(SETUP_TOKEN_KEY),
+  );
 
-  // Initialize from localStorage on mount
+  const logout = useCallback(() => {
+    setUser(null);
+    localStorage.removeItem('vora_user');
+    localStorage.removeItem('vora_role');
+    localStorage.removeItem('auth_token');
+    clearStoredSetupToken();
+    setHasSetupToken(false);
+  }, []);
+
   useEffect(() => {
     const storedUser = localStorage.getItem('vora_user');
     if (storedUser) {
@@ -24,10 +36,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const handleUnauthorized = () => {
       logout();
     };
-    
+
     window.addEventListener('auth:unauthorized', handleUnauthorized);
     return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
-  }, []);
+  }, [logout]);
 
   const login = (userData: User, token?: string) => {
     setUser(userData);
@@ -35,14 +47,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.setItem('vora_role', userData.role);
     if (token) {
       localStorage.setItem('auth_token', token);
+      clearStoredSetupToken();
+      setHasSetupToken(false);
     }
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('vora_user');
-    localStorage.removeItem('vora_role');
-    localStorage.removeItem('auth_token');
   };
 
   const updateUser = (updates: Partial<User>) => {
@@ -52,15 +59,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.setItem('vora_user', JSON.stringify(updatedUser));
   };
 
+  const setSetupToken = (token: string) => {
+    localStorage.setItem(SETUP_TOKEN_KEY, token);
+    localStorage.removeItem('auth_token');
+    setHasSetupToken(true);
+  };
+
+  const clearSetupToken = () => {
+    clearStoredSetupToken();
+    setHasSetupToken(false);
+  };
+
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isAuthenticated: !!user, 
-      isLoading, 
-      login, 
-      logout, 
-      updateUser 
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated: !!user && !!localStorage.getItem('auth_token'),
+        isLoading,
+        hasSetupToken,
+        login,
+        logout,
+        updateUser,
+        setSetupToken,
+        clearSetupToken,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
