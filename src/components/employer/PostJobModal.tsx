@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   CloseIcon, 
   UploadIcon, 
@@ -23,6 +23,8 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
   const [entryMethod, setEntryMethod] = useState<'upload' | 'manual' | null>(null);
   const [uploadState, setUploadState] = useState<'idle' | 'uploaded'>('idle');
   const [documentLink, setDocumentLink] = useState('');
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; size: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
@@ -32,7 +34,38 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
     setEntryMethod(null);
     setUploadState('idle');
     setDocumentLink('');
+    setUploadedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     onClose();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const sizeInMB = (file.size / (1024 * 1024)).toFixed(1);
+      setUploadedFile({
+        name: file.name,
+        size: `${sizeInMB} MB`
+      });
+      setUploadState('uploaded');
+    }
+  };
+
+  const handleUploadContainerClick = () => {
+    if (uploadState === 'idle') {
+      fileInputRef.current?.click();
+    }
+  };
+
+  const handleClearFile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setUploadedFile(null);
+    setUploadState('idle');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const isReady = () => {
@@ -48,7 +81,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
     if (hiringMode === 'vault' && !goLiveDate) return 'Set a go-live date to continue';
     if (!entryMethod) return 'Choose how to fill in the role';
     if (entryMethod === 'upload' && uploadState === 'idle' && !documentLink) return 'Upload a file or paste a link';
-    return entryMethod === 'upload' ? 'Continue with uploaded document →' : 'Start filling in role details →';
+    return entryMethod === 'upload' ? 'Continue with uploaded document' : 'Start filling in role details';
   };
 
   return (
@@ -153,8 +186,15 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
 
                   {entryMethod === 'upload' && (
                     <div className="mt-4 pt-4 border-t border-blue-100 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleFileChange} 
+                        accept=".pdf,.docx" 
+                        className="hidden" 
+                      />
                       <div 
-                        onClick={() => setUploadState('uploaded')}
+                        onClick={handleUploadContainerClick}
                         className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer ${
                           uploadState === 'uploaded' ? 'border-gray-100 bg-white/40' : 'border-blue-100 hover:border-blue-300 bg-white/60'
                         }`}
@@ -173,10 +213,10 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
                               <FileIcon size={20} />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-[13px] font-medium text-gray-900 truncate">Role_Spec_Final.pdf</p>
-                              <p className="text-[11px] font-medium text-gray-400">1.4 MB</p>
+                              <p className="text-[13px] font-medium text-gray-900 truncate">{uploadedFile?.name || 'document.pdf'}</p>
+                              <p className="text-[11px] font-medium text-gray-400">{uploadedFile?.size || '0.0 MB'}</p>
                             </div>
-                            <button className="text-gray-300 hover:text-red-500 p-2" onClick={(e) => { e.stopPropagation(); setUploadState('idle'); }}>
+                            <button className="text-gray-300 hover:text-red-500 p-2 cursor-pointer" onClick={handleClearFile}>
                               <CloseIcon size={14} strokeWidth={3} />
                             </button>
                           </div>
