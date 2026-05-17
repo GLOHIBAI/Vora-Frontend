@@ -4,6 +4,8 @@ import {
   UploadIcon, 
   FileIcon
 } from '../common/Icons';
+import Button from '../common/Button';
+import Input from '../common/Input';
 
 interface PostJobModalProps {
   isOpen: boolean;
@@ -106,15 +108,13 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
 
                 {hiringMode === 'vault' && (
                   <div className="mt-4 pt-4 border-t border-blue-100 space-y-4 animate-in slide-in-from-top-2 duration-300">
-                    <div className="space-y-2">
-                      <label className="text-[12px] font-medium text-[#0047CC]">Go-live date *</label>
-                      <input 
-                        type="date" 
-                        className="w-full p-3 bg-white border border-blue-200 rounded-xl outline-none text-[14px] font-medium text-gray-900"
-                        value={goLiveDate}
-                        onChange={(e) => setGoLiveDate(e.target.value)}
-                      />
-                    </div>
+                    <Input 
+                      label="Go-live date *"
+                      type="date" 
+                      value={goLiveDate}
+                      onChange={(e) => setGoLiveDate(e.target.value)}
+                      className="border-blue-200"
+                    />
                     <div className="bg-white/60 p-4 rounded-xl space-y-2">
                       <p className="text-[11px] font-medium text-blue-900 leading-relaxed">
                         ① Complete the full spec today — lock in current fees.<br/>
@@ -189,15 +189,13 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
                         <div className="h-px bg-blue-100 flex-1" />
                       </div>
 
-                      <div className="space-y-2">
-                        <input 
-                          type="url" 
-                          placeholder="Paste a link (https://...)" 
-                          className="w-full p-3 bg-white border border-blue-100 rounded-xl outline-none text-[13px] font-medium text-gray-900 placeholder:text-gray-300"
-                          value={documentLink}
-                          onChange={(e) => setDocumentLink(e.target.value)}
-                        />
-                      </div>
+                      <Input 
+                        type="url" 
+                        placeholder="Paste a link (https://...)" 
+                        value={documentLink}
+                        onChange={(e) => setDocumentLink(e.target.value)}
+                        className="border-blue-100 placeholder:text-gray-300"
+                      />
                     </div>
                   )}
                 </div>
@@ -222,7 +220,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
 
           {/* Action Button */}
           <div className="pt-4 sticky bottom-0 bg-white pb-2">
-            <button 
+            <Button 
               disabled={!isReady()}
               onClick={() => {
                 if (onContinue) {
@@ -235,12 +233,10 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
                   resetModal();
                 }
               }}
-              className={`w-full py-4 rounded-full text-[15px] font-medium transition-all shadow-xl ${
-                isReady() ? 'bg-[#0047CC] text-white hover:bg-[#003d99] shadow-blue-500/20' : 'bg-gray-100 text-gray-300 cursor-not-allowed shadow-none'
-              }`}
+              className="shadow-xl"
             >
               {getContinueText()}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
