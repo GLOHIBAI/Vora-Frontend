@@ -93,8 +93,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   if (!user) return null; // Or a loading state
 
   const fullName = user.title 
-    ? `${user.title} ${user.firstName} ${user.lastName}`.trim()
-    : (user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName);
+    ? `${user.title} ${user.firstName || ''} ${user.lastName || ''}`.trim()
+    : (user.lastName ? `${user.firstName || ''} ${user.lastName}` : (user.firstName || user.email || 'User'));
+  const initials = ((user.firstName || user.email || 'U').charAt(0) + (user.lastName ? user.lastName.charAt(0) : '')).toUpperCase();
   const roleLabel = user.role.charAt(0).toUpperCase() + user.role.slice(1);
 
   const getNavItems = () => {
@@ -166,7 +167,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           <div className="p-8 mt-auto border-t border-gray-200">
             <div className="flex items-center gap-3.5 cursor-pointer group">
               <div className="w-10 h-10 rounded-full bg-[#0047CC] flex items-center justify-center text-white font-medium text-[13px] shrink-0 uppercase tracking-tighter shadow-lg shadow-blue-500/20">
-                {user.firstName.charAt(0)}{user.lastName ? user.lastName.charAt(0) : ''}
+                {initials}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[14px] font-medium text-gray-900 truncate ">{fullName}</p>
