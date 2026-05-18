@@ -81,6 +81,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     }
   }, [mentorProfile, mentorState, isMentor, user, updateUser]);
 
+  useEffect(() => {
+    if (user && isEmployer && employerState?.data?.fields?.organisationName) {
+      const orgName = employerState.data.fields.organisationName;
+      if (orgName && user.firstName !== orgName) {
+        updateUser({ firstName: orgName, lastName: '' });
+      }
+    }
+  }, [employerState, isEmployer, user, updateUser]);
+
   if (!user) return null; // Or a loading state
 
   const fullName = user.title 
