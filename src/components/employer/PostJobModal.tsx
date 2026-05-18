@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   CloseIcon, 
   UploadIcon, 
-  FileIcon
+  FileIcon,
+  ChevronLeftIcon
 } from '../common/Icons';
+import Button from '../common/Button';
+import Input from '../common/Input';
 
 interface PostJobModalProps {
   isOpen: boolean;
@@ -16,37 +19,100 @@ interface PostJobModalProps {
 }
 
 const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue }) => {
-  const [hiringMode, setHiringMode] = useState<'live' | 'vault' | null>(null);
-  const [goLiveDate, setGoLiveDate] = useState('');
+  const [modalStep, setModalStep] = useState<number>(1); // 1, 2, or 3
   const [entryMethod, setEntryMethod] = useState<'upload' | 'manual' | null>(null);
   const [uploadState, setUploadState] = useState<'idle' | 'uploaded'>('idle');
   const [documentLink, setDocumentLink] = useState('');
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; size: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
   const resetModal = () => {
-    setHiringMode(null);
-    setGoLiveDate('');
+    setModalStep(1);
     setEntryMethod(null);
     setUploadState('idle');
     setDocumentLink('');
+    setUploadedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     onClose();
   };
 
-  const isReady = () => {
-    if (!hiringMode) return false;
-    if (hiringMode === 'vault' && !goLiveDate) return false;
-    if (!entryMethod) return false;
-    if (entryMethod === 'upload' && uploadState === 'idle' && !documentLink) return false;
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const sizeInMB = (file.size / (1024 * 1024)).toFixed(1);
+      setUploadedFile({
+        name: file.name,
+        size: `${sizeInMB} MB`
+      });
+      setUploadState('uploaded');
+    }
+  };
+
+  const handleUploadContainerClick = () => {
+    if (uploadState === 'idle') {
+      fileInputRef.current?.click();
+    }
+  };
+
+  const handleClearFile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setUploadedFile(null);
+    setUploadState('idle');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const getHeaderTitle = () => {
+    if (modalStep === 2) return 'Upload or Link a Job Description';
+    if (modalStep === 3) return 'Job details extracted successfully';
+    return 'Post a Job';
+  };
+
+  const isStepReady = () => {
+    if (modalStep === 1) return entryMethod !== null;
+    if (modalStep === 2) return uploadState === 'uploaded' || documentLink.trim().length > 0;
     return true;
   };
 
-  const getContinueText = () => {
-    if (!hiringMode) return 'Continue';
-    if (hiringMode === 'vault' && !goLiveDate) return 'Set a go-live date to continue';
-    if (!entryMethod) return 'Choose how to fill in the role';
-    if (entryMethod === 'upload' && uploadState === 'idle' && !documentLink) return 'Upload a file or paste a link';
-    return entryMethod === 'upload' ? 'Continue with uploaded document →' : 'Start filling in role details →';
+  const handleProceed = () => {
+    if (modalStep === 1) {
+      if (entryMethod === 'upload') {
+        setModalStep(2);
+      } else {
+        if (onContinue) {
+          onContinue({
+            isScheduled: false,
+            goLiveDate: '',
+            isPrefilled: false,
+          });
+        }
+        resetModal();
+      }
+    } else if (modalStep === 2) {
+      setModalStep(3);
+    } else if (modalStep === 3) {
+      if (onContinue) {
+        onContinue({
+          isScheduled: false,
+          goLiveDate: '',
+          isPrefilled: true,
+        });
+      }
+      resetModal();
+    }
+  };
+
+  const handleBack = () => {
+    if (modalStep === 3) {
+      setModalStep(2);
+    } else if (modalStep === 2) {
+      setModalStep(1);
+    }
   };
 
   return (
@@ -55,157 +121,51 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
       
       <div className="relative bg-white w-full max-w-[520px] max-h-[90vh] overflow-y-auto rounded-[24px] shadow-2xl animate-in zoom-in-95 duration-500 scrollbar-hide">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-100 p-6 flex items-center justify-between z-10">
-          <h2 className="text-[18px] font-medium text-gray-900 ">Post a Job</h2>
+        <div className="sticky top-0 bg-white border-b border-gray-100 p-6 flex items-center justify-between z-10 min-h-[73px]">
+          <div className="flex items-center gap-3">
+            {modalStep > 1 && (
+              <button 
+                onClick={handleBack}
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors text-gray-500 cursor-pointer"
+              >
+                <ChevronLeftIcon size={20} strokeWidth={3} />
+              </button>
+            )}
+            <h2 className="text-[16px] lg:text-[18px] font-medium text-gray-900">{getHeaderTitle()}</h2>
+          </div>
           <button onClick={resetModal} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 cursor-pointer">
             <CloseIcon size={20} strokeWidth={3} />
           </button>
         </div>
 
-        <div className="p-6 space-y-8">
-          {/* STEP 1: Hiring Mode */}
-          <section className="space-y-4">
-            <p className="text-[11px] font-medium text-gray-400 uppercase tracking-widest">When do you want to hire?</p>
-            
-            <div className="space-y-2">
-              <button 
-                onClick={() => setHiringMode('live')}
-                className={`w-full p-4 rounded-2xl border-2 transition-all text-left flex items-start gap-4 ${
-                  hiringMode === 'live' ? 'border-[#0047CC] bg-blue-50/50' : 'border-gray-100 hover:border-gray-200 bg-white'
-                }`}
-              >
-                <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${hiringMode === 'live' ? 'border-[#0047CC]' : 'border-gray-200'}`}>
-                  {hiringMode === 'live' && <div className="w-2.5 h-2.5 rounded-full bg-[#0047CC]" />}
-                </div>
-                <div>
-                  <p className="text-[14px] font-medium text-gray-900">Post live now</p>
-                  <p className="text-[12px] font-medium text-gray-400 mt-0.5">Role goes live immediately on submission. Matching fires the same day.</p>
-                </div>
-              </button>
-
-              <div className={`w-full p-4 rounded-2xl border-2 transition-all text-left ${
-                hiringMode === 'vault' ? 'border-[#0047CC] bg-blue-50/50' : 'border-gray-100 hover:border-gray-200 bg-white'
-              }`}>
+        <div className="p-6 space-y-6">
+          {/* STEP 1: Get Started */}
+          {modalStep === 1 && (
+            <div className="space-y-6">
+              <p className="text-[14px] lg:text-[15px] font-medium text-gray-700">How would you like to get started?</p>
+              
+              <div className="space-y-3">
                 <button 
-                  onClick={() => setHiringMode('vault')}
-                  className="w-full flex items-start gap-4 cursor-pointer"
+                  onClick={() => setEntryMethod('upload')}
+                  className={`w-full p-4 rounded-2xl border-2 transition-all text-left flex items-start gap-4 cursor-pointer ${
+                    entryMethod === 'upload' ? 'border-[#0047CC] bg-blue-50/20' : 'border-gray-100 hover:border-gray-200 bg-white'
+                  }`}
                 >
-                  <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${hiringMode === 'vault' ? 'border-[#0047CC]' : 'border-gray-200'}`}>
-                    {hiringMode === 'vault' && <div className="w-2.5 h-2.5 rounded-full bg-[#0047CC]" />}
+                  <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${entryMethod === 'upload' ? 'border-[#0047CC]' : 'border-gray-200'}`}>
+                    {entryMethod === 'upload' && <div className="w-2.5 h-2.5 rounded-full bg-[#0047CC]" />}
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-[14px] font-medium text-gray-900">Schedule for later — Vault mode</p>
-                      <span className="bg-blue-100 text-[#0047CC] text-[9px] font-medium px-2 py-0.5 rounded-full">RECOMMENDED</span>
-                    </div>
-                    <p className="text-[12px] font-medium text-gray-400 mt-0.5 leading-relaxed">
-                      Lock in your rate today. VORA silently matches candidates while the role stays invisible until your go-live date.
+                  <div>
+                    <p className="text-[14px] font-medium text-gray-900">Upload job document</p>
+                    <p className="text-[12px] font-medium text-gray-400 mt-1 leading-relaxed">
+                      Upload your existing job description, we'll prefill details for you to review.
                     </p>
                   </div>
                 </button>
 
-                {hiringMode === 'vault' && (
-                  <div className="mt-4 pt-4 border-t border-blue-100 space-y-4 animate-in slide-in-from-top-2 duration-300">
-                    <div className="space-y-2">
-                      <label className="text-[12px] font-medium text-[#0047CC]">Go-live date *</label>
-                      <input 
-                        type="date" 
-                        className="w-full p-3 bg-white border border-blue-200 rounded-xl outline-none text-[14px] font-medium text-gray-900"
-                        value={goLiveDate}
-                        onChange={(e) => setGoLiveDate(e.target.value)}
-                      />
-                    </div>
-                    <div className="bg-white/60 p-4 rounded-xl space-y-2">
-                      <p className="text-[11px] font-medium text-blue-900 leading-relaxed">
-                        ① Complete the full spec today — lock in current fees.<br/>
-                        ② Role enters Vault — completely invisible to candidates.<br/>
-                        ③ VORA silently pre-qualifies candidates against your spec.<br/>
-                        ④ Matching fires publicly on go-live day with zero delay.
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-
-          {/* STEP 2: Entry Method (Unfurls) */}
-          {(hiringMode === 'live' || (hiringMode === 'vault' && goLiveDate)) && (
-            <section className="space-y-4 border-t border-gray-100 pt-8 animate-in slide-in-from-top-4 duration-500">
-              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-widest">How would you like to fill in the role details?</p>
-              
-              <div className="space-y-3">
-                <div className={`p-4 rounded-2xl border-2 transition-all ${
-                  entryMethod === 'upload' ? 'border-[#0047CC] bg-blue-50/50' : 'border-gray-100 hover:border-gray-200 bg-white'
-                }`}>
-                  <button 
-                    onClick={() => setEntryMethod('upload')}
-                    className="w-full flex items-start gap-4 text-left cursor-pointer"
-                  >
-                    <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${entryMethod === 'upload' ? 'border-[#0047CC]' : 'border-gray-200'}`}>
-                      {entryMethod === 'upload' && <div className="w-2.5 h-2.5 rounded-full bg-[#0047CC]" />}
-                    </div>
-                    <div>
-                      <p className="text-[14px] font-medium text-gray-900">Upload job document</p>
-                      <p className="text-[12px] font-medium text-gray-400 mt-0.5">Upload your existing JD — VORA extracts and pre-fills all role details.</p>
-                    </div>
-                  </button>
-
-                  {entryMethod === 'upload' && (
-                    <div className="mt-4 pt-4 border-t border-blue-100 space-y-4 animate-in slide-in-from-top-2 duration-300">
-                      <div 
-                        onClick={() => setUploadState('uploaded')}
-                        className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer ${
-                          uploadState === 'uploaded' ? 'border-gray-100 bg-white/40' : 'border-blue-100 hover:border-blue-300 bg-white/60'
-                        }`}
-                      >
-                        {uploadState === 'idle' ? (
-                          <>
-                            <UploadIcon size={24} className="text-[#0047CC]" />
-                            <div className="text-center">
-                              <p className="text-[13px] font-medium text-gray-800">Drop PDF or DOCX here</p>
-                              <p className="text-[11px] font-medium text-gray-400 mt-1">or click to browse — Max 10MB</p>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="w-full flex items-center gap-4 p-3 bg-white border border-green-100 rounded-xl shadow-sm">
-                            <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center text-green-600">
-                              <FileIcon size={20} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-[13px] font-medium text-gray-900 truncate">Role_Spec_Final.pdf</p>
-                              <p className="text-[11px] font-medium text-gray-400">1.4 MB</p>
-                            </div>
-                            <button className="text-gray-300 hover:text-red-500 p-2" onClick={(e) => { e.stopPropagation(); setUploadState('idle'); }}>
-                              <CloseIcon size={14} strokeWidth={3} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <div className="h-px bg-blue-100 flex-1" />
-                        <span className="text-[10px] font-medium text-blue-300 uppercase tracking-widest">OR</span>
-                        <div className="h-px bg-blue-100 flex-1" />
-                      </div>
-
-                      <div className="space-y-2">
-                        <input 
-                          type="url" 
-                          placeholder="Paste a link (https://...)" 
-                          className="w-full p-3 bg-white border border-blue-100 rounded-xl outline-none text-[13px] font-medium text-gray-900 placeholder:text-gray-300"
-                          value={documentLink}
-                          onChange={(e) => setDocumentLink(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
                 <button 
                   onClick={() => setEntryMethod('manual')}
-                  className={`w-full p-4 rounded-2xl border-2 transition-all text-left flex items-start gap-4 ${
-                    entryMethod === 'manual' ? 'border-[#0047CC] bg-blue-50/50' : 'border-gray-100 hover:border-gray-200 bg-white'
+                  className={`w-full p-4 rounded-2xl border-2 transition-all text-left flex items-start gap-4 cursor-pointer ${
+                    entryMethod === 'manual' ? 'border-[#0047CC] bg-blue-50/20' : 'border-gray-100 hover:border-gray-200 bg-white'
                   }`}
                 >
                   <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${entryMethod === 'manual' ? 'border-[#0047CC]' : 'border-gray-200'}`}>
@@ -213,34 +173,147 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
                   </div>
                   <div>
                     <p className="text-[14px] font-medium text-gray-900">Fill out manually</p>
-                    <p className="text-[12px] font-medium text-gray-400 mt-0.5">Start from scratch and complete all steps yourself.</p>
+                    <p className="text-[12px] font-medium text-gray-400 mt-1 leading-relaxed">
+                      Start from scratch and fill out all steps yourself.
+                    </p>
                   </div>
                 </button>
               </div>
-            </section>
+            </div>
+          )}
+
+          {/* STEP 2: Upload or Link */}
+          {modalStep === 2 && (
+            <div className="space-y-6">
+              <p className="text-[13px] lg:text-[14px] font-medium text-gray-500 leading-relaxed">
+                We'll extract job details from your existing description so you can review and publish faster.
+              </p>
+
+              <div className="space-y-4">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                  accept=".pdf,.docx" 
+                  className="hidden" 
+                />
+                <div 
+                  onClick={handleUploadContainerClick}
+                  className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer ${
+                    uploadState === 'uploaded' ? 'border-gray-100 bg-white/40' : 'border-blue-100 hover:border-blue-300 bg-white/60'
+                  }`}
+                >
+                  {uploadState === 'idle' ? (
+                    <>
+                      <UploadIcon size={24} className="text-[#0047CC]" />
+                      <div className="text-center">
+                        <p className="text-[13px] font-medium text-gray-800">Choose file to upload</p>
+                        <p className="text-[11px] font-medium text-gray-400 mt-1">Supported formats: pdf, docx</p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="w-full flex items-center gap-4 p-3 bg-white border border-[#E6E6E6] rounded-xl shadow-sm">
+                      <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-[#0047CC]">
+                        <FileIcon size={20} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-medium text-gray-900 truncate">{uploadedFile?.name || 'document.pdf'}</p>
+                        <p className="text-[11px] font-medium text-gray-400">{uploadedFile?.size || '0.0 MB'}</p>
+                      </div>
+                      <button className="text-gray-300 hover:text-red-500 p-2 cursor-pointer" onClick={handleClearFile}>
+                        <CloseIcon size={14} strokeWidth={3} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="h-px bg-gray-100 flex-1" />
+                  <span className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">OR</span>
+                  <div className="h-px bg-gray-100 flex-1" />
+                </div>
+
+                <Input 
+                  label="Import from URL"
+                  type="url" 
+                  placeholder="Input document link" 
+                  value={documentLink}
+                  onChange={(e) => setDocumentLink(e.target.value)}
+                  className="placeholder:text-gray-300"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: Extraction Success */}
+          {modalStep === 3 && (
+            <div className="space-y-5">
+              <p className="text-[13px] lg:text-[14px] font-medium text-gray-500 leading-relaxed">
+                We've filled in most sections for you. You can review and edit them before publishing.
+              </p>
+
+              <div className="bg-[#F7F7F7] border border-gray-100 rounded-2xl p-5 space-y-4">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                  <div>
+                    <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">Role title</p>
+                    <p className="text-[13px] font-medium text-gray-900 mt-0.5 truncate">Global Health Research Intern</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">Role type</p>
+                    <p className="text-[13px] font-medium text-gray-900 mt-0.5 truncate">Internship</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">Employment level</p>
+                    <p className="text-[13px] font-medium text-gray-900 mt-0.5 truncate">--</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">Available positions</p>
+                    <p className="text-[13px] font-medium text-gray-900 mt-0.5 truncate">3 positions</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">Time commitment</p>
+                    <p className="text-[13px] font-medium text-gray-900 mt-0.5 truncate">20hrs/week</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">Time preference</p>
+                    <p className="text-[13px] font-medium text-gray-900 mt-0.5 truncate">GMT + 1</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">Work format</p>
+                    <p className="text-[13px] font-medium text-gray-900 mt-0.5 truncate">Onsite</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">Work location</p>
+                    <p className="text-[13px] font-medium text-gray-900 mt-0.5 truncate">Lagos, Nigeria</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">Start date</p>
+                    <p className="text-[13px] font-medium text-gray-900 mt-0.5 truncate">October 21st, 2025</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">End date</p>
+                    <p className="text-[13px] font-medium text-gray-900 mt-0.5 truncate">January 21st 2026</p>
+                  </div>
+                </div>
+                <div className="border-t border-gray-200/60 pt-3">
+                  <p className="text-[10px] lg:text-[11px] font-medium text-gray-400 uppercase tracking-wider">Role summary</p>
+                  <p className="text-[13px] font-medium text-gray-700 mt-1 leading-relaxed">
+                    Lorem ipsum dolor sit amet consectetur. Vierra lectus rutrum luesnh... <span className="text-[#0047CC] font-semibold cursor-pointer hover:underline">see more</span>
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Action Button */}
-          <div className="pt-4 sticky bottom-0 bg-white pb-2">
-            <button 
-              disabled={!isReady()}
-              onClick={() => {
-                if (onContinue) {
-                  onContinue({
-                    isScheduled: hiringMode === 'vault',
-                    goLiveDate: hiringMode === 'vault' ? goLiveDate : '',
-                    isPrefilled: entryMethod === 'upload',
-                  });
-                } else {
-                  resetModal();
-                }
-              }}
-              className={`w-full py-4 rounded-full text-[15px] font-medium transition-all shadow-xl ${
-                isReady() ? 'bg-[#0047CC] text-white hover:bg-[#003d99] shadow-blue-500/20' : 'bg-gray-100 text-gray-300 cursor-not-allowed shadow-none'
-              }`}
+          <div className="pt-2 sticky bottom-0 bg-white pb-2">
+            <Button 
+              disabled={!isStepReady()}
+              onClick={handleProceed}
+              className="shadow-xl"
             >
-              {getContinueText()}
-            </button>
+              {modalStep === 1 ? 'Proceed' : modalStep === 2 ? 'Extract job details' : 'Continue to form'}
+            </Button>
           </div>
         </div>
       </div>

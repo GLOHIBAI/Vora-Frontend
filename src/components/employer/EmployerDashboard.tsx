@@ -16,6 +16,7 @@ import {
 import PostJobWizard from './PostJobWizard';
 import PostJobModal from './PostJobModal';
 import Tag from '../common/Tag';
+import Button from '../common/Button';
 import { useAuth } from '../../context/AuthContext';
 
 // --- Sub-components for Employer Dashboard ---
@@ -114,12 +115,13 @@ const EmployerDashboard: React.FC = () => {
           <button className="flex items-center gap-2 px-4 lg:px-5 py-2 lg:py-2.5 bg-white border border-gray-100 rounded-full text-[11px] lg:text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-all shadow-sm cursor-pointer">
             <BellIcon size={14} /> Alerts <span className="bg-red-500 text-white text-[9px] font-medium px-1.5 py-0.5 rounded-full ml-1">3</span>
           </button>
-          <button 
+          <Button 
             onClick={() => setIsPostModalOpen(true)}
-            className="flex items-center gap-2 px-4 lg:px-5 py-2 lg:py-2.5 bg-[#0047CC] text-white rounded-full text-[11px] lg:text-[13px] font-medium hover:bg-[#003d99] transition-all shadow-lg shadow-blue-500/20 cursor-pointer"
+            fullWidth={false}
+            className="px-4 lg:px-5 min-h-[40px] text-[11px] lg:text-[13px] font-bold shadow-lg shadow-blue-500/20"
           >
-            <PlusIcon size={14} /> Post a Job
-          </button>
+            <PlusIcon size={14} strokeWidth={3} /> Post a Job
+          </Button>
         </div>
       </div>
 
