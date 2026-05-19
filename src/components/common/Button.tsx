@@ -10,10 +10,20 @@ const Button: React.FC<ButtonProps> = ({
   isLoading = false,
   className = '',
   disabled,
+  size = 'lg',
   ...props 
 }) => {
   const isLink = variant === 'link';
-  const baseStyles = `font-medium transition-all flex items-center justify-center gap-2 relative ${isLink ? 'cursor-pointer' : 'shadow-sm active:scale-[0.98] cursor-pointer min-h-[52px]'}`;
+  
+  const sizeStyles = {
+    sm: 'min-h-[36px] px-3.5 py-1.5 text-[12px]',
+    md: 'min-h-[48px] px-5 py-2.5 text-[14px]',
+    lg: 'min-h-[52px] px-6 py-3.5 text-[15px]'
+  };
+
+  const baseStyles = `font-medium transition-all flex items-center justify-center gap-2 relative ${
+    isLink ? 'cursor-pointer' : `shadow-sm active:scale-[0.98] cursor-pointer ${sizeStyles[size]}`
+  }`;
   
   const variants = {
     primary: "bg-brand-blue text-white hover:bg-brand-blue-hover disabled:bg-[#E6E6E6] disabled:text-[#ADADAD] disabled:cursor-not-allowed disabled:shadow-none",
@@ -25,11 +35,10 @@ const Button: React.FC<ButtonProps> = ({
 
   const widthStyle = fullWidth && !isLink ? "w-full" : "";
   const shapeStyle = isLink ? "" : (pill ? "rounded-full" : "rounded-lg");
-  const paddingStyle = (variant === 'social' || isLink) ? "" : "py-4";
 
   return (
     <button 
-      className={`${baseStyles} ${variants[variant]} ${widthStyle} ${shapeStyle} ${paddingStyle} ${className}`}
+      className={`${baseStyles} ${variants[variant]} ${widthStyle} ${shapeStyle} ${className}`}
       disabled={disabled || isLoading}
       {...props}
     >

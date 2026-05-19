@@ -409,7 +409,7 @@ const EmployerOnboarding: React.FC = () => {
               <Button
                 variant="outline"
                 onClick={handleBack}
-                className="min-h-[48px]"
+                size="md"
                 disabled={isLoading}
               >
                 Back
@@ -418,7 +418,7 @@ const EmployerOnboarding: React.FC = () => {
                 type="submit"
                 disabled={!isStep1Valid}
                 isLoading={isLoading}
-                className="min-h-[48px]"
+                size="md"
               >
                 Proceed
               </Button>
@@ -461,7 +461,7 @@ const EmployerOnboarding: React.FC = () => {
               <Button
                 variant="outline"
                 onClick={handleBack}
-                className="min-h-[48px]"
+                size="md"
                 disabled={isLoading}
               >
                 Back
@@ -470,7 +470,7 @@ const EmployerOnboarding: React.FC = () => {
                 type="submit"
                 disabled={!isStep2Valid}
                 isLoading={isLoading}
-                className="min-h-[48px]"
+                size="md"
               >
                 Proceed
               </Button>
@@ -539,7 +539,7 @@ const EmployerOnboarding: React.FC = () => {
               <Button
                 variant="outline"
                 onClick={handleBack}
-                className="min-h-[48px]"
+                size="md"
                 disabled={isLoading}
               >
                 Back
@@ -548,7 +548,7 @@ const EmployerOnboarding: React.FC = () => {
                 type="submit"
                 disabled={!isStep3Valid}
                 isLoading={isLoading}
-                className="min-h-[48px]"
+                size="md"
               >
                 Proceed
               </Button>
@@ -692,7 +692,7 @@ const EmployerOnboarding: React.FC = () => {
               <Button
                 variant="outline"
                 onClick={handleBack}
-                className="min-h-[48px]"
+                size="md"
                 disabled={isLoading}
               >
                 Back
@@ -701,7 +701,7 @@ const EmployerOnboarding: React.FC = () => {
                 type="submit"
                 disabled={!isStep4Valid}
                 isLoading={isLoading}
-                className="min-h-[48px]"
+                size="md"
               >
                 Proceed
               </Button>

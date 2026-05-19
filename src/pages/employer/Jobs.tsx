@@ -56,7 +56,7 @@ const Jobs: React.FC = () => {
         <Button 
           onClick={() => setIsPostModalOpen(true)}
           fullWidth={false}
-          className="px-6 min-h-[48px] text-[14px]"
+          size="md" className="px-6 text-[14px]"
         >
           <PlusIcon size={14} strokeWidth={3} />
           Post a job

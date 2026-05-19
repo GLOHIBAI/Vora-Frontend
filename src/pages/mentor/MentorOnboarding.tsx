@@ -559,7 +559,7 @@ const MentorProfile: React.FC = () => {
                 variant="outline"
                 type="button"
                 onClick={handleBack}
-                className="min-h-[48px]"
+                size="md"
               >
                 Back
               </Button>
@@ -568,7 +568,7 @@ const MentorProfile: React.FC = () => {
                 type="submit"
                 disabled={!isStep1Valid}
                 isLoading={isLoading}
-                className="min-h-[48px]"
+                size="md"
               >
                 Proceed
               </Button>
@@ -620,7 +620,7 @@ const MentorProfile: React.FC = () => {
                 variant="outline"
                 type="button"
                 onClick={handleBack}
-                className="min-h-[48px]"
+                size="md"
               >
                 Back
               </Button>
@@ -629,7 +629,7 @@ const MentorProfile: React.FC = () => {
                 type="submit"
                 disabled={!isStep2Valid}
                 isLoading={isLoading}
-                className="min-h-[48px]"
+                size="md"
               >
                 Proceed
               </Button>
@@ -804,7 +804,7 @@ const MentorProfile: React.FC = () => {
                 variant="outline"
                 type="button"
                 onClick={handleBack}
-                className="min-h-[48px]"
+                size="md"
               >
                 Back
               </Button>
@@ -813,7 +813,7 @@ const MentorProfile: React.FC = () => {
                 type="submit"
                 disabled={!isStep3Valid}
                 isLoading={isLoading}
-                className="min-h-[48px]"
+                size="md"
               >
                 Proceed
               </Button>
@@ -924,7 +924,7 @@ const MentorProfile: React.FC = () => {
                 variant="outline"
                 type="button"
                 onClick={handleBack}
-                className="min-h-[48px]"
+                size="md"
               >
                 Back
               </Button>
@@ -933,7 +933,7 @@ const MentorProfile: React.FC = () => {
                 type="submit"
                 disabled={!isStep4Valid}
                 isLoading={isLoading}
-                className="min-h-[48px]"
+                size="md"
               >
                 Proceed
               </Button>
@@ -1044,7 +1044,7 @@ const MentorProfile: React.FC = () => {
                 variant="outline"
                 type="button"
                 onClick={handleBack}
-                className="min-h-[48px]"
+                size="md"
               >
                 Back
               </Button>
@@ -1053,7 +1053,7 @@ const MentorProfile: React.FC = () => {
                 type="submit"
                 disabled={!getStepValidity()}
                 isLoading={isLoading}
-                className="min-h-[48px]"
+                size="md"
               >
                 Save & Continue
               </Button>

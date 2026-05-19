@@ -1361,14 +1361,16 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                 variant="outline"
                 fullWidth={false}
                 onClick={handleClose}
-                className="px-6 min-h-[44px] text-sm font-bold text-gray-700 border-gray-200 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                size="md"
+                className="px-6 text-sm font-bold text-gray-700 border-gray-200 hover:bg-gray-50 hover:text-gray-900 transition-colors"
               >
                 Save as draft
               </Button>
               <Button 
                 onClick={currentStep === 6 ? handleClose : nextStep}
                 fullWidth={false}
-                className="px-8 min-h-[48px] text-sm font-bold shadow-lg shadow-blue-500/20"
+                size="md"
+                className="px-8 text-sm font-bold shadow-lg shadow-blue-500/20"
               >
                 {currentStep === 6 ? 'Continue to payment' : 'Proceed'}
                 {currentStep !== 6 && <ChevronRightIcon size={18} />}

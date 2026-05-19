@@ -13,6 +13,7 @@ export interface OptionGroup {
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'social' | 'link';
+  size?: 'sm' | 'md' | 'lg';
   fullWidth?: boolean;
   pill?: boolean;
   isLoading?: boolean;
