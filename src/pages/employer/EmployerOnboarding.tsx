@@ -17,6 +17,7 @@ import {
   INT_LICENSE_OPTIONS,
   REMOTE_ELIGIBLE_OPTIONS,
   SPONSORSHIP_OPTIONS,
+  FEEDBACK_OPTIONS,
   EXPERIENCE_DOC_OPTIONS,
   HIRING_PRIORITY_OPTIONS
 } from '../../data/employerOnboardingData';
@@ -109,12 +110,15 @@ const EmployerOnboarding: React.FC = () => {
       }
 
       // Step 4 restoration
-      if (savedFields.hiringPriorityRanking || savedFields.experienceDocumentationTypes) {
+      if (savedFields.hiringPriorityRanking || savedFields.experienceDocumentationTypes || savedFields.postPlacementFeedback) {
         if (savedFields.hiringPriorityRanking) {
           setHiringPriority(savedFields.hiringPriorityRanking);
         }
         if (savedFields.experienceDocumentationTypes) {
           setExperienceDocs(savedFields.experienceDocumentationTypes);
+        }
+        if (savedFields.postPlacementFeedback) {
+          setPlacementFeedback(savedFields.postPlacementFeedback);
         }
       }
 
@@ -160,6 +164,7 @@ const EmployerOnboarding: React.FC = () => {
   const [otherPriority, setOtherPriority] = useState('');
   const [showOtherInput, setShowOtherInput] = useState(false);
   const [experienceDocs, setExperienceDocs] = useState<string[]>([]);
+  const [placementFeedback, setPlacementFeedback] = useState('');
 
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
@@ -168,7 +173,9 @@ const EmployerOnboarding: React.FC = () => {
     if (name === 'organizationName') {
       value = capitalizeFirstLetter(value);
     }
-    if (step === 1) {
+    if (name === 'placementFeedback') {
+      setPlacementFeedback(value);
+    } else if (step === 1) {
       setOrgInfo(prev => ({ ...prev, [name]: value }));
     } else if (step === 2) {
       setWorkforceInfo(prev => ({ ...prev, [name]: value }));
@@ -209,8 +216,8 @@ const EmployerOnboarding: React.FC = () => {
   }, [regulatoryInfo]);
 
   const isStep4Valid = useMemo(() => {
-    return experienceDocs.length > 0;
-  }, [experienceDocs]);
+    return experienceDocs.length > 0 && !!placementFeedback;
+  }, [experienceDocs, placementFeedback]);
 
   const handleNext = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -251,6 +258,7 @@ const EmployerOnboarding: React.FC = () => {
         await step4Mutation.mutateAsync({
           hiringPriorityRanking: hiringPriority,
           experienceDocumentationTypes: experienceDocs,
+          postPlacementFeedback: placementFeedback,
         });
         await queryClient.invalidateQueries({ queryKey: ['employer-onboarding', 'state'] });
         login({
@@ -685,6 +693,20 @@ const EmployerOnboarding: React.FC = () => {
                 selected={experienceDocs}
                 onChange={setExperienceDocs}
                 placeholder="Select all option"
+              />
+            </div>
+
+            <div className="pt-4">
+              <Select
+                label="Post-placement feedback"
+                name="placementFeedback"
+                value={placementFeedback}
+                onChange={handleChange}
+                onBlur={() => handleBlur('placementFeedback')}
+                placeholder="Select option"
+                options={FEEDBACK_OPTIONS}
+                error={touched.placementFeedback && !placementFeedback}
+                helperText={touched.placementFeedback && !placementFeedback ? 'This field is required' : ''}
               />
             </div>
 

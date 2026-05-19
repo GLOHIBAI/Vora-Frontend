@@ -296,11 +296,6 @@ export interface EmployerOnboardingStep3Request {
 export interface EmployerOnboardingStep4Request {
   hiringPriorityRanking: string[];
   experienceDocumentationTypes: string[];
-}
-
-export interface EmployerOnboardingStep5Request {
-  preferredTalentVisibility: string;
-  structuredTrainingOrCpd: string;
   postPlacementFeedback: string;
 }
 
@@ -311,8 +306,7 @@ export interface EmployerOnboardingStateResponse {
     EmployerOnboardingStep1Request &
     EmployerOnboardingStep2Request &
     EmployerOnboardingStep3Request &
-    EmployerOnboardingStep4Request &
-    EmployerOnboardingStep5Request
+    EmployerOnboardingStep4Request
   >;
 }
 
@@ -358,18 +352,6 @@ export const useEmployerOnboardingStep4Mutation = () => {
     mutationFn: (data: EmployerOnboardingStep4Request) =>
       apiClient.put<ApiResponse<any>>({
         url: '/employers/onboarding/step-4',
-        body: data,
-        auth: true,
-      }),
-  });
-};
-
-export const useEmployerOnboardingStep5Mutation = () => {
-  return useMutation({
-    mutationKey: ['employer-onboarding', 'step-5'],
-    mutationFn: (data: EmployerOnboardingStep5Request) =>
-      apiClient.put<ApiResponse<any>>({
-        url: '/employers/onboarding/step-5',
         body: data,
         auth: true,
       }),
