@@ -17,9 +17,6 @@ import {
   INT_LICENSE_OPTIONS,
   REMOTE_ELIGIBLE_OPTIONS,
   SPONSORSHIP_OPTIONS,
-  FEEDBACK_OPTIONS,
-  VISIBILITY_OPTIONS,
-  TRAINING_OPTIONS,
   EXPERIENCE_DOC_OPTIONS,
   HIRING_PRIORITY_OPTIONS
 } from '../../data/employerOnboardingData';
@@ -31,11 +28,10 @@ import {
   useEmployerOnboardingStep2Mutation,
   useEmployerOnboardingStep3Mutation,
   useEmployerOnboardingStep4Mutation,
-  useEmployerOnboardingStep5Mutation,
   useEmployerOnboardingStateQuery
 } from '../../services/queries/onboarding';
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 4;
 
 const EmployerOnboarding: React.FC = () => {
   const queryClient = useQueryClient();
@@ -52,7 +48,6 @@ const EmployerOnboarding: React.FC = () => {
   const step2Mutation = useEmployerOnboardingStep2Mutation();
   const step3Mutation = useEmployerOnboardingStep3Mutation();
   const step4Mutation = useEmployerOnboardingStep4Mutation();
-  const step5Mutation = useEmployerOnboardingStep5Mutation();
   const { data: onboardingState } = useEmployerOnboardingStateQuery();
 
   useEffect(() => {
@@ -123,18 +118,8 @@ const EmployerOnboarding: React.FC = () => {
         }
       }
 
-      // Step 5 restoration
-      if (
-        savedFields.preferredTalentVisibility ||
-        savedFields.structuredTrainingOrCpd ||
-        savedFields.postPlacementFeedback
-      ) {
-        setMatchInfo({
-          candidateVisibility: savedFields.preferredTalentVisibility || '',
-          structuredTraining: savedFields.structuredTrainingOrCpd || '',
-          placementFeedback: savedFields.postPlacementFeedback || '',
-        });
-      }
+      // End of restorations
+
 
       if (onboardingState.data.onboardingStep && !stepParam) {
         setStep(onboardingState.data.onboardingStep);
@@ -176,13 +161,6 @@ const EmployerOnboarding: React.FC = () => {
   const [showOtherInput, setShowOtherInput] = useState(false);
   const [experienceDocs, setExperienceDocs] = useState<string[]>([]);
 
-  // Step 5: Matching Preferences
-  const [matchInfo, setMatchInfo] = useState({
-    candidateVisibility: '',
-    structuredTraining: '',
-    placementFeedback: '',
-  });
-
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -196,8 +174,6 @@ const EmployerOnboarding: React.FC = () => {
       setWorkforceInfo(prev => ({ ...prev, [name]: value }));
     } else if (step === 3) {
       setRegulatoryInfo(prev => ({ ...prev, [name]: value }));
-    } else if (step === 5) {
-      setMatchInfo(prev => ({ ...prev, [name]: value }));
     }
   };
 
@@ -235,15 +211,6 @@ const EmployerOnboarding: React.FC = () => {
   const isStep4Valid = useMemo(() => {
     return experienceDocs.length > 0;
   }, [experienceDocs]);
-
-  const isStep5Valid = useMemo(() => {
-    return (
-      matchInfo.candidateVisibility &&
-      matchInfo.structuredTraining &&
-      matchInfo.placementFeedback
-    );
-  }, [matchInfo]);
-
 
   const handleNext = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -286,16 +253,6 @@ const EmployerOnboarding: React.FC = () => {
           experienceDocumentationTypes: experienceDocs,
         });
         await queryClient.invalidateQueries({ queryKey: ['employer-onboarding', 'state'] });
-        setStep(5);
-        window.scrollTo(0, 0);
-      } else if (step === 5 && isStep5Valid) {
-        await step5Mutation.mutateAsync({
-          preferredTalentVisibility: matchInfo.candidateVisibility,
-          structuredTrainingOrCpd: matchInfo.structuredTraining,
-          postPlacementFeedback: matchInfo.placementFeedback,
-        });
-        await queryClient.invalidateQueries({ queryKey: ['employer-onboarding', 'state'] });
-
         login({
           firstName: orgInfo.organizationName,
           lastName: '',
@@ -753,71 +710,6 @@ const EmployerOnboarding: React.FC = () => {
         </>
       )}
 
-      {/* Step 5: How should VORA match professionals to you? */}
-      {step === 5 && (
-        <>
-          <h1 className="text-xl sm:text-2xl font-medium text-[#1C1C1C]  mb-8">
-            How should VORA match professionals to you?
-          </h1>
-
-          <form onSubmit={handleNext} className="space-y-6" autoComplete="off">
-            <Select
-              label="Preffered candidate visibility"
-              name="candidateVisibility"
-              value={matchInfo.candidateVisibility}
-              onChange={handleChange}
-              onBlur={() => handleBlur('candidateVisibility')}
-              placeholder="Select an option"
-              options={VISIBILITY_OPTIONS}
-              error={touched.candidateVisibility && !matchInfo.candidateVisibility}
-              helperText={touched.candidateVisibility && !matchInfo.candidateVisibility ? 'This field is required' : ''}
-            />
-
-            <Select
-              label="Do you provide structured training or CPD?"
-              name="structuredTraining"
-              value={matchInfo.structuredTraining}
-              onChange={handleChange}
-              onBlur={() => handleBlur('structuredTraining')}
-              placeholder="Select an option"
-              options={TRAINING_OPTIONS}
-              error={touched.structuredTraining && !matchInfo.structuredTraining}
-              helperText={touched.structuredTraining && !matchInfo.structuredTraining ? 'This field is required' : ''}
-            />
-
-            <Select
-              label="Post-placement feedback"
-              name="placementFeedback"
-              value={matchInfo.placementFeedback}
-              onChange={handleChange}
-              onBlur={() => handleBlur('placementFeedback')}
-              placeholder="Select option"
-              options={FEEDBACK_OPTIONS}
-              error={touched.placementFeedback && !matchInfo.placementFeedback}
-              helperText={touched.placementFeedback && !matchInfo.placementFeedback ? 'This field is required' : ''}
-            />
-
-            <div className="flex gap-4 pt-4">
-              <Button
-                variant="outline"
-                onClick={handleBack}
-                className="min-h-[48px]"
-                disabled={isLoading}
-              >
-                Back
-              </Button>
-              <Button
-                type="submit"
-                disabled={!isStep5Valid}
-                isLoading={isLoading}
-                className="min-h-[48px]"
-              >
-                Proceed
-              </Button>
-            </div>
-          </form>
-        </>
-      )}
     </div>
   );
 };
