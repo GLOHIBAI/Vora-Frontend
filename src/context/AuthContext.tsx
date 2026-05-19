@@ -41,7 +41,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
   }, [logout]);
 
-  const login = (userData: User, token?: string) => {
+  const login = useCallback((userData: User, token?: string) => {
     setUser(userData);
     localStorage.setItem('vora_user', JSON.stringify(userData));
     localStorage.setItem('vora_role', userData.role);
@@ -50,25 +50,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       clearStoredSetupToken();
       setHasSetupToken(false);
     }
-  };
+  }, []);
 
-  const updateUser = (updates: Partial<User>) => {
-    if (!user) return;
-    const updatedUser = { ...user, ...updates };
-    setUser(updatedUser);
-    localStorage.setItem('vora_user', JSON.stringify(updatedUser));
-  };
+  const updateUser = useCallback((updates: Partial<User>) => {
+    setUser(prevUser => {
+      if (!prevUser) return null;
+      const updatedUser = { ...prevUser, ...updates };
+      localStorage.setItem('vora_user', JSON.stringify(updatedUser));
+      return updatedUser;
+    });
+  }, []);
 
-  const setSetupToken = (token: string) => {
+  const setSetupToken = useCallback((token: string) => {
     localStorage.setItem(SETUP_TOKEN_KEY, token);
     localStorage.removeItem('auth_token');
     setHasSetupToken(true);
-  };
+  }, []);
 
-  const clearSetupToken = () => {
+  const clearSetupToken = useCallback(() => {
     clearStoredSetupToken();
     setHasSetupToken(false);
-  };
+  }, []);
 
   return (
     <AuthContext.Provider

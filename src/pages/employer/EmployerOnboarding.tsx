@@ -39,7 +39,7 @@ const EmployerOnboarding: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   
   const stepParam = Number(searchParams.get('step'));
   const initialStep = stepParam || location.state?.onboardingStep || 1;
@@ -56,11 +56,13 @@ const EmployerOnboarding: React.FC = () => {
       const savedFields = onboardingState.data.fields || {};
       
       if (onboardingState.data.onboardingCompleted) {
-        login({
-          firstName: savedFields.organisationName || 'Employer',
-          lastName: '',
-          role: 'employer'
-        });
+        if (!user || user.role !== 'employer' || user.firstName !== (savedFields.organisationName || 'Employer')) {
+          login({
+            firstName: savedFields.organisationName || 'Employer',
+            lastName: '',
+            role: 'employer'
+          });
+        }
         navigate('/dashboard');
         return;
       }
@@ -129,7 +131,7 @@ const EmployerOnboarding: React.FC = () => {
         setStep(onboardingState.data.onboardingStep);
       }
     }
-  }, [onboardingState, stepParam, navigate, login]);
+  }, [onboardingState, stepParam, navigate, login, user]);
 
   // Step 1: Organization Info
   const [orgInfo, setOrgInfo] = useState({

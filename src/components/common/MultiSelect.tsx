@@ -63,9 +63,16 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
         {label}
       </label>
       <div className="relative">
-        <button
-          type="button"
+        <div
+          role="button"
+          tabIndex={0}
           onClick={() => setIsOpen(!isOpen)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsOpen(!isOpen);
+            }
+          }}
           className={`w-full min-h-[48px] px-4 py-2.5 sm:py-3 rounded-lg border ${error ? 'border-red-500 bg-red-50' : 'border-border-default bg-white'} text-left focus:outline-none focus:ring-2 ${error ? 'focus:ring-red-500/20 focus:border-red-500' : 'focus:ring-blue-500/20 focus:border-blue-500'} transition-all cursor-pointer flex items-center justify-between gap-2`}
         >
           <div className="flex-1 flex flex-col gap-1.5">
@@ -89,7 +96,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
           <ChevronDownIcon
             className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
           />
-        </button>
+        </div>
 
         {isOpen && (
           <div className="absolute z-10 mt-1.5 w-full rounded-xl border border-border-default bg-white shadow-lg p-1.5 max-h-60 overflow-y-auto custom-scrollbar">
