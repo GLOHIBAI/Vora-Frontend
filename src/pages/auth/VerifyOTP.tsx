@@ -74,28 +74,12 @@ const VerifyOTP: React.FC = () => {
 
     try {
       // DEVELOPMENT BYPASS: Skip calling real OTP verification API
-      console.log('Bypassing OTP verification for development');
-
-      if (isOAuthFlow) {
-        const mockOAuthApiUser = {
-          firstName: 'Mock',
-          lastName: 'OAuth User',
-          role: 'EMPLOYER' as const,
-          email: email || 'mock-oauth@vora.com',
-          isEmailVerified: true
-        };
-        login(mapApiUserToContextUser(mockOAuthApiUser), 'mock-access-token');
-        navigate('/dashboard');
-        return;
-      }
+      console.log('Bypassing OTP verification for development — routing to /dashboard');
 
       const mockRoleAPI = (accountType?.toUpperCase() || 'EMPLOYER') as 'TALENT' | 'EMPLOYER' | 'MENTOR';
-      
-      // If we signed up, accountType is in state, and we should onboard. Otherwise, go to dashboard.
-      const hasSignedUp = !!accountType;
       const mockApiUser = {
-        firstName: hasSignedUp ? '' : 'Mock',
-        lastName: hasSignedUp ? '' : 'User',
+        firstName: 'Mock',
+        lastName: 'User',
         role: mockRoleAPI,
         email: email || 'mock@vora.com',
         isEmailVerified: true
