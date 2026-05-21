@@ -39,7 +39,7 @@ const TOTAL_STEPS = 5;
 
 const MentorProfile: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { updateUser } = useAuth();
   const [searchParams] = useSearchParams();
   const stepParam = searchParams.get('step');
   const initialStep = stepParam ? parseInt(stepParam, 10) : 1;
@@ -458,14 +458,39 @@ const MentorProfile: React.FC = () => {
           preferredFormat: mappedPreferredFormat,
         });
 
-        // Trigger final onboard completion triggers eligibility review
-        await completeOnboardingMutation.mutateAsync();
+        const ianaTimezone = (() => {
+          const tz = availabilityInfo.timezone;
+          if (tz === 'WAT' || tz?.includes('West Africa Time')) return 'Africa/Lagos';
+          if (tz === 'GMT' || tz?.includes('Greenwich Mean Time')) return 'Europe/London';
+          if (tz === 'EST' || tz?.includes('Eastern Standard Time')) return 'America/New_York';
+          if (tz === 'CST' || tz?.includes('Central Standard Time')) return 'America/Chicago';
+          if (tz === 'PST' || tz?.includes('Pacific Standard Time')) return 'America/Los_Angeles';
+          if (tz === 'EAT' || tz?.includes('East Africa Time')) return 'Africa/Nairobi';
+          return tz || 'UTC';
+        })();
 
-        login({
+        const primaryOperatingMarket = (() => {
+          const tz = availabilityInfo.timezone;
+          if (tz === 'WAT' || tz?.includes('West Africa Time')) return 'NG';
+          if (tz === 'EAT' || tz?.includes('East Africa Time')) return 'KE';
+          if (tz === 'GMT' || tz?.includes('Greenwich Mean Time')) return 'GB';
+          if (tz === 'EST' || tz === 'CST' || tz === 'PST' || tz?.includes('Standard Time')) return 'US';
+          return 'US';
+        })();
+
+        const generatedBio = `${personalInfo.firstName} ${personalInfo.lastName} is a ${personalInfo.professionalTitle || 'professional'} with experience in ${expertiseInfo.primaryExpertise.join(', ') || 'mentorship'}.`;
+
+        // Trigger final onboard completion triggers eligibility review
+        await completeOnboardingMutation.mutateAsync({
+          bio: generatedBio,
+          primaryOperatingMarket,
+          timezone: ianaTimezone,
+        });
+
+        updateUser({
           title: personalInfo.title,
           firstName: personalInfo.firstName,
           lastName: personalInfo.lastName,
-          role: 'mentor'
         });
         navigate('/onboarding/welcome', { state: { firstName: `${personalInfo.firstName} ${personalInfo.lastName}`, role: 'mentor' } });
       }

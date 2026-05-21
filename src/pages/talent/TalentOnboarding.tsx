@@ -101,7 +101,7 @@ const TalentOnboarding: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { login } = useAuth();
+  const { updateUser } = useAuth();
   
   const stepParam = Number(searchParams.get('step'));
   const initialStep = stepParam || location.state?.onboardingStep || 1;
@@ -393,10 +393,9 @@ const TalentOnboarding: React.FC = () => {
           prValidity: showPRPanel ? prValidity : undefined,
         });
 
-        login({
+        updateUser({
           firstName: formData.firstName,
           lastName: formData.lastName,
-          role: 'talent'
         });
         navigate('/onboarding/welcome', { state: { firstName: formData.firstName, role: 'talent' } });
       } catch (error) {

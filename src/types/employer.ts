@@ -18,3 +18,11 @@ export interface EmployerHiringNeeds {
   engagementFormat: string[];
   urgency: string;
 }
+
+// Payments page types
+export type PaymentsTabType = 'session' | 'psychometric' | 'sjt' | 'video' | 'overall';
+export type DecisionStatus = 'pending' | 'hired' | 'rejected';
+
+// Final Alignment Session types
+export type AlignmentStep = 'choose' | 'video-setup' | 'inperson-setup' | 'confirm';
+export type AlignmentSessionType = 'video' | 'inperson';

@@ -10,17 +10,16 @@ import {
 } from '../../components/common/Icons';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
+import Textarea from '../../components/common/Textarea';
 import { SAMPLE_JOB_DETAILS } from '../../constants/mockData';
-
-type Step = 'choose' | 'video-setup' | 'inperson-setup' | 'confirm';
-type SessionType = 'video' | 'inperson';
+import type { AlignmentStep, AlignmentSessionType } from '../../types';
 
 const FinalAlignmentSession: React.FC = () => {
   const { id, candidateId } = useParams();
   const navigate = useNavigate();
   
-  const [step, setStep] = useState<Step>('choose');
-  const [sessionType, setSessionType] = useState<SessionType | null>(null);
+  const [step, setStep] = useState<AlignmentStep>('choose');
+  const [sessionType, setSessionType] = useState<AlignmentSessionType | null>(null);
   
   // Mock job and candidate data
   const job = SAMPLE_JOB_DETAILS;
@@ -159,9 +158,9 @@ const FinalAlignmentSession: React.FC = () => {
             )}
             
             <div className="sm:col-span-2">
-              <label className="block text-[12px] font-medium text-gray-400 uppercase tracking-widest mb-3">Session Focus Notes (optional)</label>
-              <textarea 
-                className="w-full bg-gray-50 border border-gray-100 rounded-xl p-4 text-[14px] font-medium text-gray-900 focus:outline-none focus:border-[#0047CC] focus:ring-1 focus:ring-[#0047CC] transition-all min-h-[120px]"
+              <Textarea 
+                label="Session Focus Notes (optional)"
+                className="min-h-[120px] bg-gray-50"
                 placeholder={step === 'video-setup' ? "e.g. Confirm start date, discuss onboarding preferences, team introduction…" : "Topics to confirm during the in-person visit…"}
               />
             </div>

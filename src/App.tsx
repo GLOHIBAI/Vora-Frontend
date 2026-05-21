@@ -23,6 +23,8 @@ const TalentProfile = lazy(() => import('./pages/talent/TalentProfile'))
 const FinalAlignmentSession = lazy(() => import('./pages/employer/FinalAlignmentSession'))
 const OnboardingContainer = lazy(() => import('./pages/onboarding/OnboardingContainer'))
 const NotFound = lazy(() => import('./pages/NotFound'))
+const Settings = lazy(() => import('./pages/Settings'))
+const Payments = lazy(() => import('./pages/employer/Payments'))
 
 const App = () => {
   return (
@@ -42,7 +44,7 @@ const App = () => {
           <Route path="/jobs/:id/alignment/:candidateId" element={<DashboardLayout><FinalAlignmentSession /></DashboardLayout>} />
           <Route path="/talents" element={<DashboardLayout><Talents /></DashboardLayout>} />
           <Route path="/talents/:id" element={<DashboardLayout><TalentProfile /></DashboardLayout>} />
-          <Route path="/payments" element={<DashboardLayout><div className="text-center py-20 text-gray-500 text-lg font-medium">Payments Page (Coming Soon)</div></DashboardLayout>} />
+          <Route path="/payments" element={<DashboardLayout><Payments /></DashboardLayout>} />
 
           {/* Auth Routes */}
           <Route path="/signup" element={<Signup />} />
@@ -58,7 +60,7 @@ const App = () => {
           <Route path="/onboarding/mentor-apply/profile" element={<MentorProfile />} />
           <Route path="/onboarding/welcome" element={<Welcome />} />
 
-          <Route path="/settings" element={<div className="text-center py-20 text-gray-500 text-lg">Settings Page (Coming Soon)</div>} />
+          <Route path="/settings" element={<DashboardLayout><Settings /></DashboardLayout>} />
 
           {/* Wildcard Fallback 404 Route */}
           <Route path="*" element={<NotFound />} />

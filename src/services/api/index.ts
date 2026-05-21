@@ -52,9 +52,9 @@ async function fetchWithInterceptors(options: ApiRequestOptions): Promise<any> {
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
     }
-    fetchOptions.credentials = credentialsOption ?? 'include';
+    (fetchOptions as RequestInit).credentials = credentialsOption ?? 'include';
   } else if (credentialsOption) {
-    fetchOptions.credentials = credentialsOption;
+    (fetchOptions as RequestInit).credentials = credentialsOption;
   }
 
   const fullUrl = url.startsWith('http') ? url : `${BASE_URL}${url}`;

@@ -28,7 +28,7 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 }
 
 export interface SelectProps {
-  label: string;
+  label: string | React.ReactNode;
   name?: string;
   options?: Option[];
   groups?: OptionGroup[];
@@ -43,14 +43,25 @@ export interface SelectProps {
 }
 
 export interface MultiSelectProps {
-  label: string;
-  options: Option[];
+  label: string | React.ReactNode;
+  options?: Option[];
+  groups?: OptionGroup[];
   selected: string[];
   onChange: (selected: string[]) => void;
   placeholder?: string;
   error?: boolean;
   helperText?: string;
   className?: string;
+}
+
+export interface PostJobWizardProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialConfig?: {
+    isScheduled: boolean;
+    goLiveDate: string;
+    isPrefilled: boolean;
+  };
 }
 
 export interface SearchableSelectProps {
@@ -74,4 +85,20 @@ export interface NationalityTaggerProps {
   placeholder?: string;
   error?: boolean;
   helperText?: string;
+}
+
+export interface PostJobModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onContinue?: (config: {
+    isScheduled: boolean;
+    goLiveDate: string;
+    isPrefilled: boolean;
+  }) => void;
+}
+
+export interface EditRoleModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialData?: Record<string, string>;
 }

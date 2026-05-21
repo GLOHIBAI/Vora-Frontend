@@ -11,12 +11,7 @@ import { routeAfterAuth } from '../../utils/auth';
 import { resolveOAuthNavigation } from '../../utils/oauth';
 import { useAuth } from '../../context/AuthContext';
 import { getSetupToken } from '../../utils/oauth';
-
-interface VerifyLocationState {
-  email?: string;
-  oauth?: boolean;
-  otpExpiresInMinutes?: number;
-}
+import type { VerifyLocationState } from '../../types';
 
 const VerifyOTP: React.FC = () => {
   const location = useLocation();

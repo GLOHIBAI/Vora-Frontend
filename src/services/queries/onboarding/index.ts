@@ -255,13 +255,21 @@ export const useMentorOnboardingStateQuery = (enabled = true) => {
   });
 };
 
+export interface CompleteMentorOnboardingRequest {
+  bio: string;
+  primaryOperatingMarket: string;
+  timezone: string;
+  weeklyAvailabilityHours?: number;
+  maxActiveMentees?: number;
+}
+
 export const useCompleteMentorOnboardingMutation = () => {
   return useMutation({
     mutationKey: ['mentor-onboarding', 'complete'],
-    mutationFn: () =>
+    mutationFn: (data: CompleteMentorOnboardingRequest) =>
       apiClient.put<ApiResponse<any>>({
         url: '/mentors/onboarding',
-        body: {},
+        body: data,
         auth: true,
       }),
   });

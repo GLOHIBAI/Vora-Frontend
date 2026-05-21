@@ -23,3 +23,18 @@ export interface AuthContextType {
   setSetupToken: (token: string) => void;
   clearSetupToken: () => void;
 }
+
+// OAuth role selection types
+export type OAuthRole = 'TALENT' | 'EMPLOYER' | 'MENTOR';
+
+export interface VerifyLocationState {
+  email?: string;
+  oauth?: boolean;
+  otpExpiresInMinutes?: number;
+}
+
+export interface SelectTypeLocationState {
+  email?: string;
+  oauth?: boolean;
+  allowedRoles?: OAuthRole[];
+}

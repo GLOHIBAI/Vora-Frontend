@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-import type { MultiSelectProps } from '../../types';
+import type { MultiSelectProps, Option, OptionGroup } from '../../types';
 import Tag from './Tag';
 import { ChevronDownIcon, CheckIcon } from './Icons';
 
 const MultiSelect: React.FC<MultiSelectProps> = ({
   label,
-  options,
+  options = [],
+  groups = [],
   selected,
   onChange,
   placeholder = 'Select options',
@@ -55,7 +56,19 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
     onChange(selected.filter(v => v !== value));
   };
 
-  const getLabel = (value: string) => options.find(o => o.value === value)?.label || value;
+  const getLabel = (value: string) => {
+    let found = options.find(o => o.value === value);
+    if (!found) {
+      for (const group of groups as OptionGroup[]) {
+        const foundInGroup = group.options.find((o: Option) => o.value === value);
+        if (foundInGroup) {
+          found = foundInGroup;
+          break;
+        }
+      }
+    }
+    return found?.label || value;
+  };
 
   return (
     <div className="w-full" ref={containerRef}>
@@ -114,6 +127,29 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                 <span className="text-sm text-[#374151]">{option.label}</span>
               </div>
             ))}
+            
+            {(groups as OptionGroup[]).map((group: OptionGroup, groupIdx: number) => (
+              <div key={groupIdx}>
+                <div className="px-4 py-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider cursor-default sticky top-0 bg-white/95 backdrop-blur-sm z-10">
+                  {group.label}
+                </div>
+                {group.options.map((option: Option) => (
+                  <div
+                    key={option.value}
+                    className="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer group mb-0.5 last:mb-0"
+                    onClick={() => toggleOption(option.value)}
+                  >
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${selected.includes(option.value) ? 'bg-[#0047CC] border-[#0047CC]' : 'border-gray-300 bg-white group-hover:border-[#0047CC]'}`}>
+                      {selected.includes(option.value) && (
+                        <CheckIcon className="w-2.5 h-2.5 text-white" />
+                      )}
+                    </div>
+                    <span className="text-sm text-[#374151]">{option.label}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+
             {showOtherInput && (
               <div 
                 className="px-4 py-3 bg-gray-50/50 border-t border-gray-100 animate-in fade-in slide-in-from-top-1 duration-200"

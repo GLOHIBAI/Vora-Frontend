@@ -6,14 +6,7 @@ import { useOAuthSelectRoleMutation } from '../../services/queries/auth';
 import { routeAfterAuth } from '../../utils/auth';
 import { ROLE_LABELS } from '../../utils/oauth';
 import { getSetupToken } from '../../utils/oauth';
-
-type OAuthRole = 'TALENT' | 'EMPLOYER' | 'MENTOR';
-
-interface SelectTypeLocationState {
-  email?: string;
-  oauth?: boolean;
-  allowedRoles?: OAuthRole[];
-}
+import type { OAuthRole, SelectTypeLocationState } from '../../types';
 
 const SelectAccountType: React.FC = () => {
   const navigate = useNavigate();

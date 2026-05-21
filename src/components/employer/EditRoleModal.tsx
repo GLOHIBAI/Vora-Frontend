@@ -1,12 +1,10 @@
 import React from 'react';
 import { CloseIcon } from '../common/Icons';
 import Select from '../common/Select';
-
-interface EditRoleModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  initialData?: any;
-}
+import Input from '../common/Input';
+import Textarea from '../common/Textarea';
+import Button from '../common/Button';
+import type { EditRoleModalProps } from '../../types';
 
 const EditRoleModal: React.FC<EditRoleModalProps> = ({ isOpen, onClose, initialData }) => {
   const [roleType, setRoleType] = React.useState(initialData?.type || '');
@@ -72,15 +70,12 @@ const EditRoleModal: React.FC<EditRoleModalProps> = ({ isOpen, onClose, initialD
         <div className="px-8 py-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
             {/* Role Title */}
-            <div className="space-y-2">
-              <label className="text-[13px] font-medium text-gray-900">Role title</label>
-              <input 
-                type="text" 
-                placeholder="e.g. Global Health Research Intern"
-                className="w-full px-4 py-3 rounded-xl border border-gray-100 focus:outline-none focus:ring-2 focus:ring-[#0047CC]/5 focus:border-[#0047CC]/20 transition-all text-[14px] font-medium placeholder:text-gray-300"
-                defaultValue={initialData?.title}
-              />
-            </div>
+            <Input 
+              label="Role title"
+              type="text"
+              placeholder="e.g. Global Health Research Intern"
+              defaultValue={initialData?.title}
+            />
 
             {/* Role Type */}
             <Select 
@@ -103,24 +98,18 @@ const EditRoleModal: React.FC<EditRoleModalProps> = ({ isOpen, onClose, initialD
             />
 
             {/* Available Positions */}
-            <div className="space-y-2">
-              <label className="text-[13px] font-medium text-gray-900">Available positions</label>
-              <input 
-                type="text" 
-                placeholder="e.g. 1, 2, 3 etc"
-                className="w-full px-4 py-3 rounded-xl border border-gray-100 focus:outline-none focus:ring-2 focus:ring-[#0047CC]/5 focus:border-[#0047CC]/20 transition-all text-[14px] font-medium placeholder:text-gray-300"
-              />
-            </div>
+            <Input 
+              label="Available positions"
+              type="text"
+              placeholder="e.g. 1, 2, 3 etc"
+            />
 
             {/* Time Commitment */}
-            <div className="space-y-2">
-              <label className="text-[13px] font-medium text-gray-900">Time commitment</label>
-              <input 
-                type="text" 
-                placeholder="e.g. 20hrs per week"
-                className="w-full px-4 py-3 rounded-xl border border-gray-100 focus:outline-none focus:ring-2 focus:ring-[#0047CC]/5 focus:border-[#0047CC]/20 transition-all text-[14px] font-medium placeholder:text-gray-300"
-              />
-            </div>
+            <Input 
+              label="Time commitment"
+              type="text"
+              placeholder="e.g. 20hrs per week"
+            />
 
             {/* Time zone preference */}
             <Select 
@@ -153,36 +142,26 @@ const EditRoleModal: React.FC<EditRoleModalProps> = ({ isOpen, onClose, initialD
             />
 
             {/* Start date */}
-            <div className="space-y-2">
-              <label className="text-[13px] font-medium text-gray-900">Start date</label>
-              <input 
-                type="text" 
-                placeholder="Select date"
-                className="w-full px-4 py-3 rounded-xl border border-gray-100 focus:outline-none focus:ring-2 focus:ring-[#0047CC]/5 focus:border-[#0047CC]/20 transition-all text-[14px] font-medium placeholder:text-gray-300"
-                onFocus={(e) => e.target.type = 'date'}
-                onBlur={(e) => e.target.type = 'text'}
-              />
-            </div>
+            <Input 
+              label="Start date"
+              type="date"
+              placeholder="Select date"
+            />
 
             {/* End date */}
-            <div className="space-y-2">
-              <label className="text-[13px] font-medium text-gray-900">End date</label>
-              <input 
-                type="text" 
-                placeholder="End date"
-                className="w-full px-4 py-3 rounded-xl border border-gray-100 focus:outline-none focus:ring-2 focus:ring-[#0047CC]/5 focus:border-[#0047CC]/20 transition-all text-[14px] font-medium placeholder:text-gray-300"
-                onFocus={(e) => e.target.type = 'date'}
-                onBlur={(e) => e.target.type = 'text'}
-              />
-            </div>
+            <Input 
+              label="End date"
+              type="date"
+              placeholder="End date"
+            />
 
             {/* Role summary */}
-            <div className="col-span-2 space-y-2 pt-2">
-              <label className="text-[13px] font-medium text-gray-900">Role summary</label>
-              <textarea 
+            <div className="col-span-2 pt-2">
+              <Textarea 
+                label="Role summary"
                 rows={4}
                 placeholder="Briefly describe what the role is about"
-                className="w-full px-4 py-4 rounded-[20px] border border-gray-100 focus:outline-none focus:ring-2 focus:ring-[#0047CC]/5 focus:border-[#0047CC]/20 transition-all text-[14px] font-medium placeholder:text-gray-300 resize-none"
+                className="resize-none"
               />
             </div>
           </div>
@@ -190,12 +169,9 @@ const EditRoleModal: React.FC<EditRoleModalProps> = ({ isOpen, onClose, initialD
 
         {/* Footer */}
         <div className="px-8 py-8">
-          <button 
-            onClick={onClose}
-            className="w-full py-4 bg-[#0047CC] text-white rounded-full text-[15px] font-medium hover:bg-[#003d99] transition-all shadow-lg shadow-blue-500/20 cursor-pointer active:scale-[0.98]"
-          >
+          <Button onClick={onClose}>
             Confirm
-          </button>
+          </Button>
         </div>
       </div>
     </div>

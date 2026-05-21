@@ -6,3 +6,4 @@ export * from './auth';
 export * from './employer';
 export * from './dashboard';
 export * from './job';
+export * from './settings';

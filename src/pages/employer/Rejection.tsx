@@ -6,6 +6,7 @@ import {
   CheckIcon,
 } from '../../components/common/Icons';
 import Input from '../../components/common/Input';
+import Textarea from '../../components/common/Textarea';
 import Button from '../../components/common/Button';
 
 import { REJECTION_REASONS, FLAGGED_WORDS } from '../../constants/rejection';
@@ -107,16 +108,13 @@ const Rejection: React.FC = () => {
             )}
           </div>
 
-          <div className="space-y-2">
-            <label className="block text-[14px] font-medium text-gray-900">
-              Additional details <span className="font-normal text-gray-400 ml-1">(required)</span>
-            </label>
-            <textarea 
+          <Textarea 
+              label={<>Additional details <span className="font-normal text-gray-400 ml-1">(required)</span></>}
               rows={5}
               placeholder="Provide specific, documented details to support this rejection. This is reviewed by VORA and held in the audit trail."
-              className="w-full px-4 py-3 rounded-xl border border-gray-100 focus:outline-none focus:ring-2 focus:ring-[#0047CC]/5 focus:border-[#0047CC]/20 transition-all text-[14px] font-medium resize-none"
               value={details}
               onChange={(e) => handleDetailsChange(e.target.value)}
+              className="resize-none"
             />
             {isFlagged && (
               <div className="flex items-center gap-2 text-[#DC2626] text-[12px] font-medium animate-in fade-in slide-in-from-top-1">
@@ -124,7 +122,6 @@ const Rejection: React.FC = () => {
                 Your details appear to reference competency or assessment-related criteria already verified by VORA. This will trigger a review.
               </div>
             )}
-          </div>
 
           <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
             <p className="text-[12px] text-gray-500 leading-relaxed font-medium">

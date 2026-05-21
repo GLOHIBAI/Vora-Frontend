@@ -35,12 +35,30 @@ export function mapApiUserToContextUser(user?: User): ContextUser {
     ? (user!.role!.toLowerCase() as ContextUser['role'])
     : 'talent';
 
-  return {
-    firstName: user?.firstName || 'User',
+  let firstName = user?.firstName || '';
+  if (!firstName || firstName === 'User') {
+    firstName = user?.organisationName || user?.organizationName || user?.employerProfile?.organisationName || user?.employerProfile?.organizationName || '';
+  }
+  if (!firstName || firstName === 'User') {
+    if (user?.email) {
+      firstName = user.email.split('@')[0];
+    }
+  }
+  if (!firstName) {
+    firstName = mappedRole === 'employer' ? '' : 'User';
+  }
+
+  const contextUser: ContextUser = {
+    firstName,
     lastName: user?.lastName || '',
     role: mappedRole,
     email: user?.email,
   };
+
+  return {
+    ...user,
+    ...contextUser,
+  } as unknown as ContextUser;
 }
 
 export function completeOAuthSession(

@@ -39,7 +39,7 @@ const EmployerOnboarding: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { login, user } = useAuth();
+  const { updateUser, user } = useAuth();
   
   const stepParam = Number(searchParams.get('step'));
   const initialStep = stepParam || location.state?.onboardingStep || 1;
@@ -57,10 +57,9 @@ const EmployerOnboarding: React.FC = () => {
       
       if (onboardingState.data.onboardingCompleted) {
         if (!user || user.role !== 'employer' || user.firstName !== (savedFields.organisationName || 'Employer')) {
-          login({
+          updateUser({
             firstName: savedFields.organisationName || 'Employer',
             lastName: '',
-            role: 'employer'
           });
         }
         navigate('/dashboard');
@@ -131,7 +130,7 @@ const EmployerOnboarding: React.FC = () => {
         setStep(onboardingState.data.onboardingStep);
       }
     }
-  }, [onboardingState, stepParam, navigate, login, user]);
+  }, [onboardingState, stepParam, navigate, updateUser, user]);
 
   // Step 1: Organization Info
   const [orgInfo, setOrgInfo] = useState({
@@ -263,10 +262,9 @@ const EmployerOnboarding: React.FC = () => {
           postPlacementFeedback: placementFeedback,
         });
         await queryClient.invalidateQueries({ queryKey: ['employer-onboarding', 'state'] });
-        login({
+        updateUser({
           firstName: orgInfo.organizationName,
           lastName: '',
-          role: 'employer'
         });
         navigate('/onboarding/welcome', { state: { firstName: orgInfo.organizationName, role: 'employer' } });
       }
