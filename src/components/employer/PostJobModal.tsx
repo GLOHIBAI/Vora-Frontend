@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import Button from '../common/Button';
 import Input from '../common/Input';
-import { FieldLabel, ModalTitle, Subheading } from '../common/Typography';
+import { ModalTitle, Subheading } from '../common/Typography';
 import ScrollArea from '../common/ScrollArea';
 import { toISODate } from '../../utils/date';
 import { useAuth } from '../../context/AuthContext';

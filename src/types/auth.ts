@@ -10,6 +10,9 @@ export interface User {
   role: 'talent' | 'mentor' | 'employer';
   title?: string;
   email?: string;
+  onboardingStep?: number;
+  onboardingCompleted?: boolean;
+  isOnboardingComplete?: boolean;
 }
 
 export interface AuthContextType {

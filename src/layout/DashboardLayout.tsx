@@ -138,9 +138,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       }
       const mentorOnboardingFields = normalizeMentorOnboardingState(mentorState?.data)?.fields;
       if (mentorOnboardingFields) {
-        const { firstName, lastName } = mentorOnboardingFields;
+        const firstName =
+          typeof mentorOnboardingFields.firstName === 'string'
+            ? mentorOnboardingFields.firstName
+            : undefined;
+        const lastName =
+          typeof mentorOnboardingFields.lastName === 'string'
+            ? mentorOnboardingFields.lastName
+            : undefined;
         if (firstName && (user.firstName !== firstName || user.lastName !== lastName)) {
-          updateUser({ firstName, lastName });
+          updateUser({ firstName, lastName: lastName ?? '' });
         }
       }
     }

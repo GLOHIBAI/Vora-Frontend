@@ -4,7 +4,10 @@ import { useAuth } from '../../context/AuthContext';
 import EmployerOnboarding from '../employer/EmployerOnboarding';
 import TalentOnboarding from '../talent/TalentOnboarding';
 import SelectAccountType from '../auth/SelectAccountType';
-import { getMentorOnboardingRoute } from '../../utils/mentorOnboarding';
+import {
+  getMentorOnboardingRoute,
+  type MentorOnboardingUserFields,
+} from '../../utils/mentorOnboarding';
 
 const OnboardingContainer: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -27,12 +30,14 @@ const OnboardingContainer: React.FC = () => {
     case 'talent':
       return <TalentOnboarding />;
     case 'mentor':
+      const mentorUser: MentorOnboardingUserFields = {
+        onboardingStep: user.onboardingStep,
+        onboardingCompleted: user.onboardingCompleted,
+        isOnboardingComplete: user.isOnboardingComplete,
+      };
       return (
         <Navigate
-          to={getMentorOnboardingRoute(
-            (user as { onboardingStep?: number }).onboardingStep ?? step,
-            user,
-          )}
+          to={getMentorOnboardingRoute(mentorUser.onboardingStep ?? step, mentorUser)}
           replace
         />
       );

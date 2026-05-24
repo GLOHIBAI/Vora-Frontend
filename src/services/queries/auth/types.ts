@@ -20,6 +20,10 @@ export interface User {
   role?: 'TALENT' | 'EMPLOYER' | 'MENTOR';
   firstName?: string;
   lastName?: string;
+  isEmailVerified?: boolean;
+  onboardingStep?: number;
+  onboardingCompleted?: boolean;
+  isOnboardingComplete?: boolean;
   [key: string]: any;
 }
 
