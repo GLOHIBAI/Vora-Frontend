@@ -27,7 +27,15 @@ const OnboardingContainer: React.FC = () => {
     case 'talent':
       return <TalentOnboarding />;
     case 'mentor':
-      return <Navigate to={getMentorOnboardingRoute(Math.max(0, step - 1))} replace />;
+      return (
+        <Navigate
+          to={getMentorOnboardingRoute(
+            (user as { onboardingStep?: number }).onboardingStep ?? step,
+            user,
+          )}
+          replace
+        />
+      );
     default:
       return <SelectAccountType />;
   }

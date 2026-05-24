@@ -1,13 +1,44 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../../components/common/Button';
+import { useAuth } from '../../context/AuthContext';
+import { useMentorOnboardingStateQuery } from '../../services/queries/onboarding';
+import {
+  getMentorOnboardingProceedRoute,
+  getMentorOnboardingProfileStep,
+  isMentorOnboardingComplete,
+  normalizeMentorOnboardingState,
+} from '../../utils/mentorOnboarding';
 
 const MentorApply: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isMentor = user?.role?.toLowerCase() === 'mentor';
+  const { data: onboardingState } = useMentorOnboardingStateQuery(isMentor);
+
+  const mentorUser = user as {
+    onboardingStep?: number;
+    onboardingCompleted?: boolean;
+    isOnboardingComplete?: boolean;
+  } | null;
+
+  // Use API step when available; don't block Proceed while state is still loading.
+  const profileStep = onboardingState?.data
+    ? getMentorOnboardingProfileStep(onboardingState.data, mentorUser?.onboardingStep)
+    : mentorUser?.onboardingStep && mentorUser.onboardingStep >= 1
+      ? Math.min(mentorUser.onboardingStep, 5)
+      : 1;
 
   const handleProceed = () => {
-    navigate('/onboarding/mentor-apply/profile');
+    navigate(getMentorOnboardingProceedRoute(profileStep, mentorUser));
   };
+
+  const isComplete = isMentorOnboardingComplete({
+    onboardingStep: profileStep,
+    onboardingCompleted: normalizeMentorOnboardingState(onboardingState?.data)
+      ?.onboardingCompleted,
+    isOnboardingComplete: mentorUser?.isOnboardingComplete,
+  });
 
   return (
     <div className="max-w-2xl mx-auto py-12 sm:py-16 px-4 sm:px-6">
@@ -71,8 +102,8 @@ const MentorApply: React.FC = () => {
       </div>
 
       <div className="max-w-[480px] mx-auto">
-        <Button variant="primary" onClick={handleProceed}>
-          Proceed
+        <Button type="button" variant="primary" onClick={handleProceed}>
+          {isComplete ? 'Go to dashboard' : 'Proceed'}
         </Button>
       </div>
     </div>

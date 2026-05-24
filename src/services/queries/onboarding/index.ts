@@ -164,23 +164,30 @@ export interface CompleteMentorOnboardingResponse {
   updatedOnboardingData?: Record<string, unknown>;
 }
 
+export type MentorOnboardingSavedFields = Partial<
+  MentorOnboardingStep1Request &
+  MentorOnboardingStep2Request &
+  MentorOnboardingStep3Request &
+  MentorOnboardingStep4Request &
+  MentorOnboardingStep5Request
+>;
+
 export interface MentorOnboardingStateResponse {
-  step: number;
+  /** Current step (1–5); API may use `onboardingStep` instead of `step`. */
+  step?: number;
+  onboardingStep?: number;
   onboardingCompleted?: boolean;
-  fields: Partial<
-    MentorOnboardingStep1Request &
-    MentorOnboardingStep2Request &
-    MentorOnboardingStep3Request &
-    MentorOnboardingStep4Request &
-    MentorOnboardingStep5Request
-  >;
+  mentorId?: string;
+  fields?: MentorOnboardingSavedFields;
+  /** Nested profile data returned by some API versions */
+  onboarding?: MentorOnboardingSavedFields;
 }
 
 export const useMentorOnboardingStep1Mutation = () => {
   return useMutation({
     mutationKey: ['mentor-onboarding', 'step-1'],
     mutationFn: (data: MentorOnboardingStep1Request) =>
-      apiClient.put<ApiResponse<any>>({
+      apiClient.put<ApiResponse<CompleteMentorOnboardingResponse>>({
         url: '/mentors/onboarding/step-1',
         body: data,
         auth: true,
@@ -192,7 +199,7 @@ export const useMentorOnboardingStep2Mutation = () => {
   return useMutation({
     mutationKey: ['mentor-onboarding', 'step-2'],
     mutationFn: (data: MentorOnboardingStep2Request) =>
-      apiClient.put<ApiResponse<any>>({
+      apiClient.put<ApiResponse<CompleteMentorOnboardingResponse>>({
         url: '/mentors/onboarding/step-2',
         body: data,
         auth: true,
@@ -204,7 +211,7 @@ export const useMentorOnboardingStep3Mutation = () => {
   return useMutation({
     mutationKey: ['mentor-onboarding', 'step-3'],
     mutationFn: (data: MentorOnboardingStep3Request) =>
-      apiClient.put<ApiResponse<any>>({
+      apiClient.put<ApiResponse<CompleteMentorOnboardingResponse>>({
         url: '/mentors/onboarding/step-3',
         body: data,
         auth: true,
@@ -231,7 +238,7 @@ export const useMentorOnboardingStep4Mutation = () => {
   return useMutation({
     mutationKey: ['mentor-onboarding', 'step-4'],
     mutationFn: (data: MentorOnboardingStep4Request) =>
-      apiClient.put<ApiResponse<any>>({
+      apiClient.put<ApiResponse<CompleteMentorOnboardingResponse>>({
         url: '/mentors/onboarding/step-4',
         body: data,
         auth: true,
@@ -243,7 +250,7 @@ export const useMentorOnboardingStep5Mutation = () => {
   return useMutation({
     mutationKey: ['mentor-onboarding', 'step-5'],
     mutationFn: (data: MentorOnboardingStep5Request) =>
-      apiClient.put<ApiResponse<any>>({
+      apiClient.put<ApiResponse<CompleteMentorOnboardingResponse>>({
         url: '/mentors/onboarding/step-5',
         body: data,
         auth: true,
@@ -261,31 +268,12 @@ export const useMentorOnboardingStateQuery = (enabled = true) => {
         suppressErrorToast: true,
       }),
     enabled: enabled && !!localStorage.getItem('auth_token'),
+    staleTime: 30_000,
     retry: (failureCount, error) => {
       const status = (error as { status?: number })?.status;
       if (status === 403 || status === 404) return false;
       return failureCount < 1;
     },
-  });
-};
-
-export interface CompleteMentorOnboardingRequest {
-  bio: string;
-  primaryOperatingMarket: string;
-  timezone: string;
-  weeklyAvailabilityHours?: number;
-  maxActiveMentees?: number;
-}
-
-export const useCompleteMentorOnboardingMutation = () => {
-  return useMutation({
-    mutationKey: ['mentor-onboarding', 'complete'],
-    mutationFn: (data: CompleteMentorOnboardingRequest) =>
-      apiClient.put<ApiResponse<CompleteMentorOnboardingResponse>>({
-        url: '/mentors/onboarding',
-        body: data,
-        auth: true,
-      }),
   });
 };
 

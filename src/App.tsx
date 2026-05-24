@@ -63,11 +63,11 @@ const App = () => {
 
           {/* Onboarding Routes */}
           <Route path="/onboarding" element={<OnboardingContainer />} />
+          <Route path="/onboarding/welcome" element={<Welcome />} />
           <Route path="/onboarding/employer" element={<EmployerOnboarding />} />
           <Route path="/onboarding/talent" element={<TalentOnboarding />} />
-          <Route path="/onboarding/mentor-apply" element={<MentorApply />} />
           <Route path="/onboarding/mentor-apply/profile" element={<MentorProfile />} />
-          <Route path="/onboarding/welcome" element={<Welcome />} />
+          <Route path="/onboarding/mentor-apply" element={<MentorApply />} />
 
           <Route path="/settings" element={<ProtectedDashboardLayout><Settings /></ProtectedDashboardLayout>} />
 

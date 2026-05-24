@@ -14,7 +14,13 @@ import {
   MENTOR_NAV_ITEMS,
   TALENT_NAV_ITEMS
 } from '../constants/navigation';
-import { getMentorOnboardingRoute, isMentorOnboardingPath } from '../utils/mentorOnboarding';
+import {
+  getMentorOnboardingRoute,
+  getMentorOnboardingProfileStep,
+  isMentorOnboardingComplete,
+  isMentorOnboardingPath,
+  normalizeMentorOnboardingState,
+} from '../utils/mentorOnboarding';
 import VoraLogo from '../components/common/VoraLogo';
 import { VORA_LOGO_SRC } from '../constants/brand';
 
@@ -76,8 +82,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   useEffect(() => {
     if (!user || !isMentor) return;
 
-    const userComplete = (user as { isOnboardingComplete?: boolean }).isOnboardingComplete;
-    const isComplete = userComplete || mentorState?.data?.onboardingCompleted;
+    const mentorFields = {
+      onboardingStep: getMentorOnboardingProfileStep(
+        mentorState?.data,
+        (user as { onboardingStep?: number }).onboardingStep,
+      ),
+      onboardingCompleted: mentorState?.data?.onboardingCompleted,
+      isOnboardingComplete: (user as { isOnboardingComplete?: boolean }).isOnboardingComplete,
+    };
+
+    const isComplete = isMentorOnboardingComplete(mentorFields);
 
     const onMentorOnboarding = isMentorOnboardingPath(location.pathname);
 
@@ -88,12 +102,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       return;
     }
 
-    const savedStep =
-      mentorState?.data?.step ??
-      (user as { onboardingStep?: number }).onboardingStep ??
-      0;
-
-    const target = getMentorOnboardingRoute(savedStep);
+    const target = getMentorOnboardingRoute(mentorFields.onboardingStep ?? 0, mentorFields);
 
     if (!onMentorOnboarding) {
       navigate(target, { replace: true });
@@ -127,8 +136,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           return;
         }
       }
-      if (mentorState?.data?.fields) {
-        const { firstName, lastName } = mentorState.data.fields;
+      const mentorOnboardingFields = normalizeMentorOnboardingState(mentorState?.data)?.fields;
+      if (mentorOnboardingFields) {
+        const { firstName, lastName } = mentorOnboardingFields;
         if (firstName && (user.firstName !== firstName || user.lastName !== lastName)) {
           updateUser({ firstName, lastName });
         }

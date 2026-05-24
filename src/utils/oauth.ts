@@ -48,11 +48,21 @@ export function mapApiUserToContextUser(user?: User): ContextUser {
     firstName = mappedRole === 'employer' ? '' : 'User';
   }
 
+  const onboardingCompleted =
+    user?.onboardingCompleted === true || user?.isOnboardingComplete === true;
+  const onboardingStep =
+    typeof user?.onboardingStep === 'number' ? user.onboardingStep : undefined;
+
   const contextUser: ContextUser = {
     firstName,
     lastName: user?.lastName || '',
     role: mappedRole,
     email: user?.email,
+    ...(onboardingStep !== undefined ? { onboardingStep } : {}),
+    isOnboardingComplete: onboardingCompleted,
+    ...(user?.onboardingCompleted !== undefined
+      ? { onboardingCompleted: user.onboardingCompleted }
+      : {}),
   };
 
   return {
