@@ -50,25 +50,61 @@ export async function signInWithGoogle(): Promise<string> {
   return new Promise((resolve, reject) => {
     let settled = false;
     let container: HTMLDivElement | null = null;
+    let focusListener: (() => void) | null = null;
+    let timeoutId: ReturnType<typeof window.setTimeout> | null = null;
 
     const cleanup = () => {
+      if (focusListener) {
+        window.removeEventListener('focus', focusListener);
+        focusListener = null;
+      }
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+        timeoutId = null;
+      }
       if (container?.parentNode) {
         document.body.removeChild(container);
         container = null;
       }
     };
 
+    const settle = (action: () => void) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      action();
+    };
+
+    // When the user closes the Google popup, focus returns here without a credential.
+    const attachPopupCloseListener = () => {
+      focusListener = () => {
+        window.setTimeout(() => {
+          if (!settled) {
+            settle(() => reject(new Error('Sign-in was cancelled.')));
+          }
+        }, 400);
+      };
+      window.addEventListener('focus', focusListener);
+    };
+
+    window.setTimeout(attachPopupCloseListener, 600);
+
+    timeoutId = window.setTimeout(() => {
+      if (!settled) {
+        settle(() => reject(new Error('Sign-in timed out. Please try again.')));
+      }
+    }, 120_000);
+
     window.google!.accounts.id.initialize({
       client_id: clientId,
       callback: (response) => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        if (response.credential) {
-          resolve(response.credential);
-        } else {
-          reject(new Error('No credential received from Google.'));
-        }
+        settle(() => {
+          if (response.credential) {
+            resolve(response.credential);
+          } else {
+            reject(new Error('No credential received from Google.'));
+          }
+        });
       },
       auto_select: false,
       cancel_on_tap_outside: true,
@@ -98,14 +134,9 @@ export async function signInWithGoogle(): Promise<string> {
     if (!clickGoogleButton()) {
       window.setTimeout(() => {
         if (!clickGoogleButton() && !settled) {
-          cleanup();
-          reject(new Error('Could not open Google Sign-In.'));
+          settle(() => reject(new Error('Could not open Google Sign-In.')));
         }
       }, 150);
     }
-
-    window.setTimeout(() => {
-      if (!settled) cleanup();
-    }, 120_000);
   });
 }

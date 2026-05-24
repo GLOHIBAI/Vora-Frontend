@@ -1,5 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
@@ -39,7 +41,9 @@ const TOTAL_STEPS = 5;
 
 const MentorProfile: React.FC = () => {
   const navigate = useNavigate();
-  const { updateUser } = useAuth();
+  const queryClient = useQueryClient();
+  const { user, updateUser } = useAuth();
+  const isMentor = user?.role?.toLowerCase() === 'mentor';
   const [searchParams] = useSearchParams();
   const stepParam = searchParams.get('step');
   const initialStep = stepParam ? parseInt(stepParam, 10) : 1;
@@ -54,7 +58,8 @@ const MentorProfile: React.FC = () => {
   const step4Mutation = useMentorOnboardingStep4Mutation();
   const step5Mutation = useMentorOnboardingStep5Mutation();
   const completeOnboardingMutation = useCompleteMentorOnboardingMutation();
-  const { data: onboardingState } = useMentorOnboardingStateQuery();
+  const { data: onboardingState, isError: isStateError, error: stateError } =
+    useMentorOnboardingStateQuery(isMentor);
 
   // Step 1: Personal Information
   const [personalInfo, setPersonalInfo] = useState({
@@ -108,8 +113,29 @@ const MentorProfile: React.FC = () => {
 
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
+  // Redirect if onboarding is already completed
+  useEffect(() => {
+    const userComplete = (user as { isOnboardingComplete?: boolean } | null)?.isOnboardingComplete;
+    const stateComplete = onboardingState?.data?.onboardingCompleted;
+    const stateForbidden = isStateError && (stateError as { status?: number })?.status === 403;
+
+    if (stateComplete || (stateForbidden && userComplete)) {
+      updateUser({ isOnboardingComplete: true } as Parameters<typeof updateUser>[0]);
+      navigate('/dashboard', { replace: true });
+    }
+  }, [
+    onboardingState?.data?.onboardingCompleted,
+    isStateError,
+    stateError,
+    user,
+    navigate,
+    updateUser,
+  ]);
+
   // Sync state with backend on mount / fetch success
   useEffect(() => {
+    if (onboardingState?.data?.onboardingCompleted) return;
+
     if (onboardingState?.data) {
       const savedFields = onboardingState.data.fields || {};
 
@@ -480,19 +506,28 @@ const MentorProfile: React.FC = () => {
 
         const generatedBio = `${personalInfo.firstName} ${personalInfo.lastName} is a ${personalInfo.professionalTitle || 'professional'} with experience in ${expertiseInfo.primaryExpertise.join(', ') || 'mentorship'}.`;
 
-        // Trigger final onboard completion triggers eligibility review
-        await completeOnboardingMutation.mutateAsync({
+        const completeResponse = await completeOnboardingMutation.mutateAsync({
           bio: generatedBio,
           primaryOperatingMarket,
           timezone: ianaTimezone,
         });
 
+        await queryClient.invalidateQueries({ queryKey: ['mentor-onboarding', 'state'] });
+
+        const completed = completeResponse.data?.onboardingCompleted ?? true;
+
         updateUser({
           title: personalInfo.title,
           firstName: personalInfo.firstName,
           lastName: personalInfo.lastName,
-        });
-        navigate('/onboarding/welcome', { state: { firstName: `${personalInfo.firstName} ${personalInfo.lastName}`, role: 'mentor' } });
+          isOnboardingComplete: completed,
+          onboardingStep: 5,
+        } as Parameters<typeof updateUser>[0]);
+
+        if (completed) {
+          toast.success('Welcome to VORA! Your mentor profile is live.');
+          navigate('/dashboard', { replace: true });
+        }
       }
     } catch (err) {
       // Catch exceptions gracefully

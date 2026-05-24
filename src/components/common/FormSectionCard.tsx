@@ -1,4 +1,5 @@
 import React from 'react';
+import { CardTitle } from './Typography';
 
 interface FormSectionCardProps {
   title: string;
@@ -17,7 +18,7 @@ const FormSectionCard: React.FC<FormSectionCardProps> = ({
 }) => (
   <div className={`bg-white border border-[#E6E6E6] rounded-xl px-7 py-6 mb-4 ${className}`}>
     <div className="flex items-center gap-2 mb-4">
-      <h2 className="text-base font-extrabold text-[#1A1A1A]">{title}</h2>
+      <CardTitle as="h2" className="text-base">{title}</CardTitle>
       {changed && (
         <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A]">
           {changedLabel}

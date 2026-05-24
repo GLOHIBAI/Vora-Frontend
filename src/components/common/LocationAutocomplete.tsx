@@ -3,6 +3,7 @@ import {
   searchCitiesInCountry,
   searchCountries,
   searchLocations,
+  searchStatesRegions,
 } from '../../utils/locationSearch';
 import type { LocationOption } from '../../utils/locationSearch.types';
 
@@ -15,7 +16,7 @@ export interface LocationAutocompleteProps {
   helperText?: string;
   className?: string;
   labelClassName?: string;
-  searchMode?: 'all' | 'country' | 'city';
+  searchMode?: 'all' | 'country' | 'city' | 'state';
   /** Required when searchMode is "city" — limits suggestions to this country. */
   countryName?: string;
   emptyMessage?: string;
@@ -39,7 +40,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   label,
   value,
   onChange,
-  placeholder = "e.g. Lagos, Nigeria — or 'Multiple locations'",
+  placeholder = "e.g. Lagos State, Nigeria — or 'Multiple locations'",
   error = false,
   helperText = '',
   className = '',
@@ -56,7 +57,9 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
       ? 'No countries found — try another spelling'
       : searchMode === 'city'
         ? 'No cities found in this country — try another spelling'
-        : 'No locations found — try a city or state name');
+        : searchMode === 'state'
+          ? 'No states or regions found — try another spelling'
+          : 'No locations found — try a city or state name');
   const [query, setQuery] = useState(value);
   const [options, setOptions] = useState<LocationOption[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -110,6 +113,8 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
             controller.signal
           );
         }
+      } else if (searchMode === 'state') {
+        results = await searchStatesRegions(trimmed, controller.signal);
       } else {
         results = await searchLocations(trimmed, controller.signal);
       }
@@ -197,7 +202,11 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
               <div className="flex items-center justify-center py-4 gap-2 text-[#808080]">
                 <div className="w-4 h-4 border-2 border-[#E6E6E6] border-t-[#0047CC] rounded-full animate-spin" />
                 <span className="text-sm">
-                  {searchMode === 'city' ? 'Searching cities…' : 'Searching locations…'}
+                  {searchMode === 'city'
+                    ? 'Searching cities…'
+                    : searchMode === 'state'
+                      ? 'Searching states & regions…'
+                      : 'Searching locations…'}
                 </span>
               </div>
             ) : options.length > 0 ? (

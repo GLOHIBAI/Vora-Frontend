@@ -3,6 +3,13 @@ import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Select from '../components/common/Select';
+import Textarea from '../components/common/Textarea';
+import Tag from '../components/common/Tag';
+import ModalDialog from '../components/common/ModalDialog';
+import { PageTitle, SectionHeading, Subheading } from '../components/common/Typography';
+import SettingsTabBar from '../components/settings/SettingsTabBar';
+import SettingsSectionHeader from '../components/settings/SettingsSectionHeader';
+import SettingsRow from '../components/settings/SettingsRow';
 import { 
   TrashIcon, 
   PlusIcon, 
@@ -20,9 +27,21 @@ import {
 import { useAuth } from '../context/AuthContext';
 import type { TabType, Slot, DayAvailability } from '../types';
 
+const DAY_NAMES: Record<string, string> = {
+  mon: 'Monday',
+  tue: 'Tuesday',
+  wed: 'Wednesday',
+  thu: 'Thursday',
+  fri: 'Friday',
+  sat: 'Saturday',
+  sun: 'Sunday',
+};
 
 const Settings: React.FC = () => {
   const { user } = useAuth();
+  const profileInitials =
+    `${user?.firstName?.[0] ?? 'A'}${user?.lastName?.[0] ?? 'O'}`.toUpperCase();
+  const accountEmail = user?.email ?? 'adaeze.okonkwo@who.int';
   const role = user?.role?.toLowerCase() || 'mentor';
 
   const availableTabs: TabType[] = (() => {
@@ -281,44 +300,22 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <div className="max-w-[860px] mx-auto py-6 px-4 md:px-0">
-      <h1 className="text-3xl font-extrabold text-[#1C1C1C] tracking-tight mb-8">Settings</h1>
+    <div className="max-w-[860px] mx-auto py-9 px-4 md:px-0 pb-20">
+      <PageTitle className="text-[28px] font-bold tracking-[-0.5px] mb-7">Settings</PageTitle>
 
-      {/* --- Tab Bar --- */}
-      <div className="flex border-b border-gray-200 mb-8 overflow-x-auto scrollbar-hide gap-2">
-        {availableTabs.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`py-3 px-5 text-sm font-semibold border-b-[2.5px] -mb-[1.5px] transition-all whitespace-nowrap outline-none cursor-pointer ${
-              activeTab === tab
-                ? 'text-[#0047CC] border-[#0047CC] font-bold'
-                : 'text-gray-500 border-transparent hover:text-gray-800'
-            }`}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1).replace('notification', 'Notifications')}
-          </button>
-        ))}
-      </div>
+      <SettingsTabBar tabs={availableTabs} activeTab={activeTab} onTabChange={setActiveTab} />
 
       {/* ══════════════ 1. PROFILE TAB ══════════════ */}
       {activeTab === 'profile' && (
-        <div className="animate-fadeIn duration-200">
-          <div className="flex justify-between items-start gap-4 mb-8">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-1">Profile</h2>
-              <p className="text-xs text-gray-500">How you appear to mentees and on your public page.</p>
-            </div>
-            <Button variant="primary" fullWidth={false} onClick={() => handleSave('Profile')}>
-              Save changes
-            </Button>
-          </div>
+        <div className="animate-in fade-in duration-200">
+          <SettingsSectionHeader
+            title="Profile"
+            description="How you appear to mentees and on your public page."
+            onSave={() => handleSave('Profile')}
+          />
 
-          <div className="divide-y divide-gray-200">
-            {/* Photo & Name */}
-            <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6 py-6">
-              <div className="text-sm font-bold text-gray-900">Photo & Name</div>
-              <div>
+          <div>
+            <SettingsRow label="Photo & Name">
                 <div className="flex items-center gap-4 mb-4">
                   {profilePic ? (
                     <img 
@@ -328,7 +325,7 @@ const Settings: React.FC = () => {
                     />
                   ) : (
                     <div className="w-[60px] h-[60px] rounded-full bg-[#BEE96B] text-[#283979] text-lg font-bold flex items-center justify-center border-2 border-[#0047CC]/10">
-                      DA
+                      {profileInitials}
                     </div>
                   )}
                   <input
@@ -370,48 +367,35 @@ const Settings: React.FC = () => {
                     onChange={(e) => setProfile({ ...profile, lastName: e.target.value })}
                   />
                 </div>
-              </div>
-            </div>
+            </SettingsRow>
 
-            {/* Title & Bio */}
-            <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6 py-6">
-              <div className="text-sm font-bold text-gray-900">Title & Bio</div>
+            <SettingsRow label="Title & Bio">
               <div className="space-y-4">
                 <Input
                   label="Professional title"
                   value={profile.title}
                   onChange={(e) => setProfile({ ...profile, title: e.target.value })}
                 />
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5">Bio</label>
-                  <textarea
-                    className="w-full border-1.5 border-gray-200 rounded-lg p-3 text-sm text-gray-900 bg-white focus:border-[#0047CC] focus:outline-none transition-colors"
-                    rows={4}
-                    value={profile.bio}
-                    onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-                  />
-                </div>
+                <Textarea
+                  label="Bio"
+                  rows={4}
+                  value={profile.bio}
+                  onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+                  className="min-h-[100px]"
+                />
               </div>
-            </div>
+            </SettingsRow>
 
-            {/* Expertise */}
-            <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6 py-6">
-              <div className="text-sm font-bold text-gray-900">Expertise</div>
-              <div>
+            <SettingsRow label="Expertise">
                 <div className="flex flex-wrap gap-2 mb-3">
                   {expertise.map((tag) => (
-                    <span 
-                      key={tag} 
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-[#EBF6FF] text-[#0047CC] border border-[#0047CC]/15 rounded-full text-xs font-bold"
-                    >
-                      {tag}
-                      <button 
-                        onClick={() => handleRemoveExpertise(tag)}
-                        className="text-xs hover:text-[#283979] focus:outline-none ml-0.5 cursor-pointer"
-                      >
-                        ×
-                      </button>
-                    </span>
+                    <Tag
+                      key={tag}
+                      label={tag}
+                      variant="blue"
+                      className="border border-[#BDD9FF] text-[12px]"
+                      onRemove={() => handleRemoveExpertise(tag)}
+                    />
                   ))}
                 </div>
                 {showTagInput ? (
@@ -438,8 +422,7 @@ const Settings: React.FC = () => {
                     Add expertise
                   </button>
                 )}
-              </div>
-            </div>
+            </SettingsRow>
           </div>
         </div>
       )}
@@ -449,7 +432,7 @@ const Settings: React.FC = () => {
         <div className="animate-fadeIn duration-200">
           <div className="flex justify-between items-start gap-4 mb-8">
             <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-1">Availability & Pricing</h2>
+              <SectionHeading className="mb-1">Availability & Pricing</SectionHeading>
               <p className="text-xs text-gray-500">
                 Set exactly when you're available, how long each slot is, and what it costs — PPP-adjusted automatically worldwide.
               </p>
@@ -460,13 +443,13 @@ const Settings: React.FC = () => {
           </div>
 
           {/* STEP 1: Primary Operating Market */}
-          <div className="bg-white border-1.5 border-gray-200 rounded-xl p-5 mb-5 shadow-sm">
+          <div className="bg-white border-[1.5px] border-gray-200 rounded-xl p-5 mb-5 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-7 h-7 rounded-full bg-[#0047CC] text-white text-xs font-bold flex items-center justify-center shrink-0">
                 1
               </div>
               <div>
-                <h3 className="text-sm font-bold text-gray-900">Your Primary Operating Market</h3>
+                <Subheading>Your Primary Operating Market</Subheading>
                 <p className="text-xs text-gray-500">
                   This tells VORA where your economic reality lives — it anchors the entire global pricing engine.
                 </p>
@@ -500,14 +483,14 @@ const Settings: React.FC = () => {
           </div>
 
           {/* STEP 2: Weekly Availability & Session Pricing */}
-          <div className="bg-white border-1.5 border-gray-200 rounded-xl p-5 mb-5 shadow-sm">
+          <div className="bg-white border-[1.5px] border-gray-200 rounded-xl p-5 mb-5 shadow-sm">
             <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
               <div className="flex items-center gap-3">
                 <div className="w-7 h-7 rounded-full bg-[#0047CC] text-white text-xs font-bold flex items-center justify-center shrink-0">
                   2
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900">Weekly Availability & Session Pricing</h3>
+                  <Subheading>Weekly Availability & Session Pricing</Subheading>
                   <p className="text-xs text-gray-500">
                     For each day, add time slots with their duration and your local rate. PPP pricing auto-calculates below.
                   </p>
@@ -531,16 +514,16 @@ const Settings: React.FC = () => {
             <div className="space-y-3">
               {(Object.keys(days) as Array<keyof typeof days>).map((dayKey) => {
                 const day = days[dayKey];
-                const dayName = dayKey.charAt(0).toUpperCase() + dayKey.slice(1);
+                const dayName = DAY_NAMES[dayKey] ?? dayKey;
                 
                 return (
-                  <div key={dayKey} className="border-1.5 border-gray-200 rounded-xl overflow-hidden" style={{ opacity: day.active ? 1 : 0.4 }}>
+                  <div key={dayKey} className="border-[1.5px] border-gray-200 rounded-xl overflow-hidden" style={{ opacity: day.active ? 1 : 0.4 }}>
                     {/* Header */}
                     <div 
                       onClick={() => toggleDayOpen(dayKey)}
                       className="flex items-center justify-between gap-4 p-3 bg-white hover:bg-gray-50 cursor-pointer select-none transition-colors"
                     >
-                      <div className="text-sm font-extrabold text-gray-900 w-20">{dayName}</div>
+                      <div className="text-sm font-semibold text-gray-900 w-20">{dayName}</div>
                       <div className="text-xs text-gray-500 flex-1">
                         {day.active 
                           ? `${day.slots.length} slot${day.slots.length !== 1 ? 's' : ''} · ${day.slots.map(s => s.startTime).join(', ') || 'None set'}`
@@ -567,8 +550,9 @@ const Settings: React.FC = () => {
                           <div className="text-xs text-gray-500 mb-3">No slots added yet.</div>
                         ) : (
                           <div className="space-y-4">
-                            {day.slots.map((slot) => {
+                            {day.slots.map((slot, slotIndex) => {
                               const ppp = calculatePPP(slot.rate);
+                              const showFullPpp = slotIndex === 0;
                               return (
                                 <div key={slot.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100">
                                   <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end mb-3">
@@ -589,7 +573,7 @@ const Settings: React.FC = () => {
                                       <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">$</span>
                                         <input
-                                          className="w-full border-1.5 border-gray-200 rounded-lg py-2 pl-6 pr-3 text-sm text-gray-900 bg-white focus:border-[#0047CC] focus:outline-none transition-colors"
+                                          className="w-full border-[1.5px] border-gray-200 rounded-lg py-2 pl-6 pr-3 text-sm text-gray-900 bg-white focus:border-[#0047CC] focus:outline-none transition-colors"
                                           type="number"
                                           value={slot.rate}
                                           onChange={(e) => updateSlotField(dayKey, slot.id, 'rate', parseFloat(e.target.value) || 0)}
@@ -604,31 +588,56 @@ const Settings: React.FC = () => {
                                     </button>
                                   </div>
 
-                                  {/* PPP Scale details */}
-                                  <div className="p-3 bg-gradient-to-br from-[#F8FAFF] to-[#F3F0FF] border border-[#BFDBFE] rounded-lg">
-                                    <div className="flex items-center gap-1.5 text-xs font-bold text-gray-900 mb-2">
-                                      <VideoIcon size={14} className="text-[#0047CC]" />
-                                      <span>Global PPP Pricing — {slot.duration} min slot · {slot.startTime} {dayName}</span>
+                                  {showFullPpp ? (
+                                    <div className="p-3 bg-gradient-to-br from-[#F8FAFF] to-[#F3F0FF] border border-[#BFDBFE] rounded-lg">
+                                      <div className="flex items-center gap-1.5 text-xs font-bold text-gray-900 mb-2">
+                                        <VideoIcon size={14} className="text-[#0047CC]" />
+                                        <span>
+                                          Global PPP Pricing — {slot.duration} min slot · {slot.startTime}{' '}
+                                          {dayName}
+                                        </span>
+                                      </div>
+                                      <p className="text-[12px] text-[#5C5C5C] mb-3 leading-relaxed">
+                                        Your ${slot.rate} local rate auto-scales globally. Mentees are billed the
+                                        amount below — you keep 80% after platform fee.
+                                      </p>
+                                      <div className="grid grid-cols-3 gap-2 text-center">
+                                        <div className="p-2 bg-white/70 border border-[#BFDBFE] rounded-lg">
+                                          <div className="text-[9px] font-semibold text-[#0047CC] uppercase tracking-wider mb-1">
+                                            T1 · HIC
+                                          </div>
+                                          <div className="text-sm font-bold text-[#0047CC]">${ppp.t1}</div>
+                                          <div className="text-[9px] text-gray-500">US · UK · Swiss</div>
+                                        </div>
+                                        <div className="p-2 bg-white/70 border border-[#DDD6FE] rounded-lg">
+                                          <div className="text-[9px] font-semibold text-[#7C3AED] uppercase tracking-wider mb-1">
+                                            T2 · UMIC
+                                          </div>
+                                          <div className="text-sm font-bold text-[#7C3AED]">${ppp.t2}</div>
+                                          <div className="text-[9px] text-gray-500">Brazil · China</div>
+                                        </div>
+                                        <div className="p-2 bg-white/70 border border-[#FDE68A] rounded-lg relative">
+                                          <div className="absolute -top-2 left-1/2 -translate-y-1/2 -translate-x-1/2 bg-[#D97706] text-white text-[8px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                                            Local
+                                          </div>
+                                          <div className="text-[9px] font-semibold text-[#D97706] uppercase tracking-wider mb-1 mt-1">
+                                            T3 · LMIC
+                                          </div>
+                                          <div className="text-sm font-bold text-[#D97706]">${ppp.t3}</div>
+                                          <div className="text-[9px] text-gray-500">Nigeria · Kenya</div>
+                                        </div>
+                                      </div>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-2 text-center">
-                                      <div className="p-2 bg-white/70 border border-[#BFDBFE] rounded-lg">
-                                        <div className="text-[9px] font-extrabold text-[#0047CC] uppercase tracking-wider mb-1">T1 · HIC</div>
-                                        <div className="text-sm font-bold text-[#0047CC]">${ppp.t1}</div>
-                                        <div className="text-[9px] text-gray-500">US · UK · Swiss</div>
-                                      </div>
-                                      <div className="p-2 bg-white/70 border border-[#DDD6FE] rounded-lg">
-                                        <div className="text-[9px] font-extrabold text-[#7C3AED] uppercase tracking-wider mb-1">T2 · UMIC</div>
-                                        <div className="text-sm font-bold text-[#7C3AED]">${ppp.t2}</div>
-                                        <div className="text-[9px] text-gray-500">Brazil · China</div>
-                                      </div>
-                                      <div className="p-2 bg-white/70 border border-[#FDE68A] rounded-lg relative">
-                                        <div className="absolute -top-2 left-1/2 -translate-y-1/2 -translate-x-1/2 bg-[#D97706] text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded-full whitespace-nowrap">Local</div>
-                                        <div className="text-[9px] font-extrabold text-[#D97706] uppercase tracking-wider mb-1 mt-1">T3 · LMIC</div>
-                                        <div className="text-sm font-bold text-[#D97706]">${ppp.t3}</div>
-                                        <div className="text-[9px] text-gray-500">Nigeria · Kenya</div>
-                                      </div>
+                                  ) : (
+                                    <div className="bg-[#F7F7F7] rounded-lg px-3 py-2 text-[11px] text-[#5C5C5C] leading-relaxed">
+                                      <strong>
+                                        {slot.duration} min · ${slot.rate} local →
+                                      </strong>{' '}
+                                      T1: <span className="text-[#0047CC] font-bold">${ppp.t1}</span> · T2:{' '}
+                                      <span className="text-[#7C3AED] font-bold">${ppp.t2}</span> · T3:{' '}
+                                      <span className="text-[#D97706] font-bold">${ppp.t3}</span>
                                     </div>
-                                  </div>
+                                  )}
                                 </div>
                               );
                             })}
@@ -651,13 +660,13 @@ const Settings: React.FC = () => {
           </div>
 
           {/* STEP 3: Booking settings */}
-          <div className="bg-white border-1.5 border-gray-200 rounded-xl p-5 mb-5 shadow-sm">
+          <div className="bg-white border-[1.5px] border-gray-200 rounded-xl p-5 mb-5 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-7 h-7 rounded-full bg-[#0047CC] text-white text-xs font-bold flex items-center justify-center shrink-0">
                 3
               </div>
               <div>
-                <h3 className="text-sm font-bold text-gray-900">Booking Settings</h3>
+                <Subheading>Booking Settings</Subheading>
                 <p className="text-xs text-gray-500">Control how candidates book your time.</p>
               </div>
             </div>
@@ -677,7 +686,7 @@ const Settings: React.FC = () => {
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">Max sessions per week</label>
                 <input
-                  className="w-full border-1.5 border-gray-200 rounded-lg p-2 text-sm text-gray-900 bg-white focus:border-[#0047CC] focus:outline-none transition-colors"
+                  className="w-full border-[1.5px] border-gray-200 rounded-lg p-2 text-sm text-gray-900 bg-white focus:border-[#0047CC] focus:outline-none transition-colors"
                   type="number"
                   value={maxSessionsPerWeek}
                   min={1}
@@ -701,33 +710,33 @@ const Settings: React.FC = () => {
           </div>
 
           {/* STEP 4: Global Pricing Summary */}
-          <div className="bg-white border-1.5 border-gray-200 rounded-xl p-5 shadow-sm">
+          <div className="bg-white border-[1.5px] border-gray-200 rounded-xl p-5 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-7 h-7 rounded-full bg-[#2CA62C] text-white text-xs font-bold flex items-center justify-center shrink-0">
                 4
               </div>
               <div>
-                <h3 className="text-sm font-bold text-gray-900">Global Pricing Summary</h3>
+                <Subheading>Global Pricing Summary</Subheading>
                 <p className="text-xs text-gray-500">Review your PPP-adjusted rates across all markets.</p>
               </div>
             </div>
 
             {/* Visual Dynamic Card */}
             <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50 mb-4">
-              <div className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-3">60-min slot · ${baseProjRate} local rate</div>
+              <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3">60-min slot · ${baseProjRate} local rate</div>
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="p-3 bg-white border border-[#BFDBFE] rounded-lg">
-                  <div className="text-[9px] font-extrabold text-[#0047CC] uppercase tracking-wider mb-1">T1 · HIC</div>
+                  <div className="text-[9px] font-semibold text-[#0047CC] uppercase tracking-wider mb-1">T1 · HIC</div>
                   <div className="text-xl font-bold text-[#0047CC]">${projPPP.t1}</div>
                   <div className="text-[9px] text-gray-500">US · UK · Switzerland</div>
                 </div>
                 <div className="p-3 bg-white border border-[#DDD6FE] rounded-lg">
-                  <div className="text-[9px] font-extrabold text-[#7C3AED] uppercase tracking-wider mb-1">T2 · UMIC</div>
+                  <div className="text-[9px] font-semibold text-[#7C3AED] uppercase tracking-wider mb-1">T2 · UMIC</div>
                   <div className="text-xl font-bold text-[#7C3AED]">${projPPP.t2}</div>
                   <div className="text-[9px] text-gray-500">Brazil · China · Poland</div>
                 </div>
                 <div className="p-3 bg-white border border-[#FDE68A] rounded-lg">
-                  <div className="text-[9px] font-extrabold text-[#D97706] uppercase tracking-wider mb-1">T3 · LMIC</div>
+                  <div className="text-[9px] font-semibold text-[#D97706] uppercase tracking-wider mb-1">T3 · LMIC</div>
                   <div className="text-xl font-bold text-[#D97706]">${projPPP.t3}</div>
                   <div className="text-[9px] text-gray-500">Nigeria · India · Kenya</div>
                 </div>
@@ -736,8 +745,8 @@ const Settings: React.FC = () => {
 
             {/* Revenue Projection Card */}
             <div className="bg-gradient-to-br from-[#18234B] to-[#283979] text-white rounded-xl p-5">
-              <div className="text-[10px] font-extrabold uppercase tracking-widest text-white/60 mb-2">Revenue Projection · 20 sessions/month</div>
-              <div className="text-3xl font-extrabold tracking-tight text-white mb-1.5">
+              <div className="text-[10px] font-semibold uppercase tracking-widest text-white/60 mb-2">Revenue Projection · 20 sessions/month</div>
+              <div className="text-3xl font-semibold tracking-tight text-white mb-1.5">
                 ${projectedGross.toLocaleString()} <span className="text-sm font-normal text-white/50">projected gross</span>
               </div>
               <div className="text-xs text-white/70 mb-4 leading-normal">
@@ -745,15 +754,15 @@ const Settings: React.FC = () => {
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div className="bg-white/10 rounded-lg p-2.5 text-center">
-                  <div className="text-base font-extrabold text-white">{vsLocalRatio}%</div>
+                  <div className="text-base font-semibold text-white">{vsLocalRatio}%</div>
                   <div className="text-[9px] text-white/50 mt-0.5">vs. local-only</div>
                 </div>
                 <div className="bg-white/10 rounded-lg p-2.5 text-center">
-                  <div className="text-base font-extrabold text-white">41</div>
+                  <div className="text-base font-semibold text-white">41</div>
                   <div className="text-[9px] text-white/50 mt-0.5">Countries served</div>
                 </div>
                 <div className="bg-white/10 rounded-lg p-2.5 text-center">
-                  <div className="text-base font-extrabold text-white">100%</div>
+                  <div className="text-base font-semibold text-white">100%</div>
                   <div className="text-[9px] text-white/50 mt-0.5">Quality parity</div>
                 </div>
               </div>
@@ -767,7 +776,7 @@ const Settings: React.FC = () => {
         <div className="animate-fadeIn duration-200">
           <div className="flex justify-between items-start gap-4 mb-8">
             <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-1">Courses</h2>
+              <SectionHeading className="mb-1">Courses</SectionHeading>
               <p className="text-xs text-gray-500">Manage your course catalogue, visibility, and enrollment settings.</p>
             </div>
             <Button variant="primary" fullWidth={false} onClick={() => handleSave('Courses')}>
@@ -776,8 +785,8 @@ const Settings: React.FC = () => {
           </div>
 
           {/* Course Visibility */}
-          <div className="bg-white border-1.5 border-gray-200 rounded-xl p-5 mb-5 shadow-sm">
-            <h3 className="text-sm font-bold text-gray-900 mb-1">Course Visibility</h3>
+          <div className="bg-white border-[1.5px] border-gray-200 rounded-xl p-5 mb-5 shadow-sm">
+            <Subheading className="mb-1">Course Visibility</Subheading>
             <p className="text-xs text-gray-500 mb-4">Control which courses are publicly listed on your profile.</p>
 
             <div className="space-y-3">
@@ -804,8 +813,8 @@ const Settings: React.FC = () => {
           </div>
 
           {/* Enrollment Settings */}
-          <div className="bg-white border-1.5 border-gray-200 rounded-xl p-5 mb-5 shadow-sm">
-            <h3 className="text-sm font-bold text-gray-900 mb-1">Enrollment Settings</h3>
+          <div className="bg-white border-[1.5px] border-gray-200 rounded-xl p-5 mb-5 shadow-sm">
+            <Subheading className="mb-1">Enrollment Settings</Subheading>
             <p className="text-xs text-gray-500 mb-4">Control how learners enroll and what access they receive.</p>
 
             <div className="space-y-4">
@@ -860,8 +869,8 @@ const Settings: React.FC = () => {
           </div>
 
           {/* Completion Certificate */}
-          <div className="bg-white border-1.5 border-gray-200 rounded-xl p-5 mb-5 shadow-sm">
-            <h3 className="text-sm font-bold text-gray-900 mb-1">Completion Certificates</h3>
+          <div className="bg-white border-[1.5px] border-gray-200 rounded-xl p-5 mb-5 shadow-sm">
+            <Subheading className="mb-1">Completion Certificates</Subheading>
             <p className="text-xs text-gray-500 mb-4">Automatically issue certificates when learners complete your courses.</p>
 
             <div className="flex items-center justify-between gap-4">
@@ -884,7 +893,7 @@ const Settings: React.FC = () => {
           {/* CTA builder card */}
           <div className="bg-gradient-to-r from-[#18234B] to-[#283979] rounded-xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-white">
             <div>
-              <h3 className="text-base font-extrabold mb-1">Create a new course</h3>
+              <Subheading className="text-base mb-1">Create a new course</Subheading>
               <p className="text-xs text-white/70">Share your global health expertise with candidates worldwide.</p>
             </div>
             <button 
@@ -902,7 +911,7 @@ const Settings: React.FC = () => {
         <div className="animate-fadeIn duration-200">
           <div className="flex justify-between items-start gap-4 mb-8">
             <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-1">Mentorship</h2>
+              <SectionHeading className="mb-1">Mentorship</SectionHeading>
               <p className="text-xs text-gray-500">Control who you mentor and how VORA matches candidates to you.</p>
             </div>
             <Button variant="primary" fullWidth={false} onClick={() => handleSave('Mentorship')}>
@@ -1053,7 +1062,7 @@ const Settings: React.FC = () => {
               </div>
               <div>
                 <input
-                  className="w-full border-1.5 border-gray-200 rounded-lg p-2 text-sm text-gray-900 bg-white focus:border-[#0047CC] focus:outline-none transition-colors"
+                  className="w-full border-[1.5px] border-gray-200 rounded-lg p-2 text-sm text-gray-900 bg-white focus:border-[#0047CC] focus:outline-none transition-colors"
                   type="number"
                   value={maxActiveMentees}
                   min={1}
@@ -1097,7 +1106,7 @@ const Settings: React.FC = () => {
         <div className="animate-fadeIn duration-200">
           <div className="flex justify-between items-start gap-4 mb-8">
             <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-1">Notifications</h2>
+              <SectionHeading className="mb-1">Notifications</SectionHeading>
               <p className="text-xs text-gray-500">Choose how you receive updates from VORA.</p>
             </div>
             <Button variant="primary" fullWidth={false} onClick={() => handleSave('Notification')}>
@@ -1200,7 +1209,7 @@ const Settings: React.FC = () => {
         <div className="animate-fadeIn duration-200">
           <div className="flex justify-between items-start gap-4 mb-8">
             <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-1">Account</h2>
+              <SectionHeading className="mb-1">Account</SectionHeading>
               <p className="text-xs text-gray-500">Manage security, privacy, and session data.</p>
             </div>
           </div>
@@ -1212,8 +1221,8 @@ const Settings: React.FC = () => {
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-gray-100 pb-3 gap-4">
                   <div>
-                    <div className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-0.5">Email</div>
-                    <div className="text-sm font-semibold text-gray-900">adaeze.okonkwo@who.int</div>
+                    <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Email</div>
+                    <div className="text-sm font-semibold text-gray-900">{accountEmail}</div>
                   </div>
                   <Button variant="outline" size="sm" fullWidth={false} onClick={() => toast('Email change request sent to administrator.')}>
                     Change
@@ -1221,7 +1230,7 @@ const Settings: React.FC = () => {
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <div className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-0.5">Password</div>
+                    <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Password</div>
                     <div className="text-sm font-semibold text-gray-900">••••••••••••</div>
                   </div>
                   <Button variant="outline" size="sm" fullWidth={false} onClick={() => setPwModalOpen(true)}>
@@ -1279,55 +1288,47 @@ const Settings: React.FC = () => {
         </div>
       )}
 
-      {/* --- CHANGE PASSWORD MODAL --- */}
-      {pwModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-[999] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-[480px] p-6 shadow-xl relative animate-scaleIn">
-            <div className="flex items-start justify-between gap-4 mb-5">
-              <h3 className="text-base font-extrabold text-gray-900">Change password</h3>
-              <button 
-                onClick={() => setPwModalOpen(false)}
-                className="w-7 h-7 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleChangePasswordSubmit} className="space-y-4">
-              <Input
-                label="Current password"
-                type="password"
-                placeholder="Current password"
-                value={passwordFields.current}
-                onChange={(e) => setPasswordFields({ ...passwordFields, current: e.target.value })}
-              />
-              <Input
-                label="New password"
-                type="password"
-                placeholder="New password"
-                value={passwordFields.new}
-                onChange={(e) => setPasswordFields({ ...passwordFields, new: e.target.value })}
-              />
-              <Input
-                label="Confirm new password"
-                type="password"
-                placeholder="Confirm password"
-                value={passwordFields.confirm}
-                onChange={(e) => setPasswordFields({ ...passwordFields, confirm: e.target.value })}
-              />
-
-              <div className="flex justify-end gap-3 pt-2">
-                <Button variant="outline" type="button" fullWidth={false} onClick={() => setPwModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" type="submit" fullWidth={false}>
-                  Change password
-                </Button>
-              </div>
-            </form>
+      <ModalDialog
+        open={pwModalOpen}
+        title="Change password"
+        subtitle="Choose a strong password you do not use elsewhere."
+        onClose={() => setPwModalOpen(false)}
+        maxWidth="max-w-[480px]"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" type="button" fullWidth={false} onClick={() => setPwModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" form="change-password-form" fullWidth={false}>
+              Change password
+            </Button>
           </div>
-        </div>
-      )}
+        }
+      >
+        <form id="change-password-form" onSubmit={handleChangePasswordSubmit} className="space-y-4">
+          <Input
+            label="Current password"
+            type="password"
+            placeholder="Current password"
+            value={passwordFields.current}
+            onChange={(e) => setPasswordFields({ ...passwordFields, current: e.target.value })}
+          />
+          <Input
+            label="New password"
+            type="password"
+            placeholder="New password"
+            value={passwordFields.new}
+            onChange={(e) => setPasswordFields({ ...passwordFields, new: e.target.value })}
+          />
+          <Input
+            label="Confirm new password"
+            type="password"
+            placeholder="Confirm password"
+            value={passwordFields.confirm}
+            onChange={(e) => setPasswordFields({ ...passwordFields, confirm: e.target.value })}
+          />
+        </form>
+      </ModalDialog>
     </div>
   );
 };

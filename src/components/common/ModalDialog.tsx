@@ -1,4 +1,5 @@
 import React from 'react';
+import { ModalTitle } from './Typography';
 
 interface ModalDialogProps {
   open: boolean;
@@ -35,9 +36,7 @@ const ModalDialog: React.FC<ModalDialogProps> = ({
         aria-labelledby="modal-title"
       >
         <div className="px-6 pt-5 pb-4 border-b border-[#E6E6E6]">
-          <h2 id="modal-title" className="text-[17px] font-extrabold text-[#1A1A1A]">
-            {title}
-          </h2>
+          <ModalTitle id="modal-title">{title}</ModalTitle>
           {subtitle && (
             <p className="text-[13px] text-[#808080] mt-1 leading-relaxed">{subtitle}</p>
           )}

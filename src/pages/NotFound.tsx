@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/common/Button';
+import { PageTitle, SectionHeading } from '../components/common/Typography';
 
 const NotFound: React.FC = () => {
   const navigate = useNavigate();
@@ -15,14 +16,15 @@ const NotFound: React.FC = () => {
 
       <div className="text-center relative z-10 max-w-md mx-auto space-y-6">
         {/* Quiet Muted Gray 404 Title */}
-        <h1 className="text-[120px] sm:text-[160px] font-extrabold text-gray-300 leading-none tracking-tighter select-none">
+        <PageTitle
+          as="h1"
+          className="text-[120px] sm:text-[160px] text-gray-300 leading-none tracking-tighter select-none"
+        >
           404
-        </h1>
+        </PageTitle>
 
         <div className="space-y-2">
-          <h2 className="text-2xl sm:text-3xl font-semibold text-gray-500">
-            Lost in Space?
-          </h2>
+          <SectionHeading className="text-2xl sm:text-3xl text-gray-500">Lost in Space?</SectionHeading>
           <p className="text-gray-400 text-sm sm:text-base leading-relaxed max-w-sm mx-auto">
             The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.
           </p>

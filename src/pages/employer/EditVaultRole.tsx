@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import AlertBanner from '../../components/common/AlertBanner';
+import { Subheading } from '../../components/common/Typography';
 import FormSectionCard from '../../components/common/FormSectionCard';
 import TrackedField, { changedInputClass } from '../../components/common/TrackedField';
 import Input from '../../components/common/Input';
@@ -464,7 +465,7 @@ const EditVaultRole: React.FC = () => {
           <div className="bg-white border border-[#E6E6E6] rounded-xl px-6 py-5 mb-4">
             <div className="flex items-center gap-2 mb-2">
               <LockIcon size={13} className="text-[#DC2626]" strokeWidth={2} />
-              <h2 className="text-sm font-extrabold text-[#1A1A1A]">One field locked for this edit</h2>
+              <Subheading as="h2" className="text-sm">One field locked for this edit</Subheading>
             </div>
             <p className="text-[13px] text-[#808080] leading-relaxed mb-3">
               The employer organisation cannot be changed in a vault edit. If you need to transfer this

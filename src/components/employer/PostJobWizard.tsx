@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
@@ -33,6 +33,12 @@ import TimezoneMultiSelect from '../common/TimezoneMultiSelect';
 import CurrencyAmountRange from '../common/CurrencyAmountRange';
 import EscrowCalculationCard from '../common/EscrowCalculationCard';
 import AlertBanner from '../common/AlertBanner';
+import {
+  SectionDescription,
+  SectionTitle,
+  SubsectionTitle,
+  WizardStepTitle,
+} from '../common/Typography';
 import CompensationTypeSelector, {
   type CompensationTypeId,
 } from './CompensationTypeSelector';
@@ -98,6 +104,8 @@ import { buildUpdateRolePostingStepFiveBody } from '../../utils/rolePostingStepF
 import { resolveWizardStepAfterSave } from '../../utils/rolePostingWizardStep';
 import type { RolePostingHiringMode } from '../../types/rolePosting';
 import type { ApiError } from '../../services/api';
+import PostJobPreviewStep, { type EscrowPreviewSummary } from './postJob/PostJobPreviewStep';
+import PostJobCheckoutDrawer from './postJob/PostJobCheckoutDrawer';
 
 const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialConfig }) => {
   const navigate = useNavigate();
@@ -108,8 +116,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isClosing, setIsClosing] = useState(false);
   const [isMobStepNavOpen, setIsMobStepNavOpen] = useState(false);
-  // const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  // const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('card');
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
   // Form State
   const [roleType, setRoleType] = useState('');
@@ -293,17 +300,17 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
     const rounded = Math.round(value);
     const formatted = rounded.toLocaleString('en-US');
     const syms: Record<string, string> = {
-      USD: '$', EUR: '€', GBP: '£', CHF: 'CHF ', JPY: '¥', CAD: 'CA$', AUD: 'A$', NZD: 'NZ$',
-      SEK: 'kr', NOK: 'kr', DKK: 'kr', PLN: 'zł', CZK: 'Kč', HUF: 'Ft', RON: 'lei', BGN: 'лв', TRY: '₺',
-      AED: 'AED ', SAR: 'SAR ', QAR: 'QAR ', KWD: 'KD', BHD: 'BD', OMR: 'OMR ', JOD: 'JD', ILS: '₪', EGP: 'E£', LBP: 'L£',
-      NGN: '₦', GHS: 'GH₵', XOF: 'CFA ', XAF: 'FCFA ', SLL: 'Le', LRD: 'L$', GMD: 'D', GNF: 'FG',
+      USD: '$', EUR: 'â‚¬', GBP: 'Â£', CHF: 'CHF ', JPY: 'Â¥', CAD: 'CA$', AUD: 'A$', NZD: 'NZ$',
+      SEK: 'kr', NOK: 'kr', DKK: 'kr', PLN: 'zÅ‚', CZK: 'KÄ', HUF: 'Ft', RON: 'lei', BGN: 'Ð»Ð²', TRY: 'â‚º',
+      AED: 'AED ', SAR: 'SAR ', QAR: 'QAR ', KWD: 'KD', BHD: 'BD', OMR: 'OMR ', JOD: 'JD', ILS: 'â‚ª', EGP: 'EÂ£', LBP: 'LÂ£',
+      NGN: 'â‚¦', GHS: 'GHâ‚µ', XOF: 'CFA ', XAF: 'FCFA ', SLL: 'Le', LRD: 'L$', GMD: 'D', GNF: 'FG',
       KES: 'KSh', TZS: 'TSh', UGX: 'USh', ETB: 'Br', RWF: 'RF', BIF: 'FBu', DJF: 'Fdj', ERN: 'Nfk', SOS: 'Sh', SDG: 'SDG ', SSP: 'SSP ',
       ZAR: 'R', ZMW: 'ZK', MWK: 'MK', BWP: 'P', NAD: 'N$', LSL: 'L', SZL: 'L',
       MAD: 'MAD ', DZD: 'DZD ', TND: 'TND ', LYD: 'LYD ',
       MUR: 'Rs', SCR: 'SCR ', MGA: 'Ar', KMF: 'CF',
-      INR: '₹', PKR: 'Rs', BDT: '৳', LKR: 'Rs', NPR: 'Rs',
-      SGD: 'S$', MYR: 'RM', PHP: '₱', IDR: 'Rp', THB: '฿', VND: '₫', KHR: 'CR', MMK: 'K',
-      CNY: '¥', HKD: 'HK$', TWD: 'NT$', KRW: '₩',
+      INR: 'â‚¹', PKR: 'Rs', BDT: 'à§³', LKR: 'Rs', NPR: 'Rs',
+      SGD: 'S$', MYR: 'RM', PHP: 'â‚±', IDR: 'Rp', THB: 'à¸¿', VND: 'â‚«', KHR: 'CR', MMK: 'K',
+      CNY: 'Â¥', HKD: 'HK$', TWD: 'NT$', KRW: 'â‚©',
       BRL: 'R$', MXN: 'MX$', COP: 'COP$', PEN: 'S/', CLP: 'CLP$', ARS: '$', UYU: '$U', BOB: 'Bs',
       GTQ: 'Q', DOP: 'RD$', JMD: 'J$', TTD: 'TT$'
     };
@@ -381,7 +388,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
           ]}
           totalLabel="Total escrow to lock"
           totalValue={fmt(total, cur)}
-          footnote="Escrow is based on daily rate × working days × positions × your applicable fee rate (10% LMIC / 15% other regions). True-up fires at hire. Escrow minus search fee returned to wallet if no hire occurs."
+          footnote="Escrow is based on daily rate Ã— working days Ã— positions Ã— your applicable fee rate (10% LMIC / 15% other regions). True-up fires at hire. Escrow minus search fee returned to wallet if no hire occurs."
         />
       );
     }
@@ -460,7 +467,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
           ]}
           totalLabel="Total placement fee to lock"
           totalValue={fmt(total, 'USD')}
-          footnote="This flat fee is locked at application submission and released on confirmed student enrolment. If the student does not enrol, a non-refundable search fee is retained (5% for LMIC employers, 10% otherwise) and the remainder returned to your wallet. No annual renewal required — single fee per enrolled student."
+          footnote="This flat fee is locked at application submission and released on confirmed student enrolment. If the student does not enrol, a non-refundable search fee is retained (5% for LMIC employers, 10% otherwise) and the remainder returned to your wallet. No annual renewal required â€” single fee per enrolled student."
         />
       );
     }
@@ -948,48 +955,145 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
     }
   };
 
+  const buildEscrowPreview = (): EscrowPreviewSummary => {
+    const cur = getActiveCurrency();
+    const lmic = isLmicActive;
+    const pos = parseInt(positions, 10) || 1;
+    const rateLabel = getFeeLabel(compType, lmic);
+
+    const compTypeLabel =
+      compType === 'sal'
+        ? 'Salaried'
+        : compType === 'con'
+          ? 'Contract / Daily rate'
+          : compType === 'sti'
+            ? 'Stipend / Fellowship'
+            : compType === 'unp'
+              ? 'Unpaid / Flat-fee'
+              : compType === 'phd'
+                ? 'Funded PhD studentship'
+                : 'University admissions (flat fee)';
+
+    let midpoint = 0;
+    let total = 0;
+    let perPosition = 0;
+    let salaryRangeLabel: string | undefined;
+    let payPeriodLabel: string | undefined;
+
+    if (compType === 'sal') {
+      const mn = parseFloat(salMin) || 0;
+      const mx = parseFloat(salMax) || 0;
+      midpoint = mn && mx ? (mn + mx) / 2 : mn || mx;
+      perPosition = Math.round(midpoint * getFeeRate('sal', lmic));
+      total = applyLMICFloorCap(perPosition * pos, pos, lmic);
+      salaryRangeLabel =
+        mn || mx
+          ? `${fmt(mn, cur)} to ${fmt(mx, cur)}`
+          : undefined;
+      payPeriodLabel = 'Annual';
+    } else if (compType === 'con') {
+      const mn = parseFloat(conMin) || 0;
+      const mx = parseFloat(conMax) || 0;
+      const daily = mn && mx ? (mn + mx) / 2 : mn || mx;
+      midpoint = daily * conDuration;
+      perPosition = Math.round(midpoint * getFeeRate('con', lmic));
+      total = applyLMICFloorCap(perPosition * pos, pos, lmic);
+      salaryRangeLabel = daily ? `${fmt(daily, cur)}/day` : undefined;
+    } else if (compType === 'sti') {
+      midpoint = parseFloat(stiVal) || 0;
+      perPosition = Math.round(midpoint * getFeeRate('sti', lmic));
+      total = perPosition * pos;
+    } else if (compType === 'phd') {
+      midpoint = parseFloat(phdVal) || 0;
+      perPosition = Math.round(midpoint * getFeeRate('phd', lmic));
+      total = perPosition;
+    } else if (compType === 'uni') {
+      const tuition = parseFloat(uniTuition) || 0;
+      perPosition = getUniFee(tuition, uniProg, lmic);
+      total = perPosition * (parseInt(uniStudentCount, 10) || 1);
+      midpoint = tuition;
+    } else if (compType === 'unp') {
+      total = getFlatFee();
+      perPosition = total;
+      midpoint = 0;
+    }
+
+    return {
+      total,
+      currency: compType === 'unp' ? 'USD' : cur,
+      midpoint,
+      positions: compType === 'uni' ? parseInt(uniStudentCount, 10) || 1 : pos,
+      rateLabel,
+      perPosition,
+      compTypeLabel,
+      salaryRangeLabel,
+      payPeriodLabel,
+    };
+  };
+
+  const jumpToStep = (step: number) => {
+    setFieldErrors({});
+    setCurrentStep(clampWizardStep(step));
+    contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleFinalStep = () => {
     if (!ensureRolePostingDraft()) return;
     if (!runStepValidation(6)) return;
+    setIsCheckoutOpen(true);
+  };
 
-    if (isScheduled) {
-      const mn = parseFloat(salMin) || 0;
-      const mx = parseFloat(salMax) || 0;
-      const mid = mn && mx ? (mn + mx) / 2 : mn || mx || 70000;
-      const pos = parseInt(positions, 10) || 1;
-      const lmic = isLmicActive;
-      const rate = getFeeRate(compType, lmic);
-      const feePerPosition = Math.round(mid * rate);
-      const totalEscrow = feePerPosition * pos;
+  const handleCheckoutSubmit = async () => {
+    if (!ensureRolePostingDraft()) return;
 
-      saveVaultConfirmation(
-        buildVaultConfirmationData({
-          roleTitle: roleTitle || undefined,
-          goLiveDate: goLiveDate || initialConfig?.goLiveDate,
-          positions: String(pos),
-          salaryMidpoint: mid,
-          currency: getActiveCurrency(),
-          feeRateLabel: getFeeLabel(compType, lmic),
-          feePerPosition,
-          totalEscrow,
-          isLmic: lmic,
-        })
-      );
+    setIsProceeding(true);
+    try {
+      const escrow = buildEscrowPreview();
+
+      if (isScheduled) {
+        saveVaultConfirmation(
+          buildVaultConfirmationData({
+            roleTitle: roleTitle || undefined,
+            goLiveDate: goLiveDate || initialConfig?.goLiveDate,
+            positions: String(escrow.positions),
+            salaryMidpoint: escrow.midpoint,
+            currency: escrow.currency,
+            feeRateLabel: escrow.rateLabel,
+            feePerPosition: escrow.perPosition,
+            totalEscrow: escrow.total,
+            isLmic: isLmicActive,
+          })
+        );
+
+        clearRolePostingDraft();
+        setIsCheckoutOpen(false);
+        setIsClosing(true);
+        setTimeout(() => {
+          onClose();
+          setIsClosing(false);
+          setRolePostingId(null);
+          navigate('/jobs/vault/confirmation');
+        }, 400);
+        return;
+      }
 
       clearRolePostingDraft();
-
+      setIsCheckoutOpen(false);
+      const jobId = rolePostingId;
       setIsClosing(true);
       setTimeout(() => {
         onClose();
         setIsClosing(false);
         setRolePostingId(null);
-        navigate('/jobs/vault/confirmation');
+        if (jobId) {
+          navigate(`/jobs/${jobId}`);
+        } else {
+          navigate('/jobs');
+        }
       }, 400);
-      return;
+    } finally {
+      setIsProceeding(false);
     }
-
-    clearRolePostingDraft();
-    handleClose();
   };
 
   useEffect(() => {
@@ -1000,6 +1104,11 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
       document.body.style.overflow = prev;
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isCheckoutOpen) return;
+    document.body.style.overflow = 'hidden';
+  }, [isCheckoutOpen]);
 
   if (!isOpen && !isClosing) return null;
   if (!isEmployer) return null;
@@ -1023,7 +1132,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
     setAdditionalLocations(additionalLocations.filter(l => l !== loc));
   };
 
-  // Timezone shortcuts helper — region tag selects all timezones in that zone
+  // Timezone shortcuts helper â€” region tag selects all timezones in that zone
   const handleAddTZRegion = (regionKey: string) => {
     const label = TZ_REGION_API_LABELS[regionKey];
     if (!label) return;
@@ -1095,7 +1204,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
 
   return (
     <div
-      className={`fixed inset-y-0 right-0 left-0 lg:left-[var(--sidebar-width)] z-40 flex flex-col bg-[#F7F7F7] font-poppins transition-all duration-500 ease-in-out ${isClosing ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
+      className={`fixed inset-y-0 right-0 left-0 lg:left-[var(--sidebar-width)] z-40 flex flex-col bg-[#F7F7F7] transition-all duration-500 ease-in-out ${isClosing ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
     >
       {/* Top Header */}
       <div className="bg-white border-b border-[#E6E6E6] px-6 md:px-8 flex items-center shrink-0">
@@ -1115,7 +1224,13 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Step Navigation Sidebar (Desktop) */}
         <div className="w-[256px] bg-white border-r border-[#E6E6E6] py-6 hidden lg:flex flex-col overflow-y-auto shrink-0">
-          <WizardStepNav steps={STEPS} currentStep={currentStep} />
+          <WizardStepNav
+            steps={STEPS}
+            currentStep={currentStep}
+            onStepClick={(stepId) => {
+              if (stepId < currentStep) jumpToStep(stepId);
+            }}
+          />
         </div>
 
         {/* Form Body Area */}
@@ -1127,6 +1242,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
           >
             <span>
               Step {currentStep} of {WIZARD_STEP_COUNT}: {getWizardStepTitle(currentStep)}
+              {currentStep < WIZARD_STEP_COUNT ? ' — tap a completed step to edit' : ''}
             </span>
             <svg 
               width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -1143,7 +1259,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                 currentStep={currentStep}
                 size="sm"
                 onStepClick={(stepId) => {
-                  setCurrentStep(stepId);
+                  if (stepId < currentStep) jumpToStep(stepId);
                   setIsMobStepNavOpen(false);
                 }}
               />
@@ -1153,24 +1269,14 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
           <div className="flex-1 px-5 py-6 md:px-10 md:py-8 pb-28 space-y-5">
             {/* Prefill Notification Banner */}
             {showPrefillBanner && (
-              <div className="flex items-start gap-3 p-4 bg-[#EBF6FF] border border-[#BDD9FF] rounded-xl animate-in fade-in duration-300">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0047CC" strokeWidth="2" className="shrink-0 mt-0.5">
-                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
-                <div className="flex-1">
-                  <p className="text-[13px] leading-relaxed text-[#1e3a8a]">
-                    We have pre-filled your job post using your uploaded document. Review each section and make any changes before publishing.
-                  </p>
-                </div>
-                <button 
-                  onClick={() => setShowPrefillBanner(false)}
-                  className="text-[#387DFF] hover:text-[#0047CC] p-0.5 cursor-pointer shrink-0"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                  </svg>
-                </button>
-              </div>
+              <AlertBanner
+                variant="blue"
+                className="animate-in fade-in duration-300"
+                onDismiss={() => setShowPrefillBanner(false)}
+              >
+                We have pre-filled your job post using your uploaded document. Review each section and make
+                any changes before publishing.
+              </AlertBanner>
             )}
 
             {/* STEP 1: ROLE DETAILS */}
@@ -1178,10 +1284,10 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
               <div className="bg-white border border-[#E6E6E6] rounded-xl px-5 py-7 md:px-8 md:py-7 space-y-6 animate-in fade-in duration-300">
                 <StepValidationAlert errors={fieldErrors} />
                 <div>
-                  <h2 className="text-[20px] font-extrabold text-[#1A1A1A] tracking-tight">Role details</h2>
-                  <p className="text-[13px] text-[#808080] mt-1 leading-relaxed">
+                  <WizardStepTitle>Role details</WizardStepTitle>
+                  <SectionDescription className="mt-1">
                     Core information about this role. VORA uses these fields to determine geopolitical eligibility, match candidates to your timezone, and score candidates on role fit.
-                  </p>
+                  </SectionDescription>
                 </div>
 
                 <div className="grid grid-cols-1 gap-[18px]">
@@ -1256,7 +1362,8 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                         </span>
                       </>
                     }
-                    placeholder="e.g. Lagos, Nigeria — or 'Multiple locations'"
+                    placeholder="e.g. Lagos State, Nigeria — or 'Multiple locations'"
+                    searchMode="state"
                     value={location}
                     onChange={setLocation}
                     {...fieldErrorProps('location')}
@@ -1314,7 +1421,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                     </div>
                   )}
 
-                  {/* Timezone requirement(s) — remote, hybrid, or flexible work format */}
+                  {/* Timezone requirement(s) â€” remote, hybrid, or flexible work format */}
                   {showTzSection && (
                     <TimezoneMultiSelect
                         selected={selectedTimezones}
@@ -1376,7 +1483,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0047CC" strokeWidth="2.3" className="shrink-0 text-[#0047CC]">
                       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                     </svg>
-                    <h3 className="text-[15px] font-extrabold text-[#1A1A1A] tracking-tight">Eligibility and geopolitical settings</h3>
+                    <SubsectionTitle>Eligibility and geopolitical settings</SubsectionTitle>
                   </div>
                   <p className="text-xs text-[#808080] leading-relaxed">
                     These fields power VORA's geopolitical filter. Accurate answers here directly determine which candidates are legally eligible to see this role.
@@ -1434,7 +1541,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0047CC" strokeWidth="2" className="text-[#0047CC]">
                           <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                         </svg>
-                        <span className="text-[15px] font-extrabold text-[#1A1A1A]">Scheduled Hiring</span>
+                        <SubsectionTitle as="span">Scheduled Hiring</SubsectionTitle>
                       </div>
                       <p className="text-[11px] text-[#808080] font-semibold leading-relaxed">
                         Not hiring right now? Submit the role today and set the exact date it should go live.
@@ -1461,7 +1568,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                           <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                         </svg>
                         <p className="text-xs md:text-[13px] leading-relaxed text-[#1e3a8a]">
-                          <strong>How Scheduled Hiring works:</strong> Your role enters Vault state immediately on submission. It is completely invisible — no candidate sees it, no candidate knows it exists. VORA locks your platform fee in escrow at today's rate. During the vault period, every candidate who joins VORA and completes onboarding is silently matched against your specification in the background. Those who score 80% or above are pre-qualified internally — they are never told about the role. On go-live day, the role publishes publicly, pre-qualified candidates are notified instantly, and any other qualified candidates in the pool are matched in real time.
+                          <strong>How Scheduled Hiring works:</strong> Your role enters Vault state immediately on submission. It is completely invisible â€” no candidate sees it, no candidate knows it exists. VORA locks your platform fee in escrow at today's rate. During the vault period, every candidate who joins VORA and completes onboarding is silently matched against your specification in the background. Those who score 80% or above are pre-qualified internally â€” they are never told about the role. On go-live day, the role publishes publicly, pre-qualified candidates are notified instantly, and any other qualified candidates in the pool are matched in real time.
                         </p>
                       </div>
 
@@ -1528,7 +1635,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                             </svg>
                           </div>
                           <div>
-                            <h4 className="text-[14px] font-extrabold text-[#182348]">Vault lifecycle</h4>
+                            <h4 className="text-[14px] font-semibold text-[#182348]">Vault lifecycle</h4>
                             <p className="text-[11px] text-[#808080] font-semibold mt-0.5">What happens between submission and go-live</p>
                           </div>
                         </div>
@@ -1536,13 +1643,13 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                         <div className="space-y-4 pt-1">
                           {[
                             { num: 1, title: 'Submission today:', text: 'Role enters Vault state. Invisible to all candidates. Fee locked in escrow at today\'s rate. You receive a submission confirmation and vault reference number.' },
-                            { num: 2, title: 'Vault period — silent matching:', text: 'No candidate sees this role or knows it exists. Every new candidate who joins VORA and completes their profile is silently matched against your specification. Those who score 80% or above are flagged internally as pre-qualified — they are not contacted, not told about the role. You can see the live count of pre-qualified candidates in your Vault dashboard at any time.' },
+                            { num: 2, title: 'Vault period â€” silent matching:', text: 'No candidate sees this role or knows it exists. Every new candidate who joins VORA and completes their profile is silently matched against your specification. Those who score 80% or above are flagged internally as pre-qualified â€” they are not contacted, not told about the role. You can see the live count of pre-qualified candidates in your Vault dashboard at any time.' },
                             { num: 3, title: '72 hours before go-live:', text: 'VORA sends you a reminder. You can cancel with a full refund to your wallet up until 24 hours before go-live.' },
-                            { num: 4, title: 'Go-live:', text: 'Role publishes publicly. Pre-qualified candidates are notified instantly — because matching already ran during the vault period, there is no processing delay. Any other qualified candidates in the pool are matched and notified in real time.' },
+                            { num: 4, title: 'Go-live:', text: 'Role publishes publicly. Pre-qualified candidates are notified instantly â€” because matching already ran during the vault period, there is no processing delay. Any other qualified candidates in the pool are matched and notified in real time.' },
                             { num: 5, title: 'If you cancel before go-live:', text: 'Full fee refund to your VORA wallet. No questions asked if cancelled more than 24 hours before go-live.' }
                           ].map((step) => (
                             <div key={step.num} className="flex gap-3">
-                              <div className="w-5 h-5 rounded-full bg-[#0047CC] text-white text-[11px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">
+                              <div className="w-5 h-5 rounded-full bg-[#0047CC] text-white text-[11px] font-semibold flex items-center justify-center shrink-0 mt-0.5">
                                 {step.num}
                               </div>
                               <p className="text-[12px] leading-relaxed text-[#4A4A4A]">
@@ -1573,7 +1680,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
               <div className="bg-white border border-[#E6E6E6] rounded-xl p-8 space-y-8 animate-in fade-in duration-300">
                 <StepValidationAlert errors={fieldErrors} />
                 <div className="space-y-1.5">
-                  <h3 className="text-xl md:text-[22px] font-extrabold text-[#1A1A1A] tracking-tight">What will they do?</h3>
+                  <SectionTitle as="h3">What will they do?</SectionTitle>
                   <p className="text-[13px] text-[#808080] leading-relaxed">Define the core responsibilities and technical requirements.</p>
                 </div>
 
@@ -1670,7 +1777,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
               <div className="bg-white border border-[#E6E6E6] rounded-xl p-8 space-y-8 animate-in fade-in duration-300">
                 <StepValidationAlert errors={fieldErrors} />
                 <div className="space-y-1.5">
-                  <h3 className="text-xl md:text-[22px] font-extrabold text-[#1A1A1A] tracking-tight">Experience & background</h3>
+                  <SectionTitle as="h3">Experience & background</SectionTitle>
                   <p className="text-[13px] text-[#808080] leading-relaxed">Tell us what this person must have done and who they need to be. These fields feed VORA's qualifications, sector background, and experience matching dimensions. VORA applies these equally to clinical, academic, operational, and technical health roles.</p>
                 </div>
 
@@ -1862,7 +1969,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
               <div className="bg-white border border-[#E6E6E6] rounded-xl p-8 space-y-8 animate-in fade-in duration-300">
                 <StepValidationAlert errors={fieldErrors} />
                 <div className="space-y-1.5">
-                  <h3 className="text-xl md:text-[22px] font-extrabold text-[#1A1A1A] tracking-tight">Team collaboration & communication</h3>
+                  <SectionTitle as="h3">Team collaboration & communication</SectionTitle>
                   <p className="text-[13px] text-[#808080] leading-relaxed">Helps VORA match on culture fit and working style. Applies equally to clinical teams, research groups, remote roles, and field environments.</p>
                 </div>
 
@@ -1961,7 +2068,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                 {/* COMPENSATION CARD */}
                 <div className="bg-white border border-[#E6E6E6] rounded-xl p-8 space-y-6">
                   <div>
-                    <h2 className="text-xl md:text-[22px] font-extrabold text-[#1A1A1A] tracking-tight">Compensation</h2>
+                    <SectionTitle>Compensation</SectionTitle>
                     <p className="text-[13px] text-[#808080] mt-1.5 leading-relaxed">
                       Select the compensation structure for this role. Your escrow is VORA's fee, not a salary deposit. It is calculated as a percentage of the compensation figure and locked at submission.
                     </p>
@@ -2020,7 +2127,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                       <CurrencyAmountRange
                         mode="single"
                         label="Annual stipend or fellowship value"
-                        hint="Enter the annual stipend value. For paid internships shorter than 12 months, enter the full value of the placement. VORA applies a fee on stipend roles — the rate shown in the escrow breakdown depends on your registered country."
+                        hint="Enter the annual stipend value. For paid internships shorter than 12 months, enter the full value of the placement. VORA applies a fee on stipend roles â€” the rate shown in the escrow breakdown depends on your registered country."
                         currency={stiCur}
                         onCurrencyChange={setStiCur}
                         singleValue={stiVal}
@@ -2037,7 +2144,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                   {compType === 'unp' && (
                     <div className="space-y-4.5 mt-6 animate-in slide-in-from-top-2 duration-300">
                       <AlertBanner variant="green" className="!text-xs">
-                        <strong>Flat listing fee applies.</strong> For unpaid placements, volunteer roles, academic observerships, and similar arrangements, VORA charges a flat listing and matching fee — <strong>USD 50 for LMIC employers</strong> or <strong>USD 500 for other regions</strong>. No escrow is held. Payment is processed on go-live. This covers the full matching and assessment process regardless of outcome.
+                        <strong>Flat listing fee applies.</strong> For unpaid placements, volunteer roles, academic observerships, and similar arrangements, VORA charges a flat listing and matching fee â€” <strong>USD 50 for LMIC employers</strong> or <strong>USD 500 for other regions</strong>. No escrow is held. Payment is processed on go-live. This covers the full matching and assessment process regardless of outcome.
                       </AlertBanner>
 
                       <Input
@@ -2078,13 +2185,13 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                   {compType === 'uni' && (
                     <div className="space-y-4.5 mt-6 animate-in slide-in-from-top-2 duration-300">
                       <AlertBanner variant="blue" className="!text-xs">
-                        <strong>University admissions (self-funded students):</strong> For programmes where students pay tuition, VORA charges a flat placement fee to the university — not a percentage of tuition. You are replacing the education agent model with a quality-controlled matching system. For <em>funded</em> PhD or research roles, use the PhD or Stipend types above.
+                        <strong>University admissions (self-funded students):</strong> For programmes where students pay tuition, VORA charges a flat placement fee to the university â€” not a percentage of tuition. You are replacing the education agent model with a quality-controlled matching system. For <em>funded</em> PhD or research roles, use the PhD or Stipend types above.
                       </AlertBanner>
 
                       <CurrencyAmountRange
                         mode="single"
                         label="Annual tuition / programme value"
-                        hint="Used to determine your flat placement fee tier. VORA charges a fixed fee per confirmed enrolled student — not a percentage of tuition. The fee is locked at application and released on confirmed enrolment."
+                        hint="Used to determine your flat placement fee tier. VORA charges a fixed fee per confirmed enrolled student â€” not a percentage of tuition. The fee is locked at application and released on confirmed enrolment."
                         currency={uniCur}
                         onCurrencyChange={setUniCur}
                         currencyOptions={UNI_CURRENCY_OPTIONS}
@@ -2115,7 +2222,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                   {/* LMIC Badge */}
                   {isLmicActive && (
                     <AlertBanner variant="green" className="mt-3 !text-xs">
-                      <strong>LMIC fee rates applied.</strong> Your currency qualifies for VORA&apos;s lower-income country pricing — 10% for salaried and contract roles, 7% for stipends and PhDs, and USD 50 flat fee for unpaid/volunteer roles. These rates are research-grounded — below the 10–17% charged by local recruitment agencies across Sub-Saharan Africa, South Asia, and Southeast Asia. This rate is locked at submission.
+                      <strong>LMIC fee rates applied.</strong> Your currency qualifies for VORA&apos;s lower-income country pricing â€” 10% for salaried and contract roles, 7% for stipends and PhDs, and USD 50 flat fee for unpaid/volunteer roles. These rates are research-grounded â€” below the 10â€“17% charged by local recruitment agencies across Sub-Saharan Africa, South Asia, and Southeast Asia. This rate is locked at submission.
                     </AlertBanner>
                   )}
                 </div>
@@ -2124,7 +2231,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                 {['sal', 'con', 'sti'].includes(compType) && (
                   <div className="bg-white border border-[#E6E6E6] rounded-xl p-8 space-y-6">
                     <div>
-                      <h2 className="text-xl md:text-[22px] font-extrabold text-[#1A1A1A] tracking-tight">Positions available</h2>
+                      <SectionTitle>Positions available</SectionTitle>
                       <p className="text-[13px] text-[#808080] mt-1.5 leading-relaxed">
                         How many people are you hiring into this role? Each position is covered by the escrow calculation above.
                       </p>
@@ -2158,14 +2265,14 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                 {['con', 'sti'].includes(compType) && (
                   <div className="bg-white border border-[#E6E6E6] rounded-xl p-8 space-y-6">
                     <div>
-                      <h2 className="text-xl md:text-[22px] font-extrabold text-[#1A1A1A] tracking-tight">Contract / placement duration</h2>
+                      <SectionTitle>Contract / placement duration</SectionTitle>
                       <p className="text-[13px] text-[#808080] mt-1.5 leading-relaxed">
-                        Used to calculate the total contract value and escrow. Choose the expected working duration — this does not need to be a full year. Six-month locum contracts, 3-month fellowships, and single-project consultancies all work the same way.
+                        Used to calculate the total contract value and escrow. Choose the expected working duration â€” this does not need to be a full year. Six-month locum contracts, 3-month fellowships, and single-project consultancies all work the same way.
                       </p>
                     </div>
 
                     <div className="space-y-4">
-                      <label className="text-[13px] font-medium text-[#1A1A1A]">Duration — contract or placement</label>
+                      <label className="text-[13px] font-medium text-[#1A1A1A]">Duration â€” contract or placement</label>
                       <div className="flex flex-wrap gap-2.5 mb-3">
                         {[
                           { id: '22', label: '1 month', days: 22 },
@@ -2175,7 +2282,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                           { id: '220', label: '1 year (standard)', days: 220 },
                           { id: '330', label: '18 months', days: 330 },
                           { id: '440', label: '2 years', days: 440 },
-                          { id: 'custom', label: 'Custom…', days: 0 }
+                          { id: 'custom', label: 'Customâ€¦', days: 0 }
                         ].map((preset) => {
                           const isSel = durationPreset === preset.id;
                           return (
@@ -2207,7 +2314,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                             className="w-full max-w-[260px] px-3.5 py-3 border border-[#E6E6E6] focus:border-[#0047CC] focus:ring-2 focus:ring-[#0047CC]/20 rounded-lg text-sm bg-white outline-none transition-all"
                           />
                           <p className="text-[11px] text-[#808080] leading-relaxed">
-                            Working days only — exclude weekends and public holidays. 22 days/month is a reasonable estimate.
+                            Working days only â€” exclude weekends and public holidays. 22 days/month is a reasonable estimate.
                           </p>
                         </div>
                       )}
@@ -2219,7 +2326,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                 {compType === 'uni' && (
                   <div className="bg-white border border-[#E6E6E6] rounded-xl p-8 space-y-6">
                     <div>
-                      <h2 className="text-xl md:text-[22px] font-extrabold text-[#1A1A1A] tracking-tight">Places available</h2>
+                      <SectionTitle>Places available</SectionTitle>
                       <p className="text-[13px] text-[#808080] mt-1.5 leading-relaxed">
                         How many students are you seeking to enrol through VORA for this programme? Each confirmed enrolled student triggers the flat placement fee.
                       </p>
@@ -2254,7 +2361,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                 {/* DOCUMENTATION CARD */}
                 <div className="bg-white border border-[#E6E6E6] rounded-xl p-8 space-y-6">
                   <div>
-                    <h2 className="text-xl md:text-[22px] font-extrabold text-[#1A1A1A] tracking-tight">Documentation</h2>
+                    <SectionTitle>Documentation</SectionTitle>
                     <p className="text-[13px] text-[#808080] mt-1.5 leading-relaxed">
                       Attach any supporting documents for this role. These are only visible to VORA staff during review and are not shared with candidates.
                     </p>
@@ -2315,18 +2422,19 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                       )}
                     </div>
 
-                    <div className="flex flex-col gap-1.5 mt-3.5">
-                      <label className="text-[13px] font-medium text-[#1A1A1A]">
-                        Internal notes for VORA <span className="text-[11px] text-[#808080] font-normal italic">(optional)</span>
-                      </label>
-                      <textarea
-                        rows={3}
-                        placeholder="Anything you want VORA's team to know that is not captured in the form. This is never shared with candidates."
-                        value={internalNotes}
-                        onChange={(e) => setInternalNotes(e.target.value)}
-                        className="w-full px-3.5 py-3 border border-[#E6E6E6] focus:border-[#0047CC] focus:ring-2 focus:ring-[#0047CC]/20 rounded-lg text-sm bg-white outline-none transition-all placeholder:text-[#ADADAD] resize-y min-h-[80px]"
-                      />
-                    </div>
+                    <Textarea
+                      label={
+                        <>
+                          Internal notes for VORA{' '}
+                          <span className="text-[11px] text-[#808080] font-normal italic">(optional)</span>
+                        </>
+                      }
+                      rows={3}
+                      placeholder="Anything you want VORA's team to know that is not captured in the form. This is never shared with candidates."
+                      value={internalNotes}
+                      onChange={(e) => setInternalNotes(e.target.value)}
+                      className="mt-3.5 min-h-[80px] resize-y"
+                    />
                   </div>
                 </div>
               </div>
@@ -2334,283 +2442,53 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
 
             {/* STEP 6: PREVIEW */}
             {currentStep === 6 && (
-              <div className="space-y-6 animate-in fade-in duration-300">
+              <>
                 <StepValidationAlert errors={fieldErrors} />
-                <h3 className="text-xl font-bold text-[#1A1A1A] leading-tight">Job Preview</h3>
-
-                <div className="bg-white border border-[#E6E6E6] rounded-[24px] p-6 md:p-8 space-y-6">
-                  {/* SECTION 1: Role details */}
-                  <div className="space-y-4">
-                    <h4 className="text-[14px] font-bold text-[#1A1A1A] pb-2 border-b border-gray-100">Role details</h4>
-                    <div className="grid grid-cols-3 gap-y-4 gap-x-6">
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Role type</p>
-                        <p className="text-[13px] font-medium text-gray-900 mt-1">{roleType || 'Internship'}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Role title</p>
-                        <p className="text-[13px] font-medium text-gray-900 mt-1">{roleTitle || 'Global Health Research Intern'}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Employment level</p>
-                        <p className="text-[13px] font-medium text-gray-900 mt-1">{level ? (level.charAt(0).toUpperCase() + level.slice(1)) : '--'}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Available positions</p>
-                        <p className="text-[13px] font-medium text-gray-900 mt-1">{positions ? `${positions} positions` : '3 positions'}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Time commitment</p>
-                        <p className="text-[13px] font-medium text-gray-900 mt-1">
-                          {timeCommitment
-                            ? formatTimeCommitmentDisplay(timeCommitment)
-                            : '20 hrs per week/full time'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Time preference</p>
-                        <p className="text-[13px] font-medium text-gray-900 mt-1">GMT + 1</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Work format</p>
-                        <p className="text-[13px] font-medium text-gray-900 mt-1">{workFormat || 'Onsite'}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Work location</p>
-                        <p className="text-[13px] font-medium text-gray-900 mt-1">{location || 'Lagos, Nigeria'}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Start date</p>
-                        <p className="text-[13px] font-medium text-gray-900 mt-1">{formatDate(startDate) || 'October 21st, 2025'}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">End date</p>
-                        <p className="text-[13px] font-medium text-gray-900 mt-1">{formatDate(endDate) || 'January 21st 2026'}</p>
-                      </div>
-                    </div>
-                    <div className="pt-2">
-                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Role summary</p>
-                      <p className="text-[13px] font-medium text-gray-700 mt-1 leading-relaxed">
-                        {summary || 'Lorem ipsum dolor sit amet consectetur. Vierra lectus rutrum luesnh...'} <span className="text-[#0047CC] font-bold cursor-pointer hover:underline">see more</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* SECTION 2: Responsibilities & skills */}
-                  <div className="space-y-4 pt-4 border-t border-gray-100">
-                    <h4 className="text-[14px] font-bold text-[#1A1A1A] pb-2 border-b border-gray-100">Responsibilities & skills</h4>
-                    <div className="grid grid-cols-2 gap-6">
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Role/Problem to solve</p>
-                        <p className="text-[13px] font-medium text-gray-700 mt-1 leading-relaxed">
-                          Lorem ipsum dolor sit amet consectetur. Viverra lectus rutrum lorem sit amet. Amet morbi massa proin... <span className="text-[#0047CC] font-bold cursor-pointer hover:underline">see more</span>
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Core responsibilities</p>
-                        <p className="text-[13px] font-medium text-gray-700 mt-1 leading-relaxed">
-                          Lorem ipsum dolor sit amet consectetur. Viverra lectus rutrum lorem sit amet... <span className="text-[#0047CC] font-bold cursor-pointer hover:underline">see more</span>
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Technical skills required</p>
-                        <div className="flex flex-wrap gap-1.5 mt-1.5">
-                          {technicalSkills.length > 0 ? (
-                            technicalSkills.map((skill, idx) => (
-                              <span key={skill} className={`px-3 py-1 border rounded-full text-xs font-semibold ${
-                                idx % 2 === 0 
-                                  ? 'bg-[#EBF6FF] border-[#BDD9FF] text-[#0047CC]' 
-                                  : 'bg-[#EEFBEE] border-[#85E585] text-[#1D871D]'
-                              }`}>
-                                {skill}
-                              </span>
-                            ))
-                          ) : (
-                            <>
-                              <span className="px-3 py-1 bg-[#EBF6FF] border border-[#BDD9FF] rounded-full text-xs font-semibold text-[#0047CC]">Research Analysis</span>
-                              <span className="px-3 py-1 bg-[#EEFBEE] border border-[#85E585] rounded-full text-xs font-semibold text-[#1D871D]">Communication & Writing</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Tools required</p>
-                        <div className="flex flex-wrap gap-1.5 mt-1.5">
-                          <span className="px-3 py-1 bg-[#EEFBEE] border border-[#85E585] rounded-full text-xs font-semibold text-[#1D871D]">Statistical Softwares</span>
-                          <span className="px-3 py-1 bg-[#EBF6FF] border border-[#BDD9FF] rounded-full text-xs font-semibold text-[#0047CC]">GIS Mapping Softwares</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* SECTION 3: Experience & background */}
-                  <div className="space-y-4 pt-4 border-t border-gray-100">
-                    <h4 className="text-[14px] font-bold text-[#1A1A1A] pb-2 border-b border-gray-100">Experience & background</h4>
-                    <div className="grid grid-cols-3 gap-6">
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Academic level</p>
-                        <p className="text-[13px] font-medium text-gray-900 mt-1">Undergraduate</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Relevant field</p>
-                        <p className="text-[13px] font-medium text-gray-900 mt-1">Nursing, Midwifery</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Years of experience</p>
-                        <p className="text-[13px] font-medium text-gray-900 mt-1">0 - 6 months</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* SECTION 4: Team collaboration & communication */}
-                  <div className="space-y-4 pt-4 border-t border-gray-100">
-                    <h4 className="text-[14px] font-bold text-[#1A1A1A] pb-2 border-b border-gray-100">Team collaboration & communication</h4>
-                    <div className="grid grid-cols-2 gap-6">
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Preferred work style</p>
-                        <div className="flex flex-wrap gap-1.5 mt-1.5">
-                          <span className="px-3 py-1 bg-[#EEFBEE] border border-[#85E585] rounded-full text-xs font-semibold text-[#1D871D]">Independent</span>
-                          <span className="px-3 py-1 bg-[#EBF6FF] border border-[#BDD9FF] rounded-full text-xs font-semibold text-[#0047CC]">Field-oriented</span>
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Communication/collaboration style</p>
-                        <p className="text-[13px] font-medium text-gray-900 mt-1">Weekly check-ins</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Communication language</p>
-                        <p className="text-[13px] font-medium text-gray-900 mt-1">English</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Personality traits</p>
-                        <div className="flex flex-wrap gap-1.5 mt-1.5">
-                          <span className="px-3 py-1 bg-[#EBF6FF] border border-[#BDD9FF] rounded-full text-xs font-semibold text-[#0047CC]">Empathetic</span>
-                          <span className="px-3 py-1 bg-[#EEFBEE] border border-[#85E585] rounded-full text-xs font-semibold text-[#1D871D]">Curious</span>
-                        </div>
-                      </div>
-                      <div className="col-span-2">
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Work culture</p>
-                        <div className="flex flex-wrap gap-1.5 mt-1.5">
-                          <span className="px-3 py-1 bg-[#EEFBEE] border border-[#85E585] rounded-full text-xs font-semibold text-[#1D871D]">Collaborative</span>
-                          <span className="px-3 py-1 bg-[#EBF6FF] border border-[#BDD9FF] rounded-full text-xs font-semibold text-[#0047CC]">Remote-first</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* SECTION 5: Compensation & documentation */}
-                  <div className="space-y-4 pt-4 border-t border-gray-100">
-                    <h4 className="text-[14px] font-bold text-[#1A1A1A] pb-2 border-b border-gray-100">Compensation & documentation</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-6">
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Compensation type</p>
-                        <p className="text-[13px] font-medium text-gray-900 mt-1">
-                          {compType === 'sal' && 'Salaried'}
-                          {compType === 'con' && 'Contract / Daily rate'}
-                          {compType === 'sti' && 'Stipend / Fellowship'}
-                          {compType === 'unp' && 'Unpaid / Flat-fee'}
-                          {compType === 'phd' && 'Funded PhD studentship'}
-                          {compType === 'uni' && 'University admissions (flat fee)'}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Compensation details</p>
-                        <p className="text-[13px] font-medium text-gray-900 mt-1">
-                          {compType === 'sal' && (salMin || salMax ? `${fmt((parseFloat(salMin) || 0) && (parseFloat(salMax) || 0) ? ((parseFloat(salMin) || 0) + (parseFloat(salMax) || 0)) / 2 : (parseFloat(salMin) || parseFloat(salMax) || 0), salCur)} midpoint (${salMin ? fmt(parseFloat(salMin), salCur) : '--'} to ${salMax ? fmt(parseFloat(salMax), salCur) : '--'})` : '--')}
-                          {compType === 'con' && (conMin || conMax ? `${fmt((parseFloat(conMin) || 0) && (parseFloat(conMax) || 0) ? ((parseFloat(conMin) || 0) + (parseFloat(conMax) || 0)) / 2 : (parseFloat(conMin) || parseFloat(conMax) || 0), conCur)}/day midpoint (${conMin ? fmt(parseFloat(conMin), conCur) : '--'} to ${conMax ? fmt(parseFloat(conMax), conCur) : '--'}) for ${conDuration} working days` : '--')}
-                          {compType === 'sti' && (stiVal ? `${fmt(parseFloat(stiVal), stiCur)} (${stiDuration} months)` : '--')}
-                          {compType === 'unp' && (expenses ? `Unpaid (${expenses})` : 'Unpaid')}
-                          {compType === 'phd' && (phdVal ? `${fmt(parseFloat(phdVal), phdCur)}` : '--')}
-                          {compType === 'uni' && (uniTuition || uniProg ? `${uniProg || 'Programme'} — ${uniTuition ? fmt(parseFloat(uniTuition), uniCur) : '--'}/year tuition` : '--')}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-                          {compType === 'uni' ? 'Places / students' : 'Positions available'}
-                        </p>
-                        <p className="text-[13px] font-medium text-gray-900 mt-1">
-                          {compType === 'uni' ? `${uniStudentCount} student place${parseInt(uniStudentCount) > 1 ? 's' : ''}` : ''}
-                          {compType === 'phd' ? '1 position' : ''}
-                          {['sal', 'con', 'sti', 'unp'].includes(compType) ? `${positions} position${parseInt(positions) > 1 ? 's' : ''}` : ''}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Escrow / platform fee</p>
-                        <p className="text-[13px] font-bold text-[#0047CC] mt-1">
-                          {(() => {
-                            const cur = getActiveCurrency();
-                            const lmic = isLmicActive;
-                            if (compType === 'sal') {
-                              const mn = parseFloat(salMin) || 0;
-                              const mx = parseFloat(salMax) || 0;
-                              const mid = mn && mx ? (mn + mx) / 2 : (mn || mx);
-                              const pos = parseInt(positions) || 1;
-                              const total = applyLMICFloorCap(mid * pos * getFeeRate('sal', lmic), pos, lmic);
-                              return mid ? `${fmt(total, cur)} (escrow)` : '--';
-                            }
-                            if (compType === 'con') {
-                              const mn = parseFloat(conMin) || 0;
-                              const mx = parseFloat(conMax) || 0;
-                              const mid = mn && mx ? (mn + mx) / 2 : (mn || mx);
-                              const pos = parseInt(positions) || 1;
-                              const total = applyLMICFloorCap(mid * conDuration * pos * getFeeRate('con', lmic), pos, lmic);
-                              return mid ? `${fmt(total, cur)} (escrow)` : '--';
-                            }
-                            if (compType === 'sti') {
-                              const v = parseFloat(stiVal) || 0;
-                              const pos = parseInt(positions) || 1;
-                              const total = v * pos * getFeeRate('sti', lmic);
-                              return v ? `${fmt(total, cur)} (escrow)` : '--';
-                            }
-                            if (compType === 'unp') {
-                              const fee = getFlatFee();
-                              return `USD ${fee} (flat listing fee)`;
-                            }
-                            if (compType === 'phd') {
-                              const v = parseFloat(phdVal) || 0;
-                              const total = v * getFeeRate('phd', lmic);
-                              return v ? `${fmt(total, cur)} (escrow)` : '--';
-                            }
-                            if (compType === 'uni') {
-                              const tuition = parseFloat(uniTuition) || 0;
-                              const students = parseInt(uniStudentCount) || 1;
-                              const total = getUniFee(tuition, uniProg, lmic) * students;
-                              return tuition && uniProg ? `USD ${total} (placement fee)` : '--';
-                            }
-                            return '--';
-                          })()}
-                        </p>
-                      </div>
-
-                      <div className="col-span-2">
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Supporting document</p>
-                        {jdFile ? (
-                          <div className="flex items-center gap-2 mt-1">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1D871D" strokeWidth="2" className="text-[#1D871D]">
-                              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                              <polyline points="14 2 14 8 20 8"/>
-                            </svg>
-                            <span className="text-[13px] font-medium text-gray-800">{jdFile.name} ({formatFileSize(jdFile.size)})</span>
-                          </div>
-                        ) : (
-                          <p className="text-[13px] font-medium text-gray-500 mt-1 italic">No document attached</p>
-                        )}
-                      </div>
-
-                      {internalNotes && (
-                        <div className="col-span-2">
-                          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Internal notes for VORA</p>
-                          <p className="text-[13px] font-medium text-gray-700 mt-1 whitespace-pre-wrap leading-relaxed">{internalNotes}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
+                <PostJobPreviewStep
+                  isScheduled={isScheduled}
+                  goLiveDate={goLiveDate}
+                  formatDate={formatDate}
+                  onEditStep={jumpToStep}
+                  escrow={buildEscrowPreview()}
+                  roleType={roleType}
+                  roleTitle={roleTitle}
+                  level={level}
+                  positions={positions}
+                  timeCommitment={timeCommitment ? formatTimeCommitmentDisplay(timeCommitment) : ''}
+                  workFormat={workFormat}
+                  location={location}
+                  additionalLocations={additionalLocations}
+                  selectedTimezones={selectedTimezones}
+                  startDate={startDate}
+                  endDate={endDate}
+                  summary={summary}
+                  internationalPolicy={internationalPolicy}
+                  securityClearance={securityClearance}
+                  roleGoal={roleGoal}
+                  coreResponsibilities={coreResponsibilities}
+                  technicalSkills={technicalSkills}
+                  tools={tools}
+                  languages={languages}
+                  preAssessments={preAssessments}
+                  experienceYears={experienceYears}
+                  experienceTypes={experienceTypes}
+                  minQualification={minQualification}
+                  sectorBackground={sectorBackground}
+                  geographicExperience={geographicExperience}
+                  publicationsRequired={publicationsRequired}
+                  budgetManagement={budgetManagement}
+                  preferredWorkingStyle={preferredWorkingStyle}
+                  communicationRhythm={communicationRhythm}
+                  primaryLanguage={primaryLanguage}
+                  personalityTraits={personalityTraits}
+                  workEnvironment={workEnvironment}
+                  compType={compType}
+                  expenses={expenses}
+                  fmt={fmt}
+                />
+              </>
             )}
+
           </div>
 
           {/* Sticky Bottom Actions Bar */}
@@ -2653,6 +2531,17 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
           </div>
         </div>
       </div>
+
+      <PostJobCheckoutDrawer
+        isOpen={isCheckoutOpen}
+        isScheduled={isScheduled}
+        roleTitle={roleTitle}
+        escrow={buildEscrowPreview()}
+        fmt={fmt}
+        isSubmitting={isProceeding}
+        onClose={() => setIsCheckoutOpen(false)}
+        onSubmit={handleCheckoutSubmit}
+      />
     </div>
   );
 };

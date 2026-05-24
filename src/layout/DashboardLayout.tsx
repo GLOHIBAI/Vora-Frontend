@@ -14,6 +14,7 @@ import {
   MENTOR_NAV_ITEMS,
   TALENT_NAV_ITEMS
 } from '../constants/navigation';
+import { getMentorOnboardingRoute, isMentorOnboardingPath } from '../utils/mentorOnboarding';
 import VoraLogo from '../components/common/VoraLogo';
 import { VORA_LOGO_SRC } from '../constants/brand';
 
@@ -71,6 +72,33 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       }
     }
   }, [user, isEmployer, employerState, navigate]);
+
+  useEffect(() => {
+    if (!user || !isMentor) return;
+
+    const userComplete = (user as { isOnboardingComplete?: boolean }).isOnboardingComplete;
+    const isComplete = userComplete || mentorState?.data?.onboardingCompleted;
+
+    const onMentorOnboarding = isMentorOnboardingPath(location.pathname);
+
+    if (isComplete) {
+      if (onMentorOnboarding) {
+        navigate('/dashboard', { replace: true });
+      }
+      return;
+    }
+
+    const savedStep =
+      mentorState?.data?.step ??
+      (user as { onboardingStep?: number }).onboardingStep ??
+      0;
+
+    const target = getMentorOnboardingRoute(savedStep);
+
+    if (!onMentorOnboarding) {
+      navigate(target, { replace: true });
+    }
+  }, [user, isMentor, mentorState, navigate, location.pathname]);
 
   useEffect(() => {
     if (user && isTalent) {
@@ -198,7 +226,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                   className="h-[22px] w-auto object-contain"
                 />
               </Link>
-              <div className="min-w-0 flex-1 group-data-[nav-collapsed=true]/sidebar:lg:hidden">
+              <div className="shrink-0 group-data-[nav-collapsed=true]/sidebar:lg:hidden">
                 <VoraLogo to="/dashboard" size="md" />
               </div>
               <div className="hidden lg:block">

@@ -157,8 +157,16 @@ export interface MentorOnboardingStep5Request {
   preferredFormat?: string;
 }
 
+export interface CompleteMentorOnboardingResponse {
+  mentorId?: string;
+  onboardingStep?: number;
+  onboardingCompleted?: boolean;
+  updatedOnboardingData?: Record<string, unknown>;
+}
+
 export interface MentorOnboardingStateResponse {
   step: number;
+  onboardingCompleted?: boolean;
   fields: Partial<
     MentorOnboardingStep1Request &
     MentorOnboardingStep2Request &
@@ -250,8 +258,14 @@ export const useMentorOnboardingStateQuery = (enabled = true) => {
       apiClient.get<ApiResponse<MentorOnboardingStateResponse>>({
         url: '/mentors/onboarding/state',
         auth: true,
+        suppressErrorToast: true,
       }),
-    enabled,
+    enabled: enabled && !!localStorage.getItem('auth_token'),
+    retry: (failureCount, error) => {
+      const status = (error as { status?: number })?.status;
+      if (status === 403 || status === 404) return false;
+      return failureCount < 1;
+    },
   });
 };
 
@@ -267,7 +281,7 @@ export const useCompleteMentorOnboardingMutation = () => {
   return useMutation({
     mutationKey: ['mentor-onboarding', 'complete'],
     mutationFn: (data: CompleteMentorOnboardingRequest) =>
-      apiClient.put<ApiResponse<any>>({
+      apiClient.put<ApiResponse<CompleteMentorOnboardingResponse>>({
         url: '/mentors/onboarding',
         body: data,
         auth: true,

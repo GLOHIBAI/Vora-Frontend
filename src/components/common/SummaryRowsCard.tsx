@@ -1,4 +1,5 @@
 import React from 'react';
+import { CardTitle } from './Typography';
 import type { SummaryRow } from '../../types/vault';
 
 interface SummaryRowsCardProps {
@@ -9,13 +10,13 @@ interface SummaryRowsCardProps {
 
 const SummaryRowsCard: React.FC<SummaryRowsCardProps> = ({ title, rows, className = '' }) => (
   <div className={`bg-white border border-[#E6E6E6] rounded-xl p-5 mb-5 ${className}`}>
-    <h2 className="text-[15px] font-extrabold text-[#1A1A1A] mb-3">{title}</h2>
+    <CardTitle as="h2" className="mb-3">{title}</CardTitle>
     <div>
       {rows.map((row, index) => (
         <div
           key={row.label}
           className={`flex justify-between gap-4 text-[13px] py-1.5 ${
-            index < rows.length - 1 ? 'border-b border-[#E6E6E6]' : 'pt-2.5 font-extrabold text-[15px]'
+            index < rows.length - 1 ? 'border-b border-[#E6E6E6]' : 'pt-2.5 font-semibold text-[15px]'
           }`}
         >
           <span className="text-[#808080] font-medium shrink-0">{row.label}</span>

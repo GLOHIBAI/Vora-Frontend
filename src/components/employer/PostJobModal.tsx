@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import Button from '../common/Button';
 import Input from '../common/Input';
+import { FieldLabel, ModalTitle, Subheading } from '../common/Typography';
 import ScrollArea from '../common/ScrollArea';
 import { toISODate } from '../../utils/date';
 import { useAuth } from '../../context/AuthContext';
@@ -222,7 +223,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
       <div className="relative bg-white w-full sm:max-w-[520px] max-h-[92vh] sm:max-h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden fixed bottom-0 sm:relative">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-5 flex items-center justify-between z-10">
-          <h2 className="text-[18px] font-extrabold text-gray-900 tracking-tight">Post a Job</h2>
+          <ModalTitle className="text-[18px]">Post a Job</ModalTitle>
           <button 
             onClick={resetModal} 
             className="p-1 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
@@ -238,7 +239,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
         <div className="p-6 space-y-6">
           {/* STEP 1: When do you want to hire? */}
           <div className="space-y-3">
-            <div className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">
+            <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
               When do you want to hire?
             </div>
 
@@ -262,7 +263,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
                     {hireMode === 'live' && <div className="w-2.5 h-2.5 rounded-full bg-[#0047CC]" />}
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-gray-900">Post live now</h3>
+                    <Subheading>Post live now</Subheading>
                     <p className="text-[12px] text-gray-500 mt-1 leading-relaxed">
                       Role goes live immediately on submission. Matching fires the same day.
                     </p>
@@ -289,13 +290,13 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
                     {hireMode === 'vault' && <div className="w-2.5 h-2.5 rounded-full bg-[#0047CC]" />}
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                    <Subheading className="flex items-center gap-1.5">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0047CC" strokeWidth="2.5">
                         <rect x="3" y="11" width="18" height="11" rx="2" />
                         <path d="M7 11V7a5 5 0 0110 0v4" />
                       </svg>
                       Schedule for later — Vault mode
-                    </h3>
+                    </Subheading>
                     <p className="text-[12px] text-gray-500 mt-1 leading-relaxed">
                       Not hiring right now? Set a future go-live date. Your fee rate locks in today. The role stays completely invisible — but VORA silently matches every new candidate who joins against your specification. On go-live day, qualified candidates are notified instantly.
                     </p>
@@ -308,7 +309,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
                     onClick={(e) => e.stopPropagation()} 
                     className="mt-3 p-4 bg-white border border-[#E6E6E6] rounded-lg text-left"
                   >
-                    <label className="block text-[11px] font-extrabold text-[#1A1A1A] uppercase tracking-wider mb-2">
+                    <label className="block text-[11px] font-semibold text-[#1A1A1A] uppercase tracking-wider mb-2">
                       Go-live date <span className="text-red-500">*</span>
                     </label>
                     <Input 
@@ -346,7 +347,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
           {/* STEP 2: How would you like to fill in the role details? */}
           {isMethodSectionVisible && (
             <div className="pt-6 border-t border-gray-200 space-y-3 animate-in slide-in-from-top-2 duration-300">
-              <div className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">
+              <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
                 How would you like to fill in the role details?
               </div>
 
@@ -365,7 +366,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
                       {fillMethod === 'upload' && <div className="w-2.5 h-2.5 rounded-full bg-[#0047CC]" />}
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-sm font-bold text-gray-900">Upload job document</h3>
+                      <Subheading>Upload job document</Subheading>
                       <p className="text-[12px] text-gray-500 mt-1 leading-relaxed">
                         Upload your existing JD — VORA extracts and pre-fills all role details for you to review step by step.
                       </p>
@@ -474,7 +475,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
                       {fillMethod === 'manual' && <div className="w-2.5 h-2.5 rounded-full bg-[#0047CC]" />}
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-gray-900">Fill out manually</h3>
+                      <Subheading>Fill out manually</Subheading>
                       <p className="text-[12px] text-gray-500 mt-1 leading-relaxed">
                         Start from scratch and complete all steps yourself.
                       </p>

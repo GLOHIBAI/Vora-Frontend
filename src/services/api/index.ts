@@ -13,6 +13,8 @@ export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
   auth?: boolean;
   authToken?: AuthTokenMode;
   credentials?: RequestCredentials;
+  /** Skip error toast (e.g. optional reads like onboarding state). */
+  suppressErrorToast?: boolean;
 }
 
 function resolveAuthToken(mode: AuthTokenMode): string | null {
@@ -36,6 +38,7 @@ async function fetchWithInterceptors(options: ApiRequestOptions): Promise<any> {
     auth,
     authToken: authTokenOption,
     credentials: credentialsOption,
+    suppressErrorToast = false,
     ...fetchOptions
   } = options;
 
@@ -132,7 +135,7 @@ async function fetchWithInterceptors(options: ApiRequestOptions): Promise<any> {
       errors: data?.errors || data,
     };
     
-    if (response.status !== 401) {
+    if (response.status !== 401 && !suppressErrorToast) {
       const messageLines = cleanMessage.split('\n');
       toast.error(
         React.createElement(

@@ -15,7 +15,7 @@ const StatGrid: React.FC<StatGridProps> = ({ items, columns = 3, className = '' 
   >
     {items.map((item) => (
       <div key={item.label} className="bg-[#F7F7F7] rounded-lg p-3.5 text-center">
-        <div className={`text-[22px] font-black leading-none ${item.valueClassName ?? 'text-[#0047CC]'}`}>
+        <div className={`text-[22px] font-semibold leading-none ${item.valueClassName ?? 'text-[#0047CC]'}`}>
           {item.value}
         </div>
         <p className="text-[11px] text-[#808080] mt-1 leading-snug">{item.label}</p>

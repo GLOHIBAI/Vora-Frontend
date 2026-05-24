@@ -1,4 +1,5 @@
 import React from 'react';
+import { PageTitle, SectionDescription } from './Typography';
 
 interface ConfirmationHeaderProps {
   icon: React.ReactNode;
@@ -19,8 +20,8 @@ const ConfirmationHeader: React.FC<ConfirmationHeaderProps> = ({
     >
       {icon}
     </div>
-    <h1 className="text-[28px] font-black text-[#1A1A1A] tracking-tight mb-2">{title}</h1>
-    <p className="text-[15px] text-[#808080] leading-relaxed max-w-xl mx-auto">{subtitle}</p>
+    <PageTitle className="text-[28px] mb-2">{title}</PageTitle>
+    <SectionDescription className="text-[15px] max-w-xl mx-auto">{subtitle}</SectionDescription>
   </div>
 );
 

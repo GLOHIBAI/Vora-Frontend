@@ -40,7 +40,7 @@ const EscrowRecalcCard: React.FC<EscrowRecalcCardProps> = ({
 
   return (
     <div className="bg-white border-[1.5px] border-[#FDE68A] rounded-[10px] p-4 mt-2">
-      <div className="text-[13px] font-extrabold text-[#92400E] mb-2.5 flex items-center gap-1.5">
+      <div className="text-[13px] font-semibold text-[#92400E] mb-2.5 flex items-center gap-1.5">
         <AlertTriangleIcon size={13} strokeWidth={2} />
         Escrow recalculation triggered
       </div>
@@ -49,11 +49,11 @@ const EscrowRecalcCard: React.FC<EscrowRecalcCardProps> = ({
           <div
             key={row.label}
             className={`flex justify-between items-center py-1.5 text-[13px] ${
-              index < rows.length - 1 ? 'border-b border-[#E6E6E6]' : 'pt-2.5 font-extrabold text-sm'
+              index < rows.length - 1 ? 'border-b border-[#E6E6E6]' : 'pt-2.5 font-semibold text-sm'
             }`}
           >
             <span className="text-[#808080] font-medium">{row.label}</span>
-            <span className={`font-bold ${row.valueClass ?? 'text-[#1A1A1A]'}`}>{row.value}</span>
+            <span className={`font-medium ${row.valueClass ?? 'text-[#1A1A1A]'}`}>{row.value}</span>
           </div>
         ))}
       </div>

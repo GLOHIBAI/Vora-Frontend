@@ -35,8 +35,16 @@ export function formatTimeCommitmentDisplay(digits: string): string {
   return `${digits} ${TIME_COMMITMENT_SUFFIX}`;
 }
 
+/** Max hours in a calendar week — used to cap time-commitment input. */
+export const MAX_HOURS_PER_WEEK = 168;
+
 export function parseTimeCommitmentDigits(value: string): string {
-  return digitsOnly(value, 3);
+  const digits = digitsOnly(value, 3);
+  if (!digits) return '';
+  const n = parseInt(digits, 10);
+  if (Number.isNaN(n)) return '';
+  if (n > MAX_HOURS_PER_WEEK) return String(MAX_HOURS_PER_WEEK);
+  return digits;
 }
 
 export function formatTimeCommitmentForApi(digits: string): string {
@@ -48,7 +56,7 @@ export function validateTimeCommitmentHours(digits: string): string {
   if (!digits?.trim()) return 'Time commitment is required';
   const n = parseInt(digits, 10);
   if (Number.isNaN(n) || n < 1) return 'Enter at least 1 hour';
-  if (n > 168) return 'Enter 168 hours or fewer per week';
+  if (n > MAX_HOURS_PER_WEEK) return `Enter ${MAX_HOURS_PER_WEEK} hours or fewer per week`;
   return '';
 }
 

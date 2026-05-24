@@ -97,6 +97,76 @@ export async function searchLocationsLocal(
   return results.slice(0, MAX_LOCAL_RESULTS);
 }
 
+/** Offline search: special entries + states/regions only (no countries or cities). */
+export async function searchStatesRegionsLocal(
+  query: string
+): Promise<LocationOption[]> {
+  const q = normalizeQuery(query);
+  if (q.length < 2) return [];
+
+  const { Country, State } = await loadCountryStateCity();
+  if (!countriesCache) countriesCache = Country.getAllCountries();
+  if (!statesCache) statesCache = State.getAllStates();
+
+  const seen = new Set<string>();
+  const results: LocationOption[] = [];
+
+  const push = (option: LocationOption) => {
+    const key = locationDedupeKey(option.value);
+    if (seen.has(key)) return;
+    seen.add(key);
+    results.push(option);
+  };
+
+  for (const special of SPECIAL_LOCATIONS) {
+    if (special.toLowerCase().includes(q)) {
+      push({ label: special, value: special, type: 'special' });
+    }
+  }
+
+  for (const state of statesCache) {
+    if (results.length >= MAX_LOCAL_RESULTS) break;
+    const stateName = state.name.toLowerCase();
+    const stateShort = normalizeRegionName(state.name).toLowerCase();
+    if (!stateName.includes(q) && !stateShort.includes(q)) continue;
+    const country = Country.getCountryByCode(state.countryCode);
+    const countryName = country?.name ?? state.countryCode;
+    const label = formatStateRegionLabel(state.name, countryName);
+    push({ label, value: label, type: 'state' });
+  }
+
+  return results.slice(0, MAX_LOCAL_RESULTS);
+}
+
+/** States/regions only — excludes city-level Nominatim results. */
+export async function searchStatesRegions(
+  query: string,
+  signal?: AbortSignal
+): Promise<LocationOption[]> {
+  const [local, online] = await Promise.all([
+    searchStatesRegionsLocal(query),
+    searchLocationsOnline(query, signal)
+      .then((items) => items.filter((o) => o.type === 'state' || o.type === 'special'))
+      .catch((err) => {
+        if ((err as Error).name === 'AbortError') throw err;
+        return [] as LocationOption[];
+      }),
+  ]);
+
+  const seen = new Set<string>();
+  const merged: LocationOption[] = [];
+
+  for (const option of [...local, ...online]) {
+    const key = locationDedupeKey(option.value);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(option);
+    if (merged.length >= MAX_TOTAL) break;
+  }
+
+  return merged;
+}
+
 const MAX_COUNTRY_RESULTS = 15;
 const MAX_CITY_RESULTS = 15;
 

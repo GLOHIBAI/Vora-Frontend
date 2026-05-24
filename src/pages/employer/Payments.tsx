@@ -1,10 +1,17 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
+import AlertBanner from '../../components/common/AlertBanner';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Tag from '../../components/common/Tag';
 import Textarea from '../../components/common/Textarea';
+import {
+  CardTitle,
+  PageTitle,
+  SectionDescription,
+  Subheading,
+} from '../../components/common/Typography';
 import { 
   CheckIcon, 
   CloseIcon, 
@@ -13,7 +20,6 @@ import {
   ChevronDownIcon, 
   ChevronRightIcon, 
   AlertTriangleIcon,
-  InfoIcon
 } from '../../components/common/Icons';
 import type { PaymentsTabType, DecisionStatus } from '../../types';
 
@@ -120,10 +126,10 @@ const Payments: React.FC = () => {
 
       {/* Page Header */}
       <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-extrabold text-[#1C1C1C] tracking-tight">Alignment Session Review</h1>
-        <p className="text-sm text-gray-500 max-w-3xl">
+        <PageTitle className="text-3xl">Alignment Session Review</PageTitle>
+        <SectionDescription className="text-sm text-gray-500 max-w-3xl">
           Review candidates from additional alignment sessions. Full assessment scores below. Hire for full refund · Reject with valid documented reason for refund · Invalid rejection forfeits fee.
-        </p>
+        </SectionDescription>
       </div>
 
       {/* Main Grid Layout */}
@@ -131,12 +137,12 @@ const Payments: React.FC = () => {
         {/* Left Column: Candidates & History */}
         <div className="space-y-6">
           {/* Policy Info Box */}
-          <div className="flex gap-3 bg-[#EBF6FF] border border-[#387DFF]/30 rounded-xl p-4 text-xs leading-relaxed text-[#1e40af]">
-            <InfoIcon size={16} className="text-[#0047CC] shrink-0 mt-0.5" />
-            <div>
-              <strong className="text-[#0047CC]">Alignment fee policy:</strong> $150 per additional session (beyond standard interview). <strong className="text-[#0047CC]">Hire</strong> → full auto-refund. <strong className="text-[#0047CC]">Reject with valid documented reason</strong> → VORA reviews within 2 days → refund if valid. <strong className="text-[#0047CC]">Reject without valid reason</strong> → fee forfeited + account warning issued.
-            </div>
-          </div>
+          <AlertBanner variant="blue" className="!text-xs">
+            <strong>Alignment fee policy:</strong> $150 per additional session (beyond standard interview).{' '}
+            <strong>Hire</strong> → full auto-refund. <strong>Reject with valid documented reason</strong> → VORA
+            reviews within 2 days → refund if valid. <strong>Reject without valid reason</strong> → fee forfeited
+            + account warning issued.
+          </AlertBanner>
 
           {/* ═══════════ CANDIDATE 1: DR. AMARA OSEI ═══════════ */}
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
@@ -207,7 +213,7 @@ const Payments: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Overall Psychometric Score</h4>
-                      <div className="text-3xl font-extrabold text-[#0047CC] leading-none">87<span className="text-sm font-normal text-gray-400">/100</span></div>
+                      <div className="text-3xl font-semibold text-[#0047CC] leading-none">87<span className="text-sm font-normal text-gray-400">/100</span></div>
                       <Tag label="✓ Above threshold (80)" variant="green" className="mt-1 text-[10px] py-0.5" />
                     </div>
                     <div className="text-xs text-gray-600 leading-relaxed">
@@ -251,7 +257,7 @@ const Payments: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">SJT Overall Score</h4>
-                      <div className="text-3xl font-extrabold text-[#2CA62C] leading-none">83<span className="text-sm font-normal text-gray-400">/100</span></div>
+                      <div className="text-3xl font-semibold text-[#2CA62C] leading-none">83<span className="text-sm font-normal text-gray-400">/100</span></div>
                       <Tag label="✓ Above threshold (80)" variant="green" className="mt-1 text-[10px] py-0.5" />
                     </div>
                     <div className="text-xs text-gray-600 leading-relaxed">
@@ -294,7 +300,7 @@ const Payments: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 font-semibold">Video Interview Score</h4>
-                      <div className="text-3xl font-extrabold text-[#7C3AED] leading-none font-bold">81<span className="text-sm font-normal text-gray-400">/100</span></div>
+                      <div className="text-3xl font-semibold text-[#7C3AED] leading-none font-bold">81<span className="text-sm font-normal text-gray-400">/100</span></div>
                       <Tag label="✓ Above threshold (80)" variant="green" className="mt-1 text-[10px] py-0.5" />
                     </div>
                     <div className="text-xs text-gray-600 leading-relaxed">
@@ -368,24 +374,24 @@ const Payments: React.FC = () => {
                   <div className="grid grid-cols-3 gap-2.5 text-center">
                     <div className="bg-[#EBF6FF] border border-[#387DFF]/20 rounded-xl p-3 flex flex-col items-center">
                       <h5 className="text-[10px] font-bold text-gray-500 uppercase mb-1">Psychometric</h5>
-                      <div className="text-xl font-extrabold text-[#0047CC] mb-1">87</div>
+                      <div className="text-xl font-semibold text-[#0047CC] mb-1">87</div>
                       <Tag label="Pass" variant="blue" className="text-[9px] py-0 px-2" />
                     </div>
                     <div className="bg-[#EEFBEE] border border-[#2CA62C]/20 rounded-xl p-3 flex flex-col items-center">
                       <h5 className="text-[10px] font-bold text-gray-500 uppercase mb-1">SJT</h5>
-                      <div className="text-xl font-extrabold text-[#2CA62C] mb-1">83</div>
+                      <div className="text-xl font-semibold text-[#2CA62C] mb-1">83</div>
                       <Tag label="Pass" variant="green" className="text-[9px] py-0 px-2" />
                     </div>
                     <div className="bg-[#F5F3FF] border border-[#7C3AED]/20 rounded-xl p-3 flex flex-col items-center">
                       <h5 className="text-[10px] font-bold text-gray-500 uppercase mb-1">Video</h5>
-                      <div className="text-xl font-extrabold text-[#7C3AED] mb-1">81</div>
+                      <div className="text-xl font-semibold text-[#7C3AED] mb-1">81</div>
                       <Tag label="Pass" variant="purple" className="text-[9px] py-0 px-2" />
                     </div>
                   </div>
 
                   <div className="bg-gray-50 border border-gray-150 rounded-xl p-4">
                     <h5 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Composite Score</h5>
-                    <div className="text-2xl font-extrabold text-gray-900">84 <span className="text-xs font-normal text-gray-400">/ 100 composite</span></div>
+                    <div className="text-2xl font-semibold text-gray-900">84 <span className="text-xs font-normal text-gray-400">/ 100 composite</span></div>
                     <p className="text-[10px] text-gray-500 mt-0.5">Weighted: Psychometric 35% · SJT 40% · Video 25%</p>
                   </div>
 
@@ -502,7 +508,7 @@ const Payments: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 font-semibold">Overall Score</h4>
-                      <div className="text-3xl font-extrabold text-[#0047CC] leading-none">91<span className="text-sm font-normal text-gray-400">/100</span></div>
+                      <div className="text-3xl font-semibold text-[#0047CC] leading-none">91<span className="text-sm font-normal text-gray-400">/100</span></div>
                       <Tag label="✓ Exceptional" variant="green" className="mt-1 text-[10px] py-0.5" />
                     </div>
                     <div className="text-xs text-gray-600 leading-relaxed">
@@ -541,7 +547,7 @@ const Payments: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 font-semibold">SJT Score</h4>
-                      <div className="text-3xl font-extrabold text-[#2CA62C] leading-none">86<span className="text-sm font-normal text-gray-400">/100</span></div>
+                      <div className="text-3xl font-semibold text-[#2CA62C] leading-none">86<span className="text-sm font-normal text-gray-400">/100</span></div>
                       <Tag label="✓ Strong Pass" variant="green" className="mt-1 text-[10px] py-0.5" />
                     </div>
                     <div className="text-xs text-gray-600 leading-relaxed">
@@ -578,7 +584,7 @@ const Payments: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 font-semibold">Video Score</h4>
-                      <div className="text-3xl font-extrabold text-[#7C3AED] leading-none">84<span className="text-sm font-normal text-gray-400">/100</span></div>
+                      <div className="text-3xl font-semibold text-[#7C3AED] leading-none">84<span className="text-sm font-normal text-gray-400">/100</span></div>
                       <Tag label="✓ Strong Pass" variant="green" className="mt-1 text-[10px] py-0.5" />
                     </div>
                     <div className="text-xs text-gray-600 leading-relaxed">
@@ -634,24 +640,24 @@ const Payments: React.FC = () => {
                   <div className="grid grid-cols-3 gap-2.5 text-center">
                     <div className="bg-[#EBF6FF] border border-[#387DFF]/20 rounded-xl p-3 flex flex-col items-center">
                       <h5 className="text-[10px] font-bold text-gray-500 uppercase mb-1">Psychometric</h5>
-                      <div className="text-xl font-extrabold text-[#0047CC] mb-1">91</div>
+                      <div className="text-xl font-semibold text-[#0047CC] mb-1">91</div>
                       <Tag label="Exceptional" variant="blue" className="text-[9px] py-0 px-2" />
                     </div>
                     <div className="bg-[#EEFBEE] border border-[#2CA62C]/20 rounded-xl p-3 flex flex-col items-center">
                       <h5 className="text-[10px] font-bold text-gray-500 uppercase mb-1">SJT</h5>
-                      <div className="text-xl font-extrabold text-[#2CA62C] mb-1">86</div>
+                      <div className="text-xl font-semibold text-[#2CA62C] mb-1">86</div>
                       <Tag label="Pass" variant="green" className="text-[9px] py-0 px-2" />
                     </div>
                     <div className="bg-[#F5F3FF] border border-[#7C3AED]/20 rounded-xl p-3 flex flex-col items-center">
                       <h5 className="text-[10px] font-bold text-gray-500 uppercase mb-1">Video</h5>
-                      <div className="text-xl font-extrabold text-[#7C3AED] mb-1">84</div>
+                      <div className="text-xl font-semibold text-[#7C3AED] mb-1">84</div>
                       <Tag label="Pass" variant="purple" className="text-[9px] py-0 px-2" />
                     </div>
                   </div>
 
                   <div className="bg-gray-50 border border-gray-150 rounded-xl p-4">
                     <h5 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Composite Score</h5>
-                    <div className="text-2xl font-extrabold text-gray-900">88 <span className="text-xs font-normal text-gray-400">/ 100 composite</span></div>
+                    <div className="text-2xl font-semibold text-gray-900">88 <span className="text-xs font-normal text-gray-400">/ 100 composite</span></div>
                     <p className="text-[10px] text-gray-500 mt-0.5">Weighted: Psychometric 35% · SJT 40% · Video 25%</p>
                   </div>
 
@@ -691,7 +697,7 @@ const Payments: React.FC = () => {
 
           {/* ═══════════ HISTORICAL SECTION ═══════════ */}
           <div className="pt-4 border-t border-gray-200">
-            <h3 className="text-base font-bold text-gray-900 mb-1">Historical Alignment Sessions</h3>
+            <Subheading className="text-base mb-1">Historical Alignment Sessions</Subheading>
             <p className="text-xs text-gray-500 mb-4">Past decisions, outcomes, refunds, forfeitures, and flags — with full assessment detail</p>
 
             {/* Collapse Item 1: Yusuf Ibrahim */}
@@ -951,7 +957,7 @@ const Payments: React.FC = () => {
         <div className="fixed inset-0 bg-black/60 z-[999] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-[480px] p-6 shadow-xl relative animate-scaleIn">
             <div className="flex items-start justify-between gap-4 mb-4">
-              <h3 className="text-base font-extrabold text-gray-900">Confirm Hire</h3>
+              <CardTitle className="text-base">Confirm Hire</CardTitle>
               <button 
                 onClick={() => setHireModalOpen(false)}
                 className="w-7 h-7 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors cursor-pointer"
@@ -1005,7 +1011,7 @@ const Payments: React.FC = () => {
         <div className="fixed inset-0 bg-black/60 z-[999] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-[500px] p-6 shadow-xl relative animate-scaleIn max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-4 mb-4">
-              <h3 className="text-base font-extrabold text-gray-900">Reject with Reason</h3>
+              <CardTitle className="text-base">Reject with Reason</CardTitle>
               <button 
                 onClick={() => setRejectModalOpen(false)}
                 className="w-7 h-7 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors cursor-pointer"
@@ -1081,9 +1087,9 @@ const Payments: React.FC = () => {
         <div className="fixed inset-0 bg-black/60 z-[999] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-[640px] p-6 shadow-xl relative animate-scaleIn">
             <div className="flex items-start justify-between gap-4 mb-4">
-              <h3 className="text-base font-extrabold text-gray-900">
+              <CardTitle className="text-base">
                 {videoTarget === 'amara' ? 'Dr. Amara Osei' : 'Priya Sharma'} – Video Interview
-              </h3>
+              </CardTitle>
               <button 
                 onClick={() => setVideoModalOpen(false)}
                 className="w-7 h-7 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors cursor-pointer"

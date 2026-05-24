@@ -1,11 +1,10 @@
 import React from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import EmployerOnboarding from '../employer/EmployerOnboarding';
 import TalentOnboarding from '../talent/TalentOnboarding';
-import MentorApply from '../mentor/MentorApply';
-import MentorProfile from '../mentor/MentorOnboarding';
 import SelectAccountType from '../auth/SelectAccountType';
+import { getMentorOnboardingRoute } from '../../utils/mentorOnboarding';
 
 const OnboardingContainer: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -28,10 +27,7 @@ const OnboardingContainer: React.FC = () => {
     case 'talent':
       return <TalentOnboarding />;
     case 'mentor':
-      if (step === 2) {
-        return <MentorProfile />;
-      }
-      return <MentorApply />;
+      return <Navigate to={getMentorOnboardingRoute(Math.max(0, step - 1))} replace />;
     default:
       return <SelectAccountType />;
   }

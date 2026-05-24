@@ -34,7 +34,11 @@ export function useGoogleAuth() {
         return;
       }
 
-      if (!message.includes('popup') && !message.includes('closed')) {
+      if (
+        !message.includes('popup') &&
+        !message.includes('closed') &&
+        !message.toLowerCase().includes('cancel')
+      ) {
         toast.error(message);
       }
     } finally {

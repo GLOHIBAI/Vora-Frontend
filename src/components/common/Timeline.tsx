@@ -1,5 +1,6 @@
 import React from 'react';
 import { CheckIcon, ClockIcon } from './Icons';
+import { CardTitle } from './Typography';
 import type { TimelineStep, TimelineStepStatus } from '../../types/vault';
 
 interface TimelineProps {
@@ -16,7 +17,7 @@ const dotStyles: Record<TimelineStepStatus, string> = {
 
 const TimelineDot: React.FC<{ step: TimelineStep }> = ({ step }) => (
   <div
-    className={`w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 text-[12px] font-extrabold ${dotStyles[step.status]}`}
+    className={`w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 text-[12px] font-semibold ${dotStyles[step.status]}`}
   >
     {step.status === 'done' && <CheckIcon size={12} strokeWidth={3} />}
     {step.status === 'pending' && <ClockIcon size={10} strokeWidth={2.5} />}
@@ -26,7 +27,7 @@ const TimelineDot: React.FC<{ step: TimelineStep }> = ({ step }) => (
 
 const Timeline: React.FC<TimelineProps> = ({ title, steps, className = '' }) => (
   <div className={`bg-white border border-[#E6E6E6] rounded-xl p-6 mb-5 ${className}`}>
-    {title && <h2 className="text-base font-extrabold text-[#1A1A1A] mb-4">{title}</h2>}
+    {title && <CardTitle as="h2" className="text-base mb-4">{title}</CardTitle>}
     <div>
       {steps.map((step, index) => (
         <div key={`${step.title}-${index}`} className="flex gap-3.5 items-start mb-4 last:mb-0">
@@ -37,7 +38,7 @@ const Timeline: React.FC<TimelineProps> = ({ title, steps, className = '' }) => 
             )}
           </div>
           <div className="flex-1 min-w-0 pb-1">
-            <h4 className="text-sm font-bold text-[#1A1A1A] mb-0.5">{step.title}</h4>
+            <h4 className="text-sm font-semibold text-[#1A1A1A] mb-0.5">{step.title}</h4>
             <p className="text-xs text-[#808080] leading-relaxed">{step.description}</p>
             {step.dateLabel && (
               <p className="text-[11px] font-bold text-[#0047CC] mt-1">{step.dateLabel}</p>

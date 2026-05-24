@@ -1,4 +1,5 @@
 import React from 'react';
+import { Subheading } from '../common/Typography';
 import type { VaultEditChange } from '../../types/vaultEdit';
 
 interface ChangeSummaryListProps {
@@ -11,7 +12,7 @@ const ChangeSummaryList: React.FC<ChangeSummaryListProps> = ({
   changes,
 }) => (
   <div className="bg-[#F7F7F7] border-[1.5px] border-[#E6E6E6] rounded-[10px] px-4 py-3.5">
-    <h3 className="text-[13px] font-extrabold text-[#1A1A1A] mb-2">{title}</h3>
+    <Subheading as="h3" className="text-[13px] mb-2">{title}</Subheading>
     {changes.length === 0 ? (
       <p className="text-[13px] text-[#808080]">No changes detected.</p>
     ) : (

@@ -7,7 +7,6 @@ import { routeAfterAuth } from '../../utils/auth';
 import { ROLE_LABELS } from '../../utils/oauth';
 import { getSetupToken } from '../../utils/oauth';
 import type { OAuthRole, SelectTypeLocationState } from '../../types';
-import VoraLogo from '../../components/common/VoraLogo';
 
 const SelectAccountType: React.FC = () => {
   const navigate = useNavigate();
@@ -66,22 +65,14 @@ const SelectAccountType: React.FC = () => {
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="w-full max-w-[480px] bg-white rounded-2xl p-0 sm:p-4">
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-5">
-            <VoraLogo size="lg" />
-          </div>
           <h1 className="text-2xl font-medium text-[#1C1C1C] mb-2">Choose your account type</h1>
-          <p className="text-[#6B7280] text-sm flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
+          <p className="text-[#6B7280] text-sm">
             {email ? (
               <>
-                <span>Select how you&apos;ll use</span>
-                <VoraLogo size="sm" className="inline-flex" />
-                <span>with {email}</span>
+                Select how you&apos;ll use Vora with {email}
               </>
             ) : (
-              <>
-                <span>Select how you will use</span>
-                <VoraLogo size="sm" className="inline-flex" />
-              </>
+              <>Select how you&apos;ll use Vora</>
             )}
           </p>
         </div>

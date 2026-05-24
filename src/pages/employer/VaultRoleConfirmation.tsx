@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ConfirmationHeader from '../../components/common/ConfirmationHeader';
+import { CardTitle } from '../../components/common/Typography';
 import KeyValueBanner from '../../components/common/KeyValueBanner';
 import Timeline from '../../components/common/Timeline';
 import SummaryRowsCard from '../../components/common/SummaryRowsCard';
@@ -39,7 +40,7 @@ const VaultRoleConfirmation: React.FC = () => {
           {
             label: 'Vault reference',
             value: data.vaultReference,
-            valueClassName: 'text-[18px] font-black text-[#0047CC] tracking-wide',
+            valueClassName: 'text-[18px] font-semibold text-[#0047CC] tracking-wide',
           },
           {
             label: 'Role',
@@ -58,7 +59,7 @@ const VaultRoleConfirmation: React.FC = () => {
       <SummaryRowsCard title="Escrow summary" rows={data.escrowRows} />
 
       <div className="bg-white border border-[#E6E6E6] rounded-xl p-5 mb-5">
-        <h2 className="text-base font-extrabold text-[#1A1A1A] mb-1">What you can do during the vault period</h2>
+        <CardTitle as="h2" className="text-base mb-1">What you can do during the vault period</CardTitle>
         <p className="text-[13px] text-[#808080] mb-4 leading-relaxed">The role is locked, but you are not locked out.</p>
 
         <StatGrid
