@@ -66,7 +66,7 @@ const CurrencyAmountRange: React.FC<CurrencyAmountRangeProps> = ({
             groups={currencyGroups}
             options={currencyOptions}
           />
-          <input
+          <input autoComplete="off"
             type="text"
             inputMode="decimal"
             placeholder={minPlaceholder}
@@ -78,7 +78,7 @@ const CurrencyAmountRange: React.FC<CurrencyAmountRangeProps> = ({
           <div className="text-xs font-medium text-[#808080] text-center px-1 hidden sm:block">
             to
           </div>
-          <input
+          <input autoComplete="off"
             type="text"
             inputMode="decimal"
             placeholder={maxPlaceholder}
@@ -96,7 +96,7 @@ const CurrencyAmountRange: React.FC<CurrencyAmountRangeProps> = ({
             groups={currencyGroups}
             options={currencyOptions}
           />
-          <input
+          <input autoComplete="off"
             type="text"
             inputMode="decimal"
             placeholder={singlePlaceholder}

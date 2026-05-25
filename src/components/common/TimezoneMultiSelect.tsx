@@ -165,6 +165,7 @@ const TimezoneMultiSelect: React.FC<TimezoneMultiSelectProps> = ({
           <div className="absolute z-20 mt-[3px] left-0 right-0 rounded-lg border-[1.5px] border-[#E6E6E6] bg-white shadow-[0_4px_24px_rgba(0,0,0,0.1)] max-h-[340px] overflow-hidden flex flex-col">
             <input
               type="text"
+              autoComplete="off"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onClick={(e) => e.stopPropagation()}

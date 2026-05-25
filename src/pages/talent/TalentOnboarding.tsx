@@ -1,8 +1,18 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { useTalentOnboardingStep1Mutation, useTalentOnboardingStep2Mutation, useTalentOnboardingStateQuery } from '../../services/queries/onboarding';
 import Button from '../../components/common/Button';
+import FullPageSpinner from '../../components/common/FullPageSpinner';
+import { useFullPageLoading } from '../../hooks/useFullPageLoading';
+import { useOnboardingStepSubmit } from '../../hooks/useOnboardingStepSubmit';
+import { useOnboardingStateHydration } from '../../hooks/useOnboardingStateHydration';
+import {
+  getOnboardingFieldsFromState,
+  refetchOnboardingState,
+  TALENT_ONBOARDING_STATE_KEY,
+} from '../../utils/onboardingStateQuery';
 import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
 import MultiSelect from '../../components/common/MultiSelect';
@@ -107,98 +117,26 @@ const TalentOnboarding: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const { updateUser } = useAuth();
-  
+
   const stepParam = Number(searchParams.get('step'));
   const initialStep = stepParam || location.state?.onboardingStep || 1;
   const [step, setStep] = useState(initialStep);
-  const [isLoading, setIsLoading] = useState(false);
   const step1Mutation = useTalentOnboardingStep1Mutation();
   const step2Mutation = useTalentOnboardingStep2Mutation();
-  const { data: onboardingState } = useTalentOnboardingStateQuery();
+  const {
+    data: onboardingState,
+    isPending: isStatePending,
+    isFetching: isStateFetching,
+  } = useTalentOnboardingStateQuery();
+  const { isSubmittingStep, runStepSubmit } = useOnboardingStepSubmit();
 
   useEffect(() => {
-    if (onboardingState?.data) {
-      const savedFields = onboardingState.data.fields || {};
-      if (savedFields.firstName || savedFields.lastName) {
-        setFormData({
-          firstName: savedFields.firstName || '',
-          lastName: savedFields.lastName || '',
-        });
-      }
-      if (savedFields.professionalTitle) setProfessionalTitle(savedFields.professionalTitle);
-      if (savedFields.areasOfInterest) setAreasOfInterest(savedFields.areasOfInterest);
-      if (savedFields.country) setCountry(savedFields.country);
-      if (savedFields.nationalities) setNationalities(savedFields.nationalities);
-      if (savedFields.studyPermitType) setStudyPermitType(savedFields.studyPermitType);
-      if (savedFields.studyCountry) setStudyCountry(getCountryFullName(savedFields.studyCountry));
-      if (savedFields.studyValidity) setStudyValidity(savedFields.studyValidity);
-      if (savedFields.studyHoursManual) setStudyHoursManual(savedFields.studyHoursManual);
-      if (savedFields.permitType) setPermitType(savedFields.permitType);
-      if (savedFields.permitCountry) setPermitCountry(getCountryFullName(savedFields.permitCountry));
-      if (savedFields.permitValidity) setPermitValidity(savedFields.permitValidity);
-      if (savedFields.prType) setPrType(savedFields.prType);
-      if (savedFields.prCountry) setPrCountry(getCountryFullName(savedFields.prCountry));
-      if (savedFields.prValidity) setPrValidity(savedFields.prValidity);
-
-      // Map backend-specific names back to local wizard state
-      if (savedFields.countryOfResidence) {
-        setResidence(getCountryFullName(savedFields.countryOfResidence));
-      }
-      if (savedFields.residenceCity) setCity(savedFields.residenceCity);
-      if (savedFields.rightToWorkStatus) {
-        const rtwMap: Record<string, string> = {
-          'NATIONAL_ROLE_COUNTRY_NO_VISA': 'national',
-          'EU_EEA_FREEDOM_MOVEMENT': 'eu_eea',
-          'STUDY_PERMIT': 'study_permit',
-          'WORK_PERMIT': 'work_permit',
-          'OPEN_PERMIT': 'open_permit',
-          'UK_ILR_SETTLED': 'ilr_uk',
-          'US_GREEN_CARD': 'green_card',
-          'PR_CANADA': 'pr_canada',
-          'PR_AUS_NZ': 'pr_aus_nz',
-          'PR_EU': 'pr_eu',
-          'PR_OTHER': 'pr_other',
-          'NEED_SPONSORSHIP': 'need_sponsorship',
-          'REMOTE_ONLY': 'remote_only'
-        };
-        const found = Object.entries(rtwMap).find(([backendVal, _]) => backendVal === savedFields.rightToWorkStatus)?.[1];
-        if (found) setRightToWork(found);
-      }
-      if (savedFields.willingnessToRelocate) {
-        const relocMap: Record<string, string> = {
-          'OPEN_ANYWHERE': 'open',
-          'SPECIFIC_REGIONS': 'specific',
-          'STAYING_CURRENT_LOCATION': 'no',
-          'REMOTE_ONLY': 'remote'
-        };
-        const found = relocMap[savedFields.willingnessToRelocate];
-        if (found) setRelocation(found);
-      }
-      if (savedFields.relocateCountryCodes) {
-        setRelocationDestinations(savedFields.relocateCountryCodes.join(', '));
-      }
-      if (savedFields.preferredWorkArrangement) {
-        const found =
-          WORK_ARRANGEMENT_FROM_API[savedFields.preferredWorkArrangement];
-        if (found) setWorkArrangement(found);
-      }
-      if (savedFields.experienceLevel) {
-        const expMap: Record<string, string> = {
-          'STUDENT_GRADUATE': 'student-graduate',
-          'ENTRY_LEVEL': 'entry-academic',
-          'MID_LEVEL': 'mid-professional',
-          'SENIOR_LEVEL': 'senior-professional'
-        };
-        const found = expMap[savedFields.experienceLevel];
-        if (found) setExperienceLevel(found);
-      }
-
-      if (onboardingState.data.step && !stepParam && !location.state?.onboardingStep) {
-        setStep(onboardingState.data.step);
-      }
+    if (onboardingState?.data?.step && !stepParam && !location.state?.onboardingStep) {
+      setStep(onboardingState.data.step);
     }
-  }, [onboardingState, stepParam, location.state]);
+  }, [onboardingState?.data?.step, stepParam, location.state?.onboardingStep]);
 
   // Step 1 state
   const [formData, setFormData] = useState({
@@ -239,6 +177,114 @@ const TalentOnboarding: React.FC = () => {
   const [prValidity, setPrValidity] = useState('');
 
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  const applyTalentStepFields = useCallback(
+    (targetStep: number, savedFields: Record<string, unknown>) => {
+      if (targetStep === 1) {
+        if (savedFields.firstName || savedFields.lastName) {
+          setFormData({
+            firstName: (savedFields.firstName as string) || '',
+            lastName: (savedFields.lastName as string) || '',
+          });
+        }
+        return;
+      }
+
+      if (targetStep !== 2) return;
+
+      if (savedFields.professionalTitle) {
+        setProfessionalTitle(savedFields.professionalTitle as string);
+      }
+      if (savedFields.areasOfInterest) {
+        setAreasOfInterest(savedFields.areasOfInterest as string[]);
+      }
+      if (savedFields.country) setCountry(savedFields.country as string);
+      if (savedFields.nationalities) setNationalities(savedFields.nationalities as string[]);
+      if (savedFields.studyPermitType) setStudyPermitType(savedFields.studyPermitType as string);
+      if (savedFields.studyCountry) {
+        setStudyCountry(getCountryFullName(savedFields.studyCountry as string));
+      }
+      if (savedFields.studyValidity) setStudyValidity(savedFields.studyValidity as string);
+      if (savedFields.studyHoursManual) {
+        setStudyHoursManual(savedFields.studyHoursManual as string);
+      }
+      if (savedFields.permitType) setPermitType(savedFields.permitType as string);
+      if (savedFields.permitCountry) {
+        setPermitCountry(getCountryFullName(savedFields.permitCountry as string));
+      }
+      if (savedFields.permitValidity) setPermitValidity(savedFields.permitValidity as string);
+      if (savedFields.prType) setPrType(savedFields.prType as string);
+      if (savedFields.prCountry) {
+        setPrCountry(getCountryFullName(savedFields.prCountry as string));
+      }
+      if (savedFields.prValidity) setPrValidity(savedFields.prValidity as string);
+
+      if (savedFields.countryOfResidence) {
+        setResidence(getCountryFullName(savedFields.countryOfResidence as string));
+      }
+      if (savedFields.residenceCity) setCity(savedFields.residenceCity as string);
+      if (savedFields.rightToWorkStatus) {
+        const rtwMap: Record<string, string> = {
+          NATIONAL_ROLE_COUNTRY_NO_VISA: 'national',
+          EU_EEA_FREEDOM_MOVEMENT: 'eu_eea',
+          STUDY_PERMIT: 'study_permit',
+          WORK_PERMIT: 'work_permit',
+          OPEN_PERMIT: 'open_permit',
+          UK_ILR_SETTLED: 'ilr_uk',
+          US_GREEN_CARD: 'green_card',
+          PR_CANADA: 'pr_canada',
+          PR_AUS_NZ: 'pr_aus_nz',
+          PR_EU: 'pr_eu',
+          PR_OTHER: 'pr_other',
+          NEED_SPONSORSHIP: 'need_sponsorship',
+          REMOTE_ONLY: 'remote_only',
+        };
+        const found = Object.entries(rtwMap).find(
+          ([backendVal]) => backendVal === savedFields.rightToWorkStatus,
+        )?.[1];
+        if (found) setRightToWork(found);
+      }
+      if (savedFields.willingnessToRelocate) {
+        const relocMap: Record<string, string> = {
+          OPEN_ANYWHERE: 'open',
+          SPECIFIC_REGIONS: 'specific',
+          STAYING_CURRENT_LOCATION: 'no',
+          REMOTE_ONLY: 'remote',
+        };
+        const found = relocMap[savedFields.willingnessToRelocate as string];
+        if (found) setRelocation(found);
+      }
+      if (savedFields.relocateCountryCodes) {
+        setRelocationDestinations(
+          (savedFields.relocateCountryCodes as string[]).join(', '),
+        );
+      }
+      if (savedFields.preferredWorkArrangement) {
+        const found =
+          WORK_ARRANGEMENT_FROM_API[savedFields.preferredWorkArrangement as string];
+        if (found) setWorkArrangement(found);
+      }
+      if (savedFields.experienceLevel) {
+        const expMap: Record<string, string> = {
+          STUDENT_GRADUATE: 'student-graduate',
+          ENTRY_LEVEL: 'entry-academic',
+          MID_LEVEL: 'mid-professional',
+          SENIOR_LEVEL: 'senior-professional',
+        };
+        const found = expMap[savedFields.experienceLevel as string];
+        if (found) setExperienceLevel(found);
+      }
+    },
+    [],
+  );
+
+  useOnboardingStateHydration({
+    step,
+    isStateFetching,
+    stateData: onboardingState?.data,
+    getSavedFields: getOnboardingFieldsFromState,
+    hydrateStep: applyTalentStepFields,
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     let { name, value } = e.target;
@@ -291,23 +337,25 @@ const TalentOnboarding: React.FC = () => {
 
   const handleNext = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
 
-    if (step === 1 && isStep1Valid) {
-      try {
-        await step1Mutation.mutateAsync({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-        });
-        setStep(2);
-        window.scrollTo(0, 0);
-      } catch (error) {
-        // Errors are automatically caught and toasted by our interceptor
-      } finally {
-        setIsLoading(false);
+    await runStepSubmit(async () => {
+      if (step === 1 && isStep1Valid) {
+        try {
+          await step1Mutation.mutateAsync({
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+          });
+          await refetchOnboardingState(queryClient, TALENT_ONBOARDING_STATE_KEY);
+          setStep(2);
+          window.scrollTo(0, 0);
+        } catch {
+          // Errors are automatically caught and toasted by our interceptor
+        }
+        return;
       }
-    } else if (step === 2 && isStep2Valid) {
-      try {
+
+      if (step === 2 && isStep2Valid) {
+        try {
         const payloadExperienceLevel = (() => {
           switch (experienceLevel) {
             case 'student-graduate': return 'STUDENT_GRADUATE';
@@ -390,13 +438,19 @@ const TalentOnboarding: React.FC = () => {
           lastName: formData.lastName,
         });
         navigate('/onboarding/welcome', { state: { firstName: formData.firstName, role: 'talent' } });
-      } catch (error) {
-        // Errors are automatically caught and toasted by our interceptor
-      } finally {
-        setIsLoading(false);
+        } catch {
+          // Errors are automatically caught and toasted by our interceptor
+        }
       }
-    }
+    });
   };
+
+  const showFullPage = useFullPageLoading(isStatePending, isSubmittingStep);
+  const isStepBusy = isSubmittingStep;
+
+  if (showFullPage) {
+    return <FullPageSpinner />;
+  }
 
   // Auto-fill PR country for deterministic statuses
   const handleRTWChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -443,7 +497,7 @@ const TalentOnboarding: React.FC = () => {
         </p>
       </div>
 
-      <form onSubmit={handleNext} className="space-y-5 max-w-[470px] mx-auto">
+      <form onSubmit={handleNext} className="space-y-5 max-w-[470px] mx-auto" autoComplete="off">
         {step === 1 ? (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
@@ -793,6 +847,7 @@ const TalentOnboarding: React.FC = () => {
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3 items-start">
               <input
                 type="checkbox"
+                autoComplete="off"
                 id="integrityChk"
                 checked={integrityChecked}
                 onChange={(e) => setIntegrityChecked(e.target.checked)}
@@ -810,8 +865,8 @@ const TalentOnboarding: React.FC = () => {
         <Button
           variant={(step === 1 ? isStep1Valid : isStep2Valid) ? 'primary' : 'secondary'}
           type="submit"
-          disabled={step === 1 ? !isStep1Valid : !isStep2Valid}
-          isLoading={isLoading}
+          disabled={isStepBusy || (step === 1 ? !isStep1Valid : !isStep2Valid)}
+          isLoading={isStepBusy}
         >
           {step === 1 ? 'Next' : 'Complete Profile'}
         </Button>

@@ -1045,7 +1045,7 @@ const Payments: React.FC = () => {
                     key={opt.value} 
                     className="flex items-start gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:border-[#387DFF] hover:bg-[#EBF6FF]/40 transition-all"
                   >
-                    <input 
+                    <input autoComplete="off" 
                       type="radio" 
                       name="rr" 
                       value={opt.value}

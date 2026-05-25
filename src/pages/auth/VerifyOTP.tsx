@@ -2,6 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Button from '../../components/common/Button';
 import {
+  AuthPageShell,
+  AuthPageHeader,
+  AuthFormCard,
+  AuthErrorBanner,
+  AuthOtpInputGrid,
+} from '../../components/auth/AuthPageLayout';
+import {
   useVerifyOTPMutation,
   useResendOTPMutation,
   useOAuthVerifyMutation,
@@ -12,6 +19,7 @@ import { resolveOAuthNavigation } from '../../utils/oauth';
 import { useAuth } from '../../context/AuthContext';
 import { getSetupToken } from '../../utils/oauth';
 import type { VerifyLocationState } from '../../types';
+import { useFullPageLoading } from '../../hooks/useFullPageLoading';
 
 const VerifyOTP: React.FC = () => {
   const location = useLocation();
@@ -65,6 +73,8 @@ const VerifyOTP: React.FC = () => {
   const isComplete = otp.every((digit) => digit !== '');
   const isPending = isOAuthFlow ? oauthVerifyMutation.isPending : verifyMutation.isPending;
   const isResending = isOAuthFlow ? oauthResendMutation.isPending : resendMutation.isPending;
+  const buttonLoading = isPending || isResending;
+  const showFullPage = useFullPageLoading(isPending || isResending, buttonLoading);
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,71 +133,61 @@ const VerifyOTP: React.FC = () => {
   };
 
   return (
-    <div className="max-w-xl mx-auto py-12 sm:py-20 px-4 flex flex-col items-center">
-      <div className="text-center mb-10 sm:mb-12">
-        <h1 className="text-2xl sm:text-[24px] font-medium mb-4 text-[#1C1C1C] leading-[32px] tracking-[-1%] ">
-          Verify your email
-        </h1>
-        <p className="text-[#6B7280] text-sm sm:text-base max-w-sm mx-auto leading-relaxed">
-          We've sent a 6-digit verification code to{' '}
-          <span className="font-medium text-gray-900">{email || 'your email'}</span>. Enter the code
-          below to verify your email.
-        </p>
-      </div>
+    <AuthPageShell loading={showFullPage}>
+      <AuthPageHeader
+        title="Verify your email"
+        subtitle={
+          <>
+            We&apos;ve sent a 6-digit verification code to{' '}
+            <span className="break-all font-medium text-gray-900">
+              {email || 'your email'}
+            </span>
+            . Enter the code below to verify your email.
+          </>
+        }
+      />
 
-      {formError && (
-        <div className="w-full max-w-[480px] mb-6 p-4 bg-red-50 border border-red-100 rounded-lg">
-          <p className="text-sm font-medium text-red-600 text-center">{formError}</p>
-        </div>
-      )}
+      <AuthFormCard>
+        {formError ? <AuthErrorBanner message={formError} /> : null}
 
-      <form onSubmit={handleVerify} className="w-full max-w-[480px] space-y-10">
-        <div className="flex justify-between gap-2 sm:gap-4">
-          {otp.map((digit, index) => (
-            <input
-              key={index}
-              ref={(el) => {
-                inputRefs.current[index] = el;
-              }}
-              type="text"
-              maxLength={1}
-              value={digit}
-              onChange={(e) => handleChange(e.target.value, index)}
-              onKeyDown={(e) => handleKeyDown(e, index)}
-              className="w-10 h-12 sm:w-16 sm:h-16 text-center text-xl sm:text-2xl font-medium rounded-xl border border-[#E5E7EB] bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-            />
-          ))}
-        </div>
+        <form onSubmit={handleVerify} className="space-y-8 sm:space-y-10" autoComplete="off">
+          <AuthOtpInputGrid
+            otp={otp}
+            inputRefs={inputRefs}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+          />
 
-        <div className="text-center">
-          {timer > 0 ? (
-            <p className="text-[#6B7280] text-sm font-medium">
-              Resend a new otp in{' '}
-              <span className="text-[#0047CC] font-medium">{timer} secs</span>
-            </p>
-          ) : (
-            <Button
-              variant="link"
-              onClick={handleResend}
-              fullWidth={false}
-              isLoading={isResending}
-              className="mx-auto text-[#0047CC] text-sm font-medium underline decoration-2 underline-offset-4 hover:bg-transparent hover:text-blue-700 p-0"
-            >
-              Resend OTP
-            </Button>
-          )}
-        </div>
+          <div className="text-center">
+            {timer > 0 ? (
+              <p className="text-sm font-medium text-[#6B7280]">
+                Resend a new otp in{' '}
+                <span className="font-medium text-[#0047CC]">{timer} secs</span>
+              </p>
+            ) : (
+              <Button
+                variant="link"
+                onClick={handleResend}
+                fullWidth={false}
+                isLoading={isResending}
+                className="mx-auto p-0 text-sm font-medium text-[#0047CC] underline decoration-2 underline-offset-4 hover:bg-transparent hover:text-blue-700"
+              >
+                Resend OTP
+              </Button>
+            )}
+          </div>
 
-        <Button
-          variant={isComplete ? 'primary' : 'secondary'}
-          type="submit"
-          disabled={!isComplete || isPending}
-          isLoading={isPending}
-        >
-          Verify email
-        </Button>
-      </form>
-    </div>
+          <Button
+            variant={isComplete ? 'primary' : 'secondary'}
+            type="submit"
+            disabled={!isComplete || isPending}
+            isLoading={isPending}
+          >
+            Verify email
+          </Button>
+        </form>
+      </AuthFormCard>
+    </AuthPageShell>
   );
 };
 

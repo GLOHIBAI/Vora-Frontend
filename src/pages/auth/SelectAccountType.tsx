@@ -2,11 +2,17 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Button from '../../components/common/Button';
 import Select from '../../components/common/Select';
+import {
+  AuthPageShell,
+  AuthPageHeader,
+  AuthFormCard,
+} from '../../components/auth/AuthPageLayout';
 import { useOAuthSelectRoleMutation } from '../../services/queries/auth';
 import { routeAfterAuth } from '../../utils/auth';
 import { ROLE_LABELS } from '../../utils/oauth';
 import { getSetupToken } from '../../utils/oauth';
 import type { OAuthRole, SelectTypeLocationState } from '../../types';
+import { useFullPageLoading } from '../../hooks/useFullPageLoading';
 
 const SelectAccountType: React.FC = () => {
   const navigate = useNavigate();
@@ -31,6 +37,11 @@ const SelectAccountType: React.FC = () => {
         value: ROLE_LABELS[role],
       })),
     [allowedRoles],
+  );
+
+  const showFullPage = useFullPageLoading(
+    selectRoleMutation.isPending,
+    selectRoleMutation.isPending,
   );
 
   const handleContinue = async (e: React.FormEvent) => {
@@ -62,22 +73,23 @@ const SelectAccountType: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4">
-      <div className="w-full max-w-[480px] bg-white rounded-2xl p-0 sm:p-4">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-medium text-[#1C1C1C] mb-2">Choose your account type</h1>
-          <p className="text-[#6B7280] text-sm">
-            {email ? (
-              <>
-                Select how you&apos;ll use Vora with {email}
-              </>
-            ) : (
-              <>Select how you&apos;ll use Vora</>
-            )}
-          </p>
-        </div>
+    <AuthPageShell loading={showFullPage}>
+      <AuthPageHeader
+        title="Choose your account type"
+        subtitle={
+          email ? (
+            <>
+              Select how you&apos;ll use Vora with{' '}
+              <span className="break-all font-medium text-gray-900">{email}</span>
+            </>
+          ) : (
+            <>Select how you&apos;ll use Vora</>
+          )
+        }
+      />
 
-        <form onSubmit={handleContinue} className="space-y-8">
+      <AuthFormCard>
+        <form onSubmit={handleContinue} className="space-y-8" autoComplete="off">
           <Select
             label="Account type"
             value={accountType}
@@ -95,8 +107,8 @@ const SelectAccountType: React.FC = () => {
             Continue
           </Button>
         </form>
-      </div>
-    </div>
+      </AuthFormCard>
+    </AuthPageShell>
   );
 };
 

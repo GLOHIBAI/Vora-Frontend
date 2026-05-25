@@ -1,18 +1,34 @@
-import React, { useState, useMemo } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
-import { validateEmail, validateWorkEmail, validatePassword, validateAccountType } from '../../utils/validation';
+import {
+  validateEmail,
+  validateWorkEmail,
+  validatePassword,
+  validateAccountType,
+} from '../../utils/validation';
 import { AppleIcon } from '../../components/common/Icons';
 import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
+import {
+  AuthPageShell,
+  AuthPageHeader,
+  AuthForm,
+  AuthFormCard,
+  AuthErrorBanner,
+  AuthSocialDivider,
+  AuthSocialButtons,
+  authFooterLinkClass,
+} from '../../components/auth/AuthPageLayout';
 import { useSignupMutation } from '../../services/queries/auth';
-
-const authFooterLinkClass =
-  'font-medium text-[#60A5FA] hover:text-[#2563EB] transition-colors duration-200';
+import { useAuth } from '../../context/AuthContext';
+import { useFullPageLoading } from '../../hooks/useFullPageLoading';
+import { useBlockBrowserAutofill } from '../../hooks/useBlockBrowserAutofill';
 
 const Signup: React.FC = () => {
   const navigate = useNavigate();
+  const { isLoading: isAuthLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [accountType, setAccountType] = useState('');
@@ -23,7 +39,7 @@ const Signup: React.FC = () => {
   const [touched, setTouched] = useState({
     email: false,
     password: false,
-    accountType: false
+    accountType: false,
   });
 
   const emailError = useMemo(() => {
@@ -42,7 +58,14 @@ const Signup: React.FC = () => {
   }, [accountType, touched.accountType]);
 
   const isFormValid = useMemo(() => {
-    return email && password && accountType && !emailError && !passwordError && !accountTypeError;
+    return (
+      email &&
+      password &&
+      accountType &&
+      !emailError &&
+      !passwordError &&
+      !accountTypeError
+    );
   }, [email, password, accountType, emailError, passwordError, accountTypeError]);
 
   const handleSignup = async (e: React.FormEvent | React.MouseEvent) => {
@@ -53,108 +76,117 @@ const Signup: React.FC = () => {
     try {
       const backendRole = accountType.toUpperCase() as 'TALENT' | 'EMPLOYER' | 'MENTOR';
       await signupMutation.mutateAsync({ email, password, role: backendRole });
-
-      // Route all standard form signups to OTP verification first
       navigate('/verify-email', { state: { email, accountType } });
-    } catch (error: any) {
-      setFormError(error?.message || 'Registration failed. Please try again.');
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      setFormError(err?.message || 'Registration failed. Please try again.');
     }
   };
 
   const handleBlur = (field: keyof typeof touched) => {
-    setTouched(prev => ({ ...prev, [field]: true }));
+    setTouched((prev) => ({ ...prev, [field]: true }));
   };
 
+  const showFullPage = useFullPageLoading(
+    isAuthLoading || signupMutation.isPending,
+    signupMutation.isPending,
+  );
+
+  const clearCredentials = useCallback(() => {
+    setEmail('');
+    setPassword('');
+  }, []);
+
+  const emailAutofillBlock = useBlockBrowserAutofill(clearCredentials);
+  const passwordAutofillBlock = useBlockBrowserAutofill(clearCredentials, {
+    forPassword: true,
+  });
+
   return (
-    <div className="max-w-xl mx-auto py-12 sm:py-20 px-4">
-      <div className="text-center mb-10 sm:mb-12">
-        <h1 className="text-2xl sm:text-[24px] font-medium mb-3 text-[#1C1C1C] leading-[32px] tracking-[-1%] whitespace-nowrap">
-          Start your Journey in Global health
-        </h1>
-        <p className="text-[#6B7280] text-[11px] sm:text-xs leading-relaxed mx-auto whitespace-nowrap">
-          Join thousands of professionals shaping the future of public health.
-        </p>
-      </div>
+    <AuthPageShell loading={showFullPage}>
+      <AuthPageHeader
+        title="Start your Journey in Global health"
+        subtitle="Join thousands of professionals shaping the future of public health."
+      />
 
-      {formError && (
-        <div className="max-w-[480px] mx-auto mb-6 p-4 bg-red-50 border border-red-100 rounded-lg">
-          <p className="text-sm font-medium text-red-600">{formError}</p>
-        </div>
-      )}
+      <AuthFormCard>
+        {formError ? <AuthErrorBanner message={formError} /> : null}
 
-      <form className="space-y-6 sm:space-y-8 max-w-[480px] mx-auto" autoComplete="off">
-        <Input
-          label="Email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onBlur={() => handleBlur('email')}
-          placeholder="Enter email address"
-          error={!!emailError}
-          helperText={emailError}
-          autoComplete="off"
-        />
+        <AuthForm className="space-y-6 sm:space-y-8">
+          <Input
+            label="Email"
+            type="email"
+            name="vora-signup-email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onBlur={() => handleBlur('email')}
+            placeholder="Enter email address"
+            error={!!emailError}
+            helperText={emailError}
+            {...emailAutofillBlock}
+          />
 
-        <Input
-          label="Password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          onBlur={() => handleBlur('password')}
-          placeholder="Enter password"
-          showPasswordToggle
-          error={!!passwordError}
-          helperText={passwordError}
-          autoComplete="new-password"
-        />
+          <Input
+            label="Password"
+            type="password"
+            name="vora-signup-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onBlur={() => handleBlur('password')}
+            placeholder="Enter password"
+            showPasswordToggle
+            error={!!passwordError}
+            helperText={passwordError}
+            {...passwordAutofillBlock}
+          />
 
-        <Select
-          label="Account type"
-          value={accountType}
-          onChange={(e) => setAccountType(e.target.value)}
-          onBlur={() => handleBlur('accountType')}
-          placeholder="Select account type"
-          options={[
-            { label: 'Talent', value: 'Talent' },
-            { label: 'Employer', value: 'Employer' },
-            { label: 'Mentor', value: 'Mentor' },
-          ]}
-          error={!!accountTypeError}
-          helperText={accountTypeError}
-        />
+          <Select
+            label="Account type"
+            value={accountType}
+            onChange={(e) => setAccountType(e.target.value)}
+            onBlur={() => handleBlur('accountType')}
+            placeholder="Select account type"
+            options={[
+              { label: 'Talent', value: 'Talent' },
+              { label: 'Employer', value: 'Employer' },
+              { label: 'Mentor', value: 'Mentor' },
+            ]}
+            error={!!accountTypeError}
+            helperText={accountTypeError}
+          />
 
-        <Button
-          variant={isFormValid ? 'primary' : 'secondary'}
-          type="submit"
-          onClick={handleSignup}
-          disabled={!isFormValid || signupMutation.isPending}
-          isLoading={signupMutation.isPending}
-        >
-          Get started
-        </Button>
-
-        <div className="flex items-center gap-4 py-2">
-          <div className="flex-1 h-px bg-[#F3F4F6]"></div>
-          <span className="text-xs font-medium text-[#6B7280]">OR</span>
-          <div className="flex-1 h-px bg-[#F3F4F6]"></div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-4">
-          <GoogleSignInButton label="Sign up with Google" disabled={signupMutation.isPending} />
-          <Button variant="social" disabled={signupMutation.isPending}>
-            <AppleIcon />
-            <span>Sign up with Apple</span>
+          <Button
+            variant={isFormValid ? 'primary' : 'secondary'}
+            type="submit"
+            onClick={handleSignup}
+            disabled={!isFormValid || signupMutation.isPending}
+            isLoading={signupMutation.isPending}
+          >
+            Get started
           </Button>
-        </div>
 
-        <p className="text-center text-[0.95rem] text-[#374151] pt-4">
-          Already have an account?{' '}
-          <Link to="/login" className={authFooterLinkClass}>
-            Log in
-          </Link>
-        </p>
-      </form>
-    </div>
+          <AuthSocialDivider />
+
+          <AuthSocialButtons>
+            <GoogleSignInButton
+              label="Sign up with Google"
+              disabled={signupMutation.isPending}
+            />
+            <Button variant="social" disabled={signupMutation.isPending} className="min-w-0">
+              <AppleIcon />
+              <span className="truncate">Sign up with Apple</span>
+            </Button>
+          </AuthSocialButtons>
+
+          <p className="pt-2 text-center text-sm text-[#374151] sm:text-[0.95rem]">
+            Already have an account?{' '}
+            <Link to="/login" className={authFooterLinkClass}>
+              Log in
+            </Link>
+          </p>
+        </AuthForm>
+      </AuthFormCard>
+    </AuthPageShell>
   );
 };
 

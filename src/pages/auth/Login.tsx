@@ -1,18 +1,29 @@
-import React, { useState, useMemo } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import { validateEmail } from '../../utils/validation';
 import { AppleIcon } from '../../components/common/Icons';
 import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
+import {
+  AuthPageShell,
+  AuthPageHeader,
+  AuthForm,
+  AuthFormCard,
+  AuthErrorBanner,
+  AuthSocialDivider,
+  AuthSocialButtons,
+  authFooterLinkClass,
+} from '../../components/auth/AuthPageLayout';
 import { useLoginMutation } from '../../services/queries/auth';
 import { routeAfterAuth } from '../../utils/auth';
-
-const authFooterLinkClass =
-  'font-medium text-[#60A5FA] hover:text-[#2563EB] transition-colors duration-200';
+import { useAuth } from '../../context/AuthContext';
+import { useFullPageLoading } from '../../hooks/useFullPageLoading';
+import { useBlockBrowserAutofill } from '../../hooks/useBlockBrowserAutofill';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const { isLoading: isAuthLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [formError, setFormError] = useState('');
@@ -20,7 +31,7 @@ const Login: React.FC = () => {
 
   const [touched, setTouched] = useState({
     email: false,
-    password: false
+    password: false,
   });
 
   const emailError = useMemo(() => {
@@ -55,8 +66,9 @@ const Login: React.FC = () => {
       } else {
         navigate('/dashboard');
       }
-    } catch (error: any) {
-      const errMsg = error?.message || 'Invalid email or password. Please try again.';
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      const errMsg = err?.message || 'Invalid email or password. Please try again.';
       if (
         errMsg.toLowerCase().includes('email not verified') ||
         errMsg.toLowerCase().includes('verification email') ||
@@ -70,84 +82,91 @@ const Login: React.FC = () => {
   };
 
   const handleBlur = (field: keyof typeof touched) => {
-    setTouched(prev => ({ ...prev, [field]: true }));
+    setTouched((prev) => ({ ...prev, [field]: true }));
   };
 
+  const showFullPage = useFullPageLoading(
+    isAuthLoading || loginMutation.isPending,
+    loginMutation.isPending,
+  );
+
+  const clearCredentials = useCallback(() => {
+    setEmail('');
+    setPassword('');
+  }, []);
+
+  const emailAutofillBlock = useBlockBrowserAutofill(clearCredentials);
+  const passwordAutofillBlock = useBlockBrowserAutofill(clearCredentials, {
+    forPassword: true,
+  });
+
   return (
-    <div className="max-w-xl mx-auto py-12 sm:py-20 px-4">
-      <div className="text-center mb-10 sm:mb-12">
-        <h1 className="text-2xl sm:text-[24px] font-medium mb-3 text-[#1C1C1C] leading-[32px] tracking-[-1%] whitespace-nowrap">
-          Welcome back to vora.
-        </h1>
-        <p className="text-[#6B7280] text-[11px] sm:text-xs leading-relaxed mx-auto whitespace-nowrap">
-          Access your dashboard to manage jobs, mentorships, and career growth.
-        </p>
-      </div>
+    <AuthPageShell loading={showFullPage}>
+      <AuthPageHeader
+        title="Welcome back to vora."
+        subtitle="Access your dashboard to manage jobs, mentorships, and career growth."
+      />
 
-      {formError && (
-        <div className="max-w-[480px] mx-auto mb-6 p-4 bg-red-50 border border-red-100 rounded-lg">
-          <p className="text-sm font-medium text-red-600">{formError}</p>
-        </div>
-      )}
+      <AuthFormCard>
+        {formError ? <AuthErrorBanner message={formError} /> : null}
 
-      <form className="space-y-6 sm:space-y-8 max-w-[480px] mx-auto" autoComplete="off">
-        <Input
-          label="Email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onBlur={() => handleBlur('email')}
-          placeholder="Enter email address"
-          error={!!emailError}
-          helperText={emailError}
-          autoComplete="off"
-        />
+        <AuthForm className="space-y-6 sm:space-y-8">
+          <Input
+            label="Email"
+            type="email"
+            name="vora-login-email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onBlur={() => handleBlur('email')}
+            placeholder="Enter email address"
+            error={!!emailError}
+            helperText={emailError}
+            {...emailAutofillBlock}
+          />
 
-        <Input
-          label="Password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          onBlur={() => handleBlur('password')}
-          placeholder="Enter password"
-          showPasswordToggle
-          error={!!passwordError}
-          helperText={passwordError}
-          autoComplete="current-password"
-        />
+          <Input
+            label="Password"
+            type="password"
+            name="vora-login-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onBlur={() => handleBlur('password')}
+            placeholder="Enter password"
+            showPasswordToggle
+            error={!!passwordError}
+            helperText={passwordError}
+            {...passwordAutofillBlock}
+          />
 
-        <Button
-          variant={isFormValid ? 'primary' : 'secondary'}
-          type="submit"
-          onClick={handleLogin}
-          disabled={!isFormValid || loginMutation.isPending}
-          isLoading={loginMutation.isPending}
-        >
-          Log in
-        </Button>
-
-        <div className="flex items-center gap-4 py-2">
-          <div className="flex-1 h-px bg-[#F3F4F6]"></div>
-          <span className="text-xs font-medium text-[#6B7280]">OR</span>
-          <div className="flex-1 h-px bg-[#F3F4F6]"></div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-4">
-          <GoogleSignInButton disabled={loginMutation.isPending} />
-          <Button variant="social" disabled={loginMutation.isPending}>
-            <AppleIcon />
-            <span>Sign in with Apple</span>
+          <Button
+            variant={isFormValid ? 'primary' : 'secondary'}
+            type="submit"
+            onClick={handleLogin}
+            disabled={!isFormValid || loginMutation.isPending}
+            isLoading={loginMutation.isPending}
+          >
+            Log in
           </Button>
-        </div>
 
-        <p className="text-center text-[0.95rem] text-[#374151] pt-4">
-          Don't have an account?{' '}
-          <Link to="/signup" className={authFooterLinkClass}>
-            Create an account
-          </Link>
-        </p>
-      </form>
-    </div>
+          <AuthSocialDivider />
+
+          <AuthSocialButtons>
+            <GoogleSignInButton disabled={loginMutation.isPending} />
+            <Button variant="social" disabled={loginMutation.isPending} className="min-w-0">
+              <AppleIcon />
+              <span className="truncate">Sign in with Apple</span>
+            </Button>
+          </AuthSocialButtons>
+
+          <p className="pt-2 text-center text-sm text-[#374151] sm:text-[0.95rem]">
+            Don&apos;t have an account?{' '}
+            <Link to="/signup" className={authFooterLinkClass}>
+              Create an account
+            </Link>
+          </p>
+        </AuthForm>
+      </AuthFormCard>
+    </AuthPageShell>
   );
 };
 

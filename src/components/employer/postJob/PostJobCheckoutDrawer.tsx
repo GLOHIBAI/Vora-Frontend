@@ -141,20 +141,20 @@ const PostJobCheckoutDrawer: React.FC<PostJobCheckoutDrawerProps> = ({
             {paymentMethod === 'card' && (
               <div className="space-y-3">
                 <p className="text-[13px] font-bold text-[#1A1A1A]">Payment details</p>
-                <input
+                <input autoComplete="off"
                   className="w-full px-3.5 py-2.5 border border-[#E6E6E6] rounded-lg text-sm outline-none focus:border-[#0047CC]"
                   placeholder="Cardholder's name"
                 />
-                <input
+                <input autoComplete="off"
                   className="w-full px-3.5 py-2.5 border border-[#E6E6E6] rounded-lg text-sm outline-none focus:border-[#0047CC]"
                   placeholder="0000 0000 0000 0000"
                 />
                 <div className="grid grid-cols-2 gap-3">
-                  <input
+                  <input autoComplete="off"
                     className="w-full px-3.5 py-2.5 border border-[#E6E6E6] rounded-lg text-sm outline-none focus:border-[#0047CC]"
                     placeholder="MM / YYYY"
                   />
-                  <input
+                  <input autoComplete="off"
                     className="w-full px-3.5 py-2.5 border border-[#E6E6E6] rounded-lg text-sm outline-none focus:border-[#0047CC]"
                     placeholder="CVV"
                   />

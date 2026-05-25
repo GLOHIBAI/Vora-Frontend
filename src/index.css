@@ -100,3 +100,18 @@ input[type=number] {
   color: #1c1c1c !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
 }
+
+/* Detect WebKit autofill so apps can react if needed */
+@keyframes vora-autofill-start {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+input.vora-block-autofill:-webkit-autofill {
+  animation-name: vora-autofill-start;
+  animation-duration: 0.01s;
+}

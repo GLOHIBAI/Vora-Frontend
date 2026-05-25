@@ -35,6 +35,7 @@ const Textarea: React.FC<TextareaProps> = ({
   className = '',
   rows = 4,
   style,
+  autoComplete = 'off',
   ...props
 }) => {
   const { scrollClass, fieldClass } = splitTextareaClasses(className);
@@ -72,6 +73,7 @@ const Textarea: React.FC<TextareaProps> = ({
           <textarea
             rows={rows}
             style={fieldStyle}
+            autoComplete={autoComplete}
             className={`block w-full px-4 py-3 border-0 bg-transparent resize-none overflow-hidden focus:outline-none placeholder:text-gray-400 text-[14px] font-medium text-gray-800 leading-relaxed ${fieldClass}`}
             {...props}
           />

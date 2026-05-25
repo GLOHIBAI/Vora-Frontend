@@ -158,6 +158,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                 <div className="flex gap-2">
                   <input
                     type="text"
+                    autoComplete="off"
                     value={otherValue}
                     onChange={(e) => setOtherValue(e.target.value)}
                     onKeyDown={(e) => {

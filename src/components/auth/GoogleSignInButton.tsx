@@ -20,12 +20,13 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
     <Button
       variant="social"
       type="button"
+      className="min-w-0"
       onClick={handleGoogleSignIn}
       disabled={disabled || isGoogleLoading || !isConfigured}
       isLoading={isGoogleLoading}
     >
       <GoogleIcon />
-      <span>{label}</span>
+      <span className="truncate">{label}</span>
     </Button>
   );
 };

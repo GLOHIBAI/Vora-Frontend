@@ -376,7 +376,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
                   {/* Dropzone sub-pane */}
                   {fillMethod === 'upload' && (
                     <div onClick={(e) => e.stopPropagation()} className="mt-4 space-y-3.5">
-                      <input 
+                      <input autoComplete="off" 
                         type="file" 
                         ref={fileInputRef} 
                         onChange={handleFileChange} 

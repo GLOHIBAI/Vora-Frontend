@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Country } from 'country-state-city';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -22,7 +22,16 @@ import {
   HIRING_PRIORITY_OPTIONS
 } from '../../data/employerOnboardingData';
 import Button from '../../components/common/Button';
+import FullPageSpinner from '../../components/common/FullPageSpinner';
 import { useQueryClient } from '@tanstack/react-query';
+import { useFullPageLoading } from '../../hooks/useFullPageLoading';
+import { useOnboardingStepSubmit } from '../../hooks/useOnboardingStepSubmit';
+import { useOnboardingStateHydration } from '../../hooks/useOnboardingStateHydration';
+import {
+  EMPLOYER_ONBOARDING_STATE_KEY,
+  getOnboardingFieldsFromState,
+  refetchOnboardingState,
+} from '../../utils/onboardingStateQuery';
 import { CloseIcon, ArrowUpIcon, ArrowDownIcon, TrashIcon } from '../../components/common/Icons';
 import {
   useEmployerOnboardingStep1Mutation,
@@ -59,88 +68,34 @@ const EmployerOnboarding: React.FC = () => {
   const step2Mutation = useEmployerOnboardingStep2Mutation();
   const step3Mutation = useEmployerOnboardingStep3Mutation();
   const step4Mutation = useEmployerOnboardingStep4Mutation();
-  const { data: onboardingState } = useEmployerOnboardingStateQuery();
+  const {
+    data: onboardingState,
+    isPending: isStatePending,
+    isFetching: isStateFetching,
+  } = useEmployerOnboardingStateQuery();
+  const { isSubmittingStep, runStepSubmit } = useOnboardingStepSubmit();
 
   useEffect(() => {
-    if (onboardingState?.data) {
-      const savedFields = onboardingState.data.fields || {};
-      
-      if (onboardingState.data.onboardingCompleted) {
-        if (!user || user.role !== 'employer' || user.firstName !== (savedFields.organisationName || 'Employer')) {
-          updateUser({
-            firstName: savedFields.organisationName || 'Employer',
-            lastName: '',
-          });
-        }
-        navigate('/dashboard');
-        return;
-      }
-
-      // Step 1 restoration
-      if (
-        savedFields.organisationName ||
-        savedFields.country ||
-        savedFields.organisationType ||
-        savedFields.fundingModel ||
-        savedFields.institutionalMandates ||
-        savedFields.linkedinCompanyUrl ||
-        savedFields.websiteUrl
-      ) {
-        setOrgInfo({
-          organizationName: savedFields.organisationName || '',
-          organizationType: savedFields.organisationType || '',
-          primaryCountry: normalizeCountryDisplay(savedFields.country || ''),
-          institutionalMandate: savedFields.institutionalMandates || [],
-          fundingModel: savedFields.fundingModel || '',
-          linkedinCompanyUrl: savedFields.linkedinCompanyUrl || '',
-          websiteUrl: savedFields.websiteUrl || '',
-        });
-      }
-
-      // Step 2 restoration
-      if (savedFields.primaryWorkTypes || savedFields.workforceModels) {
-        setWorkforceInfo({
-          workTypes: savedFields.primaryWorkTypes || [],
-          roleSettings: savedFields.workforceModels || [],
-        });
-      }
-
-      // Step 3 restoration
-      if (
-        savedFields.localProfessionalLicensing ||
-        savedFields.internationallyLicensedProfessionals ||
-        savedFields.remoteInternationalEligibleRoles ||
-        savedFields.relocationWorkPermitsSponsorship
-      ) {
-        setRegulatoryInfo({
-          localLicensing: savedFields.localProfessionalLicensing || '',
-          internationalLicensing: savedFields.internationallyLicensedProfessionals || '',
-          remoteEligibility: savedFields.remoteInternationalEligibleRoles || '',
-          sponsorship: savedFields.relocationWorkPermitsSponsorship || '',
-        });
-      }
-
-      // Step 4 restoration
-      if (savedFields.hiringPriorityRanking || savedFields.experienceDocumentationTypes || savedFields.postPlacementFeedback) {
-        if (savedFields.hiringPriorityRanking) {
-          setHiringPriority(savedFields.hiringPriorityRanking);
-        }
-        if (savedFields.experienceDocumentationTypes) {
-          setExperienceDocs(savedFields.experienceDocumentationTypes);
-        }
-        if (savedFields.postPlacementFeedback) {
-          setPlacementFeedback(savedFields.postPlacementFeedback);
-        }
-      }
-
-      // End of restorations
-
-
-      if (onboardingState.data.onboardingStep && !stepParam) {
-        setStep(onboardingState.data.onboardingStep);
-      }
+    if (!onboardingState?.data?.onboardingCompleted) return;
+    const savedFields = onboardingState.data.fields || {};
+    if (
+      !user ||
+      user.role !== 'employer' ||
+      user.firstName !== (savedFields.organisationName || 'Employer')
+    ) {
+      updateUser({
+        firstName: savedFields.organisationName || 'Employer',
+        lastName: '',
+      });
     }
-  }, [onboardingState, stepParam, navigate, updateUser, user]);
+    navigate('/dashboard');
+  }, [onboardingState?.data?.onboardingCompleted, onboardingState?.data?.fields, navigate, updateUser, user]);
+
+  useEffect(() => {
+    if (onboardingState?.data?.onboardingStep && !stepParam) {
+      setStep(onboardingState.data.onboardingStep);
+    }
+  }, [onboardingState?.data?.onboardingStep, stepParam]);
 
   // Step 1: Organization Info
   const [orgInfo, setOrgInfo] = useState({
@@ -152,8 +107,6 @@ const EmployerOnboarding: React.FC = () => {
     linkedinCompanyUrl: '',
     websiteUrl: '',
   });
-
-  const [isLoading, setIsLoading] = useState(false);
 
   // Step 2: Workforce Architecture
   const [workforceInfo, setWorkforceInfo] = useState({
@@ -178,6 +131,89 @@ const EmployerOnboarding: React.FC = () => {
   const [placementFeedback, setPlacementFeedback] = useState('');
 
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  const applyEmployerStepFields = useCallback(
+    (targetStep: number, savedFields: Record<string, unknown>) => {
+      if (targetStep === 1) {
+        if (
+          savedFields.organisationName ||
+          savedFields.country ||
+          savedFields.organisationType ||
+          savedFields.fundingModel ||
+          savedFields.institutionalMandates ||
+          savedFields.linkedinCompanyUrl ||
+          savedFields.websiteUrl
+        ) {
+          setOrgInfo({
+            organizationName: (savedFields.organisationName as string) || '',
+            organizationType: (savedFields.organisationType as string) || '',
+            primaryCountry: normalizeCountryDisplay((savedFields.country as string) || ''),
+            institutionalMandate: (savedFields.institutionalMandates as string[]) || [],
+            fundingModel: (savedFields.fundingModel as string) || '',
+            linkedinCompanyUrl: (savedFields.linkedinCompanyUrl as string) || '',
+            websiteUrl: (savedFields.websiteUrl as string) || '',
+          });
+        }
+        return;
+      }
+
+      if (targetStep === 2) {
+        if (savedFields.primaryWorkTypes || savedFields.workforceModels) {
+          setWorkforceInfo({
+            workTypes: (savedFields.primaryWorkTypes as string[]) || [],
+            roleSettings: (savedFields.workforceModels as string[]) || [],
+          });
+        }
+        return;
+      }
+
+      if (targetStep === 3) {
+        if (
+          savedFields.localProfessionalLicensing ||
+          savedFields.internationallyLicensedProfessionals ||
+          savedFields.remoteInternationalEligibleRoles ||
+          savedFields.relocationWorkPermitsSponsorship
+        ) {
+          setRegulatoryInfo({
+            localLicensing: (savedFields.localProfessionalLicensing as string) || '',
+            internationalLicensing:
+              (savedFields.internationallyLicensedProfessionals as string) || '',
+            remoteEligibility: (savedFields.remoteInternationalEligibleRoles as string) || '',
+            sponsorship: (savedFields.relocationWorkPermitsSponsorship as string) || '',
+          });
+        }
+        return;
+      }
+
+      if (targetStep === 4) {
+        if (
+          savedFields.hiringPriorityRanking ||
+          savedFields.experienceDocumentationTypes ||
+          savedFields.postPlacementFeedback
+        ) {
+          if (savedFields.hiringPriorityRanking) {
+            setHiringPriority(savedFields.hiringPriorityRanking as string[]);
+          }
+          if (savedFields.experienceDocumentationTypes) {
+            setExperienceDocs(savedFields.experienceDocumentationTypes as string[]);
+          }
+          if (savedFields.postPlacementFeedback) {
+            setPlacementFeedback(savedFields.postPlacementFeedback as string);
+          }
+        }
+      }
+    },
+    [],
+  );
+
+  useOnboardingStateHydration({
+    step,
+    isStateFetching,
+    stateData: onboardingState?.data,
+    isComplete: onboardingState?.data?.onboardingCompleted,
+    getSavedFields: getOnboardingFieldsFromState,
+    hydrateStep: applyEmployerStepFields,
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     let { name, value } = e.target;
@@ -232,58 +268,66 @@ const EmployerOnboarding: React.FC = () => {
 
   const handleNext = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    try {
-      if (step === 1 && isStep1Valid) {
-        await step1Mutation.mutateAsync({
-          organisationName: orgInfo.organizationName,
-          country: orgInfo.primaryCountry,
-          organisationType: orgInfo.organizationType,
-          institutionalMandates: orgInfo.institutionalMandate,
-          fundingModel: orgInfo.fundingModel,
-          linkedinCompanyUrl: orgInfo.linkedinCompanyUrl || undefined,
-          websiteUrl: orgInfo.websiteUrl || undefined,
-        });
-        await queryClient.invalidateQueries({ queryKey: ['employer-onboarding', 'state'] });
-        setStep(2);
-        window.scrollTo(0, 0);
-      } else if (step === 2 && isStep2Valid) {
-        await step2Mutation.mutateAsync({
-          primaryWorkTypes: workforceInfo.workTypes,
-          workforceModels: workforceInfo.roleSettings,
-        });
-        await queryClient.invalidateQueries({ queryKey: ['employer-onboarding', 'state'] });
-        setStep(3);
-        window.scrollTo(0, 0);
-      } else if (step === 3 && isStep3Valid) {
-        await step3Mutation.mutateAsync({
-          localProfessionalLicensing: regulatoryInfo.localLicensing,
-          internationallyLicensedProfessionals: regulatoryInfo.internationalLicensing,
-          remoteInternationalEligibleRoles: regulatoryInfo.remoteEligibility,
-          relocationWorkPermitsSponsorship: regulatoryInfo.sponsorship,
-        });
-        await queryClient.invalidateQueries({ queryKey: ['employer-onboarding', 'state'] });
-        setStep(4);
-        window.scrollTo(0, 0);
-      } else if (step === 4 && isStep4Valid) {
-        await step4Mutation.mutateAsync({
-          hiringPriorityRanking: hiringPriority,
-          experienceDocumentationTypes: experienceDocs,
-          postPlacementFeedback: placementFeedback,
-        });
-        await queryClient.invalidateQueries({ queryKey: ['employer-onboarding', 'state'] });
-        updateUser({
-          firstName: orgInfo.organizationName,
-          lastName: '',
-        });
-        navigate('/onboarding/welcome', { state: { firstName: orgInfo.organizationName, role: 'employer' } });
+    await runStepSubmit(async () => {
+      try {
+        if (step === 1 && isStep1Valid) {
+          await step1Mutation.mutateAsync({
+            organisationName: orgInfo.organizationName,
+            country: orgInfo.primaryCountry,
+            organisationType: orgInfo.organizationType,
+            institutionalMandates: orgInfo.institutionalMandate,
+            fundingModel: orgInfo.fundingModel,
+            linkedinCompanyUrl: orgInfo.linkedinCompanyUrl || undefined,
+            websiteUrl: orgInfo.websiteUrl || undefined,
+          });
+          await refetchOnboardingState(queryClient, EMPLOYER_ONBOARDING_STATE_KEY);
+          setStep(2);
+          window.scrollTo(0, 0);
+        } else if (step === 2 && isStep2Valid) {
+          await step2Mutation.mutateAsync({
+            primaryWorkTypes: workforceInfo.workTypes,
+            workforceModels: workforceInfo.roleSettings,
+          });
+          await refetchOnboardingState(queryClient, EMPLOYER_ONBOARDING_STATE_KEY);
+          setStep(3);
+          window.scrollTo(0, 0);
+        } else if (step === 3 && isStep3Valid) {
+          await step3Mutation.mutateAsync({
+            localProfessionalLicensing: regulatoryInfo.localLicensing,
+            internationallyLicensedProfessionals: regulatoryInfo.internationalLicensing,
+            remoteInternationalEligibleRoles: regulatoryInfo.remoteEligibility,
+            relocationWorkPermitsSponsorship: regulatoryInfo.sponsorship,
+          });
+          await refetchOnboardingState(queryClient, EMPLOYER_ONBOARDING_STATE_KEY);
+          setStep(4);
+          window.scrollTo(0, 0);
+        } else if (step === 4 && isStep4Valid) {
+          await step4Mutation.mutateAsync({
+            hiringPriorityRanking: hiringPriority,
+            experienceDocumentationTypes: experienceDocs,
+            postPlacementFeedback: placementFeedback,
+          });
+          await refetchOnboardingState(queryClient, EMPLOYER_ONBOARDING_STATE_KEY);
+          updateUser({
+            firstName: orgInfo.organizationName,
+            lastName: '',
+          });
+          navigate('/onboarding/welcome', {
+            state: { firstName: orgInfo.organizationName, role: 'employer' },
+          });
+        }
+      } catch {
+        // Errors surfaced via API client / mutation onError toasts
       }
-    } catch (err) {
-      // Catch error
-    } finally {
-      setIsLoading(false);
-    }
+    });
   };
+
+  const showFullPage = useFullPageLoading(isStatePending, isSubmittingStep);
+  const isStepBusy = isSubmittingStep;
+
+  if (showFullPage) {
+    return <FullPageSpinner />;
+  }
 
   const movePriority = (index: number, direction: 'up' | 'down') => {
     const newPriority = [...hiringPriority];
@@ -436,14 +480,14 @@ const EmployerOnboarding: React.FC = () => {
                 variant="outline"
                 onClick={handleBack}
                 size="md"
-                disabled={isLoading}
+                disabled={isStepBusy}
               >
                 Back
               </Button>
               <Button
                 type="submit"
                 disabled={!isStep1Valid}
-                isLoading={isLoading}
+                isLoading={isStepBusy}
                 size="md"
               >
                 Proceed
@@ -488,14 +532,14 @@ const EmployerOnboarding: React.FC = () => {
                 variant="outline"
                 onClick={handleBack}
                 size="md"
-                disabled={isLoading}
+                disabled={isStepBusy}
               >
                 Back
               </Button>
               <Button
                 type="submit"
                 disabled={!isStep2Valid}
-                isLoading={isLoading}
+                isLoading={isStepBusy}
                 size="md"
               >
                 Proceed
@@ -566,14 +610,14 @@ const EmployerOnboarding: React.FC = () => {
                 variant="outline"
                 onClick={handleBack}
                 size="md"
-                disabled={isLoading}
+                disabled={isStepBusy}
               >
                 Back
               </Button>
               <Button
                 type="submit"
                 disabled={!isStep3Valid}
-                isLoading={isLoading}
+                isLoading={isStepBusy}
                 size="md"
               >
                 Proceed
@@ -733,14 +777,14 @@ const EmployerOnboarding: React.FC = () => {
                 variant="outline"
                 onClick={handleBack}
                 size="md"
-                disabled={isLoading}
+                disabled={isStepBusy}
               >
                 Back
               </Button>
               <Button
                 type="submit"
                 disabled={!isStep4Valid}
-                isLoading={isLoading}
+                isLoading={isStepBusy}
                 size="md"
               >
                 Proceed

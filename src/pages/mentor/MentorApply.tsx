@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import Button from '../../components/common/Button';
 import { useAuth } from '../../context/AuthContext';
 import { useMentorOnboardingStateQuery } from '../../services/queries/onboarding';
+import FullPageSpinner from '../../components/common/FullPageSpinner';
+import { useFullPageLoading } from '../../hooks/useFullPageLoading';
 import {
   getMentorOnboardingProceedRoute,
   getMentorOnboardingProfileStep,
@@ -14,7 +16,10 @@ const MentorApply: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isMentor = user?.role?.toLowerCase() === 'mentor';
-  const { data: onboardingState } = useMentorOnboardingStateQuery(isMentor);
+  const { data: onboardingState, isPending: isStatePending } =
+    useMentorOnboardingStateQuery(isMentor);
+
+  const showFullPage = useFullPageLoading(isMentor && isStatePending);
 
   const mentorUser = user as {
     onboardingStep?: number;
@@ -39,6 +44,10 @@ const MentorApply: React.FC = () => {
       ?.onboardingCompleted,
     isOnboardingComplete: mentorUser?.isOnboardingComplete,
   });
+
+  if (showFullPage) {
+    return <FullPageSpinner />;
+  }
 
   return (
     <div className="max-w-2xl mx-auto py-12 sm:py-16 px-4 sm:px-6">

@@ -83,7 +83,7 @@ const Rejection: React.FC = () => {
                       : 'border-gray-100 bg-white hover:bg-gray-50'
                   }`}
                 >
-                  <input 
+                  <input autoComplete="off" 
                     type="radio" 
                     name="rejection_reason" 
                     className="accent-[#0047CC] w-4 h-4"

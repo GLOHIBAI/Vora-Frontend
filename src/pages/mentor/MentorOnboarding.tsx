@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
@@ -6,6 +6,15 @@ import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
 import MultiSelect from '../../components/common/MultiSelect';
 import Button from '../../components/common/Button';
+import FullPageSpinner from '../../components/common/FullPageSpinner';
+import { useFullPageLoading } from '../../hooks/useFullPageLoading';
+import { useOnboardingStepSubmit } from '../../hooks/useOnboardingStepSubmit';
+import { useOnboardingStateHydration } from '../../hooks/useOnboardingStateHydration';
+import {
+  getOnboardingFieldsFromState,
+  MENTOR_ONBOARDING_STATE_KEY,
+  refetchOnboardingState,
+} from '../../utils/onboardingStateQuery';
 import { capitalizeFirstLetter } from '../../utils/stringUtils';
 import {
   getNextMentorOnboardingStepAfterSave,
@@ -62,6 +71,7 @@ const MentorProfile: React.FC = () => {
 
   const hasSetInitialStepFromApi = useRef(false);
   const [redirectToWelcome, setRedirectToWelcome] = useState(false);
+  const { isSubmittingStep, runStepSubmit } = useOnboardingStepSubmit();
 
   const step1Mutation = useMentorOnboardingStep1Mutation();
   const step2Mutation = useMentorOnboardingStep2Mutation();
@@ -69,15 +79,13 @@ const MentorProfile: React.FC = () => {
   const uploadCertMutation = useUploadMentorCertificationMutation();
   const step4Mutation = useMentorOnboardingStep4Mutation();
   const step5Mutation = useMentorOnboardingStep5Mutation();
-  const { data: onboardingState, isError: isStateError, error: stateError } =
-    useMentorOnboardingStateQuery(isMentor);
-
-  const isSavingStep =
-    (step === 1 && step1Mutation.isPending) ||
-    (step === 2 && step2Mutation.isPending) ||
-    (step === 3 && step3Mutation.isPending) ||
-    (step === 4 && step4Mutation.isPending) ||
-    (step === 5 && step5Mutation.isPending);
+  const {
+    data: onboardingState,
+    isPending: isStatePending,
+    isFetching: isStateFetching,
+    isError: isStateError,
+    error: stateError,
+  } = useMentorOnboardingStateQuery(isMentor);
 
   // Step 1: Personal Information
   const [personalInfo, setPersonalInfo] = useState({
@@ -182,69 +190,114 @@ const MentorProfile: React.FC = () => {
     updateUser({ onboardingStep: step } as Parameters<typeof updateUser>[0]);
   }, [step, stepParam, updateUser]);
 
-  // Hydrate form fields from API (does not change wizard step).
-  useEffect(() => {
-    const normalized = normalizeMentorOnboardingState(onboardingState?.data);
-    if (!normalized || normalized.onboardingCompleted) return;
-
-    const savedFields = normalized.fields as MentorOnboardingSavedFields;
-    if (Object.keys(savedFields).length === 0) return;
-
-      // Step 1
-      if (savedFields.title || savedFields.firstName || savedFields.lastName || savedFields.professionalTitle) {
+  const applySavedFieldsForStep = useCallback((
+    targetStep: number,
+    savedFields: Record<string, unknown>,
+  ) => {
+    const fields = savedFields as MentorOnboardingSavedFields;
+    if (targetStep === 1) {
+      if (
+        fields.title ||
+        fields.firstName ||
+        fields.lastName ||
+        fields.professionalTitle
+      ) {
         setPersonalInfo({
-          title: savedFields.title || '',
-          firstName: savedFields.firstName || '',
-          lastName: savedFields.lastName || '',
-          professionalTitle: savedFields.professionalTitle || '',
+          title: fields.title || '',
+          firstName: fields.firstName || '',
+          lastName: fields.lastName || '',
+          professionalTitle: fields.professionalTitle || '',
         });
       }
+      return;
+    }
 
-      // Step 2
-      if (savedFields.primaryExpertise || savedFields.functionalStrength || savedFields.mentorshipFocus) {
+    if (targetStep === 2) {
+      if (
+        fields.primaryExpertise ||
+        fields.functionalStrength ||
+        fields.mentorshipFocus
+      ) {
         setExpertiseInfo({
-          primaryExpertise: savedFields.primaryExpertise || [],
-          functionalStrength: savedFields.functionalStrength || [],
-          mentorshipFocus: savedFields.mentorshipFocus || [],
+          primaryExpertise: fields.primaryExpertise || [],
+          functionalStrength: fields.functionalStrength || [],
+          mentorshipFocus: fields.mentorshipFocus || [],
         });
       }
+      return;
+    }
 
-      // Step 3
-      if (savedFields.currentRole || savedFields.organization || savedFields.yearsOfExperienceBand || savedFields.websiteOrPortfolioUrl) {
+    if (targetStep === 3) {
+      if (
+        fields.currentRole ||
+        fields.organization ||
+        fields.yearsOfExperienceBand ||
+        fields.websiteOrPortfolioUrl
+      ) {
         setExperienceInfo({
-          currentRole: savedFields.currentRole || '',
-          organization: savedFields.organization || '',
-          yearsOfExperience: savedFields.yearsOfExperienceBand || '',
-          websitePortfolio: savedFields.websiteOrPortfolioUrl || '',
+          currentRole: fields.currentRole || '',
+          organization: fields.organization || '',
+          yearsOfExperience: fields.yearsOfExperienceBand || '',
+          websitePortfolio: fields.websiteOrPortfolioUrl || '',
         });
       }
+      return;
+    }
 
-      // Step 4
-      if (savedFields.mentorshipFormat || savedFields.sessionsPerMonth || savedFields.preferredSessionLength || savedFields.talentAccess || savedFields.timezone || savedFields.preferredLanguage) {
+    if (targetStep === 4) {
+      if (
+        fields.mentorshipFormat ||
+        fields.sessionsPerMonth ||
+        fields.preferredSessionLength ||
+        fields.talentAccess ||
+        fields.timezone ||
+        fields.preferredLanguage
+      ) {
         setAvailabilityInfo({
-          mentorshipFormat: savedFields.mentorshipFormat || [],
-          sessionsPerMonth: savedFields.sessionsPerMonth ? String(savedFields.sessionsPerMonth) : '',
-          sessionLength: savedFields.preferredSessionLength || [],
-          candidateAccess: savedFields.talentAccess || [],
-          timezone: savedFields.timezone || '',
-          preferredLanguage: savedFields.preferredLanguage || '',
-          regionalEquityPricing: savedFields.regionalEquityPricingEnabled ?? true,
+          mentorshipFormat: fields.mentorshipFormat || [],
+          sessionsPerMonth: fields.sessionsPerMonth
+            ? String(fields.sessionsPerMonth)
+            : '',
+          sessionLength: fields.preferredSessionLength || [],
+          candidateAccess: fields.talentAccess || [],
+          timezone: fields.timezone || '',
+          preferredLanguage: fields.preferredLanguage || '',
+          regionalEquityPricing: fields.regionalEquityPricingEnabled ?? true,
         });
       }
+      return;
+    }
 
-      // Step 5
-      const backendCourseIntent = savedFields.courseIntent || (savedFields as any).courseInterest;
+    if (targetStep === 5) {
+      const backendCourseIntent =
+        fields.courseIntent || (fields as { courseInterest?: string }).courseInterest;
       if (backendCourseIntent) {
-        const localInterest = backendCourseIntent === 'explore_later' || backendCourseIntent === 'later' ? 'later' : 'interested';
-        setCourseInterest(localInterest as any);
+        const localInterest =
+          backendCourseIntent === 'explore_later' || backendCourseIntent === 'later'
+            ? 'later'
+            : 'interested';
+        setCourseInterest(localInterest);
         if (localInterest === 'interested') {
           setCourseDetails({
-            courseType: savedFields.typeOfInterest || (savedFields as any).courseType || [],
-            preferredFormat: savedFields.preferredFormat || '',
+            courseType:
+              fields.typeOfInterest ||
+              (fields as { courseType?: string[] }).courseType ||
+              [],
+            preferredFormat: fields.preferredFormat || '',
           });
         }
       }
-  }, [onboardingState?.data]);
+    }
+  }, []);
+
+  useOnboardingStateHydration({
+    step,
+    isStateFetching,
+    stateData: onboardingState?.data,
+    isComplete: normalizedOnboardingState?.onboardingCompleted,
+    getSavedFields: getOnboardingFieldsFromState,
+    hydrateStep: applySavedFieldsForStep,
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     let { name, value } = e.target;
@@ -412,15 +465,16 @@ const MentorProfile: React.FC = () => {
       savedWizardStep,
       response.data?.onboardingStep,
     );
+    await refetchOnboardingState(queryClient, MENTOR_ONBOARDING_STATE_KEY);
     goToStep(nextStep);
     updateUser({ onboardingStep: nextStep } as Parameters<typeof updateUser>[0]);
-    await queryClient.invalidateQueries({ queryKey: ['mentor-onboarding', 'state'] });
   };
 
   const handleNext = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    try {
+    await runStepSubmit(async () => {
+      try {
       if (step === 1 && isStep1Valid) {
         const step1Response = await step1Mutation.mutateAsync({
           title: personalInfo.title,
@@ -556,9 +610,10 @@ const MentorProfile: React.FC = () => {
         setRedirectToWelcome(true);
         void queryClient.invalidateQueries({ queryKey: ['mentor-onboarding', 'state'] });
       }
-    } catch {
-      // Errors surfaced via API client / mutation onError toasts
-    }
+      } catch {
+        // Errors surfaced via API client / mutation onError toasts
+      }
+    });
   };
 
   const handleBack = () => {
@@ -568,6 +623,12 @@ const MentorProfile: React.FC = () => {
       goToStep(step - 1);
     }
   };
+
+  const showFullPage = useFullPageLoading(
+    isMentor && isStatePending,
+    isSubmittingStep,
+  );
+  const isStepBusy = isSubmittingStep;
 
   if (isOnboardingDone) {
     const welcomeFirstName =
@@ -583,6 +644,10 @@ const MentorProfile: React.FC = () => {
         state={{ firstName: welcomeFirstName, role: 'mentor' }}
       />
     );
+  }
+
+  if (showFullPage) {
+    return <FullPageSpinner />;
   }
 
   return (
@@ -667,8 +732,8 @@ const MentorProfile: React.FC = () => {
               <Button
                 variant={isStep1Valid ? 'primary' : 'secondary'}
                 type="submit"
-                disabled={!isStep1Valid}
-                isLoading={isSavingStep}
+                disabled={!isStep1Valid || isStepBusy}
+                isLoading={isStepBusy}
                 size="md"
               >
                 Proceed
@@ -728,8 +793,8 @@ const MentorProfile: React.FC = () => {
               <Button
                 variant={isStep2Valid ? 'primary' : 'secondary'}
                 type="submit"
-                disabled={!isStep2Valid}
-                isLoading={isSavingStep}
+                disabled={!isStep2Valid || isStepBusy}
+                isLoading={isStepBusy}
                 size="md"
               >
                 Proceed
@@ -835,7 +900,7 @@ const MentorProfile: React.FC = () => {
                     <span className="text-xs text-[#9CA3AF]">PDF, DOCX (Max 10MB per file)</span>
                   </div>
                 </div>
-                <input
+                <input autoComplete="off"
                   ref={fileInputRef}
                   type="file"
                   multiple
@@ -912,8 +977,8 @@ const MentorProfile: React.FC = () => {
               <Button
                 variant={isStep3Valid ? 'primary' : 'secondary'}
                 type="submit"
-                disabled={!isStep3Valid}
-                isLoading={isSavingStep}
+                disabled={!isStep3Valid || isStepBusy}
+                isLoading={isStepBusy}
                 size="md"
               >
                 Proceed
@@ -1032,8 +1097,8 @@ const MentorProfile: React.FC = () => {
               <Button
                 variant={isStep4Valid ? 'primary' : 'secondary'}
                 type="submit"
-                disabled={!isStep4Valid}
-                isLoading={isSavingStep}
+                disabled={!isStep4Valid || isStepBusy}
+                isLoading={isStepBusy}
                 size="md"
               >
                 Proceed
@@ -1050,7 +1115,7 @@ const MentorProfile: React.FC = () => {
             Teach at Scale, On your Terms
           </h1>
 
-          <form onSubmit={handleNext} className="space-y-6 mt-6">
+          <form onSubmit={handleNext} className="space-y-6 mt-6" autoComplete="off">
             <p className="text-sm text-[#374151] leading-relaxed">
               Beyond 1-on-1 mentorship, VORA enables selected mentors to turn their expertise into structured learning experiences for global talent.
             </p>
@@ -1152,8 +1217,8 @@ const MentorProfile: React.FC = () => {
               <Button
                 variant={getStepValidity() ? 'primary' : 'secondary'}
                 type="submit"
-                disabled={!getStepValidity()}
-                isLoading={isSavingStep}
+                disabled={!getStepValidity() || isStepBusy}
+                isLoading={isStepBusy}
                 size="md"
               >
                 Save & Continue

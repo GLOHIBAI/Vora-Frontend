@@ -18,6 +18,7 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
   >
     <input
       type="checkbox"
+      autoComplete="off"
       checked={checked}
       disabled={disabled}
       onChange={(e) => onChange(e.target.checked)}

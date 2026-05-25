@@ -328,7 +328,7 @@ const Settings: React.FC = () => {
                       {profileInitials}
                     </div>
                   )}
-                  <input
+                  <input autoComplete="off"
                     type="file"
                     ref={fileInputRef}
                     onChange={(e) => {
@@ -498,7 +498,7 @@ const Settings: React.FC = () => {
               </div>
               <div className="flex items-center gap-2 text-xs font-semibold text-gray-600">
                 <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
+                  <input autoComplete="off" 
                     type="checkbox" 
                     checked={bufferActive} 
                     onChange={(e) => setBufferActive(e.target.checked)} 
@@ -532,7 +532,7 @@ const Settings: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         <label className="relative inline-flex items-center cursor-pointer">
-                          <input 
+                          <input autoComplete="off" 
                             type="checkbox" 
                             checked={day.active} 
                             onChange={() => toggleDayActive(dayKey)} 
@@ -572,7 +572,7 @@ const Settings: React.FC = () => {
                                       <label className="block text-xs font-bold text-gray-700 mb-1.5">Your rate (local)</label>
                                       <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">$</span>
-                                        <input
+                                        <input autoComplete="off"
                                           className="w-full border-[1.5px] border-gray-200 rounded-lg py-2 pl-6 pr-3 text-sm text-gray-900 bg-white focus:border-[#0047CC] focus:outline-none transition-colors"
                                           type="number"
                                           value={slot.rate}
@@ -685,7 +685,7 @@ const Settings: React.FC = () => {
               />
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">Max sessions per week</label>
-                <input
+                <input autoComplete="off"
                   className="w-full border-[1.5px] border-gray-200 rounded-lg p-2 text-sm text-gray-900 bg-white focus:border-[#0047CC] focus:outline-none transition-colors"
                   type="number"
                   value={maxSessionsPerWeek}
@@ -697,7 +697,7 @@ const Settings: React.FC = () => {
 
             <div className="flex items-center gap-2.5 text-xs font-semibold text-gray-700">
               <label className="relative inline-flex items-center cursor-pointer">
-                <input 
+                <input autoComplete="off" 
                   type="checkbox" 
                   checked={blockManualDates} 
                   onChange={(e) => setBlockManualDates(e.target.checked)} 
@@ -824,7 +824,7 @@ const Settings: React.FC = () => {
                   <p className="text-[11px] text-gray-500">Enrolled learners can revisit course content indefinitely.</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                  <input 
+                  <input autoComplete="off" 
                     type="checkbox" 
                     checked={courseSettings.lifetimeAccess} 
                     onChange={(e) => setCourseSettings({ ...courseSettings, lifetimeAccess: e.target.checked })} 
@@ -840,7 +840,7 @@ const Settings: React.FC = () => {
                   <p className="text-[11px] text-gray-500">Display number of enrolled learners on your course listings.</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                  <input 
+                  <input autoComplete="off" 
                     type="checkbox" 
                     checked={courseSettings.showEnrolledCount} 
                     onChange={(e) => setCourseSettings({ ...courseSettings, showEnrolledCount: e.target.checked })} 
@@ -856,7 +856,7 @@ const Settings: React.FC = () => {
                   <p className="text-[11px] text-gray-500">Learners can leave star ratings and written reviews.</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                  <input 
+                  <input autoComplete="off" 
                     type="checkbox" 
                     checked={courseSettings.allowReviews} 
                     onChange={(e) => setCourseSettings({ ...courseSettings, allowReviews: e.target.checked })} 
@@ -879,7 +879,7 @@ const Settings: React.FC = () => {
                 <p className="text-[11px] text-gray-500">Learners receive a certificate with your name and course title.</p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                <input 
+                <input autoComplete="off" 
                   type="checkbox" 
                   checked={courseSettings.issueCertificates} 
                   onChange={(e) => setCourseSettings({ ...courseSettings, issueCertificates: e.target.checked })} 
@@ -929,7 +929,7 @@ const Settings: React.FC = () => {
               <div>
                 <div className="flex flex-col gap-3">
                   <label className="flex items-start gap-2.5 cursor-pointer text-xs font-bold text-gray-800">
-                    <input 
+                    <input autoComplete="off" 
                       type="radio" 
                       name="mstatus" 
                       checked={mentorshipStatus === 'accepting'} 
@@ -939,7 +939,7 @@ const Settings: React.FC = () => {
                     Accepting mentees
                   </label>
                   <label className="flex items-start gap-2.5 cursor-pointer text-xs font-bold text-gray-800">
-                    <input 
+                    <input autoComplete="off" 
                       type="radio" 
                       name="mstatus" 
                       checked={mentorshipStatus === 'paused'} 
@@ -1030,7 +1030,7 @@ const Settings: React.FC = () => {
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">Geographical reach</label>
                   <div className="flex flex-col gap-2.5">
                     <label className="flex items-start gap-2.5 cursor-pointer text-xs font-bold text-gray-800">
-                      <input 
+                      <input autoComplete="off" 
                         type="radio" 
                         name="geo" 
                         checked={geoReach === 'global'} 
@@ -1040,7 +1040,7 @@ const Settings: React.FC = () => {
                       Globally (recommended — maximises your PPP revenue)
                     </label>
                     <label className="flex items-start gap-2.5 cursor-pointer text-xs font-bold text-gray-800">
-                      <input 
+                      <input autoComplete="off" 
                         type="radio" 
                         name="geo" 
                         checked={geoReach === 'regional'} 
@@ -1061,7 +1061,7 @@ const Settings: React.FC = () => {
                 <div className="text-[11px] text-gray-500 mt-1">Total mentees you can work with at once</div>
               </div>
               <div>
-                <input
+                <input autoComplete="off"
                   className="w-full border-[1.5px] border-gray-200 rounded-lg p-2 text-sm text-gray-900 bg-white focus:border-[#0047CC] focus:outline-none transition-colors"
                   type="number"
                   value={maxActiveMentees}
@@ -1082,7 +1082,7 @@ const Settings: React.FC = () => {
               <div>
                 <div className="flex items-center gap-2.5 text-xs font-semibold text-gray-700">
                   <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
+                    <input autoComplete="off" 
                       type="checkbox" 
                       checked={matchingEnabled} 
                       onChange={(e) => setMatchingEnabled(e.target.checked)} 
@@ -1130,7 +1130,7 @@ const Settings: React.FC = () => {
                   <div key={item.key} className="flex items-center justify-between gap-4">
                     <span className="text-xs font-semibold text-gray-800">{item.label}</span>
                     <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                      <input 
+                      <input autoComplete="off" 
                         type="checkbox" 
                         checked={(emailNotifs as any)[item.key]} 
                         onChange={(e) => setEmailNotifs({ ...emailNotifs, [item.key]: e.target.checked })} 
@@ -1150,7 +1150,7 @@ const Settings: React.FC = () => {
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-xs font-semibold text-gray-800">Show dashboard notifications</span>
                   <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                    <input 
+                    <input autoComplete="off" 
                       type="checkbox" 
                       checked={inAppNotifs.showDashboard} 
                       onChange={(e) => setInAppNotifs({ ...inAppNotifs, showDashboard: e.target.checked })} 
@@ -1168,7 +1168,7 @@ const Settings: React.FC = () => {
               <div>
                 <div className="flex flex-col gap-3">
                   <label className="flex items-start gap-2.5 cursor-pointer text-xs font-bold text-gray-800">
-                    <input 
+                    <input autoComplete="off" 
                       type="radio" 
                       name="freq" 
                       checked={notificationFrequency === 'instant'} 
@@ -1178,7 +1178,7 @@ const Settings: React.FC = () => {
                     Instant
                   </label>
                   <label className="flex items-start gap-2.5 cursor-pointer text-xs font-bold text-gray-800">
-                    <input 
+                    <input autoComplete="off" 
                       type="radio" 
                       name="freq" 
                       checked={notificationFrequency === 'daily'} 
@@ -1188,7 +1188,7 @@ const Settings: React.FC = () => {
                     Daily digest
                   </label>
                   <label className="flex items-start gap-2.5 cursor-pointer text-xs font-bold text-gray-800">
-                    <input 
+                    <input autoComplete="off" 
                       type="radio" 
                       name="freq" 
                       checked={notificationFrequency === 'weekly'} 
@@ -1250,7 +1250,7 @@ const Settings: React.FC = () => {
                     <p className="text-[11px] text-gray-500 mt-1">Allow profile to be used for VORA candidate matching.</p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                    <input 
+                    <input autoComplete="off" 
                       type="checkbox" 
                       checked={consentAiMatching} 
                       onChange={(e) => setConsentAiMatching(e.target.checked)} 
@@ -1305,7 +1305,7 @@ const Settings: React.FC = () => {
           </div>
         }
       >
-        <form id="change-password-form" onSubmit={handleChangePasswordSubmit} className="space-y-4">
+        <form id="change-password-form" onSubmit={handleChangePasswordSubmit} className="space-y-4" autoComplete="off">
           <Input
             label="Current password"
             type="password"

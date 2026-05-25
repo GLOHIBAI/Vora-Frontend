@@ -1397,7 +1397,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                       )}
 
                       <div className="flex gap-2 items-center">
-                        <input
+                        <input autoComplete="off"
                           type="text"
                           placeholder="e.g. Nairobi, Kenya"
                           value={newLocationInput}
@@ -1550,7 +1550,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                     
                     {/* Toggle Switch */}
                     <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                      <input 
+                      <input autoComplete="off" 
                         type="checkbox" 
                         checked={isScheduled} 
                         onChange={() => setIsScheduled(!isScheduled)}
@@ -2239,7 +2239,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                     <div className="space-y-4">
                       <div className="flex flex-col gap-1.5">
                         <label className="text-[13px] font-medium text-[#1A1A1A]">Number of positions</label>
-                        <input
+                        <input autoComplete="off"
                           type="text"
                           inputMode="numeric"
                           placeholder="e.g. 1, 2, 3"
@@ -2304,7 +2304,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
 
                       {durationPreset === 'custom' && (
                         <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
-                          <input
+                          <input autoComplete="off"
                             type="text"
                             inputMode="numeric"
                             placeholder="Working days (e.g. 110 = 6 months)"
@@ -2334,7 +2334,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                     <div className="space-y-4">
                       <div className="flex flex-col gap-1.5">
                         <label className="text-[13px] font-medium text-[#1A1A1A]">Number of student places</label>
-                        <input
+                        <input autoComplete="off"
                           type="text"
                           inputMode="numeric"
                           placeholder="e.g. 1, 5, 10"
@@ -2395,7 +2395,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                           </svg>
                           <div className="text-[13px] font-medium text-[#4A4A4A] mb-1">Upload job description</div>
                           <div className="text-xs text-[#808080]">PDF, DOC, DOCX up to 10MB</div>
-                          <input
+                          <input autoComplete="off"
                             type="file"
                             ref={fileInputRef}
                             accept=".pdf,.doc,.docx"
