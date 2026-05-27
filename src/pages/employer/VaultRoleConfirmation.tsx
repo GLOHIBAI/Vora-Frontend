@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import VaultReviewPageLayout from '../../components/vault/VaultReviewPageLayout';
 import ConfirmationHeader from '../../components/common/ConfirmationHeader';
 import { CardTitle } from '../../components/common/Typography';
 import KeyValueBanner from '../../components/common/KeyValueBanner';
@@ -28,7 +29,7 @@ const VaultRoleConfirmation: React.FC = () => {
   );
 
   return (
-    <div className="max-w-[680px] mx-auto pb-16 animate-in fade-in duration-500">
+    <VaultReviewPageLayout backTo="/jobs?tab=Scheduled" backLabel="Vault dashboard">
       <ConfirmationHeader
         icon={<LockIcon size={34} className="text-[#1D871D]" strokeWidth={2.5} />}
         title="Your role is in the Vault"
@@ -109,7 +110,7 @@ const VaultRoleConfirmation: React.FC = () => {
           Back to all jobs
         </Button>
       </div>
-    </div>
+    </VaultReviewPageLayout>
   );
 };
 

@@ -1,5 +1,4 @@
 import React from 'react';
-import ScrollArea from './ScrollArea';
 
 interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label: string | React.ReactNode;
@@ -8,7 +7,7 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 }
 
 const splitTextareaClasses = (className: string) => {
-  const scroll: string[] = [];
+  const size: string[] = [];
   const field: string[] = [];
 
   className
@@ -16,14 +15,14 @@ const splitTextareaClasses = (className: string) => {
     .filter(Boolean)
     .forEach((token) => {
       if (/^(h-|max-h-|min-h-|resize-)/.test(token)) {
-        scroll.push(token);
+        size.push(token);
       } else {
         field.push(token);
       }
     });
 
   return {
-    scrollClass: scroll.join(' ').replace(/\bresize-\S+/g, '').trim(),
+    sizeClass: size.join(' '),
     fieldClass: field.join(' '),
   };
 };
@@ -38,18 +37,9 @@ const Textarea: React.FC<TextareaProps> = ({
   autoComplete = 'off',
   ...props
 }) => {
-  const { scrollClass, fieldClass } = splitTextareaClasses(className);
-  const hasExplicitHeight = /\b(h-|max-h-)/.test(scrollClass);
+  const { sizeClass, fieldClass } = splitTextareaClasses(className);
+  const hasFixedHeight = /\b(h-|max-h-)/.test(sizeClass);
   const rowCount = typeof rows === 'number' ? rows : parseInt(String(rows), 10) || 4;
-
-  const scrollStyle: React.CSSProperties | undefined = hasExplicitHeight
-    ? undefined
-    : { maxHeight: `calc(1.5rem * ${rowCount} + 2rem)` };
-
-  const fieldStyle: React.CSSProperties = {
-    minHeight: `calc(1.5rem * ${rowCount} + 1.5rem)`,
-    ...style,
-  };
 
   const borderClass = error
     ? 'border-red-500 bg-red-50'
@@ -57,6 +47,18 @@ const Textarea: React.FC<TextareaProps> = ({
   const focusRingClass = error
     ? 'focus-within:ring-red-500/20 focus-within:border-red-500'
     : 'focus-within:ring-brand-blue/20 focus-within:border-brand-blue';
+
+  const fieldClasses = [
+    'block w-full px-4 py-3 border-0 bg-transparent resize-none focus:outline-none',
+    'placeholder:text-gray-400 text-[14px] font-medium text-gray-800 leading-relaxed',
+    'custom-scrollbar',
+    hasFixedHeight
+      ? `${sizeClass} overflow-y-auto`
+      : `min-h-[calc(1.5rem*${rowCount}+1.5rem)] overflow-y-auto max-h-[calc(1.5rem*${rowCount}+2rem)]`,
+    fieldClass,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div className="w-full">
@@ -66,18 +68,13 @@ const Textarea: React.FC<TextareaProps> = ({
       <div
         className={`rounded-lg border overflow-hidden transition-all focus-within:outline-none focus-within:ring-2 ${borderClass} ${focusRingClass}`}
       >
-        <ScrollArea
-          className={scrollClass}
-          style={scrollStyle}
-        >
-          <textarea
-            rows={rows}
-            style={fieldStyle}
-            autoComplete={autoComplete}
-            className={`block w-full px-4 py-3 border-0 bg-transparent resize-none overflow-hidden focus:outline-none placeholder:text-gray-400 text-[14px] font-medium text-gray-800 leading-relaxed ${fieldClass}`}
-            {...props}
-          />
-        </ScrollArea>
+        <textarea
+          rows={rows}
+          style={style}
+          autoComplete={autoComplete}
+          className={fieldClasses}
+          {...props}
+        />
       </div>
       {error && helperText && (
         <p className="mt-1.5 text-xs text-red-500 font-medium ml-1">

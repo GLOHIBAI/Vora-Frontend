@@ -29,6 +29,7 @@ const Settings = lazy(() => import('./pages/Settings'))
 const Payments = lazy(() => import('./pages/employer/Payments'))
 const VaultRoleConfirmation = lazy(() => import('./pages/employer/VaultRoleConfirmation'))
 const EditVaultRole = lazy(() => import('./pages/employer/EditVaultRole'))
+const VaultEditReview = lazy(() => import('./pages/employer/VaultEditReview'))
 
 const App = () => {
   return (
@@ -49,6 +50,7 @@ const App = () => {
           <Route path="/jobs" element={<ProtectedDashboardLayout><Jobs /></ProtectedDashboardLayout>} />
           <Route path="/jobs/vault/confirmation" element={<ProtectedDashboardLayout><EmployerRoute><VaultRoleConfirmation /></EmployerRoute></ProtectedDashboardLayout>} />
           <Route path="/jobs/vault/edit/:id" element={<ProtectedDashboardLayout><EmployerRoute><EditVaultRole /></EmployerRoute></ProtectedDashboardLayout>} />
+          <Route path="/jobs/vault/review/:id?" element={<ProtectedDashboardLayout><EmployerRoute><VaultEditReview /></EmployerRoute></ProtectedDashboardLayout>} />
           <Route path="/jobs/:id" element={<ProtectedDashboardLayout><EmployerRoute><JobDetails /></EmployerRoute></ProtectedDashboardLayout>} />
           <Route path="/jobs/:id/reject/:applicantId" element={<ProtectedDashboardLayout><EmployerRoute><Rejection /></EmployerRoute></ProtectedDashboardLayout>} />
           <Route path="/jobs/:id/alignment/:candidateId" element={<ProtectedDashboardLayout><EmployerRoute><FinalAlignmentSession /></EmployerRoute></ProtectedDashboardLayout>} />

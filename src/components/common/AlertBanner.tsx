@@ -8,6 +8,8 @@ interface AlertBannerProps {
   variant?: AlertBannerVariant;
   className?: string;
   onDismiss?: () => void;
+  /** When false, omits the leading icon (e.g. inline callouts inside cards). */
+  showIcon?: boolean;
 }
 
 const variantStyles: Record<AlertBannerVariant, string> = {
@@ -22,11 +24,14 @@ const AlertBanner: React.FC<AlertBannerProps> = ({
   variant = 'amber',
   className = '',
   onDismiss,
+  showIcon = true,
 }) => (
   <div
     className={`border-[1.5px] rounded-[10px] px-4 py-3.5 flex gap-3 items-start ${variantStyles[variant]} ${className}`}
   >
-    <AlertTriangleIcon size={16} className="shrink-0 mt-0.5" strokeWidth={2} />
+    {showIcon && (
+      <AlertTriangleIcon size={16} className="shrink-0 mt-0.5" strokeWidth={2} />
+    )}
     <div className="flex-1 text-[13px] leading-relaxed [&_strong]:font-semibold">{children}</div>
     {onDismiss && (
       <button

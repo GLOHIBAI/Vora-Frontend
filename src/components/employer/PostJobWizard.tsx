@@ -33,6 +33,7 @@ import TimezoneMultiSelect from '../common/TimezoneMultiSelect';
 import CurrencyAmountRange from '../common/CurrencyAmountRange';
 import EscrowCalculationCard from '../common/EscrowCalculationCard';
 import AlertBanner from '../common/AlertBanner';
+import PageTopBackBar from '../common/PageTopBackBar';
 import {
   SectionDescription,
   SectionTitle,
@@ -1206,20 +1207,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
     <div
       className={`fixed inset-y-0 right-0 left-0 lg:left-[var(--sidebar-width)] z-40 flex flex-col bg-[#F7F7F7] transition-all duration-500 ease-in-out ${isClosing ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
     >
-      {/* Top Header */}
-      <div className="bg-white border-b border-[#E6E6E6] px-6 md:px-8 flex items-center shrink-0">
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={handleClose} 
-            className="flex items-center gap-1.5 text-sm font-bold text-[#4A4A4A] hover:text-[#0047CC] transition-colors cursor-pointer py-4"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <polyline points="15 18 9 12 15 6"/>
-            </svg>
-            Post a job
-          </button>
-        </div>
-      </div>
+      <PageTopBackBar label="Post a job" onClick={handleClose} />
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Step Navigation Sidebar (Desktop) */}
@@ -1233,12 +1221,13 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
           />
         </div>
 
-        {/* Form Body Area */}
-        <div ref={contentRef} className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-[#F7F7F7]">
+        {/* Form Body Area — scrollable content + fixed footer */}
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-[#F7F7F7]">
+        <div ref={contentRef} className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
           {/* Mobile Step Nav Dropdown */}
           <button 
             onClick={() => setIsMobStepNavOpen(!isMobStepNavOpen)}
-            className="flex lg:hidden items-center justify-between px-6 py-3.5 bg-white border-b border-[#E6E6E6] text-[13px] font-medium text-[#4A4A4A] w-full cursor-pointer"
+            className="mt-4 flex lg:hidden items-center justify-between px-6 py-3.5 bg-white border-b border-[#E6E6E6] text-[13px] font-medium text-[#4A4A4A] w-full cursor-pointer"
           >
             <span>
               Step {currentStep} of {WIZARD_STEP_COUNT}: {getWizardStepTitle(currentStep)}
@@ -1266,7 +1255,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
             </div>
           )}
 
-          <div className="flex-1 px-5 py-6 md:px-10 md:py-8 pb-28 space-y-5">
+          <div className="px-5 py-6 md:px-10 md:py-8 space-y-5">
             {/* Prefill Notification Banner */}
             {showPrefillBanner && (
               <AlertBanner
@@ -1691,7 +1680,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                     placeholder="What is this person being hired to achieve? What problem do they solve, or what outcome does their work drive? e.g. 'To reduce surgical complication rates by improving pre-operative assessment protocols.' or 'To build the organisation's health economics modelling capability from scratch.'"
                     value={roleGoal}
                     onChange={(e) => setRoleGoal(e.target.value)}
-                    className="h-24 resize-y leading-relaxed"
+                    className="h-24 leading-relaxed"
                     error={!!fieldErrors.roleGoal}
                     helperText={fieldErrors.roleGoal}
                   />
@@ -1702,7 +1691,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                     placeholder="List the main deliverables and day-to-day activities for this role. e.g. for a consultant dermatologist: 'Conduct outpatient skin cancer clinics, perform skin biopsies and excisions, supervise registrar trainees, contribute to MDT meetings.' for a health economist: 'Develop cost-effectiveness models, liaise with health technology assessment bodies, write technical reports for payers.'"
                     value={coreResponsibilities}
                     onChange={(e) => setCoreResponsibilities(e.target.value)}
-                    className="h-32 resize-y leading-relaxed"
+                    className="h-32 leading-relaxed"
                     error={!!fieldErrors.coreResponsibilities}
                     helperText={fieldErrors.coreResponsibilities}
                   />
@@ -1827,7 +1816,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                     placeholder="e.g. MPH from an accredited institution; membership of LSTM, LSHTM, or equivalent; board certification in relevant specialism..."
                     value={preferredQualifications}
                     onChange={(e) => setPreferredQualifications(e.target.value)}
-                    className="h-24 resize-y leading-relaxed"
+                    className="h-24 leading-relaxed"
                   />
 
                   <MultiSelect 
@@ -1946,7 +1935,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                       placeholder="Add any additional context about the ideal candidate that the structured fields above do not capture. e.g. 'We are looking for someone who has worked at the intersection of aesthetic medicine and patient safety, ideally in a regulated private practice setting.' or 'A background in both laboratory science and clinical application would be strongly preferred.' Keep it factual and role-specific."
                       value={preferredProfile}
                       onChange={(e) => setPreferredProfile(e.target.value)}
-                      className="h-24 resize-y leading-relaxed"
+                      className="h-24 leading-relaxed"
                     />
                     <span className="text-xs text-[#808080] font-normal mt-1">This is shared verbatim with VORA's matching engine. Keep it factual and role-specific.</span>
                   </div>
@@ -2490,9 +2479,10 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
             )}
 
           </div>
+        </div>
 
-          {/* Sticky Bottom Actions Bar */}
-          <div className="min-h-[64px] bg-white border-t border-[#E6E6E6] px-6 md:px-8 py-4 flex items-center justify-between shrink-0 sticky bottom-0 z-[5]">
+          {/* Bottom actions — always visible; form scrolls above */}
+          <div className="min-h-[64px] bg-white border-t border-[#E6E6E6] px-6 md:px-8 py-4 flex items-center justify-between shrink-0 z-[5]">
             {currentStep > 1 ? (
               <Button 
                 variant="outline"

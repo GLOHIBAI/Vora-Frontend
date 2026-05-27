@@ -4,7 +4,7 @@ import { PageTitle, SectionDescription } from './Typography';
 interface ConfirmationHeaderProps {
   icon: React.ReactNode;
   title: string;
-  subtitle: string;
+  subtitle: React.ReactNode;
   iconWrapperClassName?: string;
 }
 

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import AlertBanner from '../../components/common/AlertBanner';
 import { Subheading } from '../../components/common/Typography';
@@ -12,7 +12,8 @@ import Button from '../../components/common/Button';
 import ScrollArea from '../../components/common/ScrollArea';
 import PageActionBar from '../../components/common/PageActionBar';
 import ModalDialog from '../../components/common/ModalDialog';
-import { ChevronLeftIcon, LockIcon } from '../../components/common/Icons';
+import PageTopBackBar from '../../components/common/PageTopBackBar';
+import { LockIcon } from '../../components/common/Icons';
 import EditAllowanceMeter from '../../components/vault/EditAllowanceMeter';
 import ChangeSummaryList from '../../components/vault/ChangeSummaryList';
 import EscrowRecalcCard from '../../components/vault/EscrowRecalcCard';
@@ -30,6 +31,7 @@ import {
 } from '../../constants/jobWizard';
 import type { VaultEditOriginal, VaultEditChange } from '../../types/vaultEdit';
 import { calcEscrowRecalc } from '../../utils/vaultEscrow';
+import { buildVaultEditReviewData, saveVaultEditReview } from '../../utils/vaultEditReview';
 
 const COMP_TYPE_OPTIONS = [
   { label: 'Annual salary', value: 'Annual salary' },
@@ -125,22 +127,21 @@ const EditVaultRole: React.FC = () => {
 
   const handleSubmit = () => {
     setConfirmOpen(false);
+    const reviewData = buildVaultEditReviewData(form, original, escrowRecalc);
+    saveVaultEditReview(reviewData);
     toast.success('Edit submitted for 48-hour review');
-    navigate('/jobs?tab=Scheduled');
+    navigate(jobId ? `/jobs/vault/review/${jobId}` : '/jobs/vault/review');
   };
 
   return (
     <div className="-mx-4 lg:-mx-8 -mt-6 lg:-mt-10 flex flex-col min-h-[calc(100vh-80px)] bg-[#F7F7F7]">
-      <div className="px-6 lg:px-8 py-4 bg-white border-b border-[#E6E6E6] flex flex-wrap items-center justify-between gap-3">
-        <Link
-          to={vaultDashboardHref}
-          className="flex items-center gap-1.5 text-sm font-bold text-[#4A4A4A] hover:text-[#0047CC] transition-colors"
-        >
-          <ChevronLeftIcon size={16} strokeWidth={2.5} />
-          Vault dashboard
-        </Link>
-        <EditAllowanceMeter used={VAULT_EDIT_ALLOWANCE.used} total={VAULT_EDIT_ALLOWANCE.total} />
-      </div>
+      <PageTopBackBar
+        to={vaultDashboardHref}
+        label="Vault dashboard"
+        trailing={
+          <EditAllowanceMeter used={VAULT_EDIT_ALLOWANCE.used} total={VAULT_EDIT_ALLOWANCE.total} />
+        }
+      />
 
       <ScrollArea className="flex-1 min-h-0">
         <div className="px-6 lg:px-10 py-8 max-w-4xl">

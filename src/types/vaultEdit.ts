@@ -30,6 +30,21 @@ export interface VaultEditChange {
   field: string;
   oldValue: string;
   newValue: string;
+  /** Shown on review page when matching will recalibrate after confirmation */
+  recalibrate?: boolean;
+}
+
+export interface VaultEditReviewData {
+  roleTitle: string;
+  changes: VaultEditChange[];
+  submittedAt: string;
+  reviewEndsAt: string;
+  editsUsed: number;
+  editsTotal: number;
+  escrow: EscrowRecalcResult;
+  originalPositions: number;
+  originalMidpoint: number;
+  feeRate: number;
 }
 
 export interface EscrowRecalcResult {
