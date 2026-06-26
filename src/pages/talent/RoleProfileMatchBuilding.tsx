@@ -1,5 +1,6 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '../../layout/DashboardLayout';
 import RoleApplyContextBanner from '../../components/auth/RoleApplyContextBanner';
 import ProfileMatchPulseIcon from '../../components/talent/profileMatch/ProfileMatchPulseIcon';
@@ -9,17 +10,27 @@ import ProfileMatchProgressBar from '../../components/talent/profileMatch/Profil
 import { PROFILE_MATCH_STEPS } from '../../constants/profileMatchBuilding';
 import { useProfileMatchProgress } from '../../hooks/useProfileMatchProgress';
 import { useAuth } from '../../context/AuthContext';
-import { useGetPublicRoleQuery, useGetTalentMatchesQuery } from '../../services/queries/talent';
-import { useTalentOnboardingStateQuery } from '../../services/queries/onboarding';
+import { apiClient } from '../../services/api';
+import { useGetPublicRoleQuery, useGetMatchResultForRoleQuery } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
 import { MOCK_PROFILE_MATCH_SCAN_STRONG_MATCH } from '../../constants/profileMatchWaitlist';
-import { MOCK_PROFILE_MATCH_SCAN_BLOCKED } from '../../constants/profileMatchBlocked';
-import { getPostMatchPath, resolveProfileMatchScan } from '../../utils/profileMatchResult';
+import {
+  getPostMatchPath,
+  resolveProfileMatchScan,
+  mapApiMatchResultToScan,
+  isMatchResultPending,
+  withRoleApplyPath,
+} from '../../utils/profileMatchResult';
+import { countPassingAlternateMatches } from '../../utils/talentMatchApi';
+
+/** Poll every 3 s while scan is running. Stop once READY. */
+const POLL_INTERVAL_MS = 3000;
 
 const RoleProfileMatchBuilding: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
 
   const params = useParams<{ roleSlug: string }>();
@@ -29,9 +40,7 @@ const RoleProfileMatchBuilding: React.FC = () => {
   const lastName =
     (location.state as { lastName?: string } | null)?.lastName || user?.lastName || '';
 
-  const { data: response, isLoading: isRoleLoading } = useGetPublicRoleQuery(roleSlug || '');
-  const { data: stateData } = useTalentOnboardingStateQuery(false, false);
-  const { data: matchesResponse, isSuccess: isMatchesSuccess } = useGetTalentMatchesQuery();
+  const { data: response } = useGetPublicRoleQuery(roleSlug || '');
 
   const role: PublicRoleLandingData | null = useMemo(() => {
     if (!roleSlug) return null;
@@ -42,84 +51,51 @@ const RoleProfileMatchBuilding: React.FC = () => {
     return mapApiResponseToRoleData(roleSlug, apiData);
   }, [response, roleSlug]);
 
-  const handleComplete = useCallback(async () => {
-    let mockScan = MOCK_PROFILE_MATCH_SCAN_STRONG_MATCH;
-    
-    // Check if the actual API returned a match for this role
-    if (isMatchesSuccess && matchesResponse?.data) {
-      const allMatches = Array.isArray(matchesResponse.data) ? matchesResponse.data : [];
-      const apiData = response?.data || response;
-      const targetRoleId = apiData?.id;
-      const targetRoleTitle = (apiData?.roleTitle || role?.roleTitle || '').toLowerCase().trim();
+  // Determine if user is authed — if not (local dev), skip API polling
+  const hasAuthToken = !!localStorage.getItem('auth_token');
 
-      const roleMatch = allMatches.find((m: any) => {
-        if (targetRoleId && m.rolePostingId === targetRoleId) return true;
-        if (m.rolePosting?.roleTitle && m.rolePosting.roleTitle.toLowerCase().trim() === targetRoleTitle) return true;
-        if (m.roleLink === roleSlug || m.role?.roleLink === roleSlug) return true;
-        return false;
-      });
+  // Poll GET /talent/matches/for-role?roleLink=<roleSlug> every 3 s
+  const {
+    data: matchResultResponse,
+    isSuccess: isMatchSuccess,
+    isError: isMatchError,
+  } = useGetMatchResultForRoleQuery(
+    { roleLink: roleSlug },
+    {
+      enabled: hasAuthToken && !!roleSlug,
+      refetchInterval: (query) => {
+        const raw = query.state.data;
+        return isMatchResultPending(raw) ? POLL_INTERVAL_MS : false;
+      },
+    },
+  );
 
-      // Verify client-side onboarding geographic eligibility (as new onboarding data might not be in backend match yet)
-      let clientIsEligible = true;
-      const countryIso = stateData?.data?.fields?.countryOfResidence;
-      
-      if (countryIso && role?.formatLocationLabel) {
-        try {
-          // Temporarily doing a sync check since we can't easily await import inside synchronous block
-          // But wait, handleComplete is an async function!
-          const csc = await import('country-state-city');
-          const countryName = csc.Country.getCountryByCode(countryIso)?.name;
-          
-          if (countryName && !role.formatLocationLabel.toLowerCase().includes(countryName.toLowerCase())) {
-            const relocate = stateData?.data?.fields?.willingnessToRelocate;
-            if (relocate !== 'YES_ANYWHERE') {
-               clientIsEligible = false;
-            }
-          }
-        } catch (e) {
-          // Ignore errors
-        }
-      }
-      
-      // Calculate how many other matches are strong and eligible
-      const otherStrongMatches = allMatches.filter((m: any) => 
-        m !== roleMatch && 
-        (m.overallScore ?? m.score ?? 0) >= 0.8 &&
-        (m.geopoliticalEligible ?? m.isEligible ?? true)
-      );
+  const buildScanFromApi = useCallback(
+    async (raw: unknown) => {
+      const alternateCount = hasAuthToken
+        ? countPassingAlternateMatches(
+            await queryClient.fetchQuery({
+              queryKey: ['talent', 'matches'],
+              queryFn: () => apiClient.get({ url: '/talent/matches', auth: true, suppressErrorToast: true }),
+            }),
+            roleSlug,
+          )
+        : 0;
 
-      if (roleMatch) {
-        // Map backend match format to frontend ProfileMatchScanResult
-        const scoreVal = roleMatch.overallScore ?? roleMatch.score ?? 0.8;
-        const mappedScore = Math.round(scoreVal * 100);
-        const readinessScore = Math.round((roleMatch.dimensionScores?.qualifications ?? 0.8) * 100);
-        const backendEligible = roleMatch.geopoliticalEligible ?? roleMatch.isEligible ?? true;
-        
-        mockScan = {
-          originalRoleScore: mappedScore,
-          careerReadinessScore: readinessScore,
-          matchedRoleCount: otherStrongMatches.length,
-          isEligible: backendEligible && clientIsEligible,
-          ...roleMatch
-        };
-      } else {
-        // If no match found for this specific role, assume low score, but check if there are other matches
-        mockScan = {
-          originalRoleScore: 50, // Below threshold
-          careerReadinessScore: 50,
-          matchedRoleCount: otherStrongMatches.length,
-          isEligible: clientIsEligible,
-        };
-      }
-    }
+      return resolveProfileMatchScan(mapApiMatchResultToScan(raw, alternateCount));
+    },
+    [hasAuthToken, queryClient, roleSlug],
+  );
 
-    const matchScan = resolveProfileMatchScan(mockScan);
-    let destination = getPostMatchPath(matchScan);
-    // Convert destination to dynamic path
-    destination = destination.replace('/onboarding/talent/', `/onboarding/talent/${roleSlug}/`);
+  // Track whether we've already navigated to avoid double-fire
+  const hasNavigatedRef = useRef(false);
 
-    window.setTimeout(() => {
-      navigate(destination, {
+  const doNavigate = useCallback(
+    (matchScan: ReturnType<typeof resolveProfileMatchScan>) => {
+      if (hasNavigatedRef.current) return;
+      hasNavigatedRef.current = true;
+
+      navigate(withRoleApplyPath(getPostMatchPath(matchScan), roleSlug), {
         state: {
           firstName,
           lastName,
@@ -128,8 +104,35 @@ const RoleProfileMatchBuilding: React.FC = () => {
           matchScore: matchScan.originalRoleScore,
         },
       });
-    }, 1500);
-  }, [navigate, firstName, lastName, roleSlug, stateData, role, isMatchesSuccess, matchesResponse]);
+    },
+    [navigate, firstName, lastName, roleSlug],
+  );
+
+  // When the API returns a READY result, map and navigate
+  useEffect(() => {
+    if (!isMatchSuccess || hasNavigatedRef.current) return;
+    const raw = (matchResultResponse as { data?: unknown } | null)?.data ?? matchResultResponse;
+    if (isMatchResultPending(raw)) return;
+
+    void buildScanFromApi(raw).then(doNavigate);
+  }, [isMatchSuccess, matchResultResponse, buildScanFromApi, doNavigate]);
+
+  const handleComplete = useCallback(() => {
+    if (hasNavigatedRef.current) return;
+
+    if (isMatchSuccess) {
+      const raw = (matchResultResponse as { data?: unknown } | null)?.data ?? matchResultResponse;
+      if (!isMatchResultPending(raw)) {
+        void buildScanFromApi(raw).then(doNavigate);
+        return;
+      }
+    }
+
+    if (!hasAuthToken || isMatchError) {
+      const scan = resolveProfileMatchScan(MOCK_PROFILE_MATCH_SCAN_STRONG_MATCH);
+      window.setTimeout(() => doNavigate(scan), 1200);
+    }
+  }, [isMatchSuccess, isMatchError, matchResultResponse, hasAuthToken, buildScanFromApi, doNavigate]);
 
   const { statuses, progress, headline, isComplete } = useProfileMatchProgress({
     onComplete: handleComplete,
@@ -138,7 +141,6 @@ const RoleProfileMatchBuilding: React.FC = () => {
   if (!role) {
     return null;
   }
-
 
   return (
     <DashboardLayout>
@@ -178,3 +180,4 @@ const RoleProfileMatchBuilding: React.FC = () => {
 };
 
 export default RoleProfileMatchBuilding;
+

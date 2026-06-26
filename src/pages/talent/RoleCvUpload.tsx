@@ -6,8 +6,7 @@ import RoleApplyContextStrip from '../../components/talent/cvUpload/RoleApplyCon
 import AuthCenterLogoNav from '../../components/auth/AuthCenterLogoNav';
 import CvUploadZone from '../../components/talent/cvUpload/CvUploadZone';
 import CvUploadedFileRow from '../../components/talent/cvUpload/CvUploadedFileRow';
-import { useTalentOnboardingStateQuery } from '../../services/queries/onboarding';
-import { useUploadCvMutation, useGetPublicRoleQuery } from '../../services/queries/talent';
+import { useUploadCvMutation, useGetPublicRoleQuery, useGetRoleCvStatusQuery } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
 import { loadRoleApplySlug } from '../../utils/roleSignup';
@@ -25,9 +24,14 @@ const RoleCvUpload: React.FC = () => {
   const [isPolling, setIsPolling] = useState(false);
   const [uploadError, setUploadError] = useState('');
 
-  const { data: stateData, refetch: refetchState } = useTalentOnboardingStateQuery(isPolling, isPolling ? 2000 : false);
+  // Poll the lightweight cv/status endpoint — only after a successful upload.
+  const { data: cvStatusData } = useGetRoleCvStatusQuery(roleSlug, {
+    enabled: isPolling,
+    refetchInterval: isPolling ? 2000 : false,
+  });
 
-  const activeCvStatus = stateData?.data?.activeCv?.parseStatus || stateData?.data?.applyContext?.parseStatus;
+  const activeCvStatus =
+    (cvStatusData?.data?.parseStatus ?? cvStatusData?.parseStatus) as string | undefined;
 
   const role: PublicRoleLandingData | null = useMemo(() => {
     if (!roleSlug) return null;
@@ -72,8 +76,6 @@ const RoleCvUpload: React.FC = () => {
     try {
       await uploadCvMutation.mutateAsync({ file, roleLink: roleSlug });
       setIsPolling(true);
-      // Immediately refetch the state to get the PENDING state from activeCv
-      refetchState();
     } catch (error: any) {
       setUploadError(error?.message || 'Failed to upload CV. Please try again.');
     }

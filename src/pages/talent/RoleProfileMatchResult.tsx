@@ -6,12 +6,13 @@ import MatchResultHero from '../../components/talent/profileMatchResult/MatchRes
 import MatchResultEligibility from '../../components/talent/profileMatchResult/MatchResultEligibility';
 import MatchResultBreakdown from '../../components/talent/profileMatchResult/MatchResultBreakdown';
 import MatchResultAssessmentCTA from '../../components/talent/profileMatchResult/MatchResultAssessmentCTA';
+import { PROFILE_MATCH_BREAKDOWN } from '../../constants/profileMatchResult';
 import { useAuth } from '../../context/AuthContext';
 import { useGetPublicRoleQuery } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
-import { loadRoleApplySlug } from '../../utils/roleSignup';
-import { resolveProfileMatchScan } from '../../utils/profileMatchResult';
+import { resolveProfileMatchScan, getPostMatchPath, withRoleApplyPath } from '../../utils/profileMatchResult';
+import { mapDimensionScoresToBreakdown } from '../../utils/talentMatchApi';
 import { MOCK_PROFILE_MATCH_SCAN_STRONG_MATCH } from '../../constants/profileMatchWaitlist';
 
 const RoleProfileMatchResult: React.FC = () => {
@@ -28,7 +29,8 @@ const RoleProfileMatchResult: React.FC = () => {
   
   // Use strong match mock by default for demonstration purposes
   const matchScan = resolveProfileMatchScan(
-    (location.state as { matchScan?: ReturnType<typeof resolveProfileMatchScan> } | null)?.matchScan || MOCK_PROFILE_MATCH_SCAN_STRONG_MATCH,
+    (location.state as { matchScan?: ReturnType<typeof resolveProfileMatchScan> } | null)?.matchScan
+    ?? MOCK_PROFILE_MATCH_SCAN_STRONG_MATCH,
   );
 
   const { data: response, isLoading: isRoleLoading } = useGetPublicRoleQuery(roleSlug || '');
@@ -42,23 +44,24 @@ const RoleProfileMatchResult: React.FC = () => {
     return mapApiResponseToRoleData(roleSlug, apiData);
   }, [response, roleSlug]);
 
+  const breakdownItems = useMemo(() => {
+    const fromApi = mapDimensionScoresToBreakdown(matchScan.dimensionScores);
+    return fromApi.length > 0 ? fromApi : PROFILE_MATCH_BREAKDOWN;
+  }, [matchScan.dimensionScores]);
+
   useEffect(() => {
-    /*
     if (!roleSlug) {
       navigate('/onboarding/talent?step=1', { replace: true });
       return;
     }
 
-    let correctPath = getPostMatchPath(matchScan);
-    correctPath = correctPath.replace('/onboarding/talent/', `/onboarding/talent/${roleSlug}/`);
-    
+    const correctPath = withRoleApplyPath(getPostMatchPath(matchScan), roleSlug);
     if (correctPath !== `/onboarding/talent/${roleSlug}/match/result`) {
       navigate(correctPath, {
         replace: true,
-        state: { firstName, lastName, matchScan, matchScore: matchScan.originalRoleScore },
+        state: { firstName, lastName, roleSlug, matchScan, matchScore: matchScan.originalRoleScore },
       });
     }
-    */
   }, [roleSlug, matchScan, navigate, firstName, lastName]);
 
   if (!appliedRole) {
@@ -84,7 +87,7 @@ const RoleProfileMatchResult: React.FC = () => {
       <div className="w-full pb-10">
         <MatchResultHero score={matchScan.originalRoleScore} role={appliedRole} />
         <MatchResultEligibility />
-        <MatchResultBreakdown />
+        <MatchResultBreakdown items={breakdownItems} />
         <MatchResultAssessmentCTA />
       </div>
     </DashboardLayout>

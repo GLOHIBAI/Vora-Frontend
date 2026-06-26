@@ -54,19 +54,31 @@ export const validateDateAfter = (
   return '';
 };
 
-export const validateSalaryRange = (min: string, max: string): FieldErrors => {
+export type RangeFieldKeys = { min: string; max: string };
+
+export const isValidAmountRange = (min: string, max: string): boolean => {
+  const mn = parseFloat(min);
+  const mx = parseFloat(max);
+  return !Number.isNaN(mn) && !Number.isNaN(mx) && mn > 0 && mx > 0 && mx > mn;
+};
+
+export const validateSalaryRange = (
+  min: string,
+  max: string,
+  keys: RangeFieldKeys = { min: 'salMin', max: 'salMax' },
+): FieldErrors => {
   const errors: FieldErrors = {};
   const minErr = validateRequired(min, 'Minimum compensation');
   const maxErr = validateRequired(max, 'Maximum compensation');
-  if (minErr) errors.salMin = minErr;
-  if (maxErr) errors.salMax = maxErr;
+  if (minErr) errors[keys.min] = minErr;
+  if (maxErr) errors[keys.max] = maxErr;
   if (!minErr && !maxErr) {
     const mn = parseFloat(min);
     const mx = parseFloat(max);
-    if (Number.isNaN(mn) || mn <= 0) errors.salMin = 'Enter a valid minimum amount';
-    if (Number.isNaN(mx) || mx <= 0) errors.salMax = 'Enter a valid maximum amount';
-    if (!errors.salMin && !errors.salMax && mx < mn) {
-      errors.salMax = 'Maximum must be greater than or equal to minimum';
+    if (Number.isNaN(mn) || mn <= 0) errors[keys.min] = 'Enter a valid minimum amount';
+    if (Number.isNaN(mx) || mx <= 0) errors[keys.max] = 'Enter a valid maximum amount';
+    if (!errors[keys.min] && !errors[keys.max] && mx <= mn) {
+      errors[keys.max] = 'Maximum must be greater than minimum';
     }
   }
   return errors;
@@ -352,7 +364,7 @@ export function validatePostJobStep5(v: PostJobStep5Values): FieldErrors {
       Object.assign(errors, validateSalaryRange(v.salMin, v.salMax));
       break;
     case 'con':
-      Object.assign(errors, validateSalaryRange(v.conMin, v.conMax));
+      Object.assign(errors, validateSalaryRange(v.conMin, v.conMax, { min: 'conMin', max: 'conMax' }));
       if (!errors.conMin && !errors.conMax && v.conDuration < 1) {
         errors.conDuration = 'Enter a valid contract duration';
       }

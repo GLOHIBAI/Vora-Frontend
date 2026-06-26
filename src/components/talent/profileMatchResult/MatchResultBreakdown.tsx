@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react';
 import { PROFILE_MATCH_BREAKDOWN } from '../../../constants/profileMatchResult';
+import type { ProfileMatchBreakdownItem } from '../../../constants/profileMatchResult';
 
-const MatchResultBreakdown: React.FC = () => {
-  const [animatedPct, setAnimatedPct] = useState<number[]>(PROFILE_MATCH_BREAKDOWN.map(() => 0));
+interface MatchResultBreakdownProps {
+  items?: ProfileMatchBreakdownItem[];
+}
+
+const MatchResultBreakdown: React.FC<MatchResultBreakdownProps> = ({ items = PROFILE_MATCH_BREAKDOWN }) => {
+  const [animatedPct, setAnimatedPct] = useState<number[]>(items.map(() => 0));
 
   useEffect(() => {
-    const timeouts = PROFILE_MATCH_BREAKDOWN.map((item, i) => {
+    setAnimatedPct(items.map(() => 0));
+    const timeouts = items.map((item, i) => {
       return setTimeout(() => {
         setAnimatedPct((prev) => {
           const next = [...prev];
@@ -16,14 +22,14 @@ const MatchResultBreakdown: React.FC = () => {
     });
 
     return () => timeouts.forEach(clearTimeout);
-  }, []);
+  }, [items]);
 
   return (
     <div className="bg-white border border-[#E6E6E6] rounded-xl px-6 py-[22px] mb-5">
       <h3 className="text-[15px] font-bold text-[#1A1A1A] mb-4">How your profile matched</h3>
       
       <div className="flex flex-col gap-3">
-        {PROFILE_MATCH_BREAKDOWN.map((item, i) => {
+        {items.map((item, i) => {
           const colorClass = 'bg-[#0047CC]';
           const textColorClass = 'text-[#0047CC]';
           const pct = animatedPct[i];

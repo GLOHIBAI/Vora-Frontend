@@ -180,6 +180,18 @@ const TalentOnboarding: React.FC = () => {
     }
   }, [onboardingState?.data?.step, stepParam, location.state?.onboardingStep]);
 
+  // If onboarding is already complete, skip the form entirely.
+  // Role-apply flow → go straight to CV upload; normal flow → go to dashboard.
+  useEffect(() => {
+    if (!onboardingState?.data?.onboardingCompleted) return;
+    if (isRoleApplyFlow && roleSlug) {
+      navigate(`/onboarding/talent/${roleSlug}/cv`, { replace: true });
+    } else {
+      navigate('/dashboard', { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onboardingState?.data?.onboardingCompleted]);
+
   // Step 1 state
   const [formData, setFormData] = useState({
     firstName: '',

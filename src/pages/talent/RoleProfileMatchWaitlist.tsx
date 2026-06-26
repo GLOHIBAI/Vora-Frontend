@@ -7,16 +7,16 @@ import RoleAlertPreferencesCard from '../../components/talent/profileWaitlist/Ro
 import ProfileWaitlistNextSteps from '../../components/talent/profileWaitlist/ProfileWaitlistNextSteps';
 import {
   DEFAULT_PROFILE_WAITLIST_SUMMARY,
-  MOCK_PROFILE_MATCH_SCAN_STRONG_NO_ROLES,
 } from '../../constants/profileMatchWaitlist';
 import { useRoleAlertPreferences } from '../../hooks/useRoleAlertPreferences';
 import { useAuth } from '../../context/AuthContext';
 import { useGetPublicRoleQuery } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
-import { loadRoleApplySlug } from '../../utils/roleSignup';
 import {
   resolveProfileMatchScan,
+  getPostMatchPath,
+  withRoleApplyPath,
 } from '../../utils/profileMatchResult';
 import { useEffect, useMemo } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -33,7 +33,7 @@ const RoleProfileMatchWaitlist: React.FC = () => {
   const lastName =
     (location.state as { lastName?: string } | null)?.lastName || user?.lastName || '';
   const matchScan = resolveProfileMatchScan(
-    (location.state as { matchScan?: ReturnType<typeof resolveProfileMatchScan> } | null)?.matchScan || MOCK_PROFILE_MATCH_SCAN_STRONG_NO_ROLES,
+    (location.state as { matchScan?: ReturnType<typeof resolveProfileMatchScan> } | null)?.matchScan,
   );
 
   const { data: response, isLoading: isRoleLoading } = useGetPublicRoleQuery(roleSlug || '');
@@ -58,20 +58,18 @@ const RoleProfileMatchWaitlist: React.FC = () => {
   const preferencesState = useRoleAlertPreferences();
 
   useEffect(() => {
-    /*
     if (!roleSlug) {
       navigate('/onboarding/talent?step=1', { replace: true });
       return;
     }
 
-    const correctPath = getPostMatchPath(matchScan);
-    if (correctPath !== '/onboarding/talent/match/waitlist') {
+    const correctPath = withRoleApplyPath(getPostMatchPath(matchScan), roleSlug);
+    if (correctPath !== `/onboarding/talent/${roleSlug}/match/waitlist`) {
       navigate(correctPath, {
         replace: true,
         state: { firstName, lastName, roleSlug, matchScan, matchScore: matchScan.originalRoleScore },
       });
     }
-    */
   }, [roleSlug, matchScan, navigate, firstName, lastName]);
 
   if (!roleSlug || !appliedRole) {

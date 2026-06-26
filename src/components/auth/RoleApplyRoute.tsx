@@ -23,8 +23,11 @@ const RoleApplyRoute: React.FC = () => {
   const onboardingCompleted = stateData?.data?.onboardingCompleted === true;
   const activeCvStatus = stateData?.data?.activeCv?.parseStatus || stateData?.data?.applyContext?.parseStatus;
 
-  // Step 1: Ensure user has completed basic demographic onboarding (Steps 1 & 2)
-  if (!onboardingCompleted && step < 2) {
+  // Step 1: Ensure user has completed basic demographic onboarding (Steps 1 & 2).
+  // We treat step >= 2 as "done enough" because onboardingCompleted is optional in the
+  // API response and may come back undefined even for fully-onboarded users.
+  const isOnboardingDone = onboardingCompleted || step >= 2;
+  if (!isOnboardingDone) {
     // If they haven't finished basic onboarding, bump them back to the general onboarding screen
     return <Navigate to={`/onboarding/talent?step=${step + 1}`} replace />;
   }

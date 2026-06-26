@@ -12,15 +12,16 @@ import {
   DEFAULT_ROLES_FOUND_SUMMARY,
   MOCK_MATCHED_ROLES,
 } from '../../constants/talentRolesFound';
-import { isCareerReadinessPassing } from '../../constants/profileMatchWaitlist';
 import { useAuth } from '../../context/AuthContext';
-import { useGetPublicRoleQuery } from '../../services/queries/talent';
+import { useGetPublicRoleQuery, useGetTalentMatchesQuery } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
-import { loadRoleApplySlug } from '../../utils/roleSignup';
 import {
   resolveProfileMatchScan,
+  getPostMatchPath,
+  withRoleApplyPath,
 } from '../../utils/profileMatchResult';
+import { mapTalentMatchesToListings } from '../../utils/talentMatchApi';
 
 const RoleProfileRolesFound: React.FC = () => {
   const navigate = useNavigate();
@@ -37,7 +38,9 @@ const RoleProfileRolesFound: React.FC = () => {
   const matchScan = resolveProfileMatchScan(
     (location.state as { matchScan?: ReturnType<typeof resolveProfileMatchScan> } | null)?.matchScan,
   );
-  const careerReadinessPassing = isCareerReadinessPassing(matchScan);
+
+  const hasAuthToken = !!localStorage.getItem('auth_token');
+  const { data: matchesResponse } = useGetTalentMatchesQuery({ enabled: hasAuthToken });
 
   const { data: response, isLoading: isRoleLoading } = useGetPublicRoleQuery(roleSlug || '');
 
@@ -50,36 +53,41 @@ const RoleProfileRolesFound: React.FC = () => {
     return mapApiResponseToRoleData(roleSlug, apiData);
   }, [response, roleSlug]);
 
+  const matchedRoles = useMemo(() => {
+    const fromApi = mapTalentMatchesToListings(matchesResponse, roleSlug);
+    return fromApi.length > 0 ? fromApi : MOCK_MATCHED_ROLES;
+  }, [matchesResponse, roleSlug]);
+
   const summary = useMemo(
     () => ({
       ...DEFAULT_ROLES_FOUND_SUMMARY,
       originalRoleTitle: appliedRole?.roleTitle ?? DEFAULT_ROLES_FOUND_SUMMARY.originalRoleTitle,
       originalScore: matchScan.originalRoleScore,
+      matchedRoleCount: matchScan.matchedRoleCount || matchedRoles.length,
+      careerReadinessScore: matchScan.careerReadinessScore,
     }),
-    [appliedRole, matchScan.originalRoleScore],
+    [appliedRole, matchScan.originalRoleScore, matchScan.matchedRoleCount, matchScan.careerReadinessScore, matchedRoles.length],
   );
 
   const selectedRole = useMemo(
-    () => MOCK_MATCHED_ROLES.find((role) => role.id === selectedRoleId) ?? null,
-    [selectedRoleId],
+    () => matchedRoles.find((role) => role.id === selectedRoleId) ?? null,
+    [matchedRoles, selectedRoleId],
   );
 
   useEffect(() => {
-    // UI DEV: Commenting out redirects so pages can be accessed directly
-    /*
     if (!roleSlug) {
       navigate('/onboarding/talent?step=1', { replace: true });
       return;
     }
 
-    if (careerReadinessPassing) {
-      navigate(getPostMatchPath(matchScan), {
+    const correctPath = withRoleApplyPath(getPostMatchPath(matchScan), roleSlug);
+    if (correctPath !== `/onboarding/talent/${roleSlug}/match/roles`) {
+      navigate(correctPath, {
         replace: true,
         state: { firstName, lastName, roleSlug, matchScan, matchScore: matchScan.originalRoleScore },
       });
     }
-    */
-  }, [roleSlug, careerReadinessPassing, matchScan, navigate, firstName, lastName]);
+  }, [roleSlug, matchScan, navigate, firstName, lastName]);
 
   if (!roleSlug || !appliedRole) {
     return null;
@@ -117,7 +125,7 @@ const RoleProfileRolesFound: React.FC = () => {
           to assessment.
         </p>
 
-        {MOCK_MATCHED_ROLES.map((role) => (
+        {matchedRoles.map((role) => (
           <MatchedRoleCard
             key={role.id}
             role={role}

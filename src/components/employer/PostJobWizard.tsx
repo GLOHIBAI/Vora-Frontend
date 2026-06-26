@@ -8,6 +8,7 @@ import {
   validatePostJobStep,
   validateJobDocumentFile,
   firstValidationMessage,
+  isValidAmountRange,
   type FieldErrors,
 } from '../../utils/postJobValidation';
 import { 
@@ -61,6 +62,7 @@ import {
   ROLE_TYPE_GROUPS,
   EMPLOYMENT_LEVEL_OPTIONS,
   WORK_FORMAT_OPTIONS,
+  TIME_COMMITMENT_OPTIONS,
   INT_POLICY_OPTIONS,
   SECURITY_CLEARANCE_OPTIONS,
   WORK_PERMIT_OPTIONS,
@@ -177,14 +179,15 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
   useEffect(() => {
     if (prefillRes?.data) {
       const p = prefillRes.data as any;
-      if (p.jdParseStatus) {
-        setParseStatus(p.jdParseStatus);
+      const status = p.parseStatus || p.jdParseStatus;
+      if (status) {
+        setParseStatus(status);
       }
       
-      const isStillProcessing = p.jdParseStatus === 'PENDING' || p.jdParseStatus === 'PROCESSING';
+      const isStillProcessing = status === 'PENDING' || status === 'PROCESSING';
       
       if (!isStillProcessing) {
-        if (p.jdParseStatus === 'FAILED') {
+        if (status === 'FAILED') {
           // Keep the polling screen up, but it will show the FAILED state because of `parseStatus`
           toast.error('Failed to extract job details.');
           setShowPrefillBanner(false);
@@ -358,8 +361,8 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
   };
 
   const showEscrow = (type: string) => {
-    if (type === 'sal') return !!salMin || !!salMax;
-    if (type === 'con') return !!conMin || !!conMax;
+    if (type === 'sal') return isValidAmountRange(salMin, salMax);
+    if (type === 'con') return isValidAmountRange(conMin, conMax);
     if (type === 'sti') return !!stiVal;
     if (type === 'phd') return !!phdVal;
     if (type === 'uni') return !!uniTuition && !!uniProg;
@@ -679,56 +682,306 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
 
   useEffect(() => {
     if (prefillRes?.data) {
-      const p = prefillRes.data;
+      const p = prefillRes.data as any;
+      
+      // Helpers to map parsed strings to valid options or leave empty if no match is found
+      const mapPrefillRoleType = (val: string): string => {
+        if (!val) return '';
+        const normalized = val.trim().toLowerCase();
+        
+        // Direct matches or key terms mapping
+        if (normalized.includes('full-time') || normalized.includes('fulltime') || normalized === 'full time') {
+          return 'Full-time employment';
+        }
+        if (normalized.includes('part-time') || normalized.includes('parttime') || normalized === 'part time') {
+          return 'Part-time employment';
+        }
+        
+        const allRoleTypes = ROLE_TYPE_GROUPS.flatMap(g => g.options.map(o => o.value));
+        const matched = allRoleTypes.find(opt => opt.toLowerCase() === normalized);
+        if (matched) return matched;
+
+        const partialMatched = allRoleTypes.find(opt => normalized.includes(opt.toLowerCase()) || opt.toLowerCase().includes(normalized));
+        if (partialMatched) return partialMatched;
+        
+        return '';
+      };
+
+      const mapPrefillEmploymentLevel = (val: string): string => {
+        if (!val) return '';
+        const normalized = val.trim().toLowerCase();
+        if (normalized.includes('senior')) return 'Senior level';
+        if (normalized.includes('mid') || normalized === 'middle') return 'Mid level';
+        if (normalized.includes('entry')) return 'Entry level';
+        if (normalized.includes('student') || normalized.includes('graduate')) return 'Student / Graduate';
+        if (normalized.includes('executive') || normalized.includes('director') || normalized.includes('lead')) return 'Executive / Director';
+        
+        const matched = EMPLOYMENT_LEVEL_OPTIONS.find(o => o.value.toLowerCase() === normalized);
+        return matched ? matched.value : '';
+      };
+
+      const mapPrefillTimeCommitment = (val: string): string => {
+        if (!val) return '';
+        const normalized = val.trim().toLowerCase();
+        if (normalized.includes('full-time') || normalized.includes('fulltime') || normalized === 'full time') {
+          return 'Full-time';
+        }
+        if (normalized.includes('part-time') || normalized.includes('parttime') || normalized === 'part time') {
+          return 'Part-time';
+        }
+        const matched = TIME_COMMITMENT_OPTIONS.find(o => o.value.toLowerCase() === normalized || o.value.toLowerCase().includes(normalized));
+        return matched ? matched.value : '';
+      };
+
+      const mapPrefillWorkFormat = (val: string): string => {
+        if (!val) return '';
+        const normalized = val.trim().toLowerCase();
+        if (normalized === 'hybrid' || normalized.includes('hybrid')) return 'Hybrid';
+        if (normalized === 'onsite' || normalized.includes('onsite') || normalized.includes('on-site') || normalized.includes('fully onsite')) return 'Fully onsite';
+        if (normalized.includes('remote')) {
+          if (normalized.includes('timezone')) return 'Remote - specific timezone(s) required';
+          return 'Remote - no timezone restriction';
+        }
+        if (normalized.includes('flexible')) return 'Flexible / candidate preference';
+        
+        const matched = WORK_FORMAT_OPTIONS.find(o => o.value.toLowerCase() === normalized);
+        return matched ? matched.value : '';
+      };
+
+      const mapPrefillExperienceYears = (val: string): string => {
+        if (!val) return '';
+        const normalized = val.trim().toLowerCase();
+        
+        // Match range: e.g., "5 to 8"
+        const rangeMatch = normalized.match(/(\d+)\s*(to|-)\s*(\d+)/);
+        if (rangeMatch) {
+          const min = parseInt(rangeMatch[1]);
+          const max = parseInt(rangeMatch[3]);
+          if (min >= 12 || max >= 12) return '12+ years (senior / director level)';
+          if (min >= 8) return '8 to 12 years';
+          if (min >= 5) return '5 to 8 years';
+          if (min >= 3) return '3 to 5 years';
+          if (min >= 1) return '1 to 3 years';
+        }
+        
+        // Match single number: e.g., "5 years"
+        const singleMatch = normalized.match(/(\d+)/);
+        if (singleMatch) {
+          const years = parseInt(singleMatch[1]);
+          if (years >= 12) return '12+ years (senior / director level)';
+          if (years >= 8) return '8 to 12 years';
+          if (years >= 5) return '5 to 8 years';
+          if (years >= 3) return '3 to 5 years';
+          if (years >= 1) return '1 to 3 years';
+        }
+        
+        if (normalized.includes('no experience') || normalized.includes('student') || normalized.includes('graduate')) {
+          return 'No experience required (student / graduate)';
+        }
+        if (normalized.includes('up to 1') || normalized.includes('under 1') || normalized.includes('less than 1')) {
+          return 'Up to 1 year';
+        }
+        
+        const matched = EXPERIENCE_YEARS_OPTIONS.find(o => o.value.toLowerCase() === normalized);
+        return matched ? matched.value : '';
+      };
+
+      const mapPrefillMinimumQualification = (val: string): string => {
+        if (!val) return '';
+        const normalized = val.trim().toLowerCase();
+        if (normalized.includes('phd') || normalized.includes('doctorate') || normalized.includes('doctoral')) {
+          return 'Doctoral degree (PhD or equivalent)';
+        }
+        if (normalized.includes('master') || normalized.includes('msc') || normalized.includes('mph') || normalized.includes('mba') || normalized.includes('postgraduate')) {
+          return 'Postgraduate degree (Masters or equivalent)';
+        }
+        if (normalized.includes('bachelor') || normalized.includes('bsc') || normalized.includes('undergraduate') || normalized.includes('degree')) {
+          return 'Undergraduate degree (any field)';
+        }
+        if (normalized.includes('no formal') || normalized.includes('none required')) {
+          return 'No formal qualification required';
+        }
+        if (normalized.includes('certificate') || normalized.includes('vocational') || normalized.includes('diploma')) {
+          return 'Professional certificate or vocational qualification';
+        }
+        
+        const matched = MIN_QUALIFICATION_OPTIONS.find(o => o.value.toLowerCase() === normalized || o.value.toLowerCase().includes(normalized));
+        return matched ? matched.value : '';
+      };
+
+      const mapPrefillSingleSelect = (val: string, validOptions: string[]): string => {
+        if (!val) return '';
+        const normalized = val.trim().toLowerCase();
+        const matched = validOptions.find(
+          opt => opt.toLowerCase() === normalized || 
+                 opt.toLowerCase().includes(normalized) || 
+                 normalized.includes(opt.toLowerCase())
+        );
+        return matched || '';
+      };
+
+      const mapPrefillMultiSelect = (vals: string[], validOptions: string[]): string[] => {
+        if (!Array.isArray(vals)) return [];
+        const matched = vals
+          .map(v => {
+            const normalized = v.trim().toLowerCase();
+            const found = validOptions.find(
+              opt => opt.toLowerCase() === normalized || 
+                     opt.toLowerCase().includes(normalized) || 
+                     normalized.includes(opt.toLowerCase())
+            );
+            return found || '';
+          })
+          .filter(Boolean);
+        return [...new Set(matched)];
+      };
+
+      const normalizeNewlines = (text: string): string => {
+        if (!text) return '';
+        return text
+          .split(/\n\s*\n/)
+          .map(paragraph => paragraph.replace(/\s*\n\s*/g, ' '))
+          .join('\n\n');
+      };
+
+      // Extract from nested prefill object or fall back to top-level properties
+      const step1 = p.prefill?.step1 || p;
+      const step2 = p.prefill?.step2 || p;
+      const step3 = p.prefill?.step3 || p;
+      const step4 = p.prefill?.step4 || p;
+      const step5 = p.prefill?.step5 || p;
+
       // Step 1
-      if (p.roleTitle) setRoleTitle(p.roleTitle);
-      if (p.roleType) setRoleType(p.roleType);
-      if (p.employmentLevel) setLevel(p.employmentLevel);
-      if (p.positionsAvailable) setPositions(p.positionsAvailable.toString());
-      if (p.timeCommitment) setTimeCommitment(p.timeCommitment);
-      if (p.workFormat) setWorkFormat(p.workFormat);
-      if (p.workLocationPrimary) setLocation(p.workLocationPrimary);
-      if (p.additionalHiringLocations) setAdditionalLocations(p.additionalHiringLocations);
-      if (p.timezoneRegions) setSelectedTimezoneRegions(p.timezoneRegions);
-      if (p.timezoneRequirements) setSelectedTimezones(p.timezoneRequirements);
-      if (p.startDate) setStartDate(p.startDate);
-      if (p.closingDate) setEndDate(p.closingDate);
-      if (p.roleSummary) setSummary(p.roleSummary);
-      if (p.internationalTalentPolicy) setInternationalPolicy(p.internationalTalentPolicy);
-      if (p.securityClearanceRequirement) setSecurityClearance(p.securityClearanceRequirement);
-      if (p.workPermitTypesAccepted) setSelectedWorkPermits(p.workPermitTypesAccepted);
+      if (step1.roleTitle) setRoleTitle(step1.roleTitle);
+      if (step1.roleType) {
+        const mappedRoleType = mapPrefillRoleType(step1.roleType);
+        if (mappedRoleType) {
+          setRoleType(mappedRoleType);
+          setShowCustomRoleInput(false);
+          setCustomRoleText('');
+        } else {
+          // If no standard option match is found, show custom role type input box
+          setRoleType(step1.roleType);
+          setShowCustomRoleInput(true);
+          setCustomRoleText(step1.roleType);
+        }
+      }
+      if (step1.employmentLevel) setLevel(mapPrefillEmploymentLevel(step1.employmentLevel));
+      if (step1.positionsAvailable) setPositions(step1.positionsAvailable.toString());
+      if (step1.timeCommitment) setTimeCommitment(mapPrefillTimeCommitment(step1.timeCommitment));
+      if (step1.workFormat) setWorkFormat(mapPrefillWorkFormat(step1.workFormat));
+      if (step1.workLocationPrimary) setLocation(step1.workLocationPrimary);
+      if (step1.additionalHiringLocations) setAdditionalLocations(step1.additionalHiringLocations);
+      if (step1.timezoneRegions) setSelectedTimezoneRegions(step1.timezoneRegions);
+      if (step1.timezoneRequirements) setSelectedTimezones(step1.timezoneRequirements);
+      if (step1.startDate) setStartDate(step1.startDate);
+      if (step1.closingDate) setEndDate(step1.closingDate);
+      else if (step1.endDate) setEndDate(step1.endDate);
+      if (step1.roleSummary) setSummary(normalizeNewlines(step1.roleSummary));
+      if (step1.internationalTalentPolicy) setInternationalPolicy(step1.internationalTalentPolicy);
+      if (step1.securityClearanceRequirement) setSecurityClearance(step1.securityClearanceRequirement);
+      if (step1.workPermitTypesAccepted) setSelectedWorkPermits(step1.workPermitTypesAccepted);
 
       // Step 2
-      if (p.roleGoal) setRoleGoal(p.roleGoal);
-      if (p.coreResponsibilities) setCoreResponsibilities(p.coreResponsibilities);
-      if (p.technicalSkills) setTechnicalSkills(p.technicalSkills);
-      if (p.toolsRequired) setTools(p.toolsRequired);
-      if (p.languageRequirements) setLanguages(p.languageRequirements);
+      if (step2.roleGoal) setRoleGoal(normalizeNewlines(step2.roleGoal));
+      if (step2.coreResponsibilities) setCoreResponsibilities(step2.coreResponsibilities);
+      if (step2.technicalSkills) {
+        const validSkills = TECHNICAL_SKILLS_GROUPS.flatMap(g => g.options.map(o => o.value));
+        setTechnicalSkills(mapPrefillMultiSelect(step2.technicalSkills, validSkills));
+      }
+      if (step2.toolsRequired) {
+        const validTools = TOOLS_SOFTWARE_GROUPS.flatMap(g => g.options.map(o => o.value));
+        setTools(mapPrefillMultiSelect(step2.toolsRequired, validTools));
+      }
+      if (step2.languageRequirements) {
+        const validLanguages = LANGUAGE_OPTIONS.map(o => o.value);
+        setLanguages(mapPrefillMultiSelect(step2.languageRequirements, validLanguages));
+      }
 
       // Step 3
-      if (p.yearsExperienceRequired) setExperienceYears(p.yearsExperienceRequired);
-      if (p.typeOfExperience) setExperienceTypes(p.typeOfExperience);
-      if (p.minimumQualification) setMinQualification(p.minimumQualification);
-      if (p.preferredQualifications) setPreferredQualifications(p.preferredQualifications);
-      if (p.sectorBackground) setSectorBackground(p.sectorBackground);
-      if (p.geographicExperience) setGeographicExperience(p.geographicExperience);
-      if (p.publicationsRequired) setPublicationsRequired(p.publicationsRequired);
-      if (p.budgetManagementRequired) setBudgetManagement(p.budgetManagementRequired);
-      if (p.teamManagementRequired) setTeamManagement(p.teamManagementRequired);
+      if (step3.yearsExperienceRequired) setExperienceYears(mapPrefillExperienceYears(step3.yearsExperienceRequired));
+      if (step3.typeOfExperience) {
+        const validExpTypes = EXPERIENCE_TYPES_GROUPS.flatMap(g => g.options.map(o => o.value));
+        setExperienceTypes(mapPrefillMultiSelect(step3.typeOfExperience, validExpTypes));
+      }
+      if (step3.minimumQualification) setMinQualification(mapPrefillMinimumQualification(step3.minimumQualification));
+      if (step3.preferredQualifications) setPreferredQualifications(step3.preferredQualifications);
+      if (step3.sectorBackground) {
+        const validSectors = SECTOR_BACKGROUND_GROUPS.flatMap(g => g.options.map(o => o.value));
+        setSectorBackground(mapPrefillMultiSelect(step3.sectorBackground, validSectors));
+      }
+      if (step3.geographicExperience) {
+        const validGeos = GEOGRAPHIC_EXPERIENCE_OPTIONS.map(o => o.value);
+        setGeographicExperience(mapPrefillMultiSelect(step3.geographicExperience, validGeos));
+      }
+      if (step3.publicationsRequired) {
+        const validPubs = PUBLICATIONS_OPTIONS.map(o => o.value);
+        setPublicationsRequired(mapPrefillSingleSelect(step3.publicationsRequired, validPubs));
+      }
+      if (step3.budgetManagementRequired) {
+        const validBudgets = BUDGET_MANAGEMENT_OPTIONS.map(o => o.value);
+        setBudgetManagement(mapPrefillSingleSelect(step3.budgetManagementRequired, validBudgets));
+      }
+      if (step3.teamManagementRequired) {
+        const validTeams = TEAM_MANAGEMENT_OPTIONS.map(o => o.value);
+        setTeamManagement(mapPrefillSingleSelect(step3.teamManagementRequired, validTeams));
+      }
 
       // Step 4
-      if (p.preferredWorkingStyle) setPreferredWorkingStyle(p.preferredWorkingStyle);
-      if (p.communicationRhythm) setCommunicationRhythm(p.communicationRhythm);
-      if (p.primaryWorkingLanguage) setPrimaryLanguage(p.primaryWorkingLanguage);
-      if (p.personalityTraits) setPersonalityTraits(p.personalityTraits);
-      if (p.workEnvironmentDescriptors) setWorkEnvironment(p.workEnvironmentDescriptors);
-      if (p.teamCultureFreeText) setAdditionalTeamContext(p.teamCultureFreeText);
-      
-      // Step 5
-      // Assuming mapping for compensation is handled mostly via the user, or if returned, handled here.
+      if (step4.preferredWorkingStyle) {
+        const validStyles = PREFERRED_WORKING_STYLE_OPTIONS.map(o => o.value);
+        setPreferredWorkingStyle(mapPrefillMultiSelect(step4.preferredWorkingStyle, validStyles));
+      }
+      if (step4.communicationRhythm) {
+        const validRhythms = COMMUNICATION_RHYTHM_OPTIONS.map(o => o.value);
+        setCommunicationRhythm(mapPrefillMultiSelect(step4.communicationRhythm, validRhythms));
+      }
+      if (step4.primaryWorkingLanguage) setPrimaryLanguage(step4.primaryWorkingLanguage);
+      if (step4.personalityTraits) {
+        const validTraits = PERSONALITY_TRAITS_OPTIONS.map(o => o.value);
+        setPersonalityTraits(mapPrefillMultiSelect(step4.personalityTraits, validTraits));
+      }
+      if (step4.workEnvironmentDescriptors) {
+        const validEnvs = WORK_ENVIRONMENT_OPTIONS.map(o => o.value);
+        setWorkEnvironment(mapPrefillMultiSelect(step4.workEnvironmentDescriptors, validEnvs));
+      }
+      if (step4.teamCultureFreeText) setAdditionalTeamContext(normalizeNewlines(step4.teamCultureFreeText));
 
-      // We can hide the prefill banner or change its state once data is populated
-      setShowPrefillBanner(false);
+      // Step 5
+      if (step5.compensationType) {
+        const typeMap: Record<string, 'sal' | 'con' | 'sti' | 'unp' | 'phd' | 'uni'> = {
+          "SALARIED": 'sal',
+          "CONTRACT_DAILY_RATE": 'con',
+          "STIPEND_FELLOWSHIP": 'sti',
+          "UNPAID_FLAT_FEE": 'unp',
+          "FUNDED_PHD": 'phd',
+          "UNIVERSITY_ADMISSIONS": 'uni',
+          "GIG_PROJECT": 'unp'
+        };
+        const mappedType = typeMap[step5.compensationType];
+        if (mappedType) setCompType(mappedType);
+      }
+      if (step5.compensationCurrency) {
+        setSalCur(step5.compensationCurrency);
+        setConCur(step5.compensationCurrency);
+        setStiCur(step5.compensationCurrency);
+        setPhdCur(step5.compensationCurrency);
+        setUniCur(step5.compensationCurrency);
+      }
+      if (step5.salaryMin !== undefined && step5.salaryMin !== null) setSalMin(step5.salaryMin.toString());
+      if (step5.salaryMax !== undefined && step5.salaryMax !== null) setSalMax(step5.salaryMax.toString());
+      if (step5.dailyRateMin !== undefined && step5.dailyRateMin !== null) setConMin(step5.dailyRateMin.toString());
+      if (step5.dailyRateMax !== undefined && step5.dailyRateMax !== null) setConMax(step5.dailyRateMax.toString());
+      if (step5.dailyRate !== undefined && step5.dailyRate !== null) setConMin(step5.dailyRate.toString());
+      if (step5.contractDurationMonths !== undefined && step5.contractDurationMonths !== null) setConDuration(step5.contractDurationMonths * 22);
+      if (step5.stipendValue) setStiVal(step5.stipendValue);
+      if (step5.yearOneStipend !== undefined && step5.yearOneStipend !== null) setPhdVal(step5.yearOneStipend.toString());
+      if (step5.annualTuitionValue !== undefined && step5.annualTuitionValue !== null) setUniTuition(step5.annualTuitionValue.toString());
+      if (step5.expensesAllowancesBenefits) setExpenses(step5.expensesAllowancesBenefits);
+      if (step5.internalNotes) setInternalNotes(step5.internalNotes);
+
+      // Keep the prefill banner visible to inform the employer
+      setShowPrefillBanner(true);
     }
   }, [prefillRes]);
 
@@ -2267,7 +2520,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                     <div className="space-y-4.5 mt-6 animate-in slide-in-from-top-2 duration-300">
                       <CurrencyAmountRange
                         label="Annual salary range"
-                        hint="VORA calculates your escrow on the midpoint of this range. The midpoint is the figure used for the true-up calculation when a hire is confirmed."
+                        hint="Set the lowest and highest salary you would realistically offer — they must be different. VORA locks escrow on the midpoint of this band. At hire, if the agreed salary differs from that midpoint, VORA true-ups the fee (charge or refund the difference)."
                         currency={salCur}
                         onCurrencyChange={setSalCur}
                         minValue={salMin}
@@ -2291,7 +2544,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                     <div className="space-y-4.5 mt-6 animate-in slide-in-from-top-2 duration-300">
                       <CurrencyAmountRange
                         label="Daily rate range"
-                        hint="VORA annualises the daily rate at 220 working days to calculate the escrow midpoint. Your fee rate is shown in the escrow breakdown below and depends on your registered country."
+                        hint="Set the lowest and highest daily rate you would pay — they must be different. VORA annualises at 220 working days and locks escrow on the midpoint of that band."
                         currency={conCur}
                         onCurrencyChange={setConCur}
                         minValue={conMin}
@@ -2300,7 +2553,8 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                         onMaxChange={(v) => setConMax(sanitizePositiveDecimalInput(v))}
                         minPlaceholder="Min per day"
                         maxPlaceholder="Max per day"
-                        minError={fieldErrors.conMin || fieldErrors.conMax || fieldErrors.conDuration}
+                        minError={fieldErrors.conMin}
+                        maxError={fieldErrors.conMax || fieldErrors.conDuration}
                       />
 
                       {showEscrow('con') && renderEscrowBox('con')}

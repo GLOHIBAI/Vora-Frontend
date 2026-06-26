@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import VoraLogo from '../../components/common/VoraLogo';
 import Button from '../../components/common/Button';
 import { useAuth } from '../../context/AuthContext';
-import { useGetPublicRoleQuery } from '../../services/queries/talent';
+import { useGetPublicRoleQuery, useGetPreAssessmentReadinessQuery, useBeginAssessmentMutation } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
 
@@ -108,6 +108,22 @@ const RoleAssessmentJourney: React.FC = () => {
   const isStage4Unlocked = localStorage.getItem('vora_stage4_unlocked') === 'true';
 
   const { data: response, isLoading: isRoleLoading } = useGetPublicRoleQuery(roleSlug || '');
+  const { data: readinessResponse, isLoading: isReadinessLoading } = useGetPreAssessmentReadinessQuery(roleSlug || '');
+
+  useEffect(() => {
+    if (!isRoleLoading && !isReadinessLoading && readinessResponse) {
+      const readiness = readinessResponse?.data || readinessResponse;
+      const isPreAssessmentRequired = readiness?.preAssessmentRequired === true;
+      
+      const hasPendingDocuments = 
+        Array.isArray(readiness?.requiredDocuments) &&
+        readiness.requiredDocuments.some((doc: any) => doc.required && !doc.submitted);
+
+      if (isPreAssessmentRequired && hasPendingDocuments) {
+        navigate(`/onboarding/talent/${roleSlug}/assessment/asks`, { replace: true });
+      }
+    }
+  }, [isRoleLoading, isReadinessLoading, readinessResponse, navigate, roleSlug]);
 
   const appliedRole: PublicRoleLandingData | null = useMemo(() => {
     if (!roleSlug) return null;
@@ -121,9 +137,25 @@ const RoleAssessmentJourney: React.FC = () => {
   const companyName = appliedRole?.companyName || 'the employer';
   const roleTitle = appliedRole?.roleTitle || 'the role';
 
-  const handleStart = () => {
-    localStorage.setItem('vora_stage1_started', 'true');
-    navigate(`/onboarding/talent/${roleSlug}/assessment/stage-1`);
+  const beginAssessment = useBeginAssessmentMutation();
+
+  const handleStart = async () => {
+    try {
+      const res = await beginAssessment.mutateAsync({
+        roleLink: roleSlug,
+        rolePostingId: response?.data?.id || response?.id
+      });
+      localStorage.setItem('vora_stage1_started', 'true');
+      
+      const assessmentId = res?.data?.assessmentId || res?.assessmentId || res?.data?.id || res?.id;
+      if (assessmentId) {
+        localStorage.setItem('active_assessment_id', assessmentId);
+      }
+      
+      navigate(`/onboarding/talent/${roleSlug}/assessment/stage-1`);
+    } catch (err) {
+      console.error('Failed to begin assessment:', err);
+    }
   };
 
   return (
@@ -154,7 +186,7 @@ const RoleAssessmentJourney: React.FC = () => {
             <span className="text-[12px] font-[600] tracking-[1px] text-white/70 uppercase">Welcome back, {firstName}</span>
           </div>
           <h1 className="text-[clamp(28px,3.6vw,40px)] font-[500] tracking-[-0.6px] mb-[12px] leading-[1.18]">
-            Your interview journey,<br/>built around <span className="text-[#FBBF24]">your story</span>
+            Your interview journey,<br/>built around <span className="text-white">your story</span>
           </h1>
           <p className="text-[15.5px] leading-[1.7] max-w-[620px] text-white/90 mb-[30px]">
             This isn't a generic test. Four stages, each one earning its place in the picture {companyName} builds of you. No rote questions. No filler. Pause and resume from any device, anytime your seat is held.
@@ -320,8 +352,8 @@ const RoleAssessmentJourney: React.FC = () => {
                   <WindowIcon className="w-[13px] h-[13px]" />
                   48 hour window
                 </div>
-                <div className="flex items-center gap-[6px] text-[11.5px] font-[700] text-[#B45309]">
-                  <ThresholdIcon className="w-[13px] h-[13px] text-[#D97706]" />
+                <div className="flex items-center gap-[6px] text-[11.5px] font-[700] text-[#808080]">
+                  <ThresholdIcon className="w-[13px] h-[13px] text-[#808080]" />
                   80% to advance
                 </div>
               </div>
@@ -370,8 +402,8 @@ const RoleAssessmentJourney: React.FC = () => {
                     <WindowIcon className="w-[13px] h-[13px]" />
                     72 hour window
                   </div>
-                  <div className="flex items-center gap-[6px] text-[11.5px] font-[700] text-[#B45309]">
-                    <ThresholdIcon className="w-[13px] h-[13px] text-[#D97706]" />
+                  <div className="flex items-center gap-[6px] text-[11.5px] font-[700] text-[#808080]">
+                    <ThresholdIcon className="w-[13px] h-[13px] text-[#808080]" />
                     80% to advance
                   </div>
                 </div>
@@ -403,8 +435,8 @@ const RoleAssessmentJourney: React.FC = () => {
                     <WindowIcon className="w-[13px] h-[13px]" />
                     72 hour window
                   </div>
-                  <div className="flex items-center gap-[6px] text-[11.5px] font-[700] text-[#B45309]">
-                    <ThresholdIcon className="w-[13px] h-[13px] text-[#D97706]" />
+                  <div className="flex items-center gap-[6px] text-[11.5px] font-[700] text-[#808080]">
+                    <ThresholdIcon className="w-[13px] h-[13px] text-[#808080]" />
                     80% to advance
                   </div>
                 </div>

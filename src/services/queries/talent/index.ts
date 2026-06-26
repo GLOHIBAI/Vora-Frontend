@@ -9,6 +9,22 @@ export const useGetPublicRoleQuery = (slug: string) => {
   });
 };
 
+export const useGetPreAssessmentReadinessQuery = (roleLink: string, rolePostingId?: string) => {
+  return useQuery({
+    queryKey: ['pre-assessment-readiness', roleLink, rolePostingId],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (roleLink) params.append('roleLink', roleLink);
+      if (rolePostingId) params.append('rolePostingId', rolePostingId);
+      return apiClient.get<any>({
+        url: `/pre-assessment/readiness?${params.toString()}`,
+        auth: true,
+      });
+    },
+    enabled: !!roleLink || !!rolePostingId,
+  });
+};
+
 export const useUploadCvMutation = () => {
   return useMutation({
     mutationFn: (data: { file: File; roleLink?: string }) => {
@@ -26,9 +42,179 @@ export const useUploadCvMutation = () => {
   });
 };
 
-export const useGetTalentMatchesQuery = () => {
+export const useGetTalentMatchesQuery = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: ['talent', 'matches'],
     queryFn: () => apiClient.get<any>({ url: '/talent/matches', auth: true }),
+    enabled: options?.enabled ?? true,
   });
 };
+
+/**
+ * Fetch the match result for a specific role.
+ * Backend: GET /talent/matches/for-role?roleLink=... OR ?rolePostingId=...
+ * Returns { status: 'PENDING' | 'READY', overallScore, outcome, geopoliticalEligible, dimensionScores, explanation, ... }
+ * Returns 404 while matching is still running — treated as PENDING and polled until READY.
+ */
+export const useGetMatchResultForRoleQuery = (
+  params: { roleLink?: string; rolePostingId?: string },
+  options?: { enabled?: boolean; refetchInterval?: number | false | ((query: { state: { data?: unknown } }) => number | false) },
+) => {
+  const { roleLink, rolePostingId } = params;
+  return useQuery({
+    queryKey: ['talent', 'match-for-role', roleLink, rolePostingId],
+    queryFn: async () => {
+      const qs = new URLSearchParams();
+      if (roleLink) qs.append('roleLink', roleLink);
+      if (rolePostingId) qs.append('rolePostingId', rolePostingId);
+      try {
+        return await apiClient.get<any>({
+          url: `/talent/matches/for-role?${qs.toString()}`,
+          auth: true,
+          suppressErrorToast: true,
+        });
+      } catch (error: any) {
+        if (error?.status === 404) return { status: 'PENDING' };
+        throw error;
+      }
+    },
+    enabled: options?.enabled ?? (!!roleLink || !!rolePostingId),
+    refetchInterval: options?.refetchInterval ?? false,
+  });
+};
+
+/**
+ * Lightweight poll for CV parse status scoped to a specific role link.
+ * Backend: GET /talent/role/{roleLink}/cv/status
+ * Returns { cvUploadId, parseStatus } — much cheaper than polling /talent/me.
+ * parseStatus: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
+ */
+export const useGetRoleCvStatusQuery = (
+  roleLink: string,
+  options?: { enabled?: boolean; refetchInterval?: number | false },
+) => {
+  return useQuery({
+    queryKey: ['talent', 'role-cv-status', roleLink],
+    queryFn: () =>
+      apiClient.get<any>({
+        url: `/talent/role/${encodeURIComponent(roleLink)}/cv/status`,
+        auth: true,
+        suppressErrorToast: true,
+      }),
+    enabled: (options?.enabled ?? true) && !!roleLink,
+    refetchInterval: options?.refetchInterval ?? false,
+  });
+};
+
+export const useSubmitPreAssessmentSubmissionMutation = () => {
+  return useMutation({
+    mutationFn: (data: { file: File; documentType: string; roleLink?: string; rolePostingId?: string }) => {
+      const formData = new FormData();
+      formData.append('file', data.file);
+      formData.append('documentType', data.documentType);
+
+      const params = new URLSearchParams();
+      if (data.roleLink) params.append('roleLink', data.roleLink);
+      if (data.rolePostingId) params.append('rolePostingId', data.rolePostingId);
+
+      return apiClient.post<any>({
+        url: `/pre-assessment/submissions?${params.toString()}`,
+        body: formData as any,
+        auth: true,
+      });
+    },
+  });
+};
+
+export const useUpdatePreAssessmentTextResponseMutation = () => {
+  return useMutation({
+    mutationFn: (data: { text: string; roleLink?: string; rolePostingId?: string }) => {
+      return apiClient.put<any>({
+        url: '/pre-assessment/text-response',
+        body: data,
+        auth: true,
+      });
+    },
+  });
+};
+
+export const useUpdatePreAssessmentReferencesMutation = () => {
+  return useMutation({
+    mutationFn: (data: {
+      references: Array<{
+        fullName: string;
+        roleAndOrganisation: string;
+        email: string;
+        phone?: string;
+        relationship: string;
+      }>;
+      roleLink?: string;
+      rolePostingId?: string;
+    }) => {
+      return apiClient.put<any>({
+        url: '/pre-assessment/references',
+        body: data,
+        auth: true,
+      });
+    },
+  });
+};
+
+export const useUpdatePreAssessmentLinksMutation = () => {
+  return useMutation({
+    mutationFn: (data: { urls: string[]; roleLink?: string; rolePostingId?: string }) => {
+      return apiClient.put<any>({
+        url: '/pre-assessment/links',
+        body: data,
+        auth: true,
+      });
+    },
+  });
+};
+
+export const useUpdatePreAssessmentConsentsMutation = () => {
+  return useMutation({
+    mutationFn: (data: {
+      truthfulWork: boolean;
+      dataUseConsent: boolean;
+      referencesStage4: boolean;
+      roleLink?: string;
+      rolePostingId?: string;
+    }) => {
+      return apiClient.put<any>({
+        url: '/pre-assessment/consents',
+        body: data,
+        auth: true,
+      });
+    },
+  });
+};
+
+export const useCompletePreAssessmentMutation = () => {
+  return useMutation({
+    mutationFn: (data: { roleLink?: string; rolePostingId?: string }) => {
+      const params = new URLSearchParams();
+      if (data.roleLink) params.append('roleLink', data.roleLink);
+      if (data.rolePostingId) params.append('rolePostingId', data.rolePostingId);
+
+      return apiClient.post<any>({
+        url: `/pre-assessment/complete?${params.toString()}`,
+        body: {},
+        auth: true,
+      });
+    },
+  });
+};
+
+export const useBeginAssessmentMutation = () => {
+  return useMutation({
+    mutationFn: (data: { rolePostingId?: string; roleLink?: string }) => {
+      return apiClient.post<any>({
+        url: '/assessments/begin',
+        body: data,
+        auth: true,
+      });
+    },
+  });
+};
+

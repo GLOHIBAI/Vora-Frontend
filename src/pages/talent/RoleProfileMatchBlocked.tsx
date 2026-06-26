@@ -13,7 +13,7 @@ import { useTalentOnboardingStateQuery } from '../../services/queries/onboarding
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
 import { loadRoleApplySlug } from '../../utils/roleSignup';
-import { resolveProfileMatchScan } from '../../utils/profileMatchResult';
+import { resolveProfileMatchScan, getPostMatchPath, withRoleApplyPath } from '../../utils/profileMatchResult';
 
 const RoleProfileMatchBlocked: React.FC = () => {
   const navigate = useNavigate();
@@ -46,20 +46,18 @@ const RoleProfileMatchBlocked: React.FC = () => {
   const onboardingData = onboardingResponse?.data?.onboarding || onboardingResponse?.data?.fields || null;
 
   useEffect(() => {
-    /*
     if (!roleSlug) {
       navigate('/onboarding/talent?step=1', { replace: true });
       return;
     }
 
-    const correctPath = getPostMatchPath(matchScan);
-    if (correctPath !== '/onboarding/talent/match/blocked') {
+    const correctPath = withRoleApplyPath(getPostMatchPath(matchScan), roleSlug);
+    if (correctPath !== `/onboarding/talent/${roleSlug}/match/blocked`) {
       navigate(correctPath, {
         replace: true,
         state: { firstName, lastName, roleSlug, matchScan, matchScore: matchScan.originalRoleScore },
       });
     }
-    */
   }, [roleSlug, matchScan, navigate, firstName, lastName]);
 
   if (!roleSlug || !role) {
@@ -73,6 +71,17 @@ const RoleProfileMatchBlocked: React.FC = () => {
   const alternateRoles = MOCK_MATCHED_ROLES.filter(r => r.id === 'analyst' || r.id === 'associate');
 
   const blockedReasons = useMemo(() => {
+    const failedGate = matchScan.explanation?.gates?.find((gate) => !gate.passed);
+    if (failedGate && role) {
+      return [
+        { key: 'Role', value: `${role.roleTitle} · ${role.companyName}` },
+        { key: 'Result', value: matchScan.explanation?.summary ?? failedGate.message },
+        { key: 'Reason', value: failedGate.message },
+      ];
+    }
+
+    if (!role) return MOCK_BLOCKED_REASONS;
+
     const defaultReasons = [...MOCK_BLOCKED_REASONS];
     if (role) {
       const roleIdx = defaultReasons.findIndex(r => r.key === 'Role');
@@ -121,7 +130,7 @@ const RoleProfileMatchBlocked: React.FC = () => {
       }
     }
     return defaultReasons;
-  }, [role, onboardingData]);
+  }, [role, onboardingData, matchScan.explanation]);
 
   return (
     <DashboardLayout>

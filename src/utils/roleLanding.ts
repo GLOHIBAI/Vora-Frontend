@@ -249,15 +249,31 @@ export const mapApiResponseToRoleData = (slug: string, apiData: any): PublicRole
       .join(' ');
   };
 
-    let compLine = apiData.compensationSummary || '';
-    if (!compLine && (apiData.salaryMin || apiData.salaryMax)) {
-      const min = apiData.salaryMin;
-      const max = apiData.salaryMax;
+    // Helper to build range string from numeric min/max
+    const buildRangeFromNumbers = (min: number | undefined, max: number | undefined, currency: string): string => {
+      if (!min && !max) return '';
+      const currencyPrefix = currency === 'USD' ? '$' : (currency === 'GBP' ? '£' : (currency === 'EUR' ? '€' : (currency === 'NGN' ? '₦' : currency)));
+      const prefix = /^[A-Z]{2,4}$/i.test(currencyPrefix) ? `${currencyPrefix} ` : currencyPrefix;
       if (min && max && min !== max) {
-        compLine = `$${min.toLocaleString()} - $${max.toLocaleString()}`;
-      } else {
-        compLine = `$${(min || max).toLocaleString()}`;
+        return `${prefix}${min.toLocaleString()} - ${prefix}${max.toLocaleString()}`;
       }
+      return `${prefix}${(min || max)!.toLocaleString()}`;
+    };
+
+    // Check all possible locations where the backend might send salary data
+    const currency = apiData.compensationCurrency || apiData.currency || apiData.posting?.compensationCurrency || 'USD';
+    const minFromRoot = apiData.salaryMin ?? apiData.posting?.salaryMin;
+    const maxFromRoot = apiData.salaryMax ?? apiData.posting?.salaryMax;
+
+    let compLine = '';
+    if (minFromRoot || maxFromRoot) {
+      // Explicit numeric min/max: always build the range display
+      compLine = buildRangeFromNumbers(minFromRoot, maxFromRoot, currency);
+    } else {
+      // Fall back to the pre-formatted string(s) from the API
+      // Prefer overview.salary (may already contain a range like "₦600,000 - ₦800,000")
+      // over compensationSummary (which sometimes only contains the max)
+      compLine = apiData.overview?.salary || apiData.compensationSummary || '';
     }
     
     return {

@@ -1,8 +1,18 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useLocation, useNavigate, Link, useParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
-import { useGetPublicRoleQuery } from '../../services/queries/talent';
+import { 
+  useGetPublicRoleQuery, 
+  useGetPreAssessmentReadinessQuery,
+  useSubmitPreAssessmentSubmissionMutation,
+  useUpdatePreAssessmentTextResponseMutation,
+  useUpdatePreAssessmentReferencesMutation,
+  useUpdatePreAssessmentLinksMutation,
+  useUpdatePreAssessmentConsentsMutation,
+  useCompletePreAssessmentMutation
+} from '../../services/queries/talent';
 import {
   ChevronDownIcon
 } from '../../components/common/Icons';
@@ -10,9 +20,10 @@ import VoraLogo from '../../components/common/VoraLogo';
 import ScrollArea from '../../components/common/ScrollArea';
 import Select from '../../components/common/Select';
 import { loadRoleApplySlug } from '../../utils/roleSignup';
+import FullPageSpinner from '../../components/common/FullPageSpinner';
+import Tag from '../../components/common/Tag';
 
 // Icons used in the page
-
 const Trash2Icon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <line x1="18" y1="6" x2="6" y2="18"/>
@@ -68,6 +79,178 @@ const RoleEmployerAsks: React.FC = () => {
   const roleSlug = params.roleSlug || '';
 
   const { data: response, isLoading: isRoleLoading } = useGetPublicRoleQuery(roleSlug || '');
+  const { data: readinessResponse, isLoading: isReadinessLoading, refetch } = useGetPreAssessmentReadinessQuery(roleSlug || '');
+
+  const submitSubmission = useSubmitPreAssessmentSubmissionMutation();
+  const updateText = useUpdatePreAssessmentTextResponseMutation();
+  const updateReferences = useUpdatePreAssessmentReferencesMutation();
+  const updateLinks = useUpdatePreAssessmentLinksMutation();
+  const updateConsents = useUpdatePreAssessmentConsentsMutation();
+  const completePreAssessment = useCompletePreAssessmentMutation();
+
+  const [hasInitialized, setHasInitialized] = useState(false);
+  const [textValue, setTextValue] = useState('');
+  const [portfolioUrls, setPortfolioUrls] = useState<string[]>([]);
+  const [newUrl, setNewUrl] = useState('');
+
+  const [consents, setConsents] = useState({
+    truthful: false,
+    usage: false,
+    references: false
+  });
+
+  const [ref1, setRef1] = useState({
+    fullName: '',
+    roleAndOrganisation: '',
+    email: '',
+    phone: '',
+    relationship: 'manager'
+  });
+
+  const [ref2, setRef2] = useState({
+    fullName: '',
+    roleAndOrganisation: '',
+    email: '',
+    phone: '',
+    relationship: 'peer'
+  });
+
+  const readiness = readinessResponse?.data || readinessResponse;
+
+  // ---------------------------------------------------------------------------
+  // Derive which optional sections the API is asking for
+  // ---------------------------------------------------------------------------
+  const preAssessmentItems: any[] = useMemo(
+    () => (Array.isArray(readiness?.items) ? readiness.items : []),
+    [readiness],
+  );
+
+  const textItem = useMemo(
+    () => preAssessmentItems.find((i: any) => i.kind === 'text') ?? null,
+    [preAssessmentItems],
+  );
+
+  /** Show the written-response box when the API item list includes a text entry,
+   *  or when the backend sends an explicit requiresTextResponse flag. */
+  const showTextResponse: boolean = useMemo(
+    () =>
+      !!textItem ||
+      readiness?.requiresTextResponse === true ||
+      preAssessmentItems.some((i: any) => i.kind === 'text'),
+    [textItem, readiness, preAssessmentItems],
+  );
+
+  /** Show the references block when the API says so, or when the readiness
+   *  payload already contains saved references from a previous session. */
+  const showReferences: boolean = useMemo(
+    () =>
+      readiness?.requiresReferences === true ||
+      preAssessmentItems.some((i: any) => i.kind === 'references') ||
+      (Array.isArray(readiness?.references) && readiness.references.length > 0),
+    [readiness, preAssessmentItems],
+  );
+
+  /** Show the optional links block when the API says so.  Falls back to
+   *  showing it when saved portfolio links already exist from a prior visit. */
+  const showLinks: boolean = useMemo(
+    () =>
+      readiness?.requiresLinks === true ||
+      readiness?.allowPortfolioLinks === true ||
+      preAssessmentItems.some((i: any) => i.kind === 'urls') ||
+      (Array.isArray(readiness?.portfolioLinks) && readiness.portfolioLinks.length > 0) ||
+      portfolioUrls.length > 0,
+    [readiness, preAssessmentItems, portfolioUrls],
+  );
+
+  // Dynamic section numbering — starts after the required-document uploads.
+  const docCount = Array.isArray(readiness?.requiredDocuments) ? readiness.requiredDocuments.length : 0;
+  const textSectionIdx   = docCount + 1;
+  const refSectionIdx    = docCount + (showTextResponse ? 1 : 0) + 1;
+  const linksSectionIdx  = docCount + (showTextResponse ? 1 : 0) + (showReferences ? 1 : 0) + 1;
+
+  const hasRequiredFiles = useMemo(() => {
+    if (readiness) {
+      if (readiness.requiresSubmissions === true) return true;
+      if (readiness.requiresSubmissions === false) return false;
+      if (Array.isArray(readiness.requiredDocumentTypes) && readiness.requiredDocumentTypes.length > 0) return true;
+      if (Array.isArray(readiness.preAssessmentDocumentTypes) && readiness.preAssessmentDocumentTypes.length > 0) return true;
+      if (readiness.requiredDocumentsCount > 0) return true;
+      if (Array.isArray(readiness.requiredDocuments) && readiness.requiredDocuments.length > 0) return true;
+      if (showTextResponse || showReferences) return true;
+    }
+
+    const roleData = response?.data || response;
+    if (roleData) {
+      if (Array.isArray(roleData.preAssessmentDocumentTypes) && roleData.preAssessmentDocumentTypes.length > 0) return true;
+      if (Array.isArray(roleData.preAssessmentRequirements) && roleData.preAssessmentRequirements.length > 0) return true;
+    }
+
+    if (!roleData && !readiness) {
+      return true; // Keep mockup visible for mock roles / local static viewing
+    }
+    return false;
+  }, [readinessResponse, response, showTextResponse, showReferences]);
+
+  // Sync state from API on initial load
+  useEffect(() => {
+    if (readiness && !hasInitialized) {
+      setHasInitialized(true);
+
+      // Text response
+      if (readiness.textResponse) {
+        setTextValue(readiness.textResponse);
+      } else if (Array.isArray(readiness.items)) {
+        const textItem = readiness.items.find((item: any) => item.kind === 'text');
+        if (textItem?.value) setTextValue(textItem.value);
+      }
+
+      // References
+      if (Array.isArray(readiness.references) && readiness.references.length >= 2) {
+        setRef1({
+          fullName: readiness.references[0].fullName || '',
+          roleAndOrganisation: readiness.references[0].roleAndOrganisation || '',
+          email: readiness.references[0].email || '',
+          phone: readiness.references[0].phone || '',
+          relationship: readiness.references[0].relationship || 'manager'
+        });
+        setRef2({
+          fullName: readiness.references[1].fullName || '',
+          roleAndOrganisation: readiness.references[1].roleAndOrganisation || '',
+          email: readiness.references[1].email || '',
+          phone: readiness.references[1].phone || '',
+          relationship: readiness.references[1].relationship || 'peer'
+        });
+      }
+
+      // Portfolio urls
+      if (Array.isArray(readiness.portfolioLinks)) {
+        setPortfolioUrls(readiness.portfolioLinks);
+      } else if (Array.isArray(readiness.items)) {
+        const urlsItem = readiness.items.find((item: any) => item.kind === 'urls');
+        if (Array.isArray(urlsItem?.value)) {
+          setPortfolioUrls(urlsItem.value);
+        }
+      }
+
+      // Consents
+      if (readiness.consents) {
+        setConsents({
+          truthful: readiness.consents.truthfulWork || false,
+          usage: readiness.consents.dataUseConsent || false,
+          references: readiness.consents.referencesStage4 || false
+        });
+      }
+    }
+  }, [readiness, hasInitialized]);
+
+  // Skip page redirect guard
+  useEffect(() => {
+    if (!isRoleLoading && !isReadinessLoading) {
+      if (!hasRequiredFiles) {
+        navigate(`/onboarding/talent/${roleSlug}/assessment/journey`, { replace: true });
+      }
+    }
+  }, [isRoleLoading, isReadinessLoading, hasRequiredFiles, navigate, roleSlug]);
 
   const appliedRole: PublicRoleLandingData | null = useMemo(() => {
     if (!roleSlug) return null;
@@ -78,27 +261,65 @@ const RoleEmployerAsks: React.FC = () => {
     return mapApiResponseToRoleData(roleSlug, apiData);
   }, [response, roleSlug]);
 
+  if (isRoleLoading || isReadinessLoading) {
+    return <FullPageSpinner />;
+  }
+
   const companyName = appliedRole?.companyName || 'Reach Africa';
   const roleTitle = appliedRole?.roleTitle || 'Senior Health Programme Officer';
   const roleLocation = appliedRole?.companyLocation || 'Lagos';
   const companyInitials = appliedRole?.companyInitials || 'RA';
 
-  const [consents, setConsents] = useState({
-    truthful: true,
-    usage: true,
-    references: true
-  });
-
-  const [referenceRelationship, setReferenceRelationship] = useState('peer');
-
   const handleSaveAndExit = () => {
     navigate('/dashboard');
   };
 
-  const handleSubmit = () => {
-    // Note: The HTML mock navigates to 01-welcome-dashboard.html
-    navigate(`/onboarding/talent/${roleSlug}/assessment/journey`);
+  const handleSaveReferences = async () => {
+    if (!ref1.fullName || !ref1.roleAndOrganisation || !ref1.email ||
+        !ref2.fullName || !ref2.roleAndOrganisation || !ref2.email) {
+      return;
+    }
+    try {
+      await updateReferences.mutateAsync({
+        references: [ref1, ref2],
+        roleLink: roleSlug
+      });
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to save references draft");
+    }
   };
+
+  const handleConsentToggle = async (key: 'truthful' | 'usage' | 'references') => {
+    const nextConsents = { ...consents, [key]: !consents[key] };
+    setConsents(nextConsents);
+    try {
+      await updateConsents.mutateAsync({
+        truthfulWork: nextConsents.truthful,
+        dataUseConsent: nextConsents.usage,
+        referencesStage4: nextConsents.references,
+        roleLink: roleSlug
+      });
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update consents");
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      await completePreAssessment.mutateAsync({ roleLink: roleSlug });
+      toast.success("Pre-assessment finalized successfully!");
+      navigate(`/onboarding/talent/${roleSlug}/assessment/journey`);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to finalize pre-assessment");
+    }
+  };
+
+  const progressPercent = readiness?.progress?.percent ?? 0;
+  const completedRequired = readiness?.progress?.completedRequired ?? 0;
+  const totalRequired = readiness?.progress?.totalRequired ?? 0;
+  const canFinalize = readiness?.checks?.canFinalizePreAssessment === true;
 
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans">
@@ -188,262 +409,383 @@ const RoleEmployerAsks: React.FC = () => {
             {companyName}&apos;s checklist
           </div>
           <div className="flex-1 h-[8px] bg-[#F7F7F7] rounded-full overflow-hidden relative">
-            <div className="h-full bg-gradient-to-r from-[#0047CC] to-[#387DFF] rounded-full w-[60%] transition-all duration-400" />
+            <div className="h-full bg-gradient-to-r from-[#0047CC] to-[#387DFF] rounded-full transition-all duration-400" style={{ width: `${progressPercent}%` }} />
           </div>
           <div className="text-[12px] font-[800] text-[#1A1A1A] shrink-0 tabular-nums">
-            3 of 5 complete
+            {completedRequired} of {totalRequired} complete
           </div>
         </div>
 
-        {/* Request 1 */}
-        <div className="bg-gradient-to-b from-[#F8FBFF] to-white border-[1.5px] border-[#387DFF]/50 rounded-[16px] p-[24px_26px] mb-[16px] relative overflow-visible z-50">
-          <div className="flex items-start justify-between gap-[14px] mb-[14px]">
-            <div className="flex-1 min-w-0">
-              <div className="inline-flex items-center gap-[7px] mb-[8px]">
-                <div className="w-[26px] h-[26px] rounded-full bg-[#0047CC] text-white font-[900] text-[12px] flex items-center justify-center shrink-0">1</div>
-                <div className="text-[10.5px] font-[800] tracking-[0.7px] uppercase text-[#0047CC]">{companyName} is asking for</div>
+        {/* Render required document checklist items dynamically */}
+        {Array.isArray(readiness?.requiredDocuments) && readiness.requiredDocuments.map((doc: any, idx: number) => {
+          return (
+            <div key={doc.code} className="bg-gradient-to-b from-[#F8FBFF] to-white border-[1.5px] border-[#387DFF]/50 rounded-[16px] p-[24px_26px] mb-[16px] relative overflow-visible z-50">
+              <div className="flex items-start justify-between gap-[14px] mb-[14px]">
+                <div className="flex-1 min-w-0">
+                  <div className="inline-flex items-center gap-[7px] mb-[8px]">
+                    <div className="w-[26px] h-[26px] rounded-full bg-[#0047CC] text-white font-[900] text-[12px] flex items-center justify-center shrink-0">{idx + 1}</div>
+                    <div className="text-[10.5px] font-[800] tracking-[0.7px] uppercase text-[#0047CC]">{companyName} is asking for</div>
+                  </div>
+                  <div className="text-[17px] font-[800] text-[#1A1A1A] tracking-[-0.2px] leading-[1.3] mb-[5px]">
+                    {doc.label}
+                  </div>
+                  <div className="text-[13px] text-[#808080] leading-[1.55]">
+                    {doc.category === 'written_research' ? 'An abstract, paper, conference poster, or research note you\'ve authored or co-authored. One file.' : 'Please upload the requested material.'}
+                  </div>
+                </div>
+                <Tag 
+                  label={doc.submitted ? "SUBMITTED" : "REQUIRED"} 
+                  variant="blue" 
+                  className="uppercase shrink-0" 
+                />
               </div>
-              <div className="text-[17px] font-[800] text-[#1A1A1A] tracking-[-0.2px] leading-[1.3] mb-[5px]">
-                A programme report you&apos;ve authored
+              <div className="text-[12px] text-[#4A4A4A] leading-[1.55] bg-[#EBF6FF] p-[9px_12px] rounded-[8px]">
+                <strong className="font-[800] text-[#182348]">Why we ask:</strong> to review your work and frame specific questions based on the evidence.
               </div>
-              <div className="text-[13px] text-[#808080] leading-[1.55]">
-                An anonymised quarterly or end-of-programme report. Doesn&apos;t need to be perfect, just yours.
+              
+              <div className="mt-[14px]">
+                {doc.submitted ? (
+                  <div className="border border-[#0047CC] bg-white rounded-[12px] p-[16px_18px] flex items-center gap-[14px]">
+                    <div className="w-[38px] h-[38px] rounded-[10px] bg-[#EBF6FF] border border-[#387DFF]/50 text-[#0047CC] flex items-center justify-center shrink-0">
+                      <DocumentCheckIcon className="w-[18px] h-[18px]" />
+                    </div>
+                    <div className="flex-1 text-left min-w-0">
+                      <div className="text-[13.5px] text-[#1A1A1A] font-[700] break-all leading-[1.4]">
+                        {doc.originalName || 'uploaded_document.pdf'}
+                      </div>
+                      <div className="text-[11.5px] text-[#0047CC] font-[600] mt-[3px]">
+                        {doc.uploadedAt ? `Uploaded on ${new Date(doc.uploadedAt).toLocaleDateString()}` : 'Uploaded successfully'}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center border-2 border-dashed border-[#E6E6E6] rounded-[12px] p-[24px] bg-[#F7F7F7] hover:border-[#0047CC] transition-colors relative cursor-pointer group">
+                    <input 
+                      type="file" 
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const loadingToast = toast.loading(`Uploading ${file.name}...`);
+                        try {
+                          await submitSubmission.mutateAsync({
+                            file,
+                            documentType: doc.code,
+                            roleLink: roleSlug
+                          });
+                          toast.success("Document uploaded successfully!", { id: loadingToast });
+                          refetch();
+                        } catch (err: any) {
+                          toast.error(err?.message || "Failed to upload document", { id: loadingToast });
+                        }
+                      }}
+                    />
+                    <svg className="w-[24px] h-[24px] text-[#ADADAD] group-hover:text-[#0047CC] transition-colors mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <span className="text-[13px] font-[700] text-[#4A4A4A] group-hover:text-[#0047CC] transition-colors">Drag & drop or browse</span>
+                    <span className="text-[11px] text-[#808080] mt-1">PDF, Word, or Image up to 10MB</span>
+                  </div>
+                )}
               </div>
             </div>
-            <span className="text-[11px] font-[700] bg-white border border-[#0047CC] text-[#0047CC] px-[12px] py-[4px] rounded-full inline-flex items-center uppercase shrink-0 whitespace-nowrap">
-              Submitted
-            </span>
-          </div>
-          <div className="text-[12px] text-[#4A4A4A] leading-[1.55] bg-[#EBF6FF] p-[9px_12px] rounded-[8px]">
-            <strong className="font-[800] text-[#182348]">Why we ask:</strong> the bulk of your work as a senior officer is internal and external reporting. We want to see how you structure findings, frame setbacks, and write for a busy reader.
-          </div>
-          <div className="mt-[14px]">
-            <div className="border border-[#0047CC] bg-white rounded-[12px] p-[16px_18px] flex items-center gap-[14px]">
-              <div className="w-[38px] h-[38px] rounded-[10px] bg-[#EBF6FF] border border-[#387DFF]/50 text-[#0047CC] flex items-center justify-center shrink-0">
-                <DocumentCheckIcon className="w-[18px] h-[18px]" />
-              </div>
-              <div className="flex-1 text-left min-w-0">
-                <div className="text-[13.5px] text-[#1A1A1A] font-[700] break-all leading-[1.4]">
-                  Q1_2026_Maternal_Outreach_Report.docx
-                </div>
-                <div className="text-[11.5px] text-[#0047CC] font-[600] mt-[3px]">
-                  82 KB · Uploaded today, 14:22
-                </div>
-              </div>
-              <button className="text-[#808080] hover:text-[#DC2626] hover:bg-[#F7F7F7] p-[8px] rounded-[6px] transition-colors" title="Remove">
-                <Trash2Icon className="w-[16px] h-[16px]" />
-              </button>
-            </div>
-          </div>
-        </div>
+          );
+        })}
 
-        {/* Request 2 */}
-        <div className="bg-gradient-to-b from-[#F8FBFF] to-white border-[1.5px] border-[#387DFF]/50 rounded-[16px] p-[24px_26px] mb-[16px] relative overflow-visible z-40">
-          <div className="flex items-start justify-between gap-[14px] mb-[14px]">
-            <div className="flex-1 min-w-0">
-              <div className="inline-flex items-center gap-[7px] mb-[8px]">
-                <div className="w-[26px] h-[26px] rounded-full bg-[#0047CC] text-white font-[900] text-[12px] flex items-center justify-center shrink-0">2</div>
-                <div className="text-[10.5px] font-[800] tracking-[0.7px] uppercase text-[#0047CC]">{companyName} is asking for</div>
-              </div>
-              <div className="text-[17px] font-[800] text-[#1A1A1A] tracking-[-0.2px] leading-[1.3] mb-[5px]">
-                A piece of published or unpublished research
-              </div>
-              <div className="text-[13px] text-[#808080] leading-[1.55]">
-                An abstract, paper, conference poster, or research note you&apos;ve authored or co-authored. One file.
-              </div>
-            </div>
-            <span className="text-[11px] font-[700] bg-white border border-[#0047CC] text-[#0047CC] px-[12px] py-[4px] rounded-full inline-flex items-center uppercase shrink-0 whitespace-nowrap">
-              Submitted
-            </span>
-          </div>
-          <div className="text-[12px] text-[#4A4A4A] leading-[1.55] bg-[#EBF6FF] p-[9px_12px] rounded-[8px]">
-            <strong className="font-[800] text-[#182348]">Why we ask:</strong> {companyName} publishes annual evidence briefs and increasingly commissions internal studies. We want to gauge how you handle evidence at the deeper end.
-          </div>
-          <div className="mt-[14px]">
-            <div className="border border-[#0047CC] bg-white rounded-[12px] p-[16px_18px] flex items-center gap-[14px]">
-              <div className="w-[38px] h-[38px] rounded-[10px] bg-[#EBF6FF] border border-[#387DFF]/50 text-[#0047CC] flex items-center justify-center shrink-0">
-                <DocumentCheckIcon className="w-[18px] h-[18px]" />
-              </div>
-              <div className="flex-1 text-left min-w-0">
-                <div className="text-[13.5px] text-[#1A1A1A] font-[700] break-all leading-[1.4]">
-                  CHW_Retention_Determinants_PHC2025_abstract.pdf
+        {/* Written Response — rendered only when the API requests it */}
+        {showTextResponse && (
+          <div className="bg-gradient-to-b from-[#F8FBFF] to-white border-[1.5px] border-[#387DFF]/50 rounded-[16px] p-[24px_26px] mb-[16px] relative overflow-visible z-30">
+            <div className="flex items-start justify-between gap-[14px] mb-[14px]">
+              <div className="flex-1 min-w-0">
+                <div className="inline-flex items-center gap-[7px] mb-[8px]">
+                  <div className="w-[26px] h-[26px] rounded-full bg-[#0047CC] text-white font-[900] text-[12px] flex items-center justify-center shrink-0">{textSectionIdx}</div>
+                  <div className="text-[10.5px] font-[800] tracking-[0.7px] uppercase text-[#0047CC]">{companyName} is asking for</div>
                 </div>
-                <div className="text-[11.5px] text-[#0047CC] font-[600] mt-[3px]">
-                  128 KB · Uploaded today, 14:25
+                <div className="text-[17px] font-[800] text-[#1A1A1A] tracking-[-0.2px] leading-[1.3] mb-[5px]">
+                  {textItem?.label ?? 'A short written response · in your own words'}
+                </div>
+                <div className="text-[13px] text-[#808080] leading-[1.55]">
+                  {textItem?.prompt
+                    ? <>&quot;<em>{textItem.prompt}</em>&quot;</>  
+                    : readiness?.textPrompt
+                    ? <>&quot;<em>{readiness.textPrompt}</em>&quot;</>
+                    : null}
+                  {textItem?.minWords || textItem?.maxWords
+                    ? ` Around ${textItem.minWords ?? ''}–${textItem.maxWords ?? ''} words.`
+                    : null}
                 </div>
               </div>
-              <button className="text-[#808080] hover:text-[#DC2626] hover:bg-[#F7F7F7] p-[8px] rounded-[6px] transition-colors" title="Remove">
-                <Trash2Icon className="w-[16px] h-[16px]" />
-              </button>
+              <Tag
+                label={textValue.trim().split(/\s+/).filter(Boolean).length >= (textItem?.minWords ?? 150) ? 'FILLED' : 'REQUIRED'}
+                variant="blue"
+                className="uppercase shrink-0"
+              />
+            </div>
+            {(textItem?.whyWeAsk || readiness?.textWhyWeAsk) && (
+              <div className="text-[12px] text-[#4A4A4A] leading-[1.55] bg-[#EBF6FF] p-[9px_12px] rounded-[8px]">
+                <strong className="font-[800] text-[#182348]">Why we ask:</strong>{' '}
+                {textItem?.whyWeAsk ?? readiness?.textWhyWeAsk}
+              </div>
+            )}
+            <div className="mt-[14px]">
+              <div className="flex flex-col gap-[6px]">
+                <textarea
+                  className="font-sans text-[14px] text-[#4A4A4A] leading-[1.6] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_13px] bg-[#F7F7F7] focus:bg-white focus:border-[#0047CC] focus:ring-2 focus:ring-[#0047CC]/20 outline-none w-full h-[140px] resize-y"
+                  value={textValue}
+                  onChange={(e) => setTextValue(e.target.value)}
+                  placeholder={`Type your response here...${textItem?.minWords ? ` (around ${textItem.minWords} words)` : ''}`}
+                  onBlur={async () => {
+                    try {
+                      await updateText.mutateAsync({ text: textValue, roleLink: roleSlug });
+                      toast.success('Written response draft saved');
+                      refetch();
+                    } catch (err: any) {
+                      toast.error(err?.message || 'Failed to save response');
+                    }
+                  }}
+                />
+                <div className="flex justify-between items-center mt-[-3px]">
+                  <span className="text-[11px] text-[#808080]">Draft auto-saves when clicking away</span>
+                  <span className="text-[11px] text-[#0047CC] font-[600] tabular-nums">
+                    {textValue.trim().split(/\s+/).filter(Boolean).length} words
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Request 3 */}
-        <div className="bg-gradient-to-b from-[#F8FBFF] to-white border-[1.5px] border-[#387DFF]/50 rounded-[16px] p-[24px_26px] mb-[16px] relative overflow-visible z-30">
-          <div className="flex items-start justify-between gap-[14px] mb-[14px]">
-            <div className="flex-1 min-w-0">
-              <div className="inline-flex items-center gap-[7px] mb-[8px]">
-                <div className="w-[26px] h-[26px] rounded-full bg-[#0047CC] text-white font-[900] text-[12px] flex items-center justify-center shrink-0">3</div>
-                <div className="text-[10.5px] font-[800] tracking-[0.7px] uppercase text-[#0047CC]">{companyName} is asking for</div>
-              </div>
-              <div className="text-[17px] font-[800] text-[#1A1A1A] tracking-[-0.2px] leading-[1.3] mb-[5px]">
-                A short written response · in your own words
-              </div>
-              <div className="text-[13px] text-[#808080] leading-[1.55]">
-                "<em>Describe a programme you led that didn't go to plan. What happened, what you did, and what you learned.</em>" Around 200 words.
-              </div>
-            </div>
-            <span className="text-[11px] font-[700] bg-white border border-[#0047CC] text-[#0047CC] px-[12px] py-[4px] rounded-full inline-flex items-center uppercase shrink-0 whitespace-nowrap">
-              Submitted
-            </span>
-          </div>
-          <div className="text-[12px] text-[#4A4A4A] leading-[1.55] bg-[#EBF6FF] p-[9px_12px] rounded-[8px]">
-            <strong className="font-[800] text-[#182348]">Why we ask:</strong> set by {companyName}&apos;s HR Director. They&apos;ve told us they care more about how you handle the messy edges of programme delivery than how you describe the successes.
-          </div>
-          <div className="mt-[14px]">
-            <div className="flex flex-col gap-[6px]">
-              <ScrollArea className="border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_13px] bg-[#F7F7F7] w-full h-[110px] resize-y">
-                <div className="font-sans text-[14px] text-[#4A4A4A] italic leading-[1.6] pb-[2px]">
-                  In late 2023 I led a six-week immunisation outreach across four peri-urban wards in Lagos. Our target was 4,200 children. By week three, two of our four cold-chain coolers failed within 48 hours of each other and we lost roughly 1,800 doses. I had to make the call quickly: pause delivery and risk losing the community's confidence we'd worked months to build, or continue with degraded coverage. I paused, escalated honestly to the donor the same evening, and walked the community elders through what had happened myself rather than sending a junior staffer. We resumed eight days later with replacement stock, slightly revised microplans, and rebuilt trust by being early to the conversation rather than late. The programme ended at 87% of original target instead of 95%. The lesson I keep going back to is that the worst outcome isn't the failure, it's the silence around the failure. Honesty travels further than spin, especially with communities who've been let down by NGOs before.
+        {/* References — rendered only when the API requests them */}
+        {showReferences && (
+          <div className="bg-white border-[1.5px] border-[#E6E6E6] rounded-[16px] p-[24px_26px] mb-[16px] relative overflow-visible transition-all duration-250 z-20">
+            <div className="flex items-start justify-between gap-[14px] mb-[14px]">
+              <div className="flex-1 min-w-0">
+                <div className="inline-flex items-center gap-[7px] mb-[8px]">
+                  <div className="w-[26px] h-[26px] rounded-full bg-[#0047CC] text-white font-[900] text-[12px] flex items-center justify-center shrink-0">{refSectionIdx}</div>
+                  <div className="text-[10.5px] font-[800] tracking-[0.7px] uppercase text-[#0047CC]">{companyName} is asking for</div>
                 </div>
-              </ScrollArea>
-              <div className="text-[11px] text-[#0047CC] font-[600] text-right mt-[-3px]">
-                198 words · within range
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Request 4 */}
-        <div className="bg-white border-[1.5px] border-[#E6E6E6] rounded-[16px] p-[24px_26px] mb-[16px] relative overflow-visible transition-all duration-250 z-20">
-          <div className="flex items-start justify-between gap-[14px] mb-[14px]">
-            <div className="flex-1 min-w-0">
-              <div className="inline-flex items-center gap-[7px] mb-[8px]">
-                <div className="w-[26px] h-[26px] rounded-full bg-[#0047CC] text-white font-[900] text-[12px] flex items-center justify-center shrink-0">4</div>
-                <div className="text-[10.5px] font-[800] tracking-[0.7px] uppercase text-[#0047CC]">{companyName} is asking for</div>
-              </div>
-              <div className="text-[17px] font-[800] text-[#1A1A1A] tracking-[-0.2px] leading-[1.3] mb-[5px]">
-                Two professional references
-              </div>
-              <div className="text-[13px] text-[#808080] leading-[1.55]">
-                A line manager and one peer or community stakeholder who can speak to your work. Contact details only at this stage. They won&apos;t be contacted unless you reach Stage 4.
-              </div>
-            </div>
-            <span className="text-[11px] font-[700] bg-white border border-[#0047CC] text-[#0047CC] px-[12px] py-[4px] rounded-full inline-flex items-center uppercase shrink-0 whitespace-nowrap">
-              Required
-            </span>
-          </div>
-          
-          <div className="text-[12px] text-[#4A4A4A] leading-[1.55] bg-[#EBF6FF] p-[9px_12px] rounded-[8px] mb-[14px]">
-            <strong className="font-[800] text-[#182348]">Why we ask:</strong> {companyName}&apos;s hiring committee prefers a peer or community reference over two managers. They believe the people you&apos;ve worked alongside, including community partners, often see your work most clearly.
-          </div>
-          
-          <div className="mt-[14px]">
-            <div className="bg-[#F7F7F7] rounded-[12px] p-[16px_18px] mb-[10px]">
-              <div className="flex items-center justify-between mb-[10px]">
-                <div className="text-[11px] font-[800] tracking-[0.5px] uppercase text-[#1A1A1A]">Reference 1 · Line manager</div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
-                <div className="flex flex-col gap-[6px]">
-                  <label className="text-[12.5px] font-[700] text-[#4A4A4A]">Full name <span className="text-[#DC2626]">*</span></label>
-                  <input type="text" placeholder="e.g. Dr Adaobi Mensah" className="font-sans text-[14px] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_13px] bg-white text-[#1A1A1A] w-full focus:outline-none focus:border-[#0047CC] focus:ring-[3px] focus:ring-[#0047CC]/10 transition-all" />
+                <div className="text-[17px] font-[800] text-[#1A1A1A] tracking-[-0.2px] leading-[1.3] mb-[5px]">
+                  Two professional references
                 </div>
-                <div className="flex flex-col gap-[6px]">
-                  <label className="text-[12.5px] font-[700] text-[#4A4A4A]">Role and organisation <span className="text-[#DC2626]">*</span></label>
-                  <input type="text" placeholder="e.g. Country Director, Health Outreach Africa" className="font-sans text-[14px] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_13px] bg-white text-[#1A1A1A] w-full focus:outline-none focus:border-[#0047CC] focus:ring-[3px] focus:ring-[#0047CC]/10 transition-all" />
-                </div>
-                <div className="flex flex-col gap-[6px]">
-                  <label className="text-[12.5px] font-[700] text-[#4A4A4A]">Work email <span className="text-[#DC2626]">*</span></label>
-                  <input type="email" placeholder="name@organisation.org" className="font-sans text-[14px] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_13px] bg-white text-[#1A1A1A] w-full focus:outline-none focus:border-[#0047CC] focus:ring-[3px] focus:ring-[#0047CC]/10 transition-all" />
-                </div>
-                <div className="flex flex-col gap-[6px]">
-                  <label className="text-[12.5px] font-[700] text-[#4A4A4A]">Phone (optional)</label>
-                  <input type="tel" placeholder="+234..." className="font-sans text-[14px] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_13px] bg-white text-[#1A1A1A] w-full focus:outline-none focus:border-[#0047CC] focus:ring-[3px] focus:ring-[#0047CC]/10 transition-all" />
+                <div className="text-[13px] text-[#808080] leading-[1.55]">
+                  A line manager and one peer or community stakeholder who can speak to your work. Contact details only at this stage. They won&apos;t be contacted unless you reach Stage 4.
                 </div>
               </div>
+              <Tag
+                label={ref1.fullName && ref2.fullName ? 'FILLED' : 'REQUIRED'}
+                variant="blue"
+                className="uppercase shrink-0"
+              />
             </div>
 
-            <div className="bg-[#F7F7F7] rounded-[12px] p-[16px_18px]">
-              <div className="flex items-center justify-between mb-[10px]">
-                <div className="text-[11px] font-[800] tracking-[0.5px] uppercase text-[#1A1A1A]">Reference 2 · Peer or community stakeholder</div>
+            <div className="text-[12px] text-[#4A4A4A] leading-[1.55] bg-[#EBF6FF] p-[9px_12px] rounded-[8px] mb-[14px]">
+              <strong className="font-[800] text-[#182348]">Why we ask:</strong> the people you&apos;ve worked alongside often see your work most clearly.
+            </div>
+
+            <div className="mt-[14px] space-y-4">
+              <div className="bg-[#F7F7F7] rounded-[12px] p-[16px_18px] mb-[10px]">
+                <div className="flex items-center justify-between mb-[10px]">
+                  <div className="text-[11px] font-[800] tracking-[0.5px] uppercase text-[#1A1A1A]">Reference 1 · Line manager</div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
+                  <div className="flex flex-col gap-[6px]">
+                    <label className="text-[12.5px] font-[700] text-[#4A4A4A]">Full name <span className="text-[#DC2626]">*</span></label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Dr Adaobi Mensah"
+                      className="font-sans text-[14px] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_13px] bg-white text-[#1A1A1A] w-full focus:outline-none focus:border-[#0047CC] focus:ring-[3px] focus:ring-[#0047CC]/10 transition-all"
+                      value={ref1.fullName}
+                      onChange={(e) => setRef1(prev => ({ ...prev, fullName: e.target.value }))}
+                      onBlur={handleSaveReferences}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-[6px]">
+                    <label className="text-[12.5px] font-[700] text-[#4A4A4A]">Role and organisation <span className="text-[#DC2626]">*</span></label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Country Director, Health Outreach Africa"
+                      className="font-sans text-[14px] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_13px] bg-white text-[#1A1A1A] w-full focus:outline-none focus:border-[#0047CC] focus:ring-[3px] focus:ring-[#0047CC]/10 transition-all"
+                      value={ref1.roleAndOrganisation}
+                      onChange={(e) => setRef1(prev => ({ ...prev, roleAndOrganisation: e.target.value }))}
+                      onBlur={handleSaveReferences}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-[6px]">
+                    <label className="text-[12.5px] font-[700] text-[#4A4A4A]">Work email <span className="text-[#DC2626]">*</span></label>
+                    <input
+                      type="email"
+                      placeholder="name@organisation.org"
+                      className="font-sans text-[14px] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_13px] bg-white text-[#1A1A1A] w-full focus:outline-none focus:border-[#0047CC] focus:ring-[3px] focus:ring-[#0047CC]/10 transition-all"
+                      value={ref1.email}
+                      onChange={(e) => setRef1(prev => ({ ...prev, email: e.target.value }))}
+                      onBlur={handleSaveReferences}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-[6px]">
+                    <label className="text-[12.5px] font-[700] text-[#4A4A4A]">Phone (optional)</label>
+                    <input
+                      type="tel"
+                      placeholder="+234..."
+                      className="font-sans text-[14px] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_13px] bg-white text-[#1A1A1A] w-full focus:outline-none focus:border-[#0047CC] focus:ring-[3px] focus:ring-[#0047CC]/10 transition-all"
+                      value={ref1.phone}
+                      onChange={(e) => setRef1(prev => ({ ...prev, phone: e.target.value }))}
+                      onBlur={handleSaveReferences}
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
-                <div className="flex flex-col gap-[6px]">
-                  <label className="text-[12.5px] font-[700] text-[#4A4A4A]">Full name <span className="text-[#DC2626]">*</span></label>
-                  <input type="text" placeholder="e.g. Mama Folake Adeyemi" className="font-sans text-[14px] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_13px] bg-white text-[#1A1A1A] w-full focus:outline-none focus:border-[#0047CC] focus:ring-[3px] focus:ring-[#0047CC]/10 transition-all" />
+
+              <div className="bg-[#F7F7F7] rounded-[12px] p-[16px_18px]">
+                <div className="flex items-center justify-between mb-[10px]">
+                  <div className="text-[11px] font-[800] tracking-[0.5px] uppercase text-[#1A1A1A]">Reference 2 · Peer or community stakeholder</div>
                 </div>
-                <div className="flex flex-col gap-[6px]">
-                  <label className="text-[12.5px] font-[700] text-[#4A4A4A]">Role and organisation <span className="text-[#DC2626]">*</span></label>
-                  <input type="text" placeholder="e.g. CHW Lead, Ifako Ward" className="font-sans text-[14px] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_13px] bg-white text-[#1A1A1A] w-full focus:outline-none focus:border-[#0047CC] focus:ring-[3px] focus:ring-[#0047CC]/10 transition-all" />
-                </div>
-                <div className="flex flex-col gap-[6px]">
-                  <label className="text-[12.5px] font-[700] text-[#4A4A4A]">Email or contact <span className="text-[#DC2626]">*</span></label>
-                  <input type="text" placeholder="email or phone is fine" className="font-sans text-[14px] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_13px] bg-white text-[#1A1A1A] w-full focus:outline-none focus:border-[#0047CC] focus:ring-[3px] focus:ring-[#0047CC]/10 transition-all" />
-                </div>
-                <div className="flex flex-col gap-[6px] z-10">
-                  <label className="text-[12.5px] font-[700] text-[#4A4A4A]">Relationship</label>
-                  <Select
-                    hideLabel
-                    options={[
-                      { label: 'Peer / colleague', value: 'peer' },
-                      { label: 'Community stakeholder', value: 'stakeholder' },
-                      { label: 'External partner', value: 'partner' },
-                      { label: 'Mentor', value: 'mentor' },
-                    ]}
-                    value={referenceRelationship}
-                    onChange={(e: any) => setReferenceRelationship(e.target.value)}
-                    className="!p-[11px_13px] !rounded-[10px] !border-[1.5px] !border-[#E6E6E6] font-sans text-[14px] !bg-white focus-within:!border-[#0047CC] focus-within:!ring-[3px] focus-within:!ring-[#0047CC]/10"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
+                  <div className="flex flex-col gap-[6px]">
+                    <label className="text-[12.5px] font-[700] text-[#4A4A4A]">Full name <span className="text-[#DC2626]">*</span></label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Mama Folake Adeyemi"
+                      className="font-sans text-[14px] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_13px] bg-white text-[#1A1A1A] w-full focus:outline-none focus:border-[#0047CC] focus:ring-[3px] focus:ring-[#0047CC]/10 transition-all"
+                      value={ref2.fullName}
+                      onChange={(e) => setRef2(prev => ({ ...prev, fullName: e.target.value }))}
+                      onBlur={handleSaveReferences}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-[6px]">
+                    <label className="text-[12.5px] font-[700] text-[#4A4A4A]">Role and organisation <span className="text-[#DC2626]">*</span></label>
+                    <input
+                      type="text"
+                      placeholder="e.g. CHW Lead, Ifako Ward"
+                      className="font-sans text-[14px] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_13px] bg-white text-[#1A1A1A] w-full focus:outline-none focus:border-[#0047CC] focus:ring-[3px] focus:ring-[#0047CC]/10 transition-all"
+                      value={ref2.roleAndOrganisation}
+                      onChange={(e) => setRef2(prev => ({ ...prev, roleAndOrganisation: e.target.value }))}
+                      onBlur={handleSaveReferences}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-[6px]">
+                    <label className="text-[12.5px] font-[700] text-[#4A4A4A]">Email or contact <span className="text-[#DC2626]">*</span></label>
+                    <input
+                      type="text"
+                      placeholder="email or phone is fine"
+                      className="font-sans text-[14px] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_13px] bg-white text-[#1A1A1A] w-full focus:outline-none focus:border-[#0047CC] focus:ring-[3px] focus:ring-[#0047CC]/10 transition-all"
+                      value={ref2.email}
+                      onChange={(e) => setRef2(prev => ({ ...prev, email: e.target.value }))}
+                      onBlur={handleSaveReferences}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-[6px] z-10">
+                    <label className="text-[12.5px] font-[700] text-[#4A4A4A]">Relationship</label>
+                    <Select
+                      hideLabel
+                      options={[
+                        { label: 'Peer / colleague', value: 'peer' },
+                        { label: 'Community stakeholder', value: 'stakeholder' },
+                        { label: 'External partner', value: 'partner' },
+                        { label: 'Mentor', value: 'mentor' },
+                      ]}
+                      value={ref2.relationship}
+                      onChange={(e: any) => {
+                        const val = e.target.value;
+                        setRef2(prev => {
+                          const updated = { ...prev, relationship: val };
+                          updateReferences.mutate({ references: [ref1, updated], roleLink: roleSlug });
+                          return updated;
+                        });
+                      }}
+                      className="!p-[11px_13px] !rounded-[10px] !border-[1.5px] !border-[#E6E6E6] font-sans text-[14px] !bg-white focus-within:!border-[#0047CC] focus-within:!ring-[3px] focus-within:!ring-[#0047CC]/10"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Request 5 */}
-        <div className="bg-white border-[1.5px] border-[#E6E6E6] rounded-[16px] p-[24px_26px] mb-[16px] relative overflow-visible transition-all duration-250 z-10">
-          <div className="flex items-start justify-between gap-[14px] mb-[14px]">
-            <div className="flex-1 min-w-0">
-              <div className="inline-flex items-center gap-[7px] mb-[8px]">
-                <div className="w-[26px] h-[26px] rounded-full bg-[#0047CC] text-white font-[900] text-[12px] flex items-center justify-center shrink-0">5</div>
-                <div className="text-[10.5px] font-[800] tracking-[0.7px] uppercase text-[#0047CC]">{companyName} is asking for</div>
+        {/* Portfolio links — rendered only when the API enables them */}
+        {showLinks && (
+          <div className="bg-white border-[1.5px] border-[#E6E6E6] rounded-[16px] p-[24px_26px] mb-[16px] relative overflow-visible transition-all duration-250 z-10">
+            <div className="flex items-start justify-between gap-[14px] mb-[14px]">
+              <div className="flex-1 min-w-0">
+                <div className="inline-flex items-center gap-[7px] mb-[8px]">
+                  <div className="w-[26px] h-[26px] rounded-full bg-[#0047CC] text-white font-[900] text-[12px] flex items-center justify-center shrink-0">{linksSectionIdx}</div>
+                  <div className="text-[10.5px] font-[800] tracking-[0.7px] uppercase text-[#0047CC]">{companyName} is asking for</div>
+                </div>
+                <div className="text-[17px] font-[800] text-[#1A1A1A] tracking-[-0.2px] leading-[1.3] mb-[5px]">
+                  Anything else you&apos;d like {companyName} to see
+                </div>
+                <div className="text-[13px] text-[#808080] leading-[1.55]">
+                  Conference talks, podcasts, published articles, blog posts, social campaigns you led. Public links only. Up to 5.
+                </div>
               </div>
-              <div className="text-[17px] font-[800] text-[#1A1A1A] tracking-[-0.2px] leading-[1.3] mb-[5px]">
-                Anything else you&apos;d like {companyName} to see
-              </div>
-              <div className="text-[13px] text-[#808080] leading-[1.55]">
-                Conference talks, podcasts, published articles, blog posts, social campaigns you led. Public links only. Up to 5.
-              </div>
-            </div>
-            <span className="bg-[#F7F7F7] text-[#808080] text-[10.5px] font-[800] px-[9px] py-[3px] rounded-full tracking-[0.4px] uppercase shrink-0 whitespace-nowrap">
-              Optional
-            </span>
-          </div>
-
-          <div className="text-[12px] text-[#4A4A4A] leading-[1.55] bg-[#EBF6FF] p-[9px_12px] rounded-[8px] mb-[14px]">
-            <strong className="font-[800] text-[#182348]">Why we ask:</strong> {companyName}&apos;s leadership often makes hiring decisions partly on how candidates think publicly. This is your chance to surface work that might not sit on your CV.
-          </div>
-
-          <div className="mt-[14px]">
-            <div className="bg-[#F7F7F7] rounded-[10px] p-[11px_13px] flex items-center gap-[10px] mb-[8px] text-[13px] text-[#1A1A1A]">
-              <LinkIcon className="w-[14px] h-[14px] text-[#0047CC] shrink-0" />
-              <span className="flex-1 text-[#0047CC] font-[700] text-[12.5px] break-all">
-                linkedin.com/in/adaeze-okonkwo/recent-activity/articles
+              <span className="bg-[#F7F7F7] text-[#808080] text-[10.5px] font-[800] px-[9px] py-[3px] rounded-full tracking-[0.4px] uppercase shrink-0 whitespace-nowrap">
+                Optional
               </span>
-              <button className="p-[4px] rounded-[6px] text-[#808080] hover:text-[#DC2626] hover:bg-[#E6E6E6] transition-colors" title="Remove">
-                <Trash2Icon className="w-[14px] h-[14px]" />
-              </button>
             </div>
 
-            <div className="flex gap-[8px] mt-[8px]">
-              <input type="url" placeholder="Paste a URL (LinkedIn article, blog, podcast, talk...)" className="flex-1 font-sans text-[14px] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_13px] bg-white text-[#1A1A1A] focus:outline-none focus:border-[#0047CC] focus:ring-[3px] focus:ring-[#0047CC]/10 transition-all" />
-              <button className="bg-[#0047CC] text-white border-none rounded-[10px] px-[18px] py-[11px] font-sans text-[13px] font-[700] cursor-pointer hover:bg-[#344DA1] transition-colors whitespace-nowrap">
-                Add link
-              </button>
+            <div className="text-[12px] text-[#4A4A4A] leading-[1.55] bg-[#EBF6FF] p-[9px_12px] rounded-[8px] mb-[14px]">
+              <strong className="font-[800] text-[#182348]">Why we ask:</strong> to surface work that might not sit on your CV.
+            </div>
+
+            <div className="mt-[14px]">
+              {portfolioUrls.map((url, idx) => (
+                <div key={idx} className="bg-[#F7F7F7] rounded-[10px] p-[11px_13px] flex items-center gap-[10px] mb-[8px] text-[13px] text-[#1A1A1A]">
+                  <LinkIcon className="w-[14px] h-[14px] text-[#0047CC] shrink-0" />
+                  <span className="flex-1 text-[#0047CC] font-[700] text-[12.5px] break-all">{url}</span>
+                  <button
+                    type="button"
+                    className="p-[4px] rounded-[6px] text-[#808080] hover:text-[#DC2626] hover:bg-[#E6E6E6] transition-colors cursor-pointer"
+                    title="Remove"
+                    onClick={async () => {
+                      const nextUrls = portfolioUrls.filter((_, i) => i !== idx);
+                      setPortfolioUrls(nextUrls);
+                      try {
+                        await updateLinks.mutateAsync({ urls: nextUrls, roleLink: roleSlug });
+                        toast.success('Link removed');
+                        refetch();
+                      } catch (err: any) {
+                        toast.error(err?.message || 'Failed to remove link');
+                      }
+                    }}
+                  >
+                    <Trash2Icon className="w-[14px] h-[14px]" />
+                  </button>
+                </div>
+              ))}
+
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!newUrl.trim()) return;
+                  const nextUrls = [...portfolioUrls, newUrl.trim()];
+                  setPortfolioUrls(nextUrls);
+                  setNewUrl('');
+                  try {
+                    await updateLinks.mutateAsync({ urls: nextUrls, roleLink: roleSlug });
+                    toast.success('Link added');
+                    refetch();
+                  } catch (err: any) {
+                    toast.error(err?.message || 'Failed to add link');
+                  }
+                }}
+                className="flex gap-[8px] mt-[8px]"
+              >
+                <input
+                  type="url"
+                  placeholder="Paste a URL (LinkedIn article, blog, podcast, talk...)"
+                  className="flex-1 font-sans text-[14px] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_13px] bg-white text-[#1A1A1A] focus:outline-none focus:border-[#0047CC] focus:ring-[3px] focus:ring-[#0047CC]/10 transition-all"
+                  value={newUrl}
+                  onChange={(e) => setNewUrl(e.target.value)}
+                />
+                <button
+                  type="submit"
+                  className="bg-[#0047CC] text-white border-none rounded-[10px] px-[18px] py-[11px] font-sans text-[13px] font-[700] cursor-pointer hover:bg-[#344DA1] transition-colors whitespace-nowrap"
+                >
+                  Add link
+                </button>
+              </form>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Consents */}
         <div className="bg-white border border-[#0047CC]/30 rounded-[14px] p-[20px_22px] mt-[8px] mb-[8px]">
@@ -454,7 +796,7 @@ const RoleEmployerAsks: React.FC = () => {
           <div className="flex gap-[11px] items-start py-[10px]">
             <div 
               className={`mt-[2px] w-[18px] h-[18px] rounded-[5px] border-[1.5px] cursor-pointer flex items-center justify-center transition-all shrink-0 ${consents.truthful ? 'bg-[#0047CC] border-[#0047CC]' : 'bg-white border-[#0047CC]'}`}
-              onClick={() => setConsents(prev => ({...prev, truthful: !prev.truthful}))}
+              onClick={() => handleConsentToggle('truthful')}
             >
               {consents.truthful && (
                 <div className="w-[5px] h-[9px] border-r-[2px] border-b-[2px] border-white rotate-45 mb-[2px]" />
@@ -468,7 +810,7 @@ const RoleEmployerAsks: React.FC = () => {
           <div className="flex gap-[11px] items-start py-[10px] border-t border-[#0047CC]/10">
             <div 
               className={`mt-[2px] w-[18px] h-[18px] rounded-[5px] border-[1.5px] cursor-pointer flex items-center justify-center transition-all shrink-0 ${consents.usage ? 'bg-[#0047CC] border-[#0047CC]' : 'bg-white border-[#0047CC]'}`}
-              onClick={() => setConsents(prev => ({...prev, usage: !prev.usage}))}
+              onClick={() => handleConsentToggle('usage')}
             >
               {consents.usage && (
                 <div className="w-[5px] h-[9px] border-r-[2px] border-b-[2px] border-white rotate-45 mb-[2px]" />
@@ -482,7 +824,7 @@ const RoleEmployerAsks: React.FC = () => {
           <div className="flex gap-[11px] items-start py-[10px] border-t border-[#0047CC]/10">
             <div 
               className={`mt-[2px] w-[18px] h-[18px] rounded-[5px] border-[1.5px] cursor-pointer flex items-center justify-center transition-all shrink-0 ${consents.references ? 'bg-[#0047CC] border-[#0047CC]' : 'bg-white border-[#0047CC]'}`}
-              onClick={() => setConsents(prev => ({...prev, references: !prev.references}))}
+              onClick={() => handleConsentToggle('references')}
             >
               {consents.references && (
                 <div className="w-[5px] h-[9px] border-r-[2px] border-b-[2px] border-white rotate-45 mb-[2px]" />
@@ -499,9 +841,9 @@ const RoleEmployerAsks: React.FC = () => {
       <footer className="fixed bottom-0 left-0 right-0 w-full bg-white/95 backdrop-blur-[10px] border-t border-[#E6E6E6] p-[14px_32px] flex items-center justify-between gap-[12px] z-[50]">
         <div className="text-[12.5px] text-[#4A4A4A] font-[600] flex items-center gap-[10px]">
           <span className="text-[#0047CC] text-[12.5px] font-[800]">
-            3 of 5 done
+            {completedRequired} of {totalRequired} done
           </span>
-          Two more, then Stage 1 unlocks
+          {canFinalize ? 'All requirements met! Ready to submit.' : 'Please complete all required items before submitting.'}
         </div>
         <div className="flex gap-[10px]">
           <button 
@@ -513,10 +855,15 @@ const RoleEmployerAsks: React.FC = () => {
           </button>
           <button 
             type="button"
+            disabled={!canFinalize || completePreAssessment.isPending}
             onClick={handleSubmit}
-            className="bg-[#0047CC] text-white border-none rounded-full px-[26px] py-[13px] text-[14px] font-[700] cursor-pointer font-sans inline-flex items-center gap-[8px] shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px] transition-all"
+            className={`rounded-full px-[26px] py-[13px] text-[14px] font-[700] cursor-pointer font-sans inline-flex items-center gap-[8px] transition-all border-none ${
+              canFinalize 
+                ? 'bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px]' 
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            }`}
           >
-            Submit and open Stage 1
+            {completePreAssessment.isPending ? 'Submitting...' : 'Submit and open Stage 1'}
           </button>
         </div>
       </footer>
