@@ -2,6 +2,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import VoraLogo from '../../components/common/VoraLogo';
 import Button from '../../components/common/Button';
 import { ArrowRightIcon } from '../../components/common/Icons';
+import { useGetPublicRoleQuery } from '../../services/queries/talent';
+import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
+import { useMemo } from 'react';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -25,8 +28,23 @@ const BrainIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 
 const RoleAssessmentSessionInfo: React.FC = () => {
-  const { roleSlug } = useParams<{ roleSlug: string }>();
+  const { roleSlug = '' } = useParams<{ roleSlug: string }>();
   const navigate = useNavigate();
+  const sessionLabel = 'How you think';
+  const screenCount = 6;
+  const minuteRange = '15-25';
+
+  const { data: roleResponse } = useGetPublicRoleQuery(roleSlug);
+  const roleMeta = useMemo(() => {
+    const apiData = roleResponse?.data || roleResponse;
+    if (apiData && Object.keys(apiData).length > 0) {
+      return mapApiResponseToRoleData(roleSlug, apiData);
+    }
+    return getRoleLandingForSlug(roleSlug);
+  }, [roleResponse, roleSlug]);
+
+  const roleTitle = roleMeta?.roleTitle ?? 'this role';
+  const companyName = roleMeta?.companyName ?? 'the employer';
 
   const handleStart = () => {
     navigate(`/onboarding/talent/${roleSlug}/assessment/session-1/psychometric`);
@@ -35,7 +53,7 @@ const RoleAssessmentSessionInfo: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col">
       {/* Top Bar */}
-      <header className="bg-white/95 backdrop-blur-[10px] border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[14px] flex items-center justify-between sticky top-0 z-[50]">
+      <header className="bg-white/95 backdrop-blur-[10px] px-[20px] sm:px-[32px] py-[14px] flex items-center justify-between sticky top-0 z-[50]">
         <span className="inline-flex items-center gap-[1px] text-[#0047CC]">
           <VoraLogo size="sm" to="/dashboard" />
         </span>
@@ -54,7 +72,7 @@ const RoleAssessmentSessionInfo: React.FC = () => {
       <div className="bg-white border-b border-[#E6E6E6] px-[32px] py-[12px] flex items-center justify-center gap-[12px]">
         <div className="flex items-center gap-[7px]">
           <div className="w-[18px] h-[18px] rounded-full bg-[#0047CC] shadow-[0_0_0_4px_rgba(0,71,204,0.12)] flex items-center justify-center text-[9px] font-[800] text-white">1</div>
-          <div className="text-[11.5px] font-[700] text-[#0047CC]">How you think</div>
+          <div className="text-[11.5px] font-[700] text-[#0047CC]">{sessionLabel}</div>
         </div>
         <div className="w-[36px] h-[2px] bg-[#E6E6E6] rounded-[2px]"></div>
         <div className="flex items-center gap-[7px]">
@@ -86,17 +104,17 @@ const RoleAssessmentSessionInfo: React.FC = () => {
             <QuestionCircleIcon className="w-[18px] h-[18px] text-[#0047CC] shrink-0 mt-[1px]" />
             <div className="text-[13px] text-[#182348] leading-[1.55]">
               <div className="text-[10.5px] font-[800] tracking-[0.5px] uppercase text-[#1A1A1A] mb-[3px]">Why this matters</div>
-              As a Senior Health Programme Officer at Reach Africa, you'll lead diverse field teams under pressure. This session helps the hiring team understand how you naturally show up so they can shape the role around your strengths.
+              As a {roleTitle} at {companyName}, this session helps the hiring team understand how you naturally show up so they can shape the role around your strengths.
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-[10px] mb-[26px]">
             <div className="border border-[#E6E6E6] rounded-[10px] p-[11px_10px] text-center">
-              <div className="text-[14px] font-[900] text-[#1A1A1A] leading-[1.2]">15-25</div>
+              <div className="text-[14px] font-[900] text-[#1A1A1A] leading-[1.2]">{minuteRange}</div>
               <div className="text-[10.5px] text-[#808080] font-[600] mt-[3px] leading-[1.3]">minutes</div>
             </div>
             <div className="border border-[#E6E6E6] rounded-[10px] p-[11px_10px] text-center">
-              <div className="text-[14px] font-[900] text-[#1A1A1A] leading-[1.2]">6</div>
+              <div className="text-[14px] font-[900] text-[#1A1A1A] leading-[1.2]">{screenCount}</div>
               <div className="text-[10.5px] text-[#808080] font-[600] mt-[3px] leading-[1.3]">short parts</div>
             </div>
             <div className="border border-[#E6E6E6] rounded-[10px] p-[11px_10px] text-center">

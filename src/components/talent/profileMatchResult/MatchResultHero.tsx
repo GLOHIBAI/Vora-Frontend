@@ -2,28 +2,35 @@ import { BriefcaseIcon } from '../../common/Icons';
 import Tag from '../../common/Tag';
 import type { PublicRoleLandingData } from '../../../types/roleLanding';
 import { buildMatchConfirmedTitle, buildMatchConfirmedSubtitle } from '../../../utils/profileMatchResult';
-import { MATCH_TOP_PERCENTILE_LABEL } from '../../../constants/profileMatchResult';
 
 interface MatchResultHeroProps {
   score: number;
+  matchThreshold: number;
+  headline: string;
+  body?: string;
   role: PublicRoleLandingData;
 }
 
-const MatchResultHero: React.FC<MatchResultHeroProps> = ({ score, role }) => {
+const MatchResultHero: React.FC<MatchResultHeroProps> = ({
+  score,
+  matchThreshold,
+  headline,
+  body,
+  role,
+}) => {
   const matchConfirmedTitle = buildMatchConfirmedTitle(role);
   const matchConfirmedSubtitle = buildMatchConfirmedSubtitle(role);
 
   return (
     <div className="bg-white border border-[#E6E6E6] rounded-xl px-5 sm:px-9 pt-9 pb-8 text-center mb-5">
-      {/* <div className="text-[32px] mb-4 tracking-[4px]">🎉</div> */}
       <h2 className="text-[22px] sm:text-[28px] font-extrabold text-[#1A1A1A] tracking-[-0.5px] mb-2.5 leading-[1.2]">
-        Your profile is a strong match. You are in.
+        {headline}
       </h2>
-      <p className="text-[14px] sm:text-[15px] text-[#808080] leading-[1.7] mb-7 max-w-[680px] mx-auto">
-        VORA matched your full profile, CV and onboarding information combined, against the JD,
-        and you cleared the 80% threshold. Your work authorisation for this role has also been verified.
-        Go straight to assessment.
-      </p>
+      {body ? (
+        <p className="text-[14px] sm:text-[15px] text-[#808080] leading-[1.7] mb-7 max-w-[680px] mx-auto">
+          {body}
+        </p>
+      ) : null}
 
       <div className="flex flex-col items-center justify-center mb-[18px]">
         <div className="relative w-[130px] h-[130px] sm:w-[152px] sm:h-[152px] shrink-0 mb-3">
@@ -49,11 +56,10 @@ const MatchResultHero: React.FC<MatchResultHeroProps> = ({ score, role }) => {
             </div>
           </div>
         </div>
-        {/* <div className="text-[15px] font-bold text-[#1A1A1A]">Profile Match</div> */}
       </div>
 
       <div className="text-[14px] text-[#808080] font-semibold mb-[18px]">
-        {MATCH_TOP_PERCENTILE_LABEL}
+        Match threshold for this role: {matchThreshold}%
       </div>
 
       <div className="flex flex-wrap justify-center gap-2 sm:gap-[7px] mb-5">
@@ -68,23 +74,14 @@ const MatchResultHero: React.FC<MatchResultHeroProps> = ({ score, role }) => {
           className="shrink-0"
         />
         {role.metaItems.slice(0, 3).map((meta, i) => (
-          <Tag
-            key={i}
-            label={meta}
-            variant="outline"
-            className="shrink-0"
-          />
+          <Tag key={i} label={meta} variant="outline" className="shrink-0" />
         ))}
       </div>
 
       <div className="flex justify-center">
         <div className="bg-[#F9FAFB] border border-[#E6E6E6] rounded-xl px-5 py-4 text-center w-full max-w-[530px]">
-          <div className="text-[15px] font-bold text-[#1A1A1A] mb-1">
-            {matchConfirmedTitle}
-          </div>
-          <div className="text-[13px] text-[#808080] leading-relaxed">
-            {matchConfirmedSubtitle}
-          </div>
+          <div className="text-[15px] font-bold text-[#1A1A1A] mb-1">{matchConfirmedTitle}</div>
+          <div className="text-[13px] text-[#808080] leading-relaxed">{matchConfirmedSubtitle}</div>
         </div>
       </div>
     </div>

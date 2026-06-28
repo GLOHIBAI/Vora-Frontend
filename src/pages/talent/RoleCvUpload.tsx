@@ -6,10 +6,9 @@ import RoleApplyContextStrip from '../../components/talent/cvUpload/RoleApplyCon
 import AuthCenterLogoNav from '../../components/auth/AuthCenterLogoNav';
 import CvUploadZone from '../../components/talent/cvUpload/CvUploadZone';
 import CvUploadedFileRow from '../../components/talent/cvUpload/CvUploadedFileRow';
-import { useUploadCvMutation, useGetPublicRoleQuery, useGetRoleCvStatusQuery } from '../../services/queries/talent';
+import { useUploadCvMutation, useGetPublicRoleQuery } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
-import { loadRoleApplySlug } from '../../utils/roleSignup';
 import { ROLE_CV_UPLOAD_PATH } from '../../utils/cvUpload';
 
 const RoleCvUpload: React.FC = () => {
@@ -19,19 +18,9 @@ const RoleCvUpload: React.FC = () => {
   const roleSlug = params.roleSlug || '';
   const firstName = (location.state as { firstName?: string } | null)?.firstName ?? '';
 
-  const { data: response, isLoading: isRoleLoading } = useGetPublicRoleQuery(roleSlug || '');
+  const { data: response } = useGetPublicRoleQuery(roleSlug || '');
   const uploadCvMutation = useUploadCvMutation();
-  const [isPolling, setIsPolling] = useState(false);
   const [uploadError, setUploadError] = useState('');
-
-  // Poll the lightweight cv/status endpoint — only after a successful upload.
-  const { data: cvStatusData } = useGetRoleCvStatusQuery(roleSlug, {
-    enabled: isPolling,
-    refetchInterval: isPolling ? 2000 : false,
-  });
-
-  const activeCvStatus =
-    (cvStatusData?.data?.parseStatus ?? cvStatusData?.parseStatus) as string | undefined;
 
   const role: PublicRoleLandingData | null = useMemo(() => {
     if (!roleSlug) return null;
@@ -50,18 +39,6 @@ const RoleCvUpload: React.FC = () => {
     }
   }, [roleSlug, navigate]);
 
-  useEffect(() => {
-    if (activeCvStatus === 'COMPLETED') {
-      setIsPolling(false);
-      navigate(`/onboarding/talent/${roleSlug}/match`, {
-        state: { firstName },
-      });
-    } else if (activeCvStatus === 'FAILED') {
-      setIsPolling(false);
-      setUploadError('CV parsing failed. Please ensure you uploaded a valid text-based PDF or DOCX file, and try again.');
-    }
-  }, [activeCvStatus, navigate, firstName, roleSlug]);
-
   if (!roleSlug || !role) {
     return null;
   }
@@ -75,7 +52,10 @@ const RoleCvUpload: React.FC = () => {
     setUploadError('');
     try {
       await uploadCvMutation.mutateAsync({ file, roleLink: roleSlug });
-      setIsPolling(true);
+      // Go straight to match page — CV status is polled there until COMPLETED.
+      navigate(`/onboarding/talent/${roleSlug}/match`, {
+        state: { firstName, cvUploadPending: true },
+      });
     } catch (error: any) {
       setUploadError(error?.message || 'Failed to upload CV. Please try again.');
     }
@@ -117,19 +97,25 @@ const RoleCvUpload: React.FC = () => {
             </div>
           ) : null}
 
-          <CvUploadZone file={file} onFileSelect={setFile} disabled={isPolling || uploadCvMutation.isPending} />
-          {file ? <CvUploadedFileRow file={file} onRemove={() => setFile(null)} disabled={isPolling || uploadCvMutation.isPending} /> : null}
+          <CvUploadZone file={file} onFileSelect={setFile} disabled={uploadCvMutation.isPending} />
+          {file ? (
+            <CvUploadedFileRow
+              file={file}
+              onRemove={() => setFile(null)}
+              disabled={uploadCvMutation.isPending}
+            />
+          ) : null}
 
           <div className="mt-10">
             <Button
               type="button"
               variant={file ? 'primary' : 'secondary'}
-              disabled={!file || isPolling || uploadCvMutation.isPending}
-              isLoading={isPolling || uploadCvMutation.isPending}
+              disabled={!file || uploadCvMutation.isPending}
+              isLoading={uploadCvMutation.isPending}
               onClick={handleSubmit}
               className="w-full md:min-w-[200px]"
             >
-              {isPolling ? 'Analyzing your CV...' : 'Check if I match'}
+              Check if I match
             </Button>
           </div>
         </div>

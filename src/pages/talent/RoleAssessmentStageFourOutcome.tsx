@@ -73,18 +73,18 @@ const RoleAssessmentStageFourOutcome: React.FC = () => {
             opacity: 0;
             animation: fall 4s linear infinite;
           }
-          .confetti:nth-child(1) { left: 8%; background: #2CA62C; animation-delay: 0s; transform: rotate(15deg); }
+          .confetti:nth-child(1) { left: 8%; background: #0047CC; animation-delay: 0s; transform: rotate(15deg); }
           .confetti:nth-child(2) { left: 18%; background: #0047CC; animation-delay: .5s; transform: rotate(-20deg); }
-          .confetti:nth-child(3) { left: 28%; background: #85E585; animation-delay: 1s; transform: rotate(45deg); }
-          .confetti:nth-child(4) { left: 38%; background: #FBBF24; animation-delay: .2s; transform: rotate(-10deg); }
+          .confetti:nth-child(3) { left: 28%; background: #0047CC; animation-delay: 1s; transform: rotate(45deg); }
+          .confetti:nth-child(4) { left: 38%; background: #0047CC; animation-delay: .2s; transform: rotate(-10deg); }
           .confetti:nth-child(5) { left: 48%; background: #387DFF; animation-delay: 1.5s; transform: rotate(30deg); }
-          .confetti:nth-child(6) { left: 58%; background: #2CA62C; animation-delay: .8s; transform: rotate(-35deg); }
-          .confetti:nth-child(7) { left: 68%; background: #85E585; animation-delay: 1.3s; transform: rotate(20deg); }
+          .confetti:nth-child(6) { left: 58%; background: #0047CC; animation-delay: .8s; transform: rotate(-35deg); }
+          .confetti:nth-child(7) { left: 68%; background: #0047CC; animation-delay: 1.3s; transform: rotate(20deg); }
           .confetti:nth-child(8) { left: 78%; background: #0047CC; animation-delay: .3s; transform: rotate(-15deg); }
-          .confetti:nth-child(9) { left: 88%; background: #FBBF24; animation-delay: 1.8s; transform: rotate(40deg); }
+          .confetti:nth-child(9) { left: 88%; background: #0047CC; animation-delay: 1.8s; transform: rotate(40deg); }
           .confetti:nth-child(10) { left: 14%; background: #387DFF; animation-delay: 2.2s; transform: rotate(-25deg); }
-          .confetti:nth-child(11) { left: 62%; background: #2CA62C; animation-delay: 2.5s; transform: rotate(15deg); }
-          .confetti:nth-child(12) { left: 34%; background: #85E585; animation-delay: 2.8s; transform: rotate(-40deg); }
+          .confetti:nth-child(11) { left: 62%; background: #0047CC; animation-delay: 2.5s; transform: rotate(15deg); }
+          .confetti:nth-child(12) { left: 34%; background: #0047CC; animation-delay: 2.8s; transform: rotate(-40deg); }
           
           @keyframes fall {
             0% { opacity: 0; transform: translateY(-30vh) rotate(0deg); }
@@ -137,18 +137,18 @@ const RoleAssessmentStageFourOutcome: React.FC = () => {
       <AssessmentHeader
         middleContent="Stage 4 · Outcome"
         rightContent={
-          <div className="flex items-center gap-[6px] text-[12px] text-[#1D871D] font-[700]">
-            <CheckIcon className="w-[13px] h-[13px] text-[#2CA62C]" />
+          <div className="flex items-center gap-[6px] text-[12px] text-[#0047CC] font-[700]">
+            <CheckIcon className="w-[13px] h-[13px] text-[#0047CC]" />
             Process complete
           </div>
         }
       />
 
       {/* Stage Rail */}
-      <StageRail activeStage={5} greenDone={true} />
+      <StageRail activeStage={5} />
 
       {/* Hero section */}
-      <section className="bg-gradient-to-br from-[#0F3D0F] via-[#1D871D] to-[#2CA62C] text-white p-[60px_32px_70px] relative overflow-hidden text-center z-10">
+      <section className="bg-gradient-to-br from-[#182348] via-[#344DA1] to-[#0047CC] text-white p-[60px_32px_70px] relative overflow-hidden text-center z-10">
         <div className="absolute top-[-120px] right-[-80px] w-[380px] h-[380px] rounded-full bg-white/[0.05] pointer-events-none" />
         <div className="absolute bottom-[-100px] left-[-70px] w-[280px] h-[280px] rounded-full bg-white/[0.04] pointer-events-none" />
         
@@ -167,7 +167,7 @@ const RoleAssessmentStageFourOutcome: React.FC = () => {
           </div>
 
           <h1 className="text-[38px] font-[900] tracking-[-0.6px] leading-[1.15] mb-[12px] max-w-[560px] mx-auto">
-            Welcome to {companyName}, <span className="text-[#FBBF24]">{firstName}</span>
+            Welcome to {companyName}, <span className="text-white/95">{firstName}</span>
           </h1>
           <p className="text-[16px] text-white/90 leading-[1.7] max-w-[520px] mx-auto mb-[22px]">
             You&apos;ve been offered the role. The hiring team was unanimous. Below is everything that happens next.
@@ -192,11 +192,10 @@ const RoleAssessmentStageFourOutcome: React.FC = () => {
         
         {/* Note letter from Country Director */}
         <div className="bg-white rounded-[18px] p-[34px_38px] mb-[22px] shadow-[0_16px_48px_rgba(10,17,114,0.1)] border border-[#E6E6E6] relative overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-[5px] bg-gradient-to-r from-[#0F3D0F] via-[#2CA62C] to-[#85E585]" />
           
           <div className="flex justify-between items-start gap-[16px] mb-[20px] padding-bottom-[20px] border-b border-[#F7F7F7] pb-[20px] flex-wrap">
             <div className="flex gap-[12px] items-center">
-              <div className="w-[44px] h-[44px] rounded-[11px] bg-gradient-to-br from-[#0F3D0F] to-[#1D871D] text-white flex items-center justify-center font-[900] text-[14px] tracking-[0.5px] shrink-0">
+              <div className="w-[44px] h-[44px] rounded-[11px] bg-gradient-to-br from-[#0047CC] to-[#387DFF] text-white flex items-center justify-center font-[900] text-[14px] tracking-[0.5px] shrink-0">
                 {companyInitials}
               </div>
               <div>
@@ -229,38 +228,38 @@ const RoleAssessmentStageFourOutcome: React.FC = () => {
             I wanted to be the one to write this. I&apos;m genuinely looking forward to working with you.
           </p>
 
-          <div className="letter-sign mt-[22px] pt-[18px] border-t border-[#F7F7F7]">
+          <div className="letter-sign mt-[22px] pt-[18px]">
             <div className="sig-name text-[14.5px] font-[900] text-[#1A1A1A] mb-[2px]">Dr Adesuwa Okolo</div>
             <div className="sig-role text-[12px] text-[#808080] font-[600]">Country Director, {companyName} Nigeria</div>
           </div>
         </div>
 
         {/* Offer Summary terms */}
-        <div className="bg-gradient-to-b from-[#EEFBEE] to-[#F8FFF8] border-[1.5px] border-[#85E585] rounded-[18px] p-[26px_30px] mb-[22px]">
-          <div className="text-[11px] font-[800] tracking-[0.7px] uppercase text-[#1D871D] mb-[8px]">Headline offer terms</div>
+        <div className="p-[26px_30px] mb-[22px]">
+          <div className="text-[11px] font-[800] tracking-[0.7px] uppercase text-[#0047CC] mb-[8px]">Headline offer terms</div>
           <h2 className="text-[18px] font-[900] text-[#1A1A1A] tracking-[-0.2px] mb-[18px] leading-[1.3]">What&apos;s on the table</h2>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
-            <div className="bg-white border border-[#85E585] rounded-[12px] padding-[14px_16px] p-4">
-              <div className="text-[10.5px] font-[800] tracking-[0.5px] uppercase text-[#1D871D] mb-[5px]">Role</div>
+            <div className="bg-gradient-to-br from-[#EBF6FF] to-white border border-[#0047CC] rounded-[12px] p-4">
+              <div className="text-[10.5px] font-[800] tracking-[0.5px] uppercase text-[#0047CC] mb-[5px]">Role</div>
               <div className="text-[15px] font-[900] text-[#1A1A1A] tracking-[-0.1px] leading-[1.35]">{roleTitle}</div>
               <div className="text-[11.5px] text-[#808080] font-[600] mt-[3px]">{location}</div>
             </div>
 
-            <div className="bg-white border border-[#85E585] rounded-[12px] padding-[14px_16px] p-4">
-              <div className="text-[10.5px] font-[800] tracking-[0.5px] uppercase text-[#1D871D] mb-[5px]">Base compensation</div>
+            <div className="bg-gradient-to-br from-[#EBF6FF] to-white border border-[#0047CC] rounded-[12px] p-4">
+              <div className="text-[10.5px] font-[800] tracking-[0.5px] uppercase text-[#0047CC] mb-[5px]">Base compensation</div>
               <div className="text-[15px] font-[900] text-[#1A1A1A] tracking-[-0.1px] leading-[1.35]">₦18,500,000 / year</div>
               <div className="text-[11.5px] text-[#808080] font-[600] mt-[3px]">Reviewed annually, NGO market rate band B</div>
             </div>
 
-            <div className="bg-white border border-[#85E585] rounded-[12px] padding-[14px_16px] p-4">
-              <div className="text-[10.5px] font-[800] tracking-[0.5px] uppercase text-[#1D871D] mb-[5px]">Start date</div>
+            <div className="bg-gradient-to-br from-[#EBF6FF] to-white border border-[#0047CC] rounded-[12px] p-4">
+              <div className="text-[10.5px] font-[800] tracking-[0.5px] uppercase text-[#0047CC] mb-[5px]">Start date</div>
               <div className="text-[15px] font-[900] text-[#1A1A1A] tracking-[-0.1px] leading-[1.35]">Negotiable</div>
               <div className="text-[11.5px] text-[#808080] font-[600] mt-[3px]">Most candidates start 4 to 6 weeks out</div>
             </div>
 
-            <div className="bg-white border border-[#85E585] rounded-[12px] padding-[14px_16px] p-4">
-              <div className="text-[10.5px] font-[800] tracking-[0.5px] uppercase text-[#1D871D] mb-[5px]">Reporting line</div>
+            <div className="bg-gradient-to-br from-[#EBF6FF] to-white border border-[#0047CC] rounded-[12px] p-4">
+              <div className="text-[10.5px] font-[800] tracking-[0.5px] uppercase text-[#0047CC] mb-[5px]">Reporting line</div>
               <div className="text-[15px] font-[900] text-[#1A1A1A] tracking-[-0.1px] leading-[1.35]">Mrs Chinwe Nwosu</div>
               <div className="text-[11.5px] text-[#808080] font-[600] mt-[3px]">Head of Maternal Programmes</div>
             </div>

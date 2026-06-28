@@ -1,4 +1,5 @@
 import type { ScoreBarColor } from '../types/alignmentReview';
+import type { MatchScoreConfig } from '../types/profileMatchWaitlist';
 
 export interface ProfileMatchBreakdownItem {
   label: string;
@@ -6,12 +7,25 @@ export interface ProfileMatchBreakdownItem {
   barColor: ScoreBarColor;
 }
 
+/** Fallback when match API omits scoreConfig (0.8 → 80%). */
 export const PROFILE_MATCH_THRESHOLD = 80;
+
+export const PROFILE_MATCH_DIMENSION_GAP_THRESHOLD = 65;
+
+export const DEFAULT_MATCH_SCORE_CONFIG: MatchScoreConfig = {
+  version: 1,
+  matchThreshold: PROFILE_MATCH_THRESHOLD / 100,
+  dimensionGapThreshold: PROFILE_MATCH_DIMENSION_GAP_THRESHOLD / 100,
+};
+
+export const ROLES_FOUND_PATH = '/onboarding/talent/match/roles';
 
 /** Mock score against the applied role until match API is wired. */
 export const MOCK_ORIGINAL_ROLE_MATCH_SCORE = 61;
 
 export const PROFILE_MATCH_RESULT_PATH = '/onboarding/talent/match/result';
+export const PROFILE_MATCH_UPSKILL_PATH = '/onboarding/talent/match/upskill';
+export const PROFILE_MATCH_CV_UNAVAILABLE_PATH = '/onboarding/talent/match/cv-unavailable';
 
 export const DEFAULT_PROFILE_MATCH_SCORE = 87;
 

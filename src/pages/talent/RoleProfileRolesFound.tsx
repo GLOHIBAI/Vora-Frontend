@@ -10,16 +10,19 @@ import MatchedRoleCard from '../../components/talent/rolesFound/MatchedRoleCard'
 import MatchedRoleJdModal from '../../components/talent/rolesFound/MatchedRoleJdModal';
 import {
   DEFAULT_ROLES_FOUND_SUMMARY,
-  MOCK_MATCHED_ROLES,
 } from '../../constants/talentRolesFound';
 import { useAuth } from '../../context/AuthContext';
-import { useGetPublicRoleQuery, useGetTalentMatchesQuery } from '../../services/queries/talent';
+import { useGetPublicRoleQuery } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
 import {
   resolveProfileMatchScan,
   getPostMatchPath,
   withRoleApplyPath,
+  resolveMatchThresholdPercent,
+  resolveMatchThresholdDecimal,
+  resolveMatchSummary,
+  resolveRoleTitleFromScan,
 } from '../../utils/profileMatchResult';
 import { mapTalentMatchesToListings } from '../../utils/talentMatchApi';
 
@@ -39,10 +42,7 @@ const RoleProfileRolesFound: React.FC = () => {
     (location.state as { matchScan?: ReturnType<typeof resolveProfileMatchScan> } | null)?.matchScan,
   );
 
-  const hasAuthToken = !!localStorage.getItem('auth_token');
-  const { data: matchesResponse } = useGetTalentMatchesQuery({ enabled: hasAuthToken });
-
-  const { data: response, isLoading: isRoleLoading } = useGetPublicRoleQuery(roleSlug || '');
+  const { data: response } = useGetPublicRoleQuery(roleSlug || '');
 
   const appliedRole: PublicRoleLandingData | null = useMemo(() => {
     if (!roleSlug) return null;
@@ -53,20 +53,34 @@ const RoleProfileRolesFound: React.FC = () => {
     return mapApiResponseToRoleData(roleSlug, apiData);
   }, [response, roleSlug]);
 
+  const matchThreshold = resolveMatchThresholdPercent(matchScan);
+  const matchThresholdDecimal = resolveMatchThresholdDecimal(matchScan);
+
   const matchedRoles = useMemo(() => {
-    const fromApi = mapTalentMatchesToListings(matchesResponse, roleSlug);
-    return fromApi.length > 0 ? fromApi : MOCK_MATCHED_ROLES;
-  }, [matchesResponse, roleSlug]);
+    return mapTalentMatchesToListings(
+      matchScan.alternateMatches,
+      roleSlug,
+      matchThresholdDecimal,
+    );
+  }, [matchScan.alternateMatches, roleSlug, matchThresholdDecimal]);
 
   const summary = useMemo(
     () => ({
       ...DEFAULT_ROLES_FOUND_SUMMARY,
-      originalRoleTitle: appliedRole?.roleTitle ?? DEFAULT_ROLES_FOUND_SUMMARY.originalRoleTitle,
+      originalRoleTitle:
+        resolveRoleTitleFromScan(matchScan, appliedRole?.roleTitle ?? DEFAULT_ROLES_FOUND_SUMMARY.originalRoleTitle),
       originalScore: matchScan.originalRoleScore,
-      matchedRoleCount: matchScan.matchedRoleCount || matchedRoles.length,
+      matchThreshold,
+      matchedRoleCount: matchedRoles.length,
       careerReadinessScore: matchScan.careerReadinessScore,
+      explanationSummary: resolveMatchSummary(matchScan),
     }),
-    [appliedRole, matchScan.originalRoleScore, matchScan.matchedRoleCount, matchScan.careerReadinessScore, matchedRoles.length],
+    [
+      appliedRole,
+      matchScan,
+      matchThreshold,
+      matchedRoles.length,
+    ],
   );
 
   const selectedRole = useMemo(
@@ -125,14 +139,21 @@ const RoleProfileRolesFound: React.FC = () => {
           to assessment.
         </p>
 
-        {matchedRoles.map((role) => (
-          <MatchedRoleCard
-            key={role.id}
-            role={role}
-            onViewJd={setSelectedRoleId}
-            onGoToAssessment={handleGoToAssessment}
-          />
-        ))}
+        {matchedRoles.length > 0 ? (
+          matchedRoles.map((role) => (
+            <MatchedRoleCard
+              key={role.id}
+              role={role}
+              onViewJd={setSelectedRoleId}
+              onGoToAssessment={handleGoToAssessment}
+            />
+          ))
+        ) : (
+          <p className="text-[14px] text-[#4A5568] font-medium">
+            No alternate roles are available right now. Check back soon or explore upskilling
+            options for your original application.
+          </p>
+        )}
       </div>
 
       <MatchedRoleJdModal

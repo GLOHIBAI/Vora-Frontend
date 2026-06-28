@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import AssessmentHeader from './AssessmentHeader';
 import StageRail from './StageRail';
 import PartRail from './PartRail';
+import AssessmentItemsList from './assessment/AssessmentItemsList';
+import { useLocalAssessmentScreen } from '../../hooks/useLocalAssessmentScreen';
+import { questionsToMcqItems } from '../../mocks/stage1AssessmentScreens';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -92,8 +95,10 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   const [secondsLeft, setSecondsLeft] = useState<number>(timeLimitSeconds);
   const [savedForLater, setSavedForLater] = useState<boolean>(false);
 
-  // Selected answers state
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  // Selected answers via reusable assessment item renderer
+  const mcqItems = useMemo(() => questionsToMcqItems(questions), [questions]);
+  const { answers, recordAnswer, isLocked, isScreenComplete } =
+    useLocalAssessmentScreen(mcqItems);
 
   // Modals state
   const [showSaveModal, setShowSaveModal] = useState<boolean>(false);
@@ -165,13 +170,6 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     }, 1000);
   };
 
-  const handlePickOption = (qId: string, letter: string) => {
-    setAnswers((prev) => ({
-      ...prev,
-      [qId]: letter,
-    }));
-  };
-
   const handleSubmit = (reason?: string) => {
     if (reason) {
       sessionStorage.setItem('submitReason', reason);
@@ -192,7 +190,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  const isAllAnswered = questions.every((q) => !!answers[q.id]);
+  const isAllAnswered = isScreenComplete;
 
   const timerChipClass = () => {
     if (secondsLeft <= 60) return 'timer-chip warn';
@@ -258,7 +256,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       />
 
       {/* Stage Rail */}
-      <StageRail activeStage={2} />
+      <StageRail activeStage={2} showBottomBorder={false} />
 
       {/* Part Rail */}
       <PartRail activePart={partNumber} />
@@ -292,59 +290,13 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
         {topContent && <div className="mb-[22px]">{topContent}</div>}
 
-        {/* Questions */}
-        <div className="flex flex-col gap-[14px]">
-          {questions.map((q) => (
-            <div key={q.id} className="bg-white border-[1.5px] border-[#E6E6E6] rounded-[14px] p-[22px_24px]">
-              <div className="text-[11px] font-[800] text-[#ADADAD] tracking-[0.5px] uppercase mb-[8px]">
-                {q.numText}
-              </div>
-              {q.scenarioTag && (
-                <div className="inline-block text-[10px] font-[800] bg-[#EBF6FF] text-[#0047CC] px-[9px] py-[3px] rounded-full tracking-[0.5px] uppercase mb-[10px]">
-                  {q.scenarioTag}
-                </div>
-              )}
-              {q.scenarioText && (
-                <div 
-                  className="bg-gradient-to-b from-[#FAFCFF] to-white rounded-[8px] p-[14px_16px] text-[14px] text-[#1A1A1A] leading-[1.65] mb-[16px]"
-                  dangerouslySetInnerHTML={{ __html: q.scenarioText }}
-                />
-              )}
-              <div className="text-[15px] font-[700] text-[#1A1A1A] leading-[1.5] mb-[14px]">
-                {q.questionText}
-              </div>
-              <div className="flex flex-col gap-[8px]">
-                {q.options.map((opt) => {
-                  const isSelected = answers[q.id] === opt.letter;
-                  return (
-                    <div
-                      key={opt.letter}
-                      onClick={() => handlePickOption(q.id, opt.letter)}
-                      className={`cursor-pointer border-[1.5px] rounded-[10px] p-[12px_14px] flex gap-[11px] items-start transition-all hover:border-[#387DFF] hover:bg-[#EBF6FF] ${
-                        isSelected
-                          ? 'border-[#0047CC] bg-[#EBF6FF] shadow-[0_0_0_3px_rgba(0,71,204,0.1)]'
-                          : 'border-[#E6E6E6] bg-white'
-                      }`}
-                    >
-                      <div
-                        className={`shrink-0 w-[24px] h-[24px] rounded-full border-[1.5px] flex items-center justify-center text-[11px] font-[900] ${
-                          isSelected
-                            ? 'bg-[#0047CC] border-[#0047CC] text-white'
-                            : 'border-[#E6E6E6] bg-white text-[#ADADAD]'
-                        }`}
-                      >
-                        {opt.letter}
-                      </div>
-                      <div className="text-[14px] text-[#1A1A1A] font-[500] leading-[1.5]">
-                        {opt.text}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* Questions — reusable item components by type (mcq) */}
+        <AssessmentItemsList
+          items={mcqItems}
+          answers={answers}
+          isLocked={isLocked}
+          onAnswer={(itemId, val, item, subKey) => void recordAnswer(itemId, val, item, subKey)}
+        />
       </main>
 
       {/* Sticky Footer */}

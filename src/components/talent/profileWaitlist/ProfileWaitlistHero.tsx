@@ -11,13 +11,19 @@ const ProfileWaitlistHero: React.FC<ProfileWaitlistHeroProps> = ({ summary }) =>
       <CheckCircleIcon size={28} strokeWidth={2.5} className="text-[#0047CC]" />
     </div>
 
-    <h2 className="text-2xl font-bold text-[#1A1A1A] tracking-tight mb-2.5">
-      Your profile is strong. No live roles match it yet.
-    </h2>
+    {summary.explanationSummary ? (
+      <h2 className="text-2xl font-bold text-[#1A1A1A] tracking-tight mb-2.5 leading-relaxed max-w-[660px] mx-auto">
+        {summary.explanationSummary}
+      </h2>
+    ) : (
+      <h2 className="text-2xl font-bold text-[#1A1A1A] tracking-tight mb-2.5">
+        No live roles matched your profile at {summary.matchThreshold}% or above right now.
+      </h2>
+    )}
+
     <p className="text-sm text-[#808080] leading-relaxed max-w-[660px] mx-auto mb-5 sm:mb-[22px]">
-      This is not a rejection, it is timing. VORA could not find an active role that matches your
-      full profile at 80% or above right now. But your profile impressed us, and the right role is
-      only a matter of time.
+      Your profile stays on file. When a role opens that clears the {summary.matchThreshold}% threshold,
+      VORA will notify you and you can go straight to assessment.
     </p>
 
     <div className="inline-flex items-start gap-2.5 bg-white border border-[#E6E6E6] rounded-lg px-5 py-3 text-left mb-5 sm:mb-[22px]">

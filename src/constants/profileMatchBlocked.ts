@@ -1,10 +1,26 @@
 import type { ProfileMatchScanResult } from '../types/profileMatchWaitlist';
+import { DEFAULT_MATCH_SCORE_CONFIG } from './profileMatchResult';
 
 export const MOCK_PROFILE_MATCH_SCAN_BLOCKED: ProfileMatchScanResult = {
   originalRoleScore: 87,
   matchedRoleCount: 2,
   careerReadinessScore: 80,
   isEligible: false,
+  outcome: 'ELIGIBILITY_ISSUE',
+  scoreConfig: DEFAULT_MATCH_SCORE_CONFIG,
+  explanation: {
+    summary: 'You do not meet the work-authorisation requirements for this role.',
+    decision: 'INELIGIBLE',
+    primaryReasonCode: 'LOCATION',
+    gates: [
+      {
+        code: 'LOCATION',
+        passed: false,
+        message: 'Location or work-authorisation requirements not met.',
+        alternativePathwayAvailable: false,
+      },
+    ],
+  },
 };
 
 export const MOCK_BLOCKED_REASONS = [

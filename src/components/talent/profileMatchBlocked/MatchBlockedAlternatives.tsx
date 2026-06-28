@@ -3,9 +3,13 @@ import type { MatchedRoleListing } from '../../../types/talentRolesFound';
 
 interface MatchBlockedAlternativesProps {
   roles: MatchedRoleListing[];
+  matchThreshold?: number;
 }
 
-const MatchBlockedAlternatives: React.FC<MatchBlockedAlternativesProps> = ({ roles }) => {
+const MatchBlockedAlternatives: React.FC<MatchBlockedAlternativesProps> = ({
+  roles,
+  matchThreshold = 80,
+}) => {
   if (!roles || roles.length === 0) return null;
 
   return (
@@ -14,7 +18,8 @@ const MatchBlockedAlternatives: React.FC<MatchBlockedAlternativesProps> = ({ rol
         Roles your profile matches, and you can legally access
       </h2>
       <p className="text-sm text-[#808080] leading-relaxed mb-[18px]">
-        VORA found these roles in the same scan. Your profile scored 80%+ on each, and your work rights cover them. You can go straight to assessment on any of these.
+        VORA found these roles in the same scan. Your profile scored {matchThreshold}%+ on each, and
+        your work rights cover them. You can go straight to assessment on any of these.
       </p>
 
       <div className="flex flex-col gap-3">

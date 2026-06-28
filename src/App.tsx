@@ -18,6 +18,9 @@ const RoleCvUpload = lazy(() => import('./pages/talent/RoleCvUpload'))
 const RoleProfileMatchBuilding = lazy(() => import('./pages/talent/RoleProfileMatchBuilding'))
 const RoleProfileMatchResult = lazy(() => import('./pages/talent/RoleProfileMatchResult'))
 const RoleEmployerAsks = lazy(() => import('./pages/talent/RoleEmployerAsks'))
+const RoleAssessmentGate1Active = lazy(() => import('./pages/talent/RoleAssessmentGate1Active'))
+const RoleAssessmentGate1Review = lazy(() => import('./pages/talent/RoleAssessmentGate1Review'))
+const RoleAssessmentGate1Verdict = lazy(() => import('./pages/talent/RoleAssessmentGate1Verdict'))
 const RoleAssessmentIntro = lazy(() => import('./pages/talent/RoleAssessmentIntro'))
 const RoleAssessmentSessionInfo = lazy(() => import('./pages/talent/RoleAssessmentSessionInfo'))
 const RoleAssessmentJourney = lazy(() => import('./pages/talent/RoleAssessmentJourney'))
@@ -64,6 +67,8 @@ const RoleAssessmentResumeGate = lazy(() => import('./pages/talent/RoleAssessmen
 const RoleProfileRolesFound = lazy(() => import('./pages/talent/RoleProfileRolesFound'))
 const RoleProfileMatchWaitlist = lazy(() => import('./pages/talent/RoleProfileMatchWaitlist'))
 const RoleProfileMatchBlocked = lazy(() => import('./pages/talent/RoleProfileMatchBlocked'))
+const RoleProfileMatchUpskill = lazy(() => import('./pages/talent/RoleProfileMatchUpskill'))
+const RoleProfileMatchCvUnavailable = lazy(() => import('./pages/talent/RoleProfileMatchCvUnavailable'))
 const MentorApply = lazy(() => import('./pages/mentor/MentorApply'))
 const MentorProfile = lazy(() => import('./pages/mentor/MentorOnboarding'))
 const Welcome = lazy(() => import('./pages/onboarding/Welcome'))
@@ -135,6 +140,9 @@ const App = () => {
             <Route path="assessment/asks" element={<RoleEmployerAsks />} />
             <Route path="assessment/journey" element={<RoleAssessmentJourney />} />
             <Route path="assessment/stage-1" element={<RoleAssessmentIntro />} />
+            <Route path="assessment/gate-1/active" element={<RoleAssessmentGate1Active />} />
+            <Route path="assessment/gate-1/review" element={<RoleAssessmentGate1Review />} />
+            <Route path="assessment/gate-1/verdict" element={<RoleAssessmentGate1Verdict />} />
             <Route path="assessment/session-1" element={<RoleAssessmentSessionInfo />} />
             <Route path="assessment/session-1/psychometric" element={<RoleAssessmentSessionPsychometric />} />
             <Route path="assessment/session-1/forced-choice" element={<RoleAssessmentSessionForcedChoice />} />
@@ -177,6 +185,8 @@ const App = () => {
             <Route path="assessment/stage-4/outcome" element={<RoleAssessmentStageFourOutcome />} />
             <Route path="assessment/resume" element={<RoleAssessmentResumeGate />} />
             <Route path="match/blocked" element={<RoleProfileMatchBlocked />} />
+            <Route path="match/upskill" element={<RoleProfileMatchUpskill />} />
+            <Route path="match/cv-unavailable" element={<RoleProfileMatchCvUnavailable />} />
             <Route path="match/roles" element={<RoleProfileRolesFound />} />
             <Route path="match/waitlist" element={<RoleProfileMatchWaitlist />} />
           </Route>

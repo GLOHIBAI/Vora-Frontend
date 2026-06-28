@@ -12,7 +12,7 @@ const PartRail: React.FC<PartRailProps> = ({ activePart }) => {
   ];
 
   return (
-    <div className="bg-gradient-to-b from-white to-[#FBFCFF] border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[11px] flex items-center justify-center gap-[10px]">
+    <div className="bg-gradient-to-b from-white to-[#FBFCFF] px-[20px] sm:px-[32px] py-[11px] flex items-center justify-center gap-[10px]">
       {parts.map((p) => {
         const isActive = p.num === activePart;
         const isDone = p.num < activePart;

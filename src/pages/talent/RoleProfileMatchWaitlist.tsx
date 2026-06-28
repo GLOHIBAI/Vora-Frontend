@@ -17,6 +17,8 @@ import {
   resolveProfileMatchScan,
   getPostMatchPath,
   withRoleApplyPath,
+  resolveMatchThresholdPercent,
+  resolveMatchSummary,
 } from '../../utils/profileMatchResult';
 import { useEffect, useMemo } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -51,8 +53,10 @@ const RoleProfileMatchWaitlist: React.FC = () => {
     () => ({
       ...DEFAULT_PROFILE_WAITLIST_SUMMARY,
       careerReadinessScore: matchScan.careerReadinessScore,
+      matchThreshold: resolveMatchThresholdPercent(matchScan),
+      explanationSummary: resolveMatchSummary(matchScan),
     }),
-    [matchScan.careerReadinessScore],
+    [matchScan],
   );
 
   const preferencesState = useRoleAlertPreferences();
@@ -100,6 +104,7 @@ const RoleProfileMatchWaitlist: React.FC = () => {
           draft={preferencesState.draft}
           isEditing={preferencesState.isEditing}
           alertSet={preferencesState.alertSet}
+          matchThreshold={summary.matchThreshold}
           onStartEdit={preferencesState.startEdit}
           onCancelEdit={preferencesState.cancelEdit}
           onSaveEdit={preferencesState.saveEdit}

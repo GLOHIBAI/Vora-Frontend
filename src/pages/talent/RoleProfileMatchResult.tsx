@@ -11,7 +11,15 @@ import { useAuth } from '../../context/AuthContext';
 import { useGetPublicRoleQuery } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
-import { resolveProfileMatchScan, getPostMatchPath, withRoleApplyPath } from '../../utils/profileMatchResult';
+import {
+  resolveProfileMatchScan,
+  getPostMatchPath,
+  withRoleApplyPath,
+  resolveMatchDisplayCopy,
+  resolveMatchThresholdPercent,
+  resolveDimensionGapThresholdPercent,
+  resolveGateMessages,
+} from '../../utils/profileMatchResult';
 import { mapDimensionScoresToBreakdown } from '../../utils/talentMatchApi';
 import { MOCK_PROFILE_MATCH_SCAN_STRONG_MATCH } from '../../constants/profileMatchWaitlist';
 
@@ -26,14 +34,13 @@ const RoleProfileMatchResult: React.FC = () => {
     (location.state as { firstName?: string } | null)?.firstName || user?.firstName || '';
   const lastName =
     (location.state as { lastName?: string } | null)?.lastName || user?.lastName || '';
-  
-  // Use strong match mock by default for demonstration purposes
+
   const matchScan = resolveProfileMatchScan(
     (location.state as { matchScan?: ReturnType<typeof resolveProfileMatchScan> } | null)?.matchScan
-    ?? MOCK_PROFILE_MATCH_SCAN_STRONG_MATCH,
+      ?? MOCK_PROFILE_MATCH_SCAN_STRONG_MATCH,
   );
 
-  const { data: response, isLoading: isRoleLoading } = useGetPublicRoleQuery(roleSlug || '');
+  const { data: response } = useGetPublicRoleQuery(roleSlug || '');
 
   const appliedRole: PublicRoleLandingData | null = useMemo(() => {
     if (!roleSlug) return null;
@@ -44,10 +51,18 @@ const RoleProfileMatchResult: React.FC = () => {
     return mapApiResponseToRoleData(roleSlug, apiData);
   }, [response, roleSlug]);
 
+  const matchThreshold = resolveMatchThresholdPercent(matchScan);
+  const displayCopy = useMemo(() => resolveMatchDisplayCopy(matchScan), [matchScan]);
+  const passedGateMessages = useMemo(() => resolveGateMessages(matchScan, true), [matchScan]);
+
   const breakdownItems = useMemo(() => {
-    const fromApi = mapDimensionScoresToBreakdown(matchScan.dimensionScores);
+    const fromApi = mapDimensionScoresToBreakdown(
+      matchScan.dimensionScores,
+      matchThreshold,
+      resolveDimensionGapThresholdPercent(matchScan),
+    );
     return fromApi.length > 0 ? fromApi : PROFILE_MATCH_BREAKDOWN;
-  }, [matchScan.dimensionScores]);
+  }, [matchScan.dimensionScores, matchScan.scoreConfig, matchThreshold]);
 
   useEffect(() => {
     if (!roleSlug) {
@@ -70,6 +85,10 @@ const RoleProfileMatchResult: React.FC = () => {
 
   const displayName = buildUserDisplayName(firstName, lastName);
   const welcomeName = firstName.trim() || displayName.split(' ')[0] || 'there';
+  const eligibilityTitle =
+    passedGateMessages[0] ?? 'Work authorisation confirmed for this role';
+  const eligibilityBody = passedGateMessages.slice(1).join(' ') || '';
+  const showEligibilityCard = passedGateMessages.length > 0;
 
   return (
     <DashboardLayout>
@@ -85,8 +104,16 @@ const RoleProfileMatchResult: React.FC = () => {
       </div>
 
       <div className="w-full pb-10">
-        <MatchResultHero score={matchScan.originalRoleScore} role={appliedRole} />
-        <MatchResultEligibility />
+        <MatchResultHero
+          score={matchScan.originalRoleScore}
+          matchThreshold={matchThreshold}
+          headline={displayCopy.headline}
+          body={showEligibilityCard ? undefined : displayCopy.body || undefined}
+          role={appliedRole}
+        />
+        {showEligibilityCard ? (
+          <MatchResultEligibility title={eligibilityTitle} body={eligibilityBody || eligibilityTitle} />
+        ) : null}
         <MatchResultBreakdown items={breakdownItems} />
         <MatchResultAssessmentCTA />
       </div>

@@ -1,5 +1,7 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiClient } from '../../api';
+import { isGate1ApiEnabled } from '../../../config/gate1Api';
+import { mockBeginAssessment } from '../../../mocks/gate1MockSession';
 
 export const useGetPublicRoleQuery = (slug: string) => {
   return useQuery({
@@ -42,16 +44,40 @@ export const useUploadCvMutation = () => {
   });
 };
 
-export const useGetTalentMatchesQuery = (options?: { enabled?: boolean }) => {
+/**
+ * Job-link match poll (preferred when user applied via role link).
+ * Backend: GET /talent/role/{roleLink}/match
+ * Poll after GET /talent/role/{roleLink}/cv/status returns readyForMatching + cvLinkedToRole.
+ * Returns { status: 'PENDING' | 'READY', overallScore, outcome, matchExplanation, rolePosting, ... }
+ */
+export const useGetRoleLinkMatchQuery = (
+  roleLink: string,
+  options?: {
+    enabled?: boolean;
+    refetchInterval?: number | false | ((query: { state: { data?: unknown } }) => number | false);
+  },
+) => {
   return useQuery({
-    queryKey: ['talent', 'matches'],
-    queryFn: () => apiClient.get<any>({ url: '/talent/matches', auth: true }),
-    enabled: options?.enabled ?? true,
+    queryKey: ['talent', 'role-link-match', roleLink],
+    queryFn: async () => {
+      try {
+        return await apiClient.get<any>({
+          url: `/talent/role/${encodeURIComponent(roleLink)}/match`,
+          auth: true,
+          suppressErrorToast: true,
+        });
+      } catch (error: any) {
+        if (error?.status === 404) return { data: { status: 'PENDING' } };
+        throw error;
+      }
+    },
+    enabled: (options?.enabled ?? true) && !!roleLink,
+    refetchInterval: options?.refetchInterval ?? false,
   });
 };
 
 /**
- * Fetch the match result for a specific role.
+ * Fetch the match result for a specific role (generic fallback).
  * Backend: GET /talent/matches/for-role?roleLink=... OR ?rolePostingId=...
  * Returns { status: 'PENDING' | 'READY', overallScore, outcome, geopoliticalEligible, dimensionScores, explanation, ... }
  * Returns 404 while matching is still running — treated as PENDING and polled until READY.
@@ -86,12 +112,15 @@ export const useGetMatchResultForRoleQuery = (
 /**
  * Lightweight poll for CV parse status scoped to a specific role link.
  * Backend: GET /talent/role/{roleLink}/cv/status
- * Returns { cvUploadId, parseStatus } — much cheaper than polling /talent/me.
+ * Returns { cvUploadId, parseStatus, readyForMatching, cvLinkedToRole } — cheaper than /talent/me.
  * parseStatus: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
  */
 export const useGetRoleCvStatusQuery = (
   roleLink: string,
-  options?: { enabled?: boolean; refetchInterval?: number | false },
+  options?: {
+    enabled?: boolean;
+    refetchInterval?: number | false | ((query: { state: { data?: unknown } }) => number | false);
+  },
 ) => {
   return useQuery({
     queryKey: ['talent', 'role-cv-status', roleLink],
@@ -208,10 +237,13 @@ export const useCompletePreAssessmentMutation = () => {
 
 export const useBeginAssessmentMutation = () => {
   return useMutation({
-    mutationFn: (data: { rolePostingId?: string; roleLink?: string }) => {
-      return apiClient.post<any>({
+    mutationFn: async (data: { rolePostingId: string }) => {
+      if (!isGate1ApiEnabled()) {
+        return mockBeginAssessment();
+      }
+      return apiClient.post<{ data?: { assessmentId?: string; id?: string }; assessmentId?: string; id?: string }>({
         url: '/assessments/begin',
-        body: data,
+        body: { rolePostingId: data.rolePostingId },
         auth: true,
       });
     },

@@ -33,7 +33,7 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col relative">
       {/* Topbar */}
-      <header className="sticky top-0 bg-white/96 backdrop-blur-[10px] border-b border-[#E6E6E6] p-[12px_32px] flex items-center justify-between z-50">
+      <header className="sticky top-0 bg-white/96 backdrop-blur-[10px] p-[12px_32px] flex items-center justify-between z-50">
         <span className="inline-flex items-center gap-[1px] text-[#0047CC]">
           <VoraLogo size="sm" to="/dashboard" />
         </span>

@@ -8,6 +8,9 @@
  * SINGLE answer items → the frontend saves a draft immediately on each
  * selection and submits the whole screen when the user clicks Continue.
  *
+ * PARTIAL draft items → PATCH one sub-key at a time (likert rows, forced-choice
+ * blocks, values pairs/tradeoffs). Submit still requires the full item.
+ *
  * MULTIPLE answer items → all interactions are kept in local state; a single
  * save-draft + submit fires when the user clicks Continue.
  *
@@ -16,22 +19,31 @@
 export type SingleAnswerItemType =
   | 'mcq'
   | 'likert_scale'
-  | 'forced_choice'
-  | 'sjt_single_best'
-  | 'sjt_values_tradeoff';
+  | 'sjt_single_best';
 
 export type MultipleAnswerItemType =
   | 'rank'
   | 'drag_rank'
-  | 'values_ab_pairs'
   | 'sjt_rank_all'
   | 'sjt_most_least'
   | 'sjt_multi_select';
 
 export type AdaptiveItemType = 'adaptive_mcq';
 
+/**
+ * PATCH allows partial answers (one sub-key at a time).
+ * Submit requires every item on the screen to be fully valid.
+ */
+export type PartialDraftItemType =
+  | 'likert_scale'
+  | 'forced_choice'
+  | 'values_ab_pairs'
+  | 'values_tradeoff'
+  | 'sjt_values_tradeoff';
+
 export type AssessmentItemType =
   | SingleAnswerItemType
+  | PartialDraftItemType
   | MultipleAnswerItemType
   | AdaptiveItemType;
 
@@ -40,15 +52,35 @@ export function isSingleAnswerType(type: AssessmentItemType): type is SingleAnsw
   const singles: AssessmentItemType[] = [
     'mcq',
     'likert_scale',
-    'forced_choice',
     'sjt_single_best',
-    'sjt_values_tradeoff',
   ];
   return singles.includes(type);
 }
 
 export function isAdaptiveType(type: AssessmentItemType): type is AdaptiveItemType {
   return type === 'adaptive_mcq';
+}
+
+export function isPartialDraftType(type: AssessmentItemType): type is PartialDraftItemType {
+  const partial: AssessmentItemType[] = [
+    'likert_scale',
+    'forced_choice',
+    'values_ab_pairs',
+    'values_tradeoff',
+    'sjt_values_tradeoff',
+  ];
+  return partial.includes(type);
+}
+
+export function isMultipleAnswerType(type: AssessmentItemType): boolean {
+  const multiples: AssessmentItemType[] = [
+    'rank',
+    'drag_rank',
+    'sjt_rank_all',
+    'sjt_most_least',
+    'sjt_multi_select',
+  ];
+  return multiples.includes(type);
 }
 
 // ── Answer shapes (what goes into responses[itemId]) ────────────────────────
@@ -68,12 +100,25 @@ export type MultiSelectAnswerValue = string[];
 /** Values AB pairs → array of chosen optionIds (one per pair). */
 export type ValuesAbPairsAnswerValue = string[];
 
+/** Forced-choice block → { most: statementId, least: statementId }. */
+export type ForcedChoiceBlockAnswer = { most: string; least: string };
+
+/** Values AB pairs → "A" | "B" per pairId. */
+export type ValuesAbPairAnswer = Record<string, 'A' | 'B'>;
+
+/** Values trade-off slider → number per tensionId (-2..2 default). */
+export type ValuesTradeoffAnswer = Record<string, number>;
+
 export type AnswerValue =
   | SingleAnswerValue
   | RankAnswerValue
   | MostLeastAnswerValue
   | MultiSelectAnswerValue
-  | ValuesAbPairsAnswerValue;
+  | ValuesAbPairsAnswerValue
+  | ForcedChoiceBlockAnswer
+  | ValuesAbPairAnswer
+  | ValuesTradeoffAnswer
+  | Record<string, AnswerValue | number | string>;
 
 /** responses map: { [itemId]: AnswerValue } */
 export type ResponsesMap = Record<string, AnswerValue>;
@@ -114,6 +159,8 @@ export interface AssessmentItem {
   content: AssessmentItemContent;
   /** Whether this item type supports a saved-draft resume. */
   saveResume?: boolean;
+  /** Human-readable section title from the API (e.g. "How you think"). */
+  title?: string;
 }
 
 // ── Gate start response ──────────────────────────────────────────────────────
@@ -143,9 +190,12 @@ export interface AssessmentGateStartResponse {
   saveResume: boolean;
   progress: AssessmentProgress;
   timers?: AssessmentTimer;
-  /** 'new' | 'resumed' — tells UI whether to restore draft answers. */
   sessionState?: 'new' | 'resumed';
+  questionsRegenerated?: boolean;
 }
+
+/** Stage-agnostic alias — same shape for Gates 1, 2, and 3. */
+export type AssessmentScreenStartResponse = AssessmentGateStartResponse;
 
 // ── Draft / response load ────────────────────────────────────────────────────
 
@@ -154,6 +204,9 @@ export interface AssessmentDraftResponse {
   responses: ResponsesMap;
   progress: AssessmentProgress;
   screenKey: string;
+  /** ISO timestamp of the last draft save (when provided by server). */
+  lastSavedAt?: string;
+  updatedAt?: string;
 }
 
 // ── Save-draft response (PATCH) ───────────────────────────────────────────────
@@ -178,17 +231,19 @@ export interface SaveDraftResponse {
  * carry a partial-lock response structure.
  */
 export type SubItemLockedType =
-  | 'likert_scale'      // locked per questionId
-  | 'forced_choice'     // locked per blockId
-  | 'values_ab_pairs'   // locked per pairId
-  | 'values_tradeoff';  // locked per pairId
+  | 'likert_scale'
+  | 'forced_choice'
+  | 'values_ab_pairs'
+  | 'values_tradeoff'
+  | 'sjt_values_tradeoff';
 
 export function isSubItemLockedType(type: AssessmentItemType): type is SubItemLockedType {
   return (
     type === 'likert_scale' ||
     type === 'forced_choice' ||
     type === 'values_ab_pairs' ||
-    type === 'values_tradeoff'
+    type === 'values_tradeoff' ||
+    type === 'sjt_values_tradeoff'
   );
 }
 
@@ -229,11 +284,20 @@ export interface AssessmentLockError {
 
 // ── Submit response ──────────────────────────────────────────────────────────
 
+export interface GateRollup {
+  partsCompleted?: number;
+  partsTotal?: number;
+  gateStatus?: string;
+  [key: string]: unknown;
+}
+
 export interface AssessmentSubmitResponse {
   componentId: string;
-  screenKey: string;
+  screenKey?: string;
   status: 'completed' | 'partial';
+  /** Deprecated — submit does not return next screen; refetch resume-state instead. */
   nextScreenKey?: string;
+  gateRollup?: GateRollup;
 }
 
 // ── Adaptive step response ───────────────────────────────────────────────────
@@ -276,6 +340,12 @@ export interface GateProgressEntry {
   completedScreens: number;
   totalScreens: number;
   percent: number;
+  /** Seconds remaining on the gate deadline window (if server tracks it). */
+  deadlineRemainingSeconds?: number;
+  /** Total gate window in seconds (e.g. 172800 for 48h). */
+  deadlineTotalSeconds?: number;
+  /** ISO timestamp when the gate deadline expires. */
+  deadlineEndsAt?: string;
 }
 
 export interface GateVerdictResponse {
@@ -298,8 +368,8 @@ export interface ReviewSummaryEntry {
 // ── Gate 1 session screen-key constants ──────────────────────────────────────
 
 /**
- * Ordered screen keys for Gate 1, Session 1 ("How you think" / psychometric).
- * These map directly to the `screen` body param for POST .../gates/1/start.
+ * Ordered screen keys for Gate 1 — must match backend gate-1-journey.json.
+ * Registry-only keys (e.g. forced_choice as a screen) are not valid here.
  */
 export const GATE1_SESSION1_SCREENS = [
   'personality',
@@ -365,6 +435,8 @@ export interface GateInProgressScreen {
  * always let this endpoint be the source of truth.
  */
 export interface GateResumeState {
+  schemaVersion?: number;
+  assessmentId?: string;
   /** Which session the candidate is currently in (1 or 2). */
   session: 1 | 2;
   /** Human-readable label, e.g. "How you think" | "Your instincts" */
@@ -381,4 +453,12 @@ export interface GateResumeState {
   session2Screens: Gate1Session2ScreenKey[];
   /** True once every screen in both sessions has been submitted. */
   gate1Complete: boolean;
+  /** ISO timestamp when the candidate last paused (if server tracks it). */
+  pausedAt?: string;
+  /** Seconds remaining on the Stage 1 gate deadline. */
+  gateDeadlineRemainingSeconds?: number;
+  /** Total Stage 1 gate window in seconds. */
+  gateDeadlineTotalSeconds?: number;
+  /** Per-screen timer limit in seconds for the current/next screen. */
+  screenTimerLimitSeconds?: number;
 }

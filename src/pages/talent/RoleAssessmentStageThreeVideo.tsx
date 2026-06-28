@@ -518,7 +518,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
       />
 
       {/* Stage Rail */}
-      <StageRail activeStage={3} greenDone={false} />
+      <StageRail activeStage={3} greenDone={false} showBottomBorder={false} />
 
       {/* Question pebble rail */}
       <div className="bg-gradient-to-b from-white to-[#FBFCFF] border-b border-[#E6E6E6] p-[12px_32px] flex items-center justify-center gap-[8px] flex-wrap">
@@ -567,7 +567,6 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
                 </div>
               </div>
               <div className="inline-flex items-center gap-[7px] bg-white/[0.16] border border-white/[0.24] rounded-full p-[5px_12px] font-[800] text-[11px] uppercase">
-                <div className="w-[7px] h-[7px] rounded-full bg-[#85E585] animate-pulse" />
                 Just unfurled
               </div>
             </div>
@@ -576,7 +575,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
               {currentQuestion.text}
             </div>
 
-            <div className="bg-white/[0.1] border-l-[3px] border-[#387DFF] rounded-[10px] p-[13px_16px] flex gap-[11px] items-start mb-[18px]">
+            <div className="bg-white/[0.1] border-[#387DFF] rounded-[10px] p-[13px_16px] flex gap-[11px] items-start mb-[18px]">
               <InfoIcon className="w-[16px] h-[16px] text-[#387DFF] shrink-0 mt-[2px]" />
               <div className="text-[13px] leading-[1.55] text-white/88">
                 <strong>Why we ask · </strong>{currentQuestion.context}
@@ -915,15 +914,15 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
           {/* Right Companion Panel */}
           <aside className="side flex flex-col gap-[14px]">
             
-            <div className="side-think bg-gradient-to-b from-[#FEF3C7] to-[#FFFBEB] border-[1.5px] border-[#FDE68A] rounded-[14px] p-[16px_18px] flex gap-[11px] items-start">
-              <svg className="w-[18px] h-[18px] text-[#D97706] shrink-0 mt-[1px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <div className="side-think border-[1.5px] border-[#0047CC] rounded-[14px] p-[16px_18px] flex gap-[11px] items-start">
+              <svg className="w-[18px] h-[18px] text-[#0047CC] shrink-0 mt-[1px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
               </svg>
               <div className="side-think-body">
-                <div className="stt text-[13px] font-[800] text-[#78350F] mb-[4px]">
+                <div className="stt text-[13px] font-[800] text-[#0047CC] mb-[4px]">
                   {isThinking ? '30s think time running' : '30s think time used'}
                 </div>
-                <div className="std text-[12px] text-[#78350F] leading-[1.55]">
+                <div className="std text-[12px] text-[#0047CC] leading-[1.55]">
                   {isThinking 
                     ? 'Take a breath and structure your thoughts. Recording will start automatically or click skip.' 
                     : "Your answer timer is running. Speak at your natural pace. Don't worry about word-perfect."}

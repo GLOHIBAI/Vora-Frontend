@@ -31,6 +31,14 @@ export type ApiError = {
   errors?: Record<string, string[]>;
 };
 
+export const getApiErrorMessage = (err: unknown, fallback = 'Something went wrong'): string => {
+  if (err && typeof err === 'object' && 'message' in err) {
+    const message = (err as ApiError).message;
+    if (typeof message === 'string' && message.trim()) return message;
+  }
+  return fallback;
+};
+
 async function fetchWithInterceptors(options: ApiRequestOptions): Promise<any> {
   const {
     url,

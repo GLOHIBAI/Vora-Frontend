@@ -6,14 +6,20 @@ import MatchBlockedEligibilityCard from '../../components/talent/profileMatchBlo
 import MatchBlockedAlternatives from '../../components/talent/profileMatchBlocked/MatchBlockedAlternatives';
 import MatchBlockedGapAnalysisCard from '../../components/talent/profileMatchBlocked/MatchBlockedGapAnalysisCard';
 import { MOCK_PROFILE_MATCH_SCAN_BLOCKED, MOCK_BLOCKED_REASONS, MOCK_PATHWAY_STEPS } from '../../constants/profileMatchBlocked';
-import { MOCK_MATCHED_ROLES } from '../../constants/talentRolesFound';
 import { useAuth } from '../../context/AuthContext';
 import { useGetPublicRoleQuery } from '../../services/queries/talent';
-import { useTalentOnboardingStateQuery } from '../../services/queries/onboarding';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
-import { loadRoleApplySlug } from '../../utils/roleSignup';
-import { resolveProfileMatchScan, getPostMatchPath, withRoleApplyPath } from '../../utils/profileMatchResult';
+import {
+  resolveProfileMatchScan,
+  getPostMatchPath,
+  withRoleApplyPath,
+  resolveMatchDisplayCopy,
+  resolveGateMessages,
+  resolveMatchThresholdDecimal,
+  resolveMatchThresholdPercent,
+} from '../../utils/profileMatchResult';
+import { mapTalentMatchesToListings } from '../../utils/talentMatchApi';
 
 const RoleProfileMatchBlocked: React.FC = () => {
   const navigate = useNavigate();
@@ -31,8 +37,7 @@ const RoleProfileMatchBlocked: React.FC = () => {
     (location.state as { matchScan?: ReturnType<typeof resolveProfileMatchScan> } | null)?.matchScan || MOCK_PROFILE_MATCH_SCAN_BLOCKED,
   );
 
-  const { data: response, isLoading: isRoleLoading } = useGetPublicRoleQuery(roleSlug || '');
-  const { data: onboardingResponse } = useTalentOnboardingStateQuery(true, false);
+  const { data: response } = useGetPublicRoleQuery(roleSlug || '');
 
   const role: PublicRoleLandingData | null = useMemo(() => {
     if (!roleSlug) return null;
@@ -42,8 +47,6 @@ const RoleProfileMatchBlocked: React.FC = () => {
     }
     return mapApiResponseToRoleData(roleSlug, apiData);
   }, [response, roleSlug]);
-
-  const onboardingData = onboardingResponse?.data?.onboarding || onboardingResponse?.data?.fields || null;
 
   useEffect(() => {
     if (!roleSlug) {
@@ -67,70 +70,60 @@ const RoleProfileMatchBlocked: React.FC = () => {
   const displayName = buildUserDisplayName(firstName, lastName);
   const welcomeName = firstName.trim() || displayName.split(' ')[0] || 'there';
 
-  // Extract the alternative roles we want to display. WHA and HRF from mock data.
-  const alternateRoles = MOCK_MATCHED_ROLES.filter(r => r.id === 'analyst' || r.id === 'associate');
+  const displayCopy = useMemo(() => resolveMatchDisplayCopy(matchScan), [matchScan]);
+
+  const alternateRoles = useMemo(() => {
+    return mapTalentMatchesToListings(
+      matchScan.alternateMatches,
+      roleSlug,
+      resolveMatchThresholdDecimal(matchScan),
+    );
+  }, [matchScan.alternateMatches, matchScan.scoreConfig, roleSlug]);
 
   const blockedReasons = useMemo(() => {
-    const failedGate = matchScan.explanation?.gates?.find((gate) => !gate.passed);
-    if (failedGate && role) {
-      return [
-        { key: 'Role', value: `${role.roleTitle} · ${role.companyName}` },
-        { key: 'Result', value: matchScan.explanation?.summary ?? failedGate.message },
-        { key: 'Reason', value: failedGate.message },
-      ];
-    }
+    const failedGates = matchScan.explanation?.gates?.filter((gate) => !gate.passed) ?? [];
+    const reasons: { key: string; value: string }[] = [];
 
-    if (!role) return MOCK_BLOCKED_REASONS;
-
-    const defaultReasons = [...MOCK_BLOCKED_REASONS];
     if (role) {
-      const roleIdx = defaultReasons.findIndex(r => r.key === 'Role');
-      if (roleIdx !== -1) {
-        defaultReasons[roleIdx] = { key: 'Role', value: `${role.roleTitle} · ${role.companyName}` };
-      }
-      
-      const locIdx = defaultReasons.findIndex(r => r.key === 'Location');
-      if (locIdx !== -1) {
-        defaultReasons[locIdx] = { key: 'Location', value: role.formatLocationLabel };
-      }
-      
-      const contractIdx = defaultReasons.findIndex(r => r.key === 'Contract type');
-      if (contractIdx !== -1) {
-        const contractType = role.overviewRows.find(r => r.label.toLowerCase().includes('contract'))?.value;
-        if (contractType) {
-            defaultReasons[contractIdx] = { key: 'Contract type', value: contractType };
-        } else if (role.secondaryTags && role.secondaryTags.length > 0) {
-            defaultReasons[contractIdx] = { key: 'Contract type', value: role.secondaryTags.join(', ') };
-        }
-      }
-
-      const workRightsIdx = defaultReasons.findIndex(r => r.key === 'Work rights required');
-      if (workRightsIdx !== -1) {
-        const requiredRights = role.eligibilityRows.find(r => r.label.toLowerCase().includes('right') || r.label.toLowerCase().includes('visa') || r.label.toLowerCase().includes('permit'))?.value;
-        if (requiredRights) {
-            defaultReasons[workRightsIdx] = { key: 'Work rights required', value: requiredRights };
-        } else {
-            defaultReasons[workRightsIdx] = { key: 'Work rights required', value: `Valid work rights for ${role.companyLocation || 'this location'}` };
-        }
-      }
-
-      const visaIdx = defaultReasons.findIndex(r => r.key === 'Visa sponsorship');
-      if (visaIdx !== -1) {
-          const sponsorship = role.eligibilityRows.find(r => r.label.toLowerCase().includes('sponsor'))?.value;
-          if (sponsorship) {
-              defaultReasons[visaIdx] = { key: 'Visa sponsorship', value: sponsorship };
-          }
-      }
-
-      const declaredIdx = defaultReasons.findIndex(r => r.key === 'Your declared work rights');
-      if (declaredIdx !== -1 && onboardingData?.countryOfResidence) {
-          const countryMap: Record<string, string> = { NG: 'Nigeria', US: 'United States', UK: 'United Kingdom', GB: 'United Kingdom' };
-          const countryName = countryMap[onboardingData.countryOfResidence] || onboardingData.countryOfResidence;
-          defaultReasons[declaredIdx] = { key: 'Your declared work rights', value: `${countryName} only` };
-      }
+      reasons.push({ key: 'Role', value: `${role.roleTitle} · ${role.companyName}` });
     }
-    return defaultReasons;
-  }, [role, onboardingData, matchScan.explanation]);
+
+    if (matchScan.explanation?.summary) {
+      reasons.push({ key: 'Result', value: matchScan.explanation.summary });
+    }
+
+    failedGates.forEach((gate) => {
+      reasons.push({ key: gate.code.replace(/_/g, ' '), value: gate.message });
+    });
+
+    matchScan.explanation?.dimensionGaps?.forEach((gap) => {
+      reasons.push({
+        key: gap.dimension,
+        value: `${Math.round(gap.score * 100)}% (required ${Math.round(gap.threshold * 100)}%)`,
+      });
+    });
+
+    if (reasons.length > 0) return reasons;
+
+    return MOCK_BLOCKED_REASONS.map((row) =>
+      row.key === 'Role' && role
+        ? { key: 'Role', value: `${role.roleTitle} · ${role.companyName}` }
+        : row,
+    );
+  }, [role, matchScan.explanation]);
+
+  const pathwaySteps = useMemo(() => {
+    const actions = matchScan.explanation?.improvementActions;
+    if (actions && actions.length > 0) {
+      return actions.map((action, index) => ({
+        number: index + 1,
+        title: action.label,
+        description: action.dimension ? `Focus area: ${action.dimension}` : action.type,
+        tags: [{ text: action.type, color: 'blue' }],
+      }));
+    }
+    return MOCK_PATHWAY_STEPS;
+  }, [matchScan.explanation?.improvementActions]);
 
   return (
     <DashboardLayout>
@@ -146,9 +139,17 @@ const RoleProfileMatchBlocked: React.FC = () => {
       </div>
 
       <div className="w-full pb-10">
-        <MatchBlockedEligibilityCard score={matchScan.originalRoleScore} reasons={blockedReasons} />
-        <MatchBlockedAlternatives roles={alternateRoles} />
-        <MatchBlockedGapAnalysisCard steps={MOCK_PATHWAY_STEPS} />
+        <MatchBlockedEligibilityCard
+          score={matchScan.originalRoleScore}
+          headline={displayCopy.headline}
+          body={resolveGateMessages(matchScan, false).join(' ') || displayCopy.body}
+          reasons={blockedReasons}
+        />
+        <MatchBlockedAlternatives
+          roles={alternateRoles}
+          matchThreshold={resolveMatchThresholdPercent(matchScan)}
+        />
+        <MatchBlockedGapAnalysisCard steps={pathwaySteps} />
       </div>
     </DashboardLayout>
   );

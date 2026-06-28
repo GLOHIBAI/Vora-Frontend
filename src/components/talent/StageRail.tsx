@@ -9,9 +9,15 @@ const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
 interface StageRailProps {
   activeStage: number; // 1, 2, 3, 4
   greenDone?: boolean;
+  /** When false, omit bottom border (use if another chrome row follows). */
+  showBottomBorder?: boolean;
 }
 
-const StageRail: React.FC<StageRailProps> = ({ activeStage, greenDone = false }) => {
+const StageRail: React.FC<StageRailProps> = ({
+  activeStage,
+  greenDone = false,
+  showBottomBorder = true,
+}) => {
   const steps = [
     { num: 1, label: 'Getting to know you' },
     { num: 2, label: 'Professional dimension' },
@@ -20,7 +26,11 @@ const StageRail: React.FC<StageRailProps> = ({ activeStage, greenDone = false })
   ];
 
   return (
-    <div className="bg-white border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[10px] flex items-center justify-center gap-[10px] overflow-x-auto">
+    <div
+      className={`bg-white px-[20px] sm:px-[32px] py-[10px] flex items-center justify-center gap-[10px] overflow-x-auto${
+        showBottomBorder ? ' border-b border-[#E6E6E6]' : ''
+      }`}
+    >
       {steps.map((step, idx) => {
         const isDone = step.num < activeStage;
         const isActive = step.num === activeStage;

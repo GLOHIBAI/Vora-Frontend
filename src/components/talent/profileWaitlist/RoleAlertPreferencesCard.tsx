@@ -10,6 +10,7 @@ interface RoleAlertPreferencesCardProps {
   draft: RoleAlertPreferences;
   isEditing: boolean;
   alertSet: boolean;
+  matchThreshold?: number;
   onStartEdit: () => void;
   onCancelEdit: () => void;
   onSaveEdit: () => void;
@@ -49,6 +50,7 @@ const RoleAlertPreferencesCard: React.FC<RoleAlertPreferencesCardProps> = ({
   draft,
   isEditing,
   alertSet,
+  matchThreshold = 80,
   onStartEdit,
   onCancelEdit,
   onSaveEdit,
@@ -61,8 +63,8 @@ const RoleAlertPreferencesCard: React.FC<RoleAlertPreferencesCardProps> = ({
       Be the first to know when your role goes live
     </h3>
     <p className="text-sm text-[#4A4A4A] leading-relaxed mb-2.5">
-      Tell us what you are looking for. The moment a role is posted that matches your full profile at
-      80% or above, you will be notified instantly and can go straight into assessment, no
+      Tell us what you are looking for. The moment a role is posted that matches your full profile at{' '}
+      {matchThreshold}% or above, you will be notified instantly and can go straight into assessment, no
       re-uploading, no re-onboarding.
     </p>
 

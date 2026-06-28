@@ -1,17 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '../../layout/DashboardLayout';
 import RoleApplyContextBanner from '../../components/auth/RoleApplyContextBanner';
 import ProfileMatchPulseIcon from '../../components/talent/profileMatch/ProfileMatchPulseIcon';
 import ProfileMatchStepRow from '../../components/talent/profileMatch/ProfileMatchStepRow';
 import ProfileMatchProgressBar from '../../components/talent/profileMatch/ProfileMatchProgressBar';
+import Button from '../../components/common/Button';
 
 import { PROFILE_MATCH_STEPS } from '../../constants/profileMatchBuilding';
 import { useProfileMatchProgress } from '../../hooks/useProfileMatchProgress';
 import { useAuth } from '../../context/AuthContext';
-import { apiClient } from '../../services/api';
-import { useGetPublicRoleQuery, useGetMatchResultForRoleQuery } from '../../services/queries/talent';
+import {
+  useGetPublicRoleQuery,
+  useGetRoleLinkMatchQuery,
+  useGetRoleCvStatusQuery,
+} from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
 import { MOCK_PROFILE_MATCH_SCAN_STRONG_MATCH } from '../../constants/profileMatchWaitlist';
@@ -22,15 +25,15 @@ import {
   isMatchResultPending,
   withRoleApplyPath,
 } from '../../utils/profileMatchResult';
-import { countPassingAlternateMatches } from '../../utils/talentMatchApi';
+import { parseRoleCvStatusPayload } from '../../utils/roleCvStatus';
+import { persistRolePostingId } from '../../utils/rolePostingId';
 
-/** Poll every 3 s while scan is running. Stop once READY. */
-const POLL_INTERVAL_MS = 3000;
+const CV_STATUS_POLL_MS = 2000;
+const MATCH_POLL_MS = 3000;
 
 const RoleProfileMatchBuilding: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const queryClient = useQueryClient();
   const { user } = useAuth();
 
   const params = useParams<{ roleSlug: string }>();
@@ -51,49 +54,79 @@ const RoleProfileMatchBuilding: React.FC = () => {
     return mapApiResponseToRoleData(roleSlug, apiData);
   }, [response, roleSlug]);
 
-  // Determine if user is authed — if not (local dev), skip API polling
   const hasAuthToken = !!localStorage.getItem('auth_token');
+  const [devCvReady, setDevCvReady] = useState(false);
+  const [devMatchReady, setDevMatchReady] = useState(false);
 
-  // Poll GET /talent/matches/for-role?roleLink=<roleSlug> every 3 s
+  useEffect(() => {
+    if (hasAuthToken) return;
+    const timer = window.setTimeout(() => setDevCvReady(true), 7000);
+    return () => window.clearTimeout(timer);
+  }, [hasAuthToken]);
+
+  useEffect(() => {
+    if (hasAuthToken || !devCvReady) return;
+    const timer = window.setTimeout(() => setDevMatchReady(true), 5000);
+    return () => window.clearTimeout(timer);
+  }, [hasAuthToken, devCvReady]);
+
+  // Phase 1: poll CV parse until COMPLETED + readyForMatching (loader caps at 80%).
+  const { data: cvStatusResponse } = useGetRoleCvStatusQuery(roleSlug, {
+    enabled: hasAuthToken && !!roleSlug,
+    refetchInterval: (query) => {
+      const cv = parseRoleCvStatusPayload(query.state.data);
+      if (cv.cvParseFailed || cv.cvReadyForMatch) return false;
+      return CV_STATUS_POLL_MS;
+    },
+  });
+
+  const cvStatus = useMemo(
+    () => parseRoleCvStatusPayload(cvStatusResponse),
+    [cvStatusResponse],
+  );
+
+  const cvReadyForMatch = hasAuthToken ? cvStatus.cvReadyForMatch : devCvReady;
+  const cvParseFailed = hasAuthToken ? cvStatus.cvParseFailed : false;
+
+  // Phase 2: poll match only after CV is ready (loader 80% → 100%).
   const {
     data: matchResultResponse,
     isSuccess: isMatchSuccess,
     isError: isMatchError,
-  } = useGetMatchResultForRoleQuery(
-    { roleLink: roleSlug },
-    {
-      enabled: hasAuthToken && !!roleSlug,
-      refetchInterval: (query) => {
-        const raw = query.state.data;
-        return isMatchResultPending(raw) ? POLL_INTERVAL_MS : false;
-      },
+  } = useGetRoleLinkMatchQuery(roleSlug, {
+    enabled: hasAuthToken && !!roleSlug && cvReadyForMatch,
+    refetchInterval: (query) => {
+      const raw = query.state.data;
+      return isMatchResultPending(raw) ? MATCH_POLL_MS : false;
     },
-  );
+  });
+
+  const matchPayload =
+    (matchResultResponse as { data?: unknown } | null)?.data ?? matchResultResponse;
+  const matchReadyFromApi = isMatchSuccess && !isMatchResultPending(matchPayload);
+  const matchReady = hasAuthToken ? matchReadyFromApi : devMatchReady;
+
+  const { statuses, progress, headline, isComplete } = useProfileMatchProgress({
+    cvReadyForMatch,
+    cvParseFailed,
+    matchReady,
+  });
 
   const buildScanFromApi = useCallback(
-    async (raw: unknown) => {
-      const alternateCount = hasAuthToken
-        ? countPassingAlternateMatches(
-            await queryClient.fetchQuery({
-              queryKey: ['talent', 'matches'],
-              queryFn: () => apiClient.get({ url: '/talent/matches', auth: true, suppressErrorToast: true }),
-            }),
-            roleSlug,
-          )
-        : 0;
-
-      return resolveProfileMatchScan(mapApiMatchResultToScan(raw, alternateCount));
-    },
-    [hasAuthToken, queryClient, roleSlug],
+    (raw: unknown) => resolveProfileMatchScan(mapApiMatchResultToScan(raw)),
+    [],
   );
 
-  // Track whether we've already navigated to avoid double-fire
   const hasNavigatedRef = useRef(false);
 
   const doNavigate = useCallback(
     (matchScan: ReturnType<typeof resolveProfileMatchScan>) => {
       if (hasNavigatedRef.current) return;
       hasNavigatedRef.current = true;
+
+      if (matchScan.rolePostingId) {
+        persistRolePostingId(roleSlug, matchScan.rolePostingId);
+      }
 
       navigate(withRoleApplyPath(getPostMatchPath(matchScan), roleSlug), {
         state: {
@@ -108,38 +141,59 @@ const RoleProfileMatchBuilding: React.FC = () => {
     [navigate, firstName, lastName, roleSlug],
   );
 
-  // When the API returns a READY result, map and navigate
+  // Route to result page once match API is READY and loader hit 100%.
   useEffect(() => {
-    if (!isMatchSuccess || hasNavigatedRef.current) return;
-    const raw = (matchResultResponse as { data?: unknown } | null)?.data ?? matchResultResponse;
-    if (isMatchResultPending(raw)) return;
+    if (!matchReady || !isComplete || hasNavigatedRef.current) return;
+    doNavigate(buildScanFromApi(matchPayload));
+  }, [matchReady, isComplete, matchPayload, buildScanFromApi, doNavigate]);
 
-    void buildScanFromApi(raw).then(doNavigate);
-  }, [isMatchSuccess, matchResultResponse, buildScanFromApi, doNavigate]);
+  // Dev fallback when not authed or match API errors after CV ready.
+  useEffect(() => {
+    if (hasNavigatedRef.current || hasAuthToken) return;
+    if (!isComplete) return;
+    const scan = resolveProfileMatchScan(MOCK_PROFILE_MATCH_SCAN_STRONG_MATCH);
+    window.setTimeout(() => doNavigate(scan), 800);
+  }, [hasAuthToken, isComplete, doNavigate]);
 
-  const handleComplete = useCallback(() => {
-    if (hasNavigatedRef.current) return;
+  useEffect(() => {
+    if (hasNavigatedRef.current || !hasAuthToken || !cvReadyForMatch) return;
+    if (!isMatchError || !isComplete) return;
+    const scan = resolveProfileMatchScan(MOCK_PROFILE_MATCH_SCAN_STRONG_MATCH);
+    window.setTimeout(() => doNavigate(scan), 800);
+  }, [hasAuthToken, cvReadyForMatch, isMatchError, isComplete, doNavigate]);
 
-    if (isMatchSuccess) {
-      const raw = (matchResultResponse as { data?: unknown } | null)?.data ?? matchResultResponse;
-      if (!isMatchResultPending(raw)) {
-        void buildScanFromApi(raw).then(doNavigate);
-        return;
-      }
-    }
-
-    if (!hasAuthToken || isMatchError) {
-      const scan = resolveProfileMatchScan(MOCK_PROFILE_MATCH_SCAN_STRONG_MATCH);
-      window.setTimeout(() => doNavigate(scan), 1200);
-    }
-  }, [isMatchSuccess, isMatchError, matchResultResponse, hasAuthToken, buildScanFromApi, doNavigate]);
-
-  const { statuses, progress, headline, isComplete } = useProfileMatchProgress({
-    onComplete: handleComplete,
-  });
+  const handleReuploadCv = () => {
+    navigate(`/onboarding/talent/${roleSlug}/cv`, {
+      state: { firstName },
+    });
+  };
 
   if (!role) {
     return null;
+  }
+
+  if (cvParseFailed) {
+    return (
+      <DashboardLayout>
+        <div className="-mx-4 lg:-mx-8 -mt-6">
+          <RoleApplyContextBanner role={role} />
+        </div>
+        <div className="flex-1 flex items-center justify-center px-4 py-16 mt-6">
+          <div className="w-full max-w-[440px] text-center">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
+              <h2 className="text-lg font-bold text-[#991B1B] mb-2">CV parsing failed</h2>
+              <p className="text-sm text-[#7F1D1D] leading-relaxed">
+                We couldn&apos;t read your CV. Please upload a valid text-based PDF or DOCX file
+                and try again.
+              </p>
+            </div>
+            <Button type="button" variant="primary" onClick={handleReuploadCv} className="w-full">
+              Re-upload CV
+            </Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
   }
 
   return (
@@ -154,10 +208,17 @@ const RoleProfileMatchBuilding: React.FC = () => {
 
           <h1 className="text-2xl font-semibold text-[#1A1A1A] tracking-tight mb-2">{headline}</h1>
           <p className="text-sm text-[#808080] leading-relaxed mb-7 max-w-[380px] mx-auto">
-            Hang tight, we&apos;re combining your CV and onboarding details into a full profile
-            and checking your match for{' '}
-            <strong className="text-[#0047CC] font-semibold">{role.roleTitle}</strong> and 200+
-            other live roles simultaneously.
+            {cvReadyForMatch ? (
+              <>
+                Your CV is ready. We&apos;re scoring your match for{' '}
+                <strong className="text-[#0047CC] font-semibold">{role.roleTitle}</strong>.
+              </>
+            ) : (
+              <>
+                Hang tight — we&apos;re reading your CV and building your profile for{' '}
+                <strong className="text-[#0047CC] font-semibold">{role.roleTitle}</strong>.
+              </>
+            )}
           </p>
 
           <div className="text-left mb-7">
@@ -166,7 +227,7 @@ const RoleProfileMatchBuilding: React.FC = () => {
                 key={step.id}
                 title={step.title}
                 subtitle={step.subtitle}
-                status={progress === 100 || isComplete ? 'done' : statuses[index]}
+                status={isComplete ? 'done' : statuses[index]}
                 isLast={index === PROFILE_MATCH_STEPS.length - 1}
               />
             ))}
@@ -180,4 +241,3 @@ const RoleProfileMatchBuilding: React.FC = () => {
 };
 
 export default RoleProfileMatchBuilding;
-

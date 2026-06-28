@@ -38,4 +38,6 @@ export interface RolesFoundSummary {
   matchedRoleCount: number;
   careerReadinessScore: number;
   assessmentGrade: string;
+  /** Primary message from matchExplanation.summary */
+  explanationSummary: string;
 }

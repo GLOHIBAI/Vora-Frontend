@@ -114,12 +114,12 @@ const TalentDashboard: React.FC = () => {
           <div className="py-2">
             <CircularProgress percentage={0} size={140} strokeWidth={15} />
           </div>
-          <p className="text-[14px] text-gray-800 font-medium flex items-center gap-2.5 w-full">
-            <div className="bg-[#0047CC] text-white rounded-full w-5 h-5 flex items-center justify-center shrink-0">
+          <div className="text-[14px] text-gray-800 font-medium flex items-center gap-2.5 w-full">
+            <span className="bg-[#0047CC] text-white rounded-full w-5 h-5 flex items-center justify-center shrink-0">
               <InfoIcon size={12} strokeWidth={4} />
-            </div>
+            </span>
             Upload your CV to calculate your score.
-          </p>
+          </div>
         </div>
         
         <StatCard 

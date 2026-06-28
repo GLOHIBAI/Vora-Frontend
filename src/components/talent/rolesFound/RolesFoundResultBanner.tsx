@@ -11,21 +11,27 @@ const RolesFoundResultBanner: React.FC<RolesFoundResultBannerProps> = ({ summary
       <InfoIcon size={20} strokeWidth={2.5} className="text-[#DC2626]" />
     </div>
     <div>
-      <p className="text-[15px] font-bold text-[#1A1A1A] mb-1.5 tracking-tight">
-        Not quite a match for that role, but VORA found you better ones.
-      </p>
+      {summary.explanationSummary ? (
+        <p className="text-[15px] font-bold text-[#1A1A1A] mb-1.5 tracking-tight leading-relaxed">
+          {summary.explanationSummary}
+        </p>
+      ) : null}
       <p className="text-[13px] text-[#4A5568] leading-relaxed mb-3 [&_strong]:font-bold [&_strong]:text-[#1A1A1A]">
         Your profile scored {summary.originalScore}% against{' '}
-        <strong>{summary.originalRoleTitle}</strong> (threshold: {summary.matchThreshold}%). But VORA
-        scanned your full profile, CV and onboarding details combined, against all live roles and
-        found <strong>{summary.matchedRoleCount} you qualify for right now</strong>. Each is an{' '}
-        {summary.matchThreshold}%+ profile match, meaning you go straight to assessment on any of
-        them.
+        <strong>{summary.originalRoleTitle}</strong> (threshold: {summary.matchThreshold}%).
+        {summary.matchedRoleCount > 0 ? (
+          <>
+            {' '}
+            VORA found <strong>{summary.matchedRoleCount} other role{summary.matchedRoleCount === 1 ? '' : 's'}</strong>{' '}
+            you qualify for at {summary.matchThreshold}%+ — you can go straight to assessment on any of them.
+          </>
+        ) : null}
       </p>
       <div className="inline-flex items-center gap-2 text-[11px] font-medium text-[#4A4A4A] bg-[#F7F7F7] border border-[#E6E6E6] rounded-full px-3 py-1.5">
         <TrendingUpIcon size={12} strokeWidth={2.5} className="text-[#808080]" />
         <span>
-          Profile score on original role: <span className="font-bold text-[#1A1A1A]">{summary.originalScore}%</span> · Threshold:{' '}
+          Profile score on original role:{' '}
+          <span className="font-bold text-[#1A1A1A]">{summary.originalScore}%</span> · Threshold:{' '}
           {summary.matchThreshold}%
         </span>
       </div>

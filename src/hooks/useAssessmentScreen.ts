@@ -4,10 +4,14 @@ import {
   useSubmitAssessmentScreenMutation,
   useSubmitAdaptiveStepMutation,
 } from '../services/queries/assessments';
+import { isItemAnswerComplete, canPersistDraftDelta } from '../utils/assessmentValidation';
+import { normalizeSaveDraftResponse, normalizeAdaptiveStepResponse } from '../utils/assessmentItems';
+import { buildScreenSubmitResponses } from '../utils/assessmentFlow';
 import {
   isSingleAnswerType,
   isAdaptiveType,
-  isSubItemLockedType,
+  isPartialDraftType,
+  isMultipleAnswerType,
   isSubKeyLocked,
   isWholeItemLocked,
   type AssessmentGateStartResponse,
@@ -18,6 +22,31 @@ import {
   type SaveDraftResponse,
 } from '../services/queries/assessments/types';
 
+const mergeResponseMaps = (base: ResponsesMap, incoming: ResponsesMap): ResponsesMap => {
+  const next: ResponsesMap = { ...base };
+  for (const [itemId, val] of Object.entries(incoming)) {
+    if (
+      val !== null &&
+      typeof val === 'object' &&
+      !Array.isArray(val) &&
+      typeof next[itemId] === 'object' &&
+      next[itemId] !== null &&
+      !Array.isArray(next[itemId])
+    ) {
+      next[itemId] = {
+        ...(next[itemId] as Record<string, unknown>),
+        ...(val as Record<string, unknown>),
+      } as AnswerValue;
+    } else {
+      next[itemId] = val;
+    }
+  }
+  return next;
+};
+
+const normalizeSaveResponse = (raw: unknown): SaveDraftResponse =>
+  normalizeSaveDraftResponse(raw);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -25,7 +54,7 @@ import {
 interface UseAssessmentScreenOptions {
   assessmentId: string;
   screenData: AssessmentGateStartResponse;
-  onScreenComplete: (response: { nextScreenKey?: string }) => void;
+  onScreenComplete: () => void;
   onAdaptiveStep?: (response: AdaptiveStepResponse) => void;
 }
 
@@ -73,10 +102,10 @@ interface UseAssessmentScreenReturn {
 
   /**
    * Populate initial answers from a persisted draft.
-   * Call this once after useAssessmentDraftQuery resolves, only when
-   * the start response sessionState === 'resumed'.
+   * Call once after useAssessmentDraftQuery resolves when sessionState === 'resumed'.
+   * Pass draft items when the server refreshed unanswered content on load.
    */
-  hydrateDraft: (savedResponses: ResponsesMap) => void;
+  hydrateDraft: (savedResponses: ResponsesMap, draftItems?: AssessmentItem[]) => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -136,62 +165,82 @@ export function useAssessmentScreen({
    * We also replace items[] if the server regenerated unseen questions.
    */
   const applyServerResponse = useCallback((resp: SaveDraftResponse) => {
-    // Merge server-confirmed responses into the locked set
-    lockedResponses.current = {
-      ...lockedResponses.current,
-      ...resp.responses,
-    };
-    // Replace items if the server produced fresh question copy
-    if (resp.questionsRegenerated) {
+    lockedResponses.current = mergeResponseMaps(lockedResponses.current, resp.responses);
+    setAnswers((prev) => mergeResponseMaps(prev, resp.responses));
+    if (resp.questionsRegenerated && resp.items?.length) {
       setItems(resp.items);
     }
   }, []);
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-
-  /**
-   * Build the delta — only keys that aren't already locked on the server.
-   * Handles both whole-item and sub-item answer shapes.
-   */
   const buildDelta = useCallback(
     (itemId: string, value: AnswerValue, subKey?: string): ResponsesMap | null => {
       if (subKey !== undefined) {
-        // Sub-item: check this specific sub-key
         if (isSubKeyLocked(lockedResponses.current, itemId, subKey)) return null;
         return { [itemId]: { [subKey]: value } };
       }
-      // Whole-item: check the whole item
       if (isWholeItemLocked(lockedResponses.current, itemId)) return null;
       return { [itemId]: value };
     },
     [],
   );
 
+  const persistDraftDelta = useCallback(
+    async (itemId: string, value: AnswerValue, item: AssessmentItem, subKey?: string) => {
+      if (!canPersistDraftDelta(item, value, subKey)) return;
+
+      const delta = buildDelta(itemId, value, subKey);
+      if (!delta) return;
+
+      try {
+        const resp = await saveDraft.mutateAsync({
+          assessmentId,
+          componentId,
+          responses: delta,
+        });
+        applyServerResponse(normalizeSaveResponse(resp));
+      } catch (err: unknown) {
+        const status = (err as { status?: number })?.status;
+        if (status === 400) {
+          lockedResponses.current = {
+            ...lockedResponses.current,
+            [itemId]:
+              subKey !== undefined
+                ? {
+                    ...(typeof lockedResponses.current[itemId] === 'object'
+                      ? (lockedResponses.current[itemId] as Record<string, unknown>)
+                      : {}),
+                    [subKey]: value,
+                  }
+                : value,
+          };
+        }
+      }
+    },
+    [assessmentId, componentId, saveDraft, buildDelta, applyServerResponse],
+  );
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
   // ── Computed state ─────────────────────────────────────────────────────────
 
-  const isScreenComplete = items
-    .filter((item) => !isAdaptiveType(item.type))
-    .every((item) => {
-      const v = answers[item.id];
-      if (v === undefined || v === null || v === '') return false;
-      if (Array.isArray(v)) return v.length > 0;
-      if (typeof v === 'object' && v !== null) {
-        const obj = v as Record<string, unknown>;
-        // For sub-item types, every sub-key present in the item content must be answered
-        return Object.values(obj).every((s) => s !== null && s !== undefined);
-      }
-      return true;
-    });
+  const isScreenComplete = items.every((item) => {
+    if (isAdaptiveType(item.type)) {
+      return item.content.complete === true;
+    }
+    return isItemAnswerComplete(item, answers[item.id]);
+  });
 
   const isSaving = saveDraft.isPending;
   const isSubmitting = submitScreen.isPending;
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
-  const hydrateDraft = useCallback((savedResponses: ResponsesMap) => {
+  const hydrateDraft = useCallback((savedResponses: ResponsesMap, draftItems?: AssessmentItem[]) => {
     setAnswers(savedResponses);
-    // Everything from the draft is already persisted → treat as locked
-    lockedResponses.current = { ...savedResponses };
+    lockedResponses.current = mergeResponseMaps({}, savedResponses);
+    if (draftItems?.length) {
+      setItems(draftItems);
+    }
   }, []);
 
   const recordAnswer = useCallback(
@@ -217,12 +266,43 @@ export function useAssessmentScreen({
       // ── 2. Adaptive → per-step endpoint, no draft write ────────────────────
       if (isAdaptiveType(item.type)) {
         try {
-          const result = await submitAdaptive.mutateAsync({
+          const raw = await submitAdaptive.mutateAsync({
             assessmentId,
             componentId,
             itemId,
             optionId: value as string,
           });
+          const result = normalizeAdaptiveStepResponse(raw);
+          if (result.nextItem) {
+            setItems((prev) =>
+              prev.map((row) =>
+                row.id === itemId
+                  ? {
+                      ...row,
+                      content: {
+                        ...row.content,
+                        ...result.nextItem,
+                        stepIndex: result.stepIndex,
+                        totalSteps: result.totalSteps,
+                        complete: result.complete,
+                      },
+                    }
+                  : row,
+              ),
+            );
+          } else if (result.complete) {
+            setItems((prev) =>
+              prev.map((row) =>
+                row.id === itemId
+                  ? {
+                      ...row,
+                      content: { ...row.content, complete: true },
+                    }
+                  : row,
+              ),
+            );
+          }
+          setAnswers((prev) => ({ ...prev, [itemId]: value as string }));
           onAdaptiveStep?.(result);
         } catch {
           /* error toast shown by API client */
@@ -230,86 +310,59 @@ export function useAssessmentScreen({
         return;
       }
 
-      // ── 3. Single-answer items → immediate draft save (delta only) ─────────
-      if (isSingleAnswerType(item.type)) {
-        const delta = buildDelta(itemId, value, subKey);
-        if (!delta) return; // already locked — nothing to send
-
-        try {
-          const resp = await saveDraft.mutateAsync({
-            assessmentId,
-            componentId,
-            responses: delta,
-          });
-          applyServerResponse(resp);
-        } catch (err: any) {
-          // Lock error (400 ASSESSMENT_RESPONSE_INVALID): the sub-key was
-          // already saved in a previous session. Mark it locked locally so
-          // subsequent interactions don't try again.
-          if (err?.status === 400) {
-            lockedResponses.current = {
-              ...lockedResponses.current,
-              [itemId]:
-                subKey !== undefined
-                  ? {
-                      ...(typeof lockedResponses.current[itemId] === 'object'
-                        ? (lockedResponses.current[itemId] as Record<string, unknown>)
-                        : {}),
-                      [subKey]: value,
-                    }
-                  : value,
-            };
-          }
-        }
+      // ── 3. Immediate draft PATCH (single-select + partial-draft sub-keys) ──
+      if (isSingleAnswerType(item.type) || (isPartialDraftType(item.type) && subKey !== undefined)) {
+        await persistDraftDelta(itemId, value, item, subKey);
         return;
       }
 
-      // ── 4. Multiple-answer items → local state only ────────────────────────
-      // Nothing to do here. confirmScreen() will flush everything.
+      // ── 4. Batch types (rank, SJT whole-item) → local until Continue ─────
     },
     [
       assessmentId,
       componentId,
-      saveDraft,
       submitAdaptive,
       onAdaptiveStep,
-      buildDelta,
-      applyServerResponse,
+      persistDraftDelta,
     ],
   );
 
   const confirmScreen = useCallback(async () => {
-    // Collect multiple-answer items not yet saved (whole items only)
-    const unsavedMultiple: ResponsesMap = {};
+    if (!items.every((item) => {
+      if (isAdaptiveType(item.type)) return item.content.complete === true;
+      return isItemAnswerComplete(item, answers[item.id]);
+    })) {
+      return;
+    }
+
+    const unsavedBatch: ResponsesMap = {};
     items.forEach((item) => {
-      if (
-        !isAdaptiveType(item.type) &&
-        !isSingleAnswerType(item.type) &&
-        !isWholeItemLocked(lockedResponses.current, item.id)
-      ) {
-        const v = answers[item.id];
-        if (v !== undefined) unsavedMultiple[item.id] = v;
+      if (!isMultipleAnswerType(item.type)) return;
+      if (isWholeItemLocked(lockedResponses.current, item.id)) return;
+      const v = answers[item.id];
+      if (v !== undefined && isItemAnswerComplete(item, v)) {
+        unsavedBatch[item.id] = v;
       }
     });
 
-    // Flush unsaved multiple-answer items as one batch PATCH
-    if (Object.keys(unsavedMultiple).length > 0) {
+    if (Object.keys(unsavedBatch).length > 0) {
       const resp = await saveDraft.mutateAsync({
         assessmentId,
         componentId,
-        responses: unsavedMultiple,
+        responses: unsavedBatch,
       });
-      applyServerResponse(resp);
+      applyServerResponse(normalizeSaveResponse(resp));
     }
 
-    // Submit everything for scoring
-    const result = await submitScreen.mutateAsync({
+    const submitPayload = buildScreenSubmitResponses(items, answers);
+
+    await submitScreen.mutateAsync({
       assessmentId,
       componentId,
-      responses: answers,
+      responses: submitPayload,
     });
 
-    onScreenComplete({ nextScreenKey: result.nextScreenKey });
+    onScreenComplete();
   }, [
     assessmentId,
     componentId,

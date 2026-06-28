@@ -45,7 +45,6 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
         <div className="absolute bottom-[-90px] left-[-70px] w-[240px] h-[240px] rounded-full bg-white/[0.03]" />
         <div className="max-w-[820px] mx-auto relative z-10">
           <div className="inline-flex items-center gap-[7px] bg-white/[0.14] border border-white/[0.22] rounded-full p-[6px_14px] backdrop-blur-[6px] mb-[18px]">
-            <CheckIcon className="w-[13px] h-[13px] text-[#387DFF]" />
             <span className="text-[11.5px] font-[800] tracking-[0.7px] uppercase">You passed Stages 1 and 2</span>
           </div>
           <div className="text-[12px] font-[800] tracking-[1.4px] uppercase text-white/70 mb-[8px]">Stage 3 of 4 · The video interview</div>
@@ -164,7 +163,7 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
                   <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/>
                 </svg>
               </div>
-              <div className="text-[10.5px] font-[800] tracking-[0.5px] uppercase text-[#DC2626] mb-[6px]">Path 1</div>
+              <div className="text-[10.5px] font-[800] tracking-[0.5px] uppercase text-[#0047CC] mb-[6px]">Path 1</div>
               <div className="text-[16px] font-[900] text-[#1A1A1A] mb-[6px] tracking-[-0.2px]">Record live in your browser</div>
               <div className="text-[13px] text-[#4A4A4A] leading-[1.6] mb-[12px]">Use your laptop or phone&apos;s camera and microphone. Record, watch back, retake if there&apos;s time, then submit.</div>
               <ul className="list-none flex flex-col gap-[7px]">
@@ -174,7 +173,7 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
                   'Audio levels meter shown live',
                   'Nothing leaves your device until you tap Submit'
                 ].map((li, i) => (
-                  <li key={i} className="text-[12px] text-[#4A4A4A] font-[600] pl-[18px] relative line-height-[1.5] before:content-[''] before:absolute before:left-0 before:top-[7px] before:w-[6px] before:h-[6px] before:rounded-full before:bg-[#DC2626]">
+                  <li key={i} className="text-[12px] text-[#4A4A4A] font-[600] pl-[18px] relative line-height-[1.5] before:content-[''] before:absolute before:left-0 before:top-[7px] before:w-[6px] before:h-[6px] before:rounded-full before:bg-[#0047CC]">
                     {li}
                   </li>
                 ))}
@@ -205,8 +204,8 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-[18px] padding py-3 px-[14px] bg-gradient-to-b from-[#FEF3C7] to-[#FFFBEB] border border-[#FDE68A] rounded-[10px] text-[12.5px] text-[#78350F] leading-[1.55] display flex gap-[9px] items-start">
-            <svg className="w-[15px] h-[15px] text-[#D97706] shrink-0 mt-[1px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <div className="mt-[18px] padding py-3 px-[14px] border border-[#0047CC] rounded-[10px] text-[12.5px] text-[#0047CC] leading-[1.55] display flex gap-[9px] items-start">
+            <svg className="w-[15px] h-[15px] text-[#0047CC] shrink-0 mt-[1px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
             <div><strong>Mix and match freely.</strong> You can record one question live, upload the next, then record the third. The method doesn&apos;t affect how you&apos;re assessed, only the content does.</div>

@@ -287,7 +287,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
       />
 
       {/* Stage Rail */}
-      <StageRail activeStage={2} />
+      <StageRail activeStage={2} showBottomBorder={false} />
 
       {/* Part Rail */}
       <PartRail activePart={3} />

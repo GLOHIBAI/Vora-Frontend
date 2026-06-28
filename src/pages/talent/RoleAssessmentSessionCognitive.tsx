@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import VoraLogo from '../../components/common/VoraLogo';
 import Button from '../../components/common/Button';
 import Tag from '../../components/common/Tag';
 import { ArrowRightIcon } from '../../components/common/Icons';
+import VoraLogo from '../../components/common/VoraLogo';
+import AssessmentItemRenderer from '../../components/talent/assessment/AssessmentItemRenderer';
+import type { AssessmentItem } from '../../services/queries/assessments/types';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -140,6 +142,24 @@ const RoleAssessmentSessionCognitive: React.FC = () => {
     toast.success('Saved. You can return anytime within 48 hours.');
   };
 
+  const adaptiveItem: AssessmentItem = useMemo(() => {
+    const bankItem = BANK[curItemIdx];
+    return {
+      id: 'cognitive-adaptive',
+      type: 'adaptive_mcq',
+      sequence: 1,
+      total: 1,
+      content: {
+        stem: bankItem.q,
+        stepIndex: asked,
+        totalSteps: MAX_ITEMS,
+        complete: false,
+        difficultyLabel: diffLabel(bankItem.b),
+        options: bankItem.o.map((label, i) => ({ id: String(i), label })),
+      },
+    };
+  }, [curItemIdx, asked]);
+
   // Rendering finished results screen
   if (finished) {
     const se = 1.2 / Math.sqrt(asked); 
@@ -151,7 +171,7 @@ const RoleAssessmentSessionCognitive: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col relative pb-[80px]">
         {/* Top Bar */}
-        <header className="bg-white/95 backdrop-blur-[10px] border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[14px] flex items-center justify-between sticky top-0 z-[50]">
+        <header className="bg-white/95 backdrop-blur-[10px] px-[20px] sm:px-[32px] py-[14px] flex items-center justify-between sticky top-0 z-[50]">
           <span className="inline-flex items-center gap-[1px] text-[#0047CC]">
             <VoraLogo size="sm" to="/dashboard" />
           </span>
@@ -167,7 +187,7 @@ const RoleAssessmentSessionCognitive: React.FC = () => {
         </header>
 
         {/* Chapter Rail */}
-        <div className="bg-white border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[12px] flex items-center justify-center gap-[12px] flex-wrap">
+        <div className="bg-white px-[20px] sm:px-[32px] py-[12px] flex items-center justify-center gap-[12px] flex-wrap">
           <div className="flex items-center gap-[7px]">
             <div className="w-[18px] h-[18px] rounded-full bg-[#0047CC] shadow-[0_0_0_4px_rgba(0,71,204,0.12)] flex items-center justify-center text-[9px] font-[800] text-white">1</div>
             <div className="text-[11.5px] font-[700] text-[#0047CC]">How you think</div>
@@ -244,12 +264,10 @@ const RoleAssessmentSessionCognitive: React.FC = () => {
     );
   }
 
-  const it = BANK[curItemIdx];
-
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col relative pb-[80px]">
       {/* Top Bar */}
-      <header className="bg-white/95 backdrop-blur-[10px] border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[14px] flex items-center justify-between sticky top-0 z-[50]">
+      <header className="bg-white/95 backdrop-blur-[10px] px-[20px] sm:px-[32px] py-[14px] flex items-center justify-between sticky top-0 z-[50]">
         <span className="inline-flex items-center gap-[1px] text-[#0047CC]">
           <VoraLogo size="sm" to="/dashboard" />
         </span>
@@ -265,7 +283,7 @@ const RoleAssessmentSessionCognitive: React.FC = () => {
       </header>
 
       {/* Chapter Rail */}
-      <div className="bg-white border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[12px] flex items-center justify-center gap-[12px] flex-wrap">
+      <div className="bg-white px-[20px] sm:px-[32px] py-[12px] flex items-center justify-center gap-[12px] flex-wrap">
         <div className="flex items-center gap-[7px]">
           <div className="w-[18px] h-[18px] rounded-full bg-[#0047CC] shadow-[0_0_0_4px_rgba(0,71,204,0.12)] flex items-center justify-center text-[9px] font-[800] text-white">1</div>
           <div className="text-[11.5px] font-[700] text-[#0047CC]">How you think</div>
@@ -331,34 +349,18 @@ const RoleAssessmentSessionCognitive: React.FC = () => {
           })}
         </div>
 
-        {/* Question Card */}
-        <div className="bg-white border border-[#E6E6E6] rounded-[16px] p-[22px] shadow-[0_10px_30px_-22px_rgba(24,35,72,0.5)]">
-          <span className="inline-block text-[11px] font-[800] tracking-[0.3px] uppercase px-[9px] py-[3px] rounded-full bg-[#EBF6FF] text-[#0047CC] mb-[12px]">
-            {diffLabel(it.b)}
-          </span>
-          <div className="font-[800] text-[17px] text-[#182348] mb-[16px] leading-[1.4]">
-            {it.q}
-          </div>
-
-          <div className="flex flex-col gap-[9px]">
-            {it.o.map((opt, oIdx) => {
-              const selected = curPick === oIdx;
-              return (
-                <button
-                  key={oIdx}
-                  type="button"
-                  onClick={() => handleOptionSelect(oIdx)}
-                  className={`border-[1.5px] rounded-[11px] p-[13px_15px] text-[15px] cursor-pointer font-sans w-full text-left font-[700] transition-colors
-                    ${selected 
-                      ? 'border-[#0047CC] bg-[#EBF6FF] text-[#1A1A1A]' 
-                      : 'border-[#E6E6E6] bg-white text-[#1A1A1A] hover:border-[#387DFF]'
-                    }`}
-                >
-                  {opt}
-                </button>
-              );
-            })}
-          </div>
+        {/* Question — reusable adaptive item component */}
+        <div className="relative">
+          {adaptiveItem.content.difficultyLabel ? (
+            <span className="inline-block text-[11px] font-[800] tracking-[0.3px] uppercase px-[9px] py-[3px] rounded-full bg-[#EBF6FF] text-[#0047CC] mb-[12px]">
+              {String(adaptiveItem.content.difficultyLabel)}
+            </span>
+          ) : null}
+          <AssessmentItemRenderer
+            item={adaptiveItem}
+            value={curPick !== null ? String(curPick) : undefined}
+            onChange={(val) => handleOptionSelect(Number(val))}
+          />
         </div>
 
       </main>

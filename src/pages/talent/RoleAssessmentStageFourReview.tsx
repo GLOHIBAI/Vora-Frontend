@@ -81,8 +81,6 @@ const RoleAssessmentStageFourReview: React.FC = () => {
         
         <div className="max-w-[820px] mx-auto relative z-10">
           <div className="inline-flex items-center gap-[8px] bg-white/[0.14] border border-white/[0.24] rounded-full p-[7px_16px] backdrop-blur-[6px] mb-[20px]">
-            {/* Pulsing review indicator in blue */}
-            <div className="w-[8px] h-[8px] rounded-full bg-[#387DFF] animate-pulse" />
             <span className="text-[11.5px] font-[800] tracking-[0.7px] uppercase">Hiring team is reviewing right now</span>
           </div>
           
@@ -221,7 +219,6 @@ const RoleAssessmentStageFourReview: React.FC = () => {
                 <div className="text-[11.5px] text-[#808080] font-[600]">Country Director · Hiring lead</div>
               </div>
               <span className="text-[10.5px] font-[800] p-[3px_9px] rounded-[6px] uppercase tracking-[0.4px] bg-[#EBF6FF] text-[#0047CC] flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#0047CC] animate-pulse" />
                 Reading now
               </span>
             </div>
@@ -279,9 +276,6 @@ const RoleAssessmentStageFourReview: React.FC = () => {
             className="bg-[#0047CC] text-white border-none rounded-[10px] p-[13px_26px] text-[14px] font-[700] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] transition-all"
           >
             Preview outcome (demo)
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M3 8h10M9 4l4 4-4 4"/>
-            </svg>
           </button>
         </div>
       </main>

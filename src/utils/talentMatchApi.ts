@@ -1,6 +1,7 @@
 import type { ProfileMatchBreakdownItem } from '../constants/profileMatchResult';
+import { DEFAULT_MATCH_SCORE_CONFIG } from '../constants/profileMatchResult';
 import type { MatchedRoleListing } from '../types/talentRolesFound';
-import { PROFILE_MATCH_THRESHOLD } from '../constants/profileMatchResult';
+import { normalizeMatchScoreConfig } from './profileMatchResult';
 
 const DIMENSION_LABELS: Record<string, string> = {
   responsibilities: 'Responsibilities',
@@ -11,6 +12,7 @@ const DIMENSION_LABELS: Record<string, string> = {
   cultureFit: 'Culture fit',
   workingStyle: 'Working style',
   contextualFit: 'Contextual fit',
+  geopolitical: 'Work authorisation',
 };
 
 const unwrapApiList = (response: unknown): any[] => {
@@ -24,10 +26,18 @@ const unwrapApiList = (response: unknown): any[] => {
   return [];
 };
 
+const resolveRowThreshold = (row: Record<string, unknown>, fallback: number): number => {
+  const cfg = row?.scoreConfig;
+  if (cfg && typeof cfg === 'object') {
+    return normalizeMatchScoreConfig(cfg).matchThreshold;
+  }
+  return fallback;
+};
+
 export const countPassingAlternateMatches = (
   response: unknown,
   linkedRoleLink?: string,
-  threshold = PROFILE_MATCH_THRESHOLD / 100,
+  threshold = DEFAULT_MATCH_SCORE_CONFIG.matchThreshold,
 ): number =>
   unwrapApiList(response).filter((row) => {
     const roleLink = row?.roleLink ?? row?.linkedRoleContext?.roleLink ?? row?.role?.roleLink;
@@ -35,17 +45,21 @@ export const countPassingAlternateMatches = (
     const score: number = row?.overallScore ?? row?.score ?? 0;
     const eligible = row?.geopoliticalEligible ?? true;
     const outcome = row?.outcome;
-    return eligible && outcome !== 'ELIGIBILITY_ISSUE' && score >= threshold;
+    const rowThreshold = resolveRowThreshold(row, threshold);
+    return eligible && outcome !== 'ELIGIBILITY_ISSUE' && score >= rowThreshold;
   }).length;
 
 export const mapDimensionScoresToBreakdown = (
   dimensionScores?: Record<string, number> | null,
+  matchThresholdPct = Math.round(DEFAULT_MATCH_SCORE_CONFIG.matchThreshold * 100),
+  gapThresholdPct = Math.round(DEFAULT_MATCH_SCORE_CONFIG.dimensionGapThreshold * 100),
 ): ProfileMatchBreakdownItem[] => {
   if (!dimensionScores || Object.keys(dimensionScores).length === 0) return [];
 
   return Object.entries(dimensionScores).map(([key, value]) => {
     const pct = Math.round(value * 100);
-    const barColor = pct >= 80 ? 'success' : 'primary';
+    const barColor = pct >= matchThresholdPct ? 'success' : 'primary';
+    void gapThresholdPct;
     return {
       label: DIMENSION_LABELS[key] ?? key,
       pct,
@@ -62,10 +76,22 @@ const initialsFromName = (name: string): string =>
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('') || 'VR';
 
+const formatSalaryFromRolePosting = (role: Record<string, unknown>): { amount: string; period: string } => {
+  const min = role?.salaryMin;
+  const max = role?.salaryMax;
+  if (typeof min === 'number' && typeof max === 'number') {
+    return { amount: `${min.toLocaleString()} – ${max.toLocaleString()}`, period: 'monthly' };
+  }
+  if (typeof min === 'number') {
+    return { amount: min.toLocaleString(), period: 'monthly' };
+  }
+  return { amount: role?.salaryAmount as string ?? '—', period: (role?.salaryPeriod as string) ?? 'monthly' };
+};
+
 export const mapTalentMatchesToListings = (
   response: unknown,
   linkedRoleLink?: string,
-  threshold = PROFILE_MATCH_THRESHOLD / 100,
+  threshold = DEFAULT_MATCH_SCORE_CONFIG.matchThreshold,
 ): MatchedRoleListing[] =>
   unwrapApiList(response)
     .filter((row) => {
@@ -73,34 +99,53 @@ export const mapTalentMatchesToListings = (
       if (linkedRoleLink && roleLink === linkedRoleLink) return false;
       const score: number = row?.overallScore ?? row?.score ?? 0;
       const eligible = row?.geopoliticalEligible ?? true;
-      return eligible && row?.outcome !== 'ELIGIBILITY_ISSUE' && score >= threshold;
+      const rowThreshold = resolveRowThreshold(row, threshold);
+      return eligible && row?.outcome !== 'ELIGIBILITY_ISSUE' && score >= rowThreshold;
     })
     .map((row, index) => {
       const score: number = row?.overallScore ?? row?.score ?? 0;
       const matchPercent = Math.round(score * 100);
       const role = row?.role ?? row?.rolePosting ?? row?.linkedRoleContext ?? {};
-      const companyName = role?.employerName ?? role?.companyName ?? 'Employer';
+      const employer = role?.employer as Record<string, unknown> | undefined;
+      const companyName =
+        role?.employerName ??
+        role?.companyName ??
+        employer?.organisationName ??
+        'Employer';
       const roleTitle = role?.title ?? role?.roleTitle ?? 'Role';
-      const location = role?.location ?? role?.locationLabel ?? 'Location TBD';
+      const city = role?.workLocationCity ?? role?.city;
+      const country = role?.workLocationCountry ?? role?.country;
+      const location =
+        role?.location ??
+        role?.locationLabel ??
+        (city && country ? `${city}, ${country}` : city ?? country ?? 'Location TBD');
+      const salary = formatSalaryFromRolePosting(role);
+      const explanation = row?.matchExplanation ?? row?.explanation;
+      const gateMessage = Array.isArray(explanation?.gates)
+        ? explanation.gates.find((g: { passed?: boolean }) => g.passed)?.message
+        : undefined;
 
       return {
-        id: row?.rolePostingId ?? row?.id ?? `match-${index}`,
+        id: row?.rolePostingId ?? role?.id ?? row?.id ?? `match-${index}`,
         roleTitle,
-        companyName,
-        companyInitials: initialsFromName(companyName),
-        salaryAmount: role?.salaryAmount ?? '—',
-        salaryPeriod: role?.salaryPeriod ?? 'monthly',
+        companyName: String(companyName),
+        companyInitials: initialsFromName(String(companyName)),
+        salaryAmount: salary.amount,
+        salaryPeriod: salary.period,
         matchPercent,
         matchVariant: matchPercent >= 85 ? 'green' : 'blue',
-        locationLine: location,
+        locationLine: String(location),
         formatPill: role?.workFormat ?? 'Format TBD',
         postedLine: role?.postedLine ?? 'Posted recently',
-        contractPill: role?.contractType ?? 'Contract TBD',
+        contractPill: role?.contractType ?? role?.compensationType ?? 'Contract TBD',
         contractMeta: Array.isArray(role?.contractMeta) ? role.contractMeta : [],
         timezone: role?.timezone ?? '',
         eligibility: {
           title: 'Eligibility verified',
-          body: row?.explanation?.summary ?? 'You meet the work-authorisation requirements for this role.',
+          body:
+            explanation?.summary ??
+            gateMessage ??
+            'You meet the work-authorisation requirements for this role.',
         },
         tags: Array.isArray(role?.tags) ? role.tags : [],
         metaItems: Array.isArray(role?.metaItems) ? role.metaItems : [],

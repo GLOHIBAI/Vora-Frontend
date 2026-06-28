@@ -68,7 +68,7 @@ const RoleAssessmentSessionTwoReview: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col relative pb-[80px]">
       {/* Top Bar */}
-      <header className="bg-white/95 backdrop-blur-[10px] border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[12px] flex items-center justify-between sticky top-0 z-[50]">
+      <header className="bg-white/95 backdrop-blur-[10px] px-[20px] sm:px-[32px] py-[12px] flex items-center justify-between sticky top-0 z-[50]">
         <span className="inline-flex items-center gap-[1px] text-[#0047CC]">
           <VoraLogo size="sm" to="/dashboard" />
         </span>

@@ -1,14 +1,12 @@
-import React from 'react';
+interface MatchResultEligibilityProps {
+  title: string;
+  body: string;
+}
 
-const MatchResultEligibility: React.FC = () => (
+const MatchResultEligibility: React.FC<MatchResultEligibilityProps> = ({ title, body }) => (
   <div className="bg-white border border-[#E6E6E6] rounded-xl p-5 mb-5 text-left">
-    <h2 className="text-[15px] font-bold text-[#1A1A1A] mb-1">
-      Work authorisation confirmed, you qualify to work in this role
-    </h2>
-    <p className="text-[13px] text-[#808080] leading-relaxed">
-      VORA verified your nationality, country of residence, and right-to-work status against this
-      role&apos;s requirements. You are fully cleared to proceed to assessment.
-    </p>
+    <h2 className="text-[15px] font-bold text-[#1A1A1A] mb-1">{title}</h2>
+    <p className="text-[13px] text-[#808080] leading-relaxed">{body}</p>
   </div>
 );
 

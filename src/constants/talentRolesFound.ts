@@ -1,14 +1,16 @@
 import type { MatchedRoleListing, RolesFoundSummary } from '../types/talentRolesFound';
+import { DEFAULT_MATCH_SCORE_CONFIG, ROLES_FOUND_PATH } from './profileMatchResult';
 
-export const ROLES_FOUND_PATH = '/onboarding/talent/match/roles';
+export { ROLES_FOUND_PATH };
 
 export const DEFAULT_ROLES_FOUND_SUMMARY: RolesFoundSummary = {
   originalRoleTitle: 'Junior Global Health Researcher',
   originalScore: 61,
-  matchThreshold: 80,
+  matchThreshold: Math.round(DEFAULT_MATCH_SCORE_CONFIG.matchThreshold * 100),
   matchedRoleCount: 3,
   careerReadinessScore: 71,
   assessmentGrade: 'B1',
+  explanationSummary: '',
 };
 
 export const MOCK_MATCHED_ROLES: MatchedRoleListing[] = [

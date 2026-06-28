@@ -1,5 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../api';
+import { isGate1MockSession, shouldMockGate1 } from '../../../config/gate1Api';
+import {
+  mockGate1AdaptiveStep,
+  mockGate1Draft,
+  mockGate1Progress,
+  mockGate1ResumeState,
+  mockGate1ReviewSummary,
+  mockGate1SaveDraft,
+  mockGate1ScreensCatalog,
+  mockGate1StartScreen,
+  mockGate1SubmitScreen,
+  mockGate1Verdict,
+} from '../../../mocks/gate1MockSession';
+import type { Gate1ScreenKey } from './types';
 import type {
   AssessmentGateStartResponse,
   AssessmentDraftResponse,
@@ -51,10 +65,12 @@ export const useAssessmentScreensQuery = (gate: 1 | 2 | 3 = 1) =>
   useQuery({
     queryKey: assessmentKeys.screens(gate),
     queryFn: () =>
-      apiClient.get<{ data: AssessmentScreenCatalog[] }>({
-        url: `/assessments/gates/${gate}/screens`,
-        auth: true,
-      }),
+      shouldMockGate1(gate)
+        ? mockGate1ScreensCatalog()
+        : apiClient.get<{ data: AssessmentScreenCatalog[] }>({
+            url: `/assessments/gates/${gate}/screens`,
+            auth: true,
+          }),
     staleTime: 10 * 60 * 1000, // catalog rarely changes mid-session
   });
 
@@ -90,11 +106,13 @@ export const useGateResumeStateQuery = (
 ) =>
   useQuery({
     queryKey: assessmentKeys.resumeState(assessmentId, gate),
-    queryFn: () =>
-      apiClient.get<GateResumeState>({
-        url: `/assessments/${assessmentId}/gates/${gate}/resume-state`,
-        auth: true,
-      }),
+    queryFn: async (): Promise<unknown> =>
+      shouldMockGate1(gate)
+        ? mockGate1ResumeState()
+        : apiClient.get<GateResumeState>({
+            url: `/assessments/${assessmentId}/gates/${gate}/resume-state`,
+            auth: true,
+          }),
     enabled: (options?.enabled ?? true) && !!assessmentId,
     staleTime: 30 * 1000, // 30s — re-fetch after each screen submit
   });
@@ -124,12 +142,17 @@ export const useStartAssessmentScreenMutation = (gate: 1 | 2 | 3 = 1) => {
       assessmentId: string;
       /** Gate 1 → { screen }; Gate 2 → { pillar }; Gate 3 → { screen? } */
       body: Record<string, string>;
-    }) =>
-      apiClient.post<AssessmentGateStartResponse>({
+    }) => {
+      if (shouldMockGate1(gate)) {
+        const screenKey = (body.screen ?? 'personality') as Gate1ScreenKey;
+        return mockGate1StartScreen(screenKey);
+      }
+      return apiClient.post<AssessmentGateStartResponse>({
         url: `/assessments/${assessmentId}/gates/${gate}/start`,
         body,
         auth: true,
-      }),
+      });
+    },
     onSuccess: (data, { assessmentId }) => {
       // Invalidate progress so the journey bar reflects the new screen start
       queryClient.invalidateQueries({ queryKey: assessmentKeys.progress(assessmentId) });
@@ -168,12 +191,16 @@ export const useSaveAssessmentDraftMutation = () => {
       componentId: string;
       /** Only NEW (unlocked) keys — never re-send already-saved answers */
       responses: ResponsesMap;
-    }) =>
-      apiClient.patch<SaveDraftResponse>({
+    }) => {
+      if (isGate1MockSession(assessmentId)) {
+        return mockGate1SaveDraft(componentId, responses);
+      }
+      return apiClient.patch<SaveDraftResponse>({
         url: `/assessments/${assessmentId}/components/${componentId}/responses`,
         body: { responses },
         auth: true,
-      }),
+      });
+    },
     onSuccess: (_data, { assessmentId }) => {
       // Invalidate progress so the answered/total counts update in the UI
       queryClient.invalidateQueries({ queryKey: assessmentKeys.progress(assessmentId) });
@@ -196,11 +223,13 @@ export const useAssessmentDraftQuery = (
   useQuery({
     queryKey: assessmentKeys.draft(assessmentId, componentId),
     queryFn: () =>
-      apiClient.get<AssessmentDraftResponse>({
-        url: `/assessments/${assessmentId}/components/${componentId}/responses`,
-        auth: true,
-        suppressErrorToast: true,
-      }),
+      isGate1MockSession(assessmentId)
+        ? mockGate1Draft(componentId)
+        : apiClient.get<AssessmentDraftResponse>({
+            url: `/assessments/${assessmentId}/components/${componentId}/responses`,
+            auth: true,
+            suppressErrorToast: true,
+          }),
     enabled: (options?.enabled ?? true) && !!assessmentId && !!componentId,
   });
 
@@ -225,15 +254,21 @@ export const useSubmitAssessmentScreenMutation = () => {
       assessmentId: string;
       componentId: string;
       responses: ResponsesMap;
-    }) =>
-      apiClient.post<AssessmentSubmitResponse>({
+    }) => {
+      if (isGate1MockSession(assessmentId)) {
+        return mockGate1SubmitScreen(componentId, responses);
+      }
+      return apiClient.post<AssessmentSubmitResponse>({
         url: `/assessments/${assessmentId}/components/${componentId}/submit`,
         body: { responses },
         auth: true,
-      }),
+      });
+    },
     onSuccess: (_data, { assessmentId }) => {
-      // Progress bar needs updating after every screen submit
       queryClient.invalidateQueries({ queryKey: assessmentKeys.progress(assessmentId) });
+      queryClient.invalidateQueries({
+        queryKey: assessmentKeys.resumeState(assessmentId, 1),
+      });
     },
   });
 };
@@ -260,12 +295,16 @@ export const useSubmitAdaptiveStepMutation = () =>
       componentId: string;
       itemId: string;
       optionId: string;
-    }) =>
-      apiClient.post<AdaptiveStepResponse>({
+    }) => {
+      if (isGate1MockSession(assessmentId)) {
+        return mockGate1AdaptiveStep(componentId, itemId);
+      }
+      return apiClient.post<AdaptiveStepResponse>({
         url: `/assessments/${assessmentId}/components/${componentId}/items/${itemId}/adaptive`,
         body: { optionId },
         auth: true,
-      }),
+      });
+    },
   });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -280,10 +319,12 @@ export const useAssessmentGatesProgressQuery = (
   useQuery({
     queryKey: assessmentKeys.progress(assessmentId),
     queryFn: () =>
-      apiClient.get<{ data: GateProgressEntry[] }>({
-        url: `/assessments/${assessmentId}/gates/progress`,
-        auth: true,
-      }),
+      isGate1MockSession(assessmentId)
+        ? mockGate1Progress()
+        : apiClient.get<{ data: GateProgressEntry[] }>({
+            url: `/assessments/${assessmentId}/gates/progress`,
+            auth: true,
+          }),
     enabled: (options?.enabled ?? true) && !!assessmentId,
     refetchInterval: options?.refetchInterval ?? false,
   });
@@ -302,11 +343,13 @@ export const useGateVerdictQuery = (
   useQuery({
     queryKey: assessmentKeys.verdict(assessmentId, gate),
     queryFn: () =>
-      apiClient.get<GateVerdictResponse>({
-        url: `/assessments/${assessmentId}/gates/${gate}/verdict`,
-        auth: true,
-        suppressErrorToast: true,
-      }),
+      shouldMockGate1(gate)
+        ? mockGate1Verdict()
+        : apiClient.get<GateVerdictResponse>({
+            url: `/assessments/${assessmentId}/gates/${gate}/verdict`,
+            auth: true,
+            suppressErrorToast: true,
+          }),
     enabled: (options?.enabled ?? true) && !!assessmentId,
     refetchInterval: options?.refetchInterval ?? false,
   });
@@ -323,10 +366,12 @@ export const useReviewSummaryQuery = (
 ) =>
   useQuery({
     queryKey: assessmentKeys.reviewSummary(assessmentId, gate),
-    queryFn: () =>
-      apiClient.get<{ data: ReviewSummaryEntry[] }>({
-        url: `/assessments/${assessmentId}/gates/${gate}/review-summary`,
-        auth: true,
-      }),
+    queryFn: async (): Promise<unknown> =>
+      shouldMockGate1(gate)
+        ? mockGate1ReviewSummary()
+        : apiClient.get<{ data: ReviewSummaryEntry[] }>({
+            url: `/assessments/${assessmentId}/gates/${gate}/review-summary`,
+            auth: true,
+          }),
     enabled: (options?.enabled ?? true) && !!assessmentId,
   });

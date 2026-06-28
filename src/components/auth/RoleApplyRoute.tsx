@@ -6,14 +6,11 @@ import FullPageSpinner from '../common/FullPageSpinner';
 const RoleApplyRoute: React.FC = () => {
   const { roleSlug } = useParams<{ roleSlug: string }>();
   const { user } = useAuth();
+  const { data: stateData, isLoading } = useTalentOnboardingStateQuery(!!user);
 
-  // If user is not authenticated, they shouldn't be here (App.tsx already has some protection, but let's be sure)
   if (!user) {
     return <Navigate to={`/role/${roleSlug}/login`} replace />;
   }
-
-  // Fetch onboarding state to verify CV parse status
-  const { data: stateData, isLoading } = useTalentOnboardingStateQuery(true);
 
   if (isLoading) {
     return <FullPageSpinner />;

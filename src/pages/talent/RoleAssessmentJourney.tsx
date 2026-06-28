@@ -1,12 +1,20 @@
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useMemo, useEffect } from 'react';
-import toast from 'react-hot-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import VoraLogo from '../../components/common/VoraLogo';
 import Button from '../../components/common/Button';
 import { useAuth } from '../../context/AuthContext';
-import { useGetPublicRoleQuery, useGetPreAssessmentReadinessQuery, useBeginAssessmentMutation } from '../../services/queries/talent';
+import { useGetPublicRoleQuery, useGetPreAssessmentReadinessQuery } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
+import type { ProfileMatchScanResult } from '../../types/profileMatchWaitlist';
+import {
+  extractRolePostingIdFromMatchPayload,
+  extractRolePostingIdFromPublicRole,
+  persistRolePostingId,
+  pickRolePostingId,
+  readStoredRolePostingId,
+} from '../../utils/rolePostingId';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -90,7 +98,14 @@ const RoleAssessmentJourney: React.FC = () => {
   const { roleSlug } = useParams<{ roleSlug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
+
+  const locationState = location.state as {
+    firstName?: string;
+    matchScan?: ProfileMatchScanResult;
+    rolePostingId?: string;
+  } | null;
   
   useEffect(() => {
     if (roleSlug) {
@@ -99,7 +114,7 @@ const RoleAssessmentJourney: React.FC = () => {
   }, [roleSlug]);
 
   const firstName =
-    (location.state as { firstName?: string } | null)?.firstName || user?.firstName || 'there';
+    locationState?.firstName || user?.firstName || 'there';
 
   const isStage2Unlocked = localStorage.getItem('vora_stage2_unlocked') === 'true';
   const isStage2Completed = localStorage.getItem('vora_stage2_completed') === 'true';
@@ -108,7 +123,29 @@ const RoleAssessmentJourney: React.FC = () => {
   const isStage4Unlocked = localStorage.getItem('vora_stage4_unlocked') === 'true';
 
   const { data: response, isLoading: isRoleLoading } = useGetPublicRoleQuery(roleSlug || '');
-  const { data: readinessResponse, isLoading: isReadinessLoading } = useGetPreAssessmentReadinessQuery(roleSlug || '');
+
+  const rolePostingId = useMemo(() => {
+    const fromMatchCache = extractRolePostingIdFromMatchPayload(
+      queryClient.getQueryData(['talent', 'role-link-match', roleSlug]),
+    );
+
+    return pickRolePostingId(
+      locationState?.matchScan?.rolePostingId,
+      locationState?.rolePostingId,
+      extractRolePostingIdFromPublicRole(response),
+      fromMatchCache,
+      readStoredRolePostingId(roleSlug || ''),
+    );
+  }, [locationState, response, queryClient, roleSlug]);
+
+  useEffect(() => {
+    if (roleSlug && rolePostingId) {
+      persistRolePostingId(roleSlug, rolePostingId);
+    }
+  }, [roleSlug, rolePostingId]);
+
+  const { data: readinessResponse, isLoading: isReadinessLoading } =
+    useGetPreAssessmentReadinessQuery(roleSlug || '', rolePostingId);
 
   useEffect(() => {
     if (!isRoleLoading && !isReadinessLoading && readinessResponse) {
@@ -137,31 +174,20 @@ const RoleAssessmentJourney: React.FC = () => {
   const companyName = appliedRole?.companyName || 'the employer';
   const roleTitle = appliedRole?.roleTitle || 'the role';
 
-  const beginAssessment = useBeginAssessmentMutation();
+  const hasStartedStage1 = localStorage.getItem('vora_stage1_started') === 'true';
+  const gate1Tags = ['Personality', 'Values', 'Cognitive', 'Situational judgement'];
+  const gate1EstimatedMinutes = '25 to 40 minutes';
+  const gate1Completed = isStage2Unlocked;
 
-  const handleStart = async () => {
-    try {
-      const res = await beginAssessment.mutateAsync({
-        roleLink: roleSlug,
-        rolePostingId: response?.data?.id || response?.id
-      });
-      localStorage.setItem('vora_stage1_started', 'true');
-      
-      const assessmentId = res?.data?.assessmentId || res?.assessmentId || res?.data?.id || res?.id;
-      if (assessmentId) {
-        localStorage.setItem('active_assessment_id', assessmentId);
-      }
-      
-      navigate(`/onboarding/talent/${roleSlug}/assessment/stage-1`);
-    } catch (err) {
-      console.error('Failed to begin assessment:', err);
-    }
+  const handleStart = () => {
+    localStorage.setItem('vora_stage1_started', 'true');
+    navigate(`/onboarding/talent/${roleSlug}/assessment/stage-1`);
   };
 
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col">
       {/* Topbar */}
-      <header className="bg-white/95 backdrop-blur-[10px] border-b border-[#E6E6E6] px-[32px] py-[12px] flex items-center justify-between sticky top-0 z-[50]">
+      <header className="bg-white/95 backdrop-blur-[10px] px-[32px] py-[12px] flex items-center justify-between sticky top-0 z-[50]">
         <span className="inline-flex items-center gap-[1px] text-[#0047CC]">
           <VoraLogo size="sm" to="/dashboard" />
         </span>
@@ -315,38 +341,41 @@ const RoleAssessmentJourney: React.FC = () => {
           {/* Stage 1 (active/complete) */}
           <div 
             onClick={() => {
-              if (!isStage2Unlocked) {
-                const hasStartedStage1 = localStorage.getItem('vora_stage1_started') === 'true';
+              if (!gate1Completed) {
                 if (hasStartedStage1) {
                   navigate(`/onboarding/talent/${roleSlug}/assessment/resume`);
                 } else {
-                  handleStart();
+                  void handleStart();
                 }
               }
             }}
-            className={isStage2Unlocked 
+            className={gate1Completed 
               ? "bg-white border-[1.5px] border-[#0047CC]/20 rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all z-[1]"
               : "bg-gradient-to-b from-[#FAFCFF] to-white border-[1.5px] border-[#0047CC] rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all shadow-[0_8px_24px_rgba(0,71,204,0.1)] z-[1] cursor-pointer"
             }
           >
-            <div className={`w-[54px] h-[54px] rounded-[14px] flex items-center justify-center shrink-0 relative z-[2] ${isStage2Unlocked ? 'bg-gradient-to-br from-[#0047CC] to-[#387DFF] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)]' : 'text-[17px] font-[900] bg-gradient-to-br from-[#0047CC] to-[#387DFF] border-[1.5px] border-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.3)]'}`}>
-              {isStage2Unlocked ? <DocumentCheckIcon className="w-[22px] h-[22px] stroke-[3]" /> : '01'}
+            <div className={`w-[54px] h-[54px] rounded-[14px] flex items-center justify-center shrink-0 relative z-[2] ${gate1Completed ? 'bg-gradient-to-br from-[#0047CC] to-[#387DFF] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)]' : 'text-[17px] font-[900] bg-gradient-to-br from-[#0047CC] to-[#387DFF] border-[1.5px] border-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.3)]'}`}>
+              {gate1Completed ? <DocumentCheckIcon className="w-[22px] h-[22px] stroke-[3]" /> : '01'}
             </div>
             <div className="flex-1 min-w-0 pt-[2px]">
               <div className="text-[10.5px] font-[800] tracking-[0.8px] uppercase mb-[4px] text-[#0047CC]">
-                {isStage2Unlocked ? 'Stage 1 · Complete' : 'Starting here'}
+                {gate1Completed
+                  ? 'Stage 1 · Complete'
+                  : hasStartedStage1
+                    ? 'Stage 1 · In progress'
+                    : 'Starting here'}
               </div>
               <div className="text-[17px] font-[600] text-[#1A1A1A] mb-[6px] tracking-[-0.2px] leading-[1.3]">Getting to know you</div>
               <div className="text-[13.5px] text-[#4A4A4A] leading-[1.65] mb-[14px]">A relaxed first stage about how you think, what you value, and your instincts in real situations. No clinical recall required. Just be yourself.</div>
               <div className="flex flex-wrap gap-[6px] mb-[14px]">
-                {['Personality', 'Values', 'Cognitive', 'Situational judgement'].map((item) => (
+                {gate1Tags.map((item) => (
                   <span key={item} className="text-[11px] font-[700] px-[10px] py-[4px] rounded-full border border-[#0047CC] bg-white text-[#0047CC]">{item}</span>
                 ))}
               </div>
               <div className="flex flex-wrap gap-[14px]">
                 <div className="flex items-center gap-[6px] text-[11.5px] font-[700] text-[#808080]">
                   <ClockPlayIcon className="w-[13px] h-[13px]" />
-                  25 to 40 minutes
+                  {gate1EstimatedMinutes}
                 </div>
                 <div className="flex items-center gap-[6px] text-[11.5px] font-[700] text-[#808080]">
                   <WindowIcon className="w-[13px] h-[13px]" />
@@ -359,7 +388,7 @@ const RoleAssessmentJourney: React.FC = () => {
               </div>
             </div>
             <div className="absolute top-[22px] right-[22px] hidden sm:flex items-center gap-[6px] text-[11px] font-[800] px-[11px] py-[5px] rounded-full tracking-[0.4px] bg-white border border-[#0047CC] text-[#0047CC]">
-              {isStage2Unlocked ? 'Complete' : 'Start here'}
+              {gate1Completed ? 'Complete' : hasStartedStage1 ? 'Resume' : 'Start here'}
             </div>
           </div>
 

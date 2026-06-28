@@ -2,7 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AssessmentHeader from '../../components/talent/AssessmentHeader';
 import StageRail from '../../components/talent/StageRail';
+import FullPageSpinner from '../../components/common/FullPageSpinner';
 import { useAuth } from '../../context/AuthContext';
+import { useGate1ResumePresentation } from '../../hooks/useGate1ResumePresentation';
+import { formatSecondsAsHms } from '../../utils/assessmentSession';
 
 const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -45,22 +48,35 @@ interface StageConfig {
   positionDesc: string;
   crumbs: string[];
   deadlineLabel: string;
-  deadlineSeconds: number;
-  deadlineTotal: string;
+  deadlineRemainingSeconds: number | null;
+  deadlineTotalFormatted: string;
   interviewTimerLabel: string;
   interviewTimerValue: string;
   completedLabel: string;
   completedValue: string;
   completedSub: string;
   resumePath: string;
+  showRegenerationNotice: boolean;
   rulesList: { text: string; icon: React.FC<{ className?: string }> }[];
 }
+
+const STAGE1_RULES = [
+  { text: 'Each section has its own timed window where applicable', icon: ClockIcon },
+  { text: "Don't switch tabs. Doing so auto-submits in 3 seconds", icon: StopIcon },
+  { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon },
+];
 
 const RoleAssessmentResumeGate: React.FC = () => {
   const navigate = useNavigate();
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
   const { user } = useAuth();
-  const firstName = user?.firstName || 'Adaeze';
+  const firstName = user?.firstName || 'there';
+
+  const {
+    viewModel: gate1View,
+    gateProgress,
+    isLoading: gate1Loading,
+  } = useGate1ResumePresentation(roleSlug);
 
   const avatarText = useMemo(() => {
     if (user?.firstName && user?.lastName) {
@@ -72,110 +88,135 @@ const RoleAssessmentResumeGate: React.FC = () => {
     return 'AO';
   }, [user]);
 
-  // Read evaluations states to dynamically resolve the active stage
   const isStage2Unlocked = localStorage.getItem('vora_stage2_unlocked') === 'true';
   const isStage2Completed = localStorage.getItem('vora_stage2_completed') === 'true';
   const isStage3Unlocked = localStorage.getItem('vora_stage3_unlocked') === 'true';
   const isStage3Completed = localStorage.getItem('vora_stage3_completed') === 'true';
 
+  const gate1InProgress =
+    gateProgress?.status === 'in_progress' ||
+    (gateProgress != null &&
+      gateProgress.status !== 'passed' &&
+      gateProgress.status !== 'failed' &&
+      gateProgress.completedScreens > 0);
+
   const currentStage = useMemo(() => {
     if (isStage3Unlocked && !isStage3Completed) return 3;
     if (isStage2Unlocked && !isStage2Completed) return 2;
+    if (gate1InProgress || gate1View) return 1;
     return 1;
-  }, [isStage2Unlocked, isStage2Completed, isStage3Unlocked, isStage3Completed]);
+  }, [isStage2Unlocked, isStage2Completed, isStage3Unlocked, isStage3Completed, gate1InProgress, gate1View]);
 
-  // Stage configurations dictionary
-  const configs: Record<number, StageConfig> = useMemo(() => ({
-    1: {
-      activeStepNum: 1,
-      welcomeText: 'You paused mid-way through Stage 1. Your timer kept running, but everything else is exactly where you left it.',
-      pausedTimeText: 'Paused 30 minutes ago',
-      positionTitle: 'Situational judgement test',
-      positionDesc: "You'd worked through about half of the questions when you tapped Save and finish later.",
-      crumbs: ['Stage 1', 'Part 1 · Getting to know you', 'Situational judgement'],
-      deadlineLabel: 'Stage 1 deadline',
-      deadlineSeconds: 47 * 3600 + 15 * 60 + 30,
-      deadlineTotal: '48:00:00',
-      interviewTimerLabel: 'Cognitive timer',
-      interviewTimerValue: '15:00',
-      completedLabel: 'Completed so far',
-      completedValue: '1 / 4',
-      completedSub: 'sections in Stage 1',
-      resumePath: `/onboarding/talent/${roleSlug}/assessment/session-1/situational`,
-      rulesList: [
-        { text: 'Each section has its own 15 to 20 minute timer', icon: ClockIcon },
-        { text: "Don't switch tabs. Doing so auto-submits in 3 seconds", icon: StopIcon },
-        { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon }
-      ]
-    },
+  const staticConfigs: Record<number, StageConfig> = useMemo(() => ({
     2: {
       activeStepNum: 2,
       welcomeText: 'You paused mid-way through Stage 2. Your timer kept running, but everything else is exactly where you left it.',
-      pausedTimeText: 'Paused 4 hours, 12 minutes ago',
-      positionTitle: 'Pharmacology in the field',
+      pausedTimeText: 'Paused recently',
+      positionTitle: 'Professional dimension',
       positionDesc: "You'd worked through about half of the questions when you tapped Save and finish later.",
       crumbs: ['Stage 2', 'Part 1 · Knowledge', 'Interview 1 of 3'],
       deadlineLabel: 'Stage 2 deadline',
-      deadlineSeconds: 57 * 3600 + 48 * 60 + 14,
-      deadlineTotal: '72:00:00',
+      deadlineRemainingSeconds: null,
+      deadlineTotalFormatted: '72:00:00',
       interviewTimerLabel: 'Interview timer',
       interviewTimerValue: '10:00',
       completedLabel: 'Completed so far',
       completedValue: '0 / 3',
       completedSub: 'interviews in Part 1',
       resumePath: `/onboarding/talent/${roleSlug}/assessment/stage-2/part-1/interview-1`,
+      showRegenerationNotice: true,
       rulesList: [
         { text: 'Each interview has its own 10 to 12 minute timer', icon: ClockIcon },
         { text: "Don't switch tabs. Doing so auto-submits in 3 seconds", icon: StopIcon },
-        { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon }
-      ]
+        { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon },
+      ],
     },
     3: {
       activeStepNum: 3,
       welcomeText: 'You paused mid-way through Stage 3. Your timer kept running, but everything else is exactly where you left it.',
-      pausedTimeText: 'Paused 1 hour, 5 minutes ago',
+      pausedTimeText: 'Paused recently',
       positionTitle: 'Video Interview responses',
-      positionDesc: "You'd submitted 2 video answers out of 5 when you tapped Save and finish later.",
-      crumbs: ['Stage 3', 'How you show up', 'Question 3 of 5'],
+      positionDesc: "You'd submitted some video answers when you tapped Save and finish later.",
+      crumbs: ['Stage 3', 'How you show up', 'Video responses'],
       deadlineLabel: 'Stage 3 deadline',
-      deadlineSeconds: 46 * 3600 + 12 * 60 + 5,
-      deadlineTotal: '48:00:00',
+      deadlineRemainingSeconds: null,
+      deadlineTotalFormatted: '48:00:00',
       interviewTimerLabel: 'Response timer',
       interviewTimerValue: '3:00',
       completedLabel: 'Completed so far',
-      completedValue: '2 / 5',
+      completedValue: '0 / 5',
       completedSub: 'questions recorded',
       resumePath: `/onboarding/talent/${roleSlug}/assessment/stage-3/video`,
+      showRegenerationNotice: true,
       rulesList: [
         { text: 'Each response has a 30s think time and 3m record limit', icon: ClockIcon },
         { text: "Don't switch tabs. Doing so auto-submits in 3 seconds", icon: StopIcon },
-        { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon }
-      ]
-    }
+        { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon },
+      ],
+    },
   }), [roleSlug]);
 
-  const config = useMemo(() => configs[currentStage] || configs[1], [configs, currentStage]);
+  const config: StageConfig = useMemo(() => {
+    if (currentStage === 1 && gate1View) {
+      return {
+        activeStepNum: 1,
+        welcomeText: gate1View.welcomeText,
+        pausedTimeText: gate1View.pausedTimeText,
+        positionTitle: gate1View.positionTitle,
+        positionDesc: gate1View.positionDesc,
+        crumbs: gate1View.crumbs,
+        deadlineLabel: gate1View.deadlineLabel,
+        deadlineRemainingSeconds: gate1View.deadlineRemainingSeconds,
+        deadlineTotalFormatted: gate1View.deadlineTotalFormatted,
+        interviewTimerLabel: gate1View.screenTimerLabel,
+        interviewTimerValue: gate1View.screenTimerValue,
+        completedLabel: 'Completed so far',
+        completedValue: gate1View.completedValue,
+        completedSub: gate1View.completedSub,
+        resumePath: gate1View.resumePath,
+        showRegenerationNotice: gate1View.showRegenerationNotice,
+        rulesList: STAGE1_RULES,
+      };
+    }
 
-  // Countdown timer state
-  const [timeLeft, setTimeLeft] = useState<number>(config.deadlineSeconds);
+    if (currentStage === 1) {
+      return {
+        activeStepNum: 1,
+        welcomeText: 'You paused mid-way through Stage 1. Your timer kept running, but everything else is exactly where you left it.',
+        pausedTimeText: 'Paused recently',
+        positionTitle: 'Getting to know you',
+        positionDesc: 'Your progress is saved. Resume to continue Stage 1.',
+        crumbs: ['Stage 1', 'Getting to know you'],
+        deadlineLabel: 'Stage 1 deadline',
+        deadlineRemainingSeconds: null,
+        deadlineTotalFormatted: '48:00:00',
+        interviewTimerLabel: 'Section timer',
+        interviewTimerValue: '—',
+        completedLabel: 'Completed so far',
+        completedValue: '—',
+        completedSub: 'screens in Stage 1',
+        resumePath: `/onboarding/talent/${roleSlug}/assessment/session-1/situational`,
+        showRegenerationNotice: false,
+        rulesList: STAGE1_RULES,
+      };
+    }
+
+    return staticConfigs[currentStage] ?? staticConfigs[2];
+  }, [currentStage, gate1View, roleSlug, staticConfigs]);
+
+  const [timeLeft, setTimeLeft] = useState<number | null>(config.deadlineRemainingSeconds);
 
   useEffect(() => {
-    setTimeLeft(config.deadlineSeconds);
-  }, [config]);
+    setTimeLeft(config.deadlineRemainingSeconds);
+  }, [config.deadlineRemainingSeconds]);
 
   useEffect(() => {
+    if (timeLeft == null) return;
     const timer = setInterval(() => {
-      setTimeLeft(prev => (prev > 0 ? prev - 1 : 0));
+      setTimeLeft((prev) => (prev != null && prev > 0 ? prev - 1 : 0));
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
-
-  const formatTime = (totalSec: number) => {
-    const h = String(Math.floor(totalSec / 3600)).padStart(2, '0');
-    const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
-    const s = String(totalSec % 60).padStart(2, '0');
-    return `${h}:${m}:${s}`;
-  };
+  }, [timeLeft != null]);
 
   const handleNotNow = () => {
     navigate('/dashboard');
@@ -185,20 +226,27 @@ const RoleAssessmentResumeGate: React.FC = () => {
     navigate(config.resumePath);
   };
 
+  const isPageLoading = currentStage === 1 && gate1Loading && !gate1View;
+
+  if (isPageLoading) {
+    return (
+      <div className="min-h-screen bg-[#F7F7F7] flex items-center justify-center">
+        <FullPageSpinner isFullPage={false} message="Loading your saved progress…" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col relative select-none">
-      
-      {/* Animation Styles */}
       <style dangerouslySetInnerHTML={{
         __html: `
           @keyframes fadeUp {
             from { opacity: 0; transform: translateY(16px); }
             to { opacity: 1; transform: translateY(0); }
           }
-        `
+        `,
       }} />
 
-      {/* Topbar Header */}
       <AssessmentHeader
         middleContent="Resume your interviews"
         rightContent={
@@ -209,17 +257,13 @@ const RoleAssessmentResumeGate: React.FC = () => {
         }
       />
 
-      {/* Stage Rail */}
       <StageRail activeStage={config.activeStepNum} greenDone={false} />
 
-      {/* Wrapping Container */}
       <div className="flex-1 flex items-center justify-center p-[40px_24px]">
         <div className="bg-white rounded-[24px] shadow-[0_12px_48px_rgba(10,17,114,0.1)] max-w-[600px] w-full overflow-hidden animate-[fadeUp_0.55s_ease_both] relative border border-[#E6E6E6]">
-          
-          {/* Welcome back top strip banner */}
           <div className="bg-gradient-to-br from-[#182348] to-[#0047CC] text-white p-[30px_36px_26px] relative overflow-hidden">
             <div className="absolute top-[-60px] right-[-60px] w-[200px] h-[200px] rounded-full bg-white/[0.05]" />
-            
+
             <div className="relative z-10 flex gap-[18px] items-center">
               <div className="w-[60px] h-[60px] rounded-full bg-white/[0.16] border-2 border-white/[0.3] flex items-center justify-center text-white font-[900] text-[18px] shrink-0 backdrop-blur-[8px]">
                 {avatarText}
@@ -235,14 +279,11 @@ const RoleAssessmentResumeGate: React.FC = () => {
             </div>
           </div>
 
-          {/* Card Body */}
           <div className="p-[28px_36px_32px] sm:px-[36px] px-6">
-            
             <div className="text-[10.5px] font-[800] tracking-[0.8px] uppercase text-[#0047CC] mb-[8px]">
               Where you left off
             </div>
 
-            {/* Position details Card */}
             <div className="bg-gradient-to-b from-[#EBF6FF] to-[#F8FBFF] border border-[#EBF6FF] rounded-[14px] p-[18px_20px] mb-[18px]">
               <div className="text-[11.5px] font-[700] text-[#808080] mb-[6px] flex items-center gap-[6px]">
                 <ClockIcon className="w-[13px] h-[13px] text-[#0047CC]" />
@@ -255,7 +296,6 @@ const RoleAssessmentResumeGate: React.FC = () => {
                 {config.positionDesc}
               </div>
 
-              {/* Crumbs timeline */}
               <div className="flex items-center gap-[6px] flex-wrap font-[700] text-[12px] text-[#808080]">
                 {config.crumbs.map((crumb, idx) => (
                   <React.Fragment key={idx}>
@@ -272,17 +312,18 @@ const RoleAssessmentResumeGate: React.FC = () => {
               </div>
             </div>
 
-            {/* Deadline status grid */}
             <div className="flex gap-[10px] mb-[22px] items-stretch flex-wrap">
               <div className="flex-1 min-w-[140px] bg-gradient-to-b from-[#FEF3C7] to-[#FFFCF5] border border-[#FDE68A] rounded-[12px] p-[12px_14px]">
                 <div className="text-[10px] font-[800] tracking-[0.7px] uppercase text-[#B45309] mb-[4px]">
                   {config.deadlineLabel}
                 </div>
                 <div className="text-[18px] font-[900] text-[#B45309] tabular-nums tracking-[-0.2px]">
-                  {formatTime(timeLeft)}
+                  {timeLeft != null ? formatSecondsAsHms(timeLeft) : config.deadlineTotalFormatted}
                 </div>
                 <div className="text-[11px] text-[#B45309]/80 font-[600] mt-[2px]">
-                  remaining out of {config.deadlineTotal}
+                  {timeLeft != null
+                    ? `remaining out of ${config.deadlineTotalFormatted}`
+                    : '48-hour assessment window'}
                 </div>
               </div>
 
@@ -294,7 +335,9 @@ const RoleAssessmentResumeGate: React.FC = () => {
                   {config.interviewTimerValue}
                 </div>
                 <div className="text-[11px] text-[#808080] font-[600] mt-[2px]">
-                  resets on the new question set
+                  {config.showRegenerationNotice
+                    ? 'resets on the new question set'
+                    : 'for this section'}
                 </div>
               </div>
 
@@ -311,20 +354,20 @@ const RoleAssessmentResumeGate: React.FC = () => {
               </div>
             </div>
 
-            {/* Regeneration Warning Note */}
-            <div className="bg-gradient-to-b from-[#FEF3C7] to-[#FFFBEB] border border-[#FDE68A] border-l-4 border-l-[#D97706] rounded-[12px] p-[16px_18px] mb-[24px] flex gap-[12px] items-start">
-              <InfoIcon className="w-[22px] h-[22px] text-[#D97706] shrink-0 mt-[1px]" />
-              <div>
-                <div className="text-[14px] font-[800] text-[#B45309] mb-[5px]">
-                  Your questions have been regenerated
-                </div>
-                <div className="text-[13px] text-[#78350F] leading-[1.6]">
-                  Each time you pause and resume, the system generates a <strong>fresh set of questions</strong> on the same competency. This means you can&apos;t use the break to look things up. Same difficulty, same depth, different questions. <strong>It&apos;s by design.</strong>
+            {config.showRegenerationNotice ? (
+              <div className="bg-gradient-to-b from-[#FEF3C7] to-[#FFFBEB] border border-[#FDE68A] border-l-4 border-l-[#D97706] rounded-[12px] p-[16px_18px] mb-[24px] flex gap-[12px] items-start">
+                <InfoIcon className="w-[22px] h-[22px] text-[#D97706] shrink-0 mt-[1px]" />
+                <div>
+                  <div className="text-[14px] font-[800] text-[#B45309] mb-[5px]">
+                    Your questions have been regenerated
+                  </div>
+                  <div className="text-[13px] text-[#78350F] leading-[1.6]">
+                    Each time you pause and resume, the system generates a <strong>fresh set of questions</strong> on the same competency. This means you can&apos;t use the break to look things up. Same difficulty, same depth, different questions. <strong>It&apos;s by design.</strong>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : null}
 
-            {/* Rules Quick reminders */}
             <div className="bg-[#F7F7F7] rounded-[10px] p-[14px_16px] mb-[22px]">
               <div className="text-[11px] font-[800] tracking-[0.5px] uppercase text-[#808080] mb-[8px]">
                 Quick reminders before you continue
@@ -342,16 +385,15 @@ const RoleAssessmentResumeGate: React.FC = () => {
               </div>
             </div>
 
-            {/* Actions CTA Row */}
             <div className="flex gap-[10px] flex-wrap">
-              <button 
+              <button
                 onClick={handleNotNow}
                 className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[14px_22px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7]"
               >
                 Not now
               </button>
 
-              <button 
+              <button
                 onClick={handleResume}
                 className="flex-1 min-w-[200px] bg-[#0047CC] hover:bg-[#344DA1] text-white border-none rounded-[10px] p-[14px_24px] text-[14px] font-[700] cursor-pointer flex items-center justify-center gap-[8px] transition-all shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:translate-y-[-1px] hover:shadow-[0_6px_18px_rgba(0,71,204,0.36)]"
               >
@@ -361,12 +403,9 @@ const RoleAssessmentResumeGate: React.FC = () => {
                 </svg>
               </button>
             </div>
-
           </div>
-
         </div>
       </div>
-
     </div>
   );
 };
