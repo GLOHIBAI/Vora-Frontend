@@ -243,6 +243,7 @@ export interface PostJobStep2Values {
   technicalSkills: string[];
   tools: string[];
   languages: string[];
+  preAssessments: string[];
 }
 
 export function validatePostJobStep2(v: PostJobStep2Values): FieldErrors {
@@ -259,6 +260,9 @@ export function validatePostJobStep2(v: PostJobStep2Values): FieldErrors {
   }
   if (v.tools.length === 0) errors.tools = 'Select at least one tool or software';
   if (v.languages.length === 0) errors.languages = 'Select at least one language';
+  if (!v.preAssessments || v.preAssessments.length === 0) {
+    errors.preAssessments = 'Select at least one pre-assessment submission type';
+  }
 
   return errors;
 }

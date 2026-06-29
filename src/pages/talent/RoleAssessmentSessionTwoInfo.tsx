@@ -5,6 +5,7 @@ import Button from '../../components/common/Button';
 import { ArrowRightIcon } from '../../components/common/Icons';
 import { useGetPublicRoleQuery } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
+import { isGate1ApiEnabled } from '../../config/gate1Api';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -45,7 +46,11 @@ const RoleAssessmentSessionTwoInfo: React.FC = () => {
   const companyName = roleMeta?.companyName ?? 'the employer';
 
   const handleStart = () => {
-    navigate(`/onboarding/talent/${roleSlug}/assessment/session-2/situational`);
+    if (isGate1ApiEnabled()) {
+      navigate(`/onboarding/talent/${roleSlug}/assessment/gate-1/active`);
+    } else {
+      navigate(`/onboarding/talent/${roleSlug}/assessment/session-2/situational`);
+    }
   };
 
   return (

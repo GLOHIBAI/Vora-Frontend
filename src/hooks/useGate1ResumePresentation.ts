@@ -25,7 +25,7 @@ import {
   resolveGate1ActiveScreenKey,
   unwrapAssessmentData,
 } from '../utils/assessmentSession';
-import { resolveGate1AssessmentId } from '../config/gate1Api';
+import { resolveGate1AssessmentId, isGate1ApiEnabled } from '../config/gate1Api';
 
 export interface Gate1ResumeViewModel {
   welcomeText: string;
@@ -134,7 +134,9 @@ const buildViewModel = (
     completedValue: `${completedScreens} / ${totalScreens}`,
     completedSub: 'screens in Stage 1',
     showRegenerationNotice: hasInProgress,
-    resumePath: `/onboarding/talent/${roleSlug}/assessment/session-1/situational`,
+    resumePath: isGate1ApiEnabled()
+      ? `/onboarding/talent/${roleSlug}/assessment/gate-1/active`
+      : `/onboarding/talent/${roleSlug}/assessment/session-1/situational`,
   };
 };
 

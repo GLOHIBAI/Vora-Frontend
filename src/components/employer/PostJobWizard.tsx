@@ -1034,6 +1034,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
       technicalSkills,
       tools,
       languages,
+      preAssessments,
     },
     step3: {
       experienceYears,
@@ -2190,17 +2191,17 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                       label={
                         <div className="flex items-center gap-1">
                           <span>Pre-assessment submission required from candidates</span>
-                          <span className="text-[11px] text-[#808080] font-normal italic">(optional)</span>
                         </div>
                       }
                       groups={PRE_ASSESSMENT_GROUPS}
                       selected={preAssessments}
                       onChange={setPreAssessments}
                       placeholder="Select document type(s) to request"
+                      {...fieldErrorProps('preAssessments')}
                     />
                     <div className="p-3 bg-white border border-[#BDD9FF] rounded-lg mt-2">
                       <p className="text-xs text-[#1e3a8a] leading-relaxed">
-                        <strong>How this works:</strong> After a candidate clears the geopolitical and match threshold filter, but before their assessment begins, VORA prompts them to upload the material(s) you specify here. VORA's assessment engine then generates deep, role-specific questions drawn directly from what they submitted. A candidate who did not produce the work cannot answer convincingly. Any significant gap between the sophistication of the submission and the quality of the answers is flagged in their report. Leave blank if you do not require pre-assessment submissions.
+                        <strong>How this works:</strong> After a candidate clears the geopolitical and match threshold filter, but before their assessment begins, VORA prompts them to upload the material(s) you specify here. VORA's assessment engine then generates deep, role-specific questions drawn directly from what they submitted. A candidate who did not produce the work cannot answer convincingly. Any significant gap between the sophistication of the submission and the quality of the answers is flagged in their report. At least one pre-assessment submission type must be requested.
                       </p>
                     </div>
                     <p className="text-[11px] text-[#808080] leading-relaxed pt-1">

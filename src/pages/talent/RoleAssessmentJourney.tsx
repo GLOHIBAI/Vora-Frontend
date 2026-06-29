@@ -15,6 +15,7 @@ import {
   pickRolePostingId,
   readStoredRolePostingId,
 } from '../../utils/rolePostingId';
+import { resolveGate1AssessmentId } from '../../config/gate1Api';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -174,7 +175,9 @@ const RoleAssessmentJourney: React.FC = () => {
   const companyName = appliedRole?.companyName || 'the employer';
   const roleTitle = appliedRole?.roleTitle || 'the role';
 
-  const hasStartedStage1 = localStorage.getItem('vora_stage1_started') === 'true';
+  const hasStartedStage1 =
+    localStorage.getItem('vora_stage1_started') === 'true' &&
+    resolveGate1AssessmentId() !== null;
   const gate1Tags = ['Personality', 'Values', 'Cognitive', 'Situational judgement'];
   const gate1EstimatedMinutes = '25 to 40 minutes';
   const gate1Completed = isStage2Unlocked;

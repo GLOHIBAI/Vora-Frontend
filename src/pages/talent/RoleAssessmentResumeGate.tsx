@@ -6,6 +6,7 @@ import FullPageSpinner from '../../components/common/FullPageSpinner';
 import { useAuth } from '../../context/AuthContext';
 import { useGate1ResumePresentation } from '../../hooks/useGate1ResumePresentation';
 import { formatSecondsAsHms } from '../../utils/assessmentSession';
+import { isGate1ApiEnabled, resolveGate1AssessmentId } from '../../config/gate1Api';
 
 const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -78,6 +79,8 @@ const RoleAssessmentResumeGate: React.FC = () => {
     isLoading: gate1Loading,
   } = useGate1ResumePresentation(roleSlug);
 
+  const assessmentId = resolveGate1AssessmentId();
+
   const avatarText = useMemo(() => {
     if (user?.firstName && user?.lastName) {
       return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
@@ -106,6 +109,12 @@ const RoleAssessmentResumeGate: React.FC = () => {
     if (gate1InProgress || gate1View) return 1;
     return 1;
   }, [isStage2Unlocked, isStage2Completed, isStage3Unlocked, isStage3Completed, gate1InProgress, gate1View]);
+
+  useEffect(() => {
+    if (currentStage === 1 && !assessmentId && isGate1ApiEnabled() && !gate1Loading) {
+      navigate(`/onboarding/talent/${roleSlug}/assessment/stage-1`, { replace: true });
+    }
+  }, [currentStage, assessmentId, roleSlug, navigate, gate1Loading]);
 
   const staticConfigs: Record<number, StageConfig> = useMemo(() => ({
     2: {
@@ -195,7 +204,9 @@ const RoleAssessmentResumeGate: React.FC = () => {
         completedLabel: 'Completed so far',
         completedValue: '—',
         completedSub: 'screens in Stage 1',
-        resumePath: `/onboarding/talent/${roleSlug}/assessment/session-1/situational`,
+        resumePath: isGate1ApiEnabled()
+          ? `/onboarding/talent/${roleSlug}/assessment/gate-1/active`
+          : `/onboarding/talent/${roleSlug}/assessment/session-1/situational`,
         showRegenerationNotice: false,
         rulesList: STAGE1_RULES,
       };

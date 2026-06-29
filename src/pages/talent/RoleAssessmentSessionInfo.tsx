@@ -2,9 +2,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import VoraLogo from '../../components/common/VoraLogo';
 import Button from '../../components/common/Button';
 import { ArrowRightIcon } from '../../components/common/Icons';
-import { useGetPublicRoleQuery } from '../../services/queries/talent';
+import { useGetPublicRoleQuery, useBeginAssessmentMutation } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import { useMemo } from 'react';
+import { isGate1ApiEnabled } from '../../config/gate1Api';
+import { getActiveAssessmentId, setActiveAssessmentId } from '../../utils/assessmentSession';
+import { readStoredRolePostingId, extractRolePostingIdFromPublicRole } from '../../utils/rolePostingId';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -46,8 +49,40 @@ const RoleAssessmentSessionInfo: React.FC = () => {
   const roleTitle = roleMeta?.roleTitle ?? 'this role';
   const companyName = roleMeta?.companyName ?? 'the employer';
 
-  const handleStart = () => {
-    navigate(`/onboarding/talent/${roleSlug}/assessment/session-1/psychometric`);
+  const beginAssessment = useBeginAssessmentMutation();
+
+  const handleStart = async () => {
+    try {
+      const storedId = getActiveAssessmentId();
+      if (storedId) {
+        if (isGate1ApiEnabled()) {
+          navigate(`/onboarding/talent/${roleSlug}/assessment/gate-1/active`);
+        } else {
+          navigate(`/onboarding/talent/${roleSlug}/assessment/session-1/psychometric`);
+        }
+        return;
+      }
+
+      const rolePostingId =
+        readStoredRolePostingId(roleSlug) ||
+        extractRolePostingIdFromPublicRole(roleResponse) ||
+        '';
+
+      const res = await beginAssessment.mutateAsync({ rolePostingId });
+      const unwrapped = res?.data || res;
+      const assessmentId = unwrapped?.assessmentId || unwrapped?.id;
+      if (assessmentId) {
+        setActiveAssessmentId(assessmentId);
+      }
+
+      if (isGate1ApiEnabled()) {
+        navigate(`/onboarding/talent/${roleSlug}/assessment/gate-1/active`);
+      } else {
+        navigate(`/onboarding/talent/${roleSlug}/assessment/session-1/psychometric`);
+      }
+    } catch (err) {
+      console.error('Failed to begin assessment:', err);
+    }
   };
 
   return (
@@ -126,6 +161,7 @@ const RoleAssessmentSessionInfo: React.FC = () => {
           <div className="flex flex-col sm:flex-row gap-[12px] justify-center items-stretch sm:items-center mt-[10px]">
             <Button 
               onClick={handleStart}
+              isLoading={beginAssessment.isPending}
               className="rounded-full px-[48px] min-w-[200px] py-[12px] transition-all bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,71,204,0.36)] w-full sm:w-auto flex justify-center items-center"
             >
               <span className="flex items-center justify-center gap-[8px] text-[14px] font-[700]">
