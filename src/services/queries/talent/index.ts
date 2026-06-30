@@ -180,9 +180,20 @@ export const useUpdatePreAssessmentReferencesMutation = () => {
       roleLink?: string;
       rolePostingId?: string;
     }) => {
+      const mappedReferences = data.references.map(ref => ({
+        fullName: ref.fullName,
+        roleOrganisation: ref.roleAndOrganisation,
+        email: ref.email,
+        phone: ref.phone || undefined,
+        type: ref.relationship === 'manager' ? 'line_manager' : 'peer_or_community'
+      }));
+
       return apiClient.put<any>({
         url: '/pre-assessment/references',
-        body: data,
+        body: {
+          ...data,
+          references: mappedReferences
+        },
         auth: true,
       });
     },

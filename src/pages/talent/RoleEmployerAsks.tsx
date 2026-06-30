@@ -92,6 +92,7 @@ const RoleEmployerAsks: React.FC = () => {
   const [textValue, setTextValue] = useState('');
   const [portfolioUrls, setPortfolioUrls] = useState<string[]>([]);
   const [newUrl, setNewUrl] = useState('');
+  const [uploadingFile, setUploadingFile] = useState<{ code: string; name: string } | null>(null);
 
   const [consents, setConsents] = useState({
     truthful: false,
@@ -208,17 +209,17 @@ const RoleEmployerAsks: React.FC = () => {
       if (Array.isArray(readiness.references) && readiness.references.length >= 2) {
         setRef1({
           fullName: readiness.references[0].fullName || '',
-          roleAndOrganisation: readiness.references[0].roleAndOrganisation || '',
+          roleAndOrganisation: readiness.references[0].roleOrganisation || readiness.references[0].roleAndOrganisation || '',
           email: readiness.references[0].email || '',
           phone: readiness.references[0].phone || '',
-          relationship: readiness.references[0].relationship || 'manager'
+          relationship: readiness.references[0].type === 'line_manager' ? 'manager' : (readiness.references[0].relationship || 'manager')
         });
         setRef2({
           fullName: readiness.references[1].fullName || '',
-          roleAndOrganisation: readiness.references[1].roleAndOrganisation || '',
+          roleAndOrganisation: readiness.references[1].roleOrganisation || readiness.references[1].roleAndOrganisation || '',
           email: readiness.references[1].email || '',
           phone: readiness.references[1].phone || '',
-          relationship: readiness.references[1].relationship || 'peer'
+          relationship: readiness.references[1].type === 'peer_or_community' ? 'peer' : (readiness.references[1].relationship || 'peer')
         });
       }
 
@@ -444,18 +445,64 @@ const RoleEmployerAsks: React.FC = () => {
               </div>
               
               <div className="mt-[14px]">
-                {doc.submitted ? (
+                {doc.submitted || uploadingFile?.code === doc.code ? (
                   <div className="border border-[#0047CC] bg-white rounded-[12px] p-[16px_18px] flex items-center gap-[14px]">
                     <div className="w-[38px] h-[38px] rounded-[10px] bg-[#EBF6FF] border border-[#387DFF]/50 text-[#0047CC] flex items-center justify-center shrink-0">
-                      <DocumentCheckIcon className="w-[18px] h-[18px]" />
+                      {uploadingFile?.code === doc.code ? (
+                        <svg className="animate-spin h-[18px] w-[18px] text-[#0047CC]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      ) : (
+                        <DocumentCheckIcon className="w-[18px] h-[18px]" />
+                      )}
                     </div>
                     <div className="flex-1 text-left min-w-0">
                       <div className="text-[13.5px] text-[#1A1A1A] font-[700] break-all leading-[1.4]">
-                        {doc.originalName || 'uploaded_document.pdf'}
+                        {uploadingFile?.code === doc.code ? uploadingFile.name : (doc.originalName || 'uploaded_document.pdf')}
                       </div>
                       <div className="text-[11.5px] text-[#0047CC] font-[600] mt-[3px]">
-                        {doc.uploadedAt ? `Uploaded on ${new Date(doc.uploadedAt).toLocaleDateString()}` : 'Uploaded successfully'}
+                        {uploadingFile?.code === doc.code ? (
+                          <span className="text-[#387DFF] font-medium animate-pulse">Uploading…</span>
+                        ) : doc.uploadedAt ? (
+                          `Uploaded on ${new Date(doc.uploadedAt).toLocaleDateString()}`
+                        ) : (
+                          'Uploaded successfully'
+                        )}
                       </div>
+                    </div>
+                    <div className="relative shrink-0">
+                      <label className={`text-[12.5px] font-[700] border rounded-full px-4 py-1.5 transition-colors relative shrink-0 inline-block text-center min-w-[90px] select-none ${
+                        uploadingFile?.code === doc.code 
+                          ? 'border-[#ADADAD] text-[#ADADAD] bg-white cursor-not-allowed'
+                          : 'text-[#0047CC] border-[#0047CC] hover:bg-[#EBF6FF] cursor-pointer'
+                      }`}>
+                        {uploadingFile?.code === doc.code ? 'Uploading…' : 'Change file'}
+                        {uploadingFile?.code !== doc.code && (
+                          <input 
+                            type="file" 
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              setUploadingFile({ code: doc.code, name: file.name });
+                              try {
+                                await submitSubmission.mutateAsync({
+                                  file,
+                                  documentType: doc.code,
+                                  roleLink: roleSlug
+                                });
+                                toast.success("Document updated successfully!");
+                                refetch();
+                              } catch (err: any) {
+                                toast.error(err?.message || "Failed to update document");
+                              } finally {
+                                setUploadingFile(null);
+                              }
+                            }}
+                          />
+                        )}
+                      </label>
                     </div>
                   </div>
                 ) : (
@@ -466,17 +513,19 @@ const RoleEmployerAsks: React.FC = () => {
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
-                        const loadingToast = toast.loading(`Uploading ${file.name}...`);
+                        setUploadingFile({ code: doc.code, name: file.name });
                         try {
                           await submitSubmission.mutateAsync({
                             file,
                             documentType: doc.code,
                             roleLink: roleSlug
                           });
-                          toast.success("Document uploaded successfully!", { id: loadingToast });
+                          toast.success("Document uploaded successfully!");
                           refetch();
                         } catch (err: any) {
-                          toast.error(err?.message || "Failed to upload document", { id: loadingToast });
+                          toast.error(err?.message || "Failed to upload document");
+                        } finally {
+                          setUploadingFile(null);
                         }
                       }}
                     />

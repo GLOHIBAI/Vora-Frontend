@@ -31,6 +31,93 @@ export type ApiError = {
   errors?: Record<string, string[]>;
 };
 
+export const formatValidationError = (err: string): string => {
+  if (typeof err !== 'string') return String(err);
+  
+  let clean = err;
+  
+  // Strip starting "property "
+  clean = clean.replace(/^property\s+/i, '');
+
+  // Handle references prefix
+  if (clean.includes('references.0.')) {
+    clean = clean.replace('references.0.', 'First Reference: ');
+  } else if (clean.includes('references.1.')) {
+    clean = clean.replace('references.1.', 'Second Reference: ');
+  } else if (clean.match(/^references\.\d+\./i)) {
+    clean = clean.replace(/^references\.(\d+)\./i, (_, idx) => `Reference ${Number(idx) + 1}: `);
+  }
+
+  // Clean field names (longest keys first to prevent partial replacing issues)
+  clean = clean
+    .replace(/roleOrganisation/gi, 'organization & role')
+    .replace(/roleAndOrganisation/gi, 'organization & role')
+    .replace(/confirmPassword/gi, 'confirm password')
+    .replace(/verificationCode/gi, 'verification code')
+    .replace(/yearsOfExperienceBand/gi, 'Years of Experience')
+    .replace(/websiteOrPortfolioUrl/gi, 'Portfolio URL')
+    .replace(/eligibilityIntPolicy/gi, 'international eligibility policy')
+    .replace(/preferredWorkingStyle/gi, 'preferred working style')
+    .replace(/communicationRhythm/gi, 'communication rhythm')
+    .replace(/primaryLanguage/gi, 'primary language')
+    .replace(/personalityTraits/gi, 'personality traits')
+    .replace(/experienceYears/gi, 'years of experience')
+    .replace(/experienceTypes/gi, 'experience types')
+    .replace(/minQualification/gi, 'minimum qualification')
+    .replace(/sectorBackground/gi, 'sector background')
+    .replace(/uniStudentCount/gi, 'student cohort size')
+    .replace(/conDuration/gi, 'contract duration')
+    .replace(/stiDuration/gi, 'stipend duration')
+    .replace(/durationPreset/gi, 'duration preset')
+    .replace(/uniTuition/gi, 'tuition coverage')
+    .replace(/uniProg/gi, 'program name')
+    .replace(/firstName/gi, 'first name')
+    .replace(/lastName/gi, 'last name')
+    .replace(/fullName/gi, 'full name')
+    .replace(/email/gi, 'email address')
+    .replace(/phone/gi, 'phone number')
+    .replace(/phoneNumber/gi, 'phone number')
+    .replace(/relationship/gi, 'relationship')
+    .replace(/type/gi, 'relationship type')
+    .replace(/courseInterest/gi, 'Course Interest')
+    .replace(/courseIntent/gi, 'Course Intent')
+    .replace(/typeOfInterest/gi, 'Type of Interest')
+    .replace(/preferredFormat/gi, 'Preferred Format')
+    .replace(/roleTitle/gi, 'job title')
+    .replace(/roleGoal/gi, 'role goal')
+    .replace(/coreResponsibilities/gi, 'core responsibilities')
+    .replace(/technicalSkills/gi, 'technical skills')
+    .replace(/compType/gi, 'compensation type')
+    .replace(/salMin/gi, 'minimum salary')
+    .replace(/salMax/gi, 'maximum salary')
+    .replace(/conMin/gi, 'minimum contract value')
+    .replace(/conMax/gi, 'maximum contract value')
+    .replace(/stiVal/gi, 'stipend value')
+    .replace(/phdVal/gi, 'stipend value')
+    .replace(/jdFile/gi, 'job description file')
+    .replace(/goLiveDate/gi, 'go-live date');
+
+  // Clean generic validation phrases
+  clean = clean
+    .replace(/must be an email/gi, 'must be a valid email address')
+    .replace(/must be shorter than or equal to (\d+) characters/gi, 'must be $1 characters or less')
+    .replace(/must be longer than or equal to (\d+) characters/gi, 'must be $1 characters or more')
+    .replace(/should not be empty/gi, 'is required')
+    .replace(/must not be empty/gi, 'is required')
+    .replace(/must be a string/gi, 'must be text')
+    .replace(/must be a number/gi, 'must be a number')
+    .replace(/must be boolean/gi, 'must be yes/no')
+    .replace(/must be one of the following values: line_manager, peer_or_community/gi, 'must be either Manager or Peer/Stakeholder')
+    .replace(/should not exist/gi, 'is not allowed');
+
+  // Capitalize first letter for proper presentation
+  if (clean.length > 0) {
+    clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+  }
+
+  return clean;
+};
+
 export const getApiErrorMessage = (err: unknown, fallback = 'Something went wrong'): string => {
   if (err && typeof err === 'object' && 'message' in err) {
     const message = (err as ApiError).message;
@@ -111,29 +198,22 @@ async function fetchWithInterceptors(options: ApiRequestOptions): Promise<any> {
         cleanMessage = errorList
           .map(err => {
             if (typeof err === 'string') {
-              return err
-                .replace(/property /gi, '')
-                .replace(/courseInterest/gi, 'Course Interest')
-                .replace(/courseIntent/gi, 'Course Intent')
-                .replace(/typeOfInterest/gi, 'Type of Interest')
-                .replace(/preferredFormat/gi, 'Preferred Format')
-                .replace(/yearsOfExperienceBand/gi, 'Years of Experience')
-                .replace(/websiteOrPortfolioUrl/gi, 'Portfolio URL')
-                .replace(/should not exist/gi, 'is not allowed');
+              return formatValidationError(err);
             }
             return JSON.stringify(err);
           })
+          .filter(Boolean)
           .join('\n');
       } else if (typeof data.message === 'string') {
-        cleanMessage = data.message
-          .replace(/property /gi, '')
-          .replace(/courseInterest/gi, 'Course Interest')
-          .replace(/courseIntent/gi, 'Course Intent')
-          .replace(/typeOfInterest/gi, 'Type of Interest')
-          .replace(/preferredFormat/gi, 'Preferred Format')
-          .replace(/yearsOfExperienceBand/gi, 'Years of Experience')
-          .replace(/websiteOrPortfolioUrl/gi, 'Portfolio URL')
-          .replace(/should not exist/gi, 'is not allowed');
+        if (data.message.includes(', ')) {
+          cleanMessage = data.message
+            .split(', ')
+            .map(err => formatValidationError(err))
+            .filter(Boolean)
+            .join('\n');
+        } else {
+          cleanMessage = formatValidationError(data.message);
+        }
       }
     }
 
