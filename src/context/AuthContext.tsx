@@ -17,6 +17,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.removeItem('vora_user');
     localStorage.removeItem('vora_role');
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('vora_active_assessment_id');
+    localStorage.removeItem('active_assessment_role_slug');
+    
+    // Clear mock assessment keys
+    const mockKeys = [
+      'vora_stage1_started',
+      'vora_stage2_unlocked',
+      'vora_stage2_completed',
+      'vora_stage3_unlocked',
+      'vora_stage3_completed',
+      'vora_stage4_unlocked',
+      'vora_stage4_completed',
+      'vora_stage2_part2_unlocked',
+      'vora_stage2_part3_unlocked',
+      'vora_hired',
+    ];
+    mockKeys.forEach(key => localStorage.removeItem(key));
+
     clearStoredSetupToken();
     setHasSetupToken(false);
   }, []);

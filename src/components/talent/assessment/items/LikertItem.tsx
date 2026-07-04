@@ -1,13 +1,13 @@
-import AssessmentItemCard from '../shared/AssessmentItemCard';
+import React from 'react';
 import type { AssessmentItemRendererProps } from '../shared/types';
 import { getLikertQuestions } from '../../../../utils/assessmentItems';
 
 const DEFAULT_LABELS = [
-  'Strongly disagree',
+  'Strongly\ndisagree',
   'Disagree',
   'Neutral',
   'Agree',
-  'Strongly agree',
+  'Strongly\nagree',
 ];
 
 const LikertItem: React.FC<AssessmentItemRendererProps> = ({
@@ -26,32 +26,53 @@ const LikertItem: React.FC<AssessmentItemRendererProps> = ({
       : {};
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-[18px]">
       {statements.map((statement, idx) => {
         const labels = statement.scaleLabels?.length ? statement.scaleLabels : DEFAULT_LABELS;
+        const answer = answerMap[statement.id];
+        const hasAnswer = answer !== undefined;
+        const statementNum = String(idx + 1).padStart(2, '0');
+
+        const sectionBreak = (item.content.sectionBreaks as any[])?.find(
+          (sb: any) => sb.afterQuestionIndex === idx - 1
+        );
+
         return (
-          <AssessmentItemCard key={statement.id} label={`Statement ${idx + 1}`} title={statement.text}>
-            <div className="flex flex-wrap gap-2">
-              {labels.map((label, rating) => {
-                const selected = answerMap[statement.id] === rating + 1;
-                return (
-                  <button
-                    key={`${statement.id}-${label}`}
-                    type="button"
-                    disabled={rowLocked(statement.id)}
-                    onClick={() => onChange(rating + 1, statement.id)}
-                    className={`px-3 py-2 rounded-lg border text-xs font-semibold ${
-                      selected
-                        ? 'border-[#0047CC] bg-[#EBF6FF] text-[#0047CC]'
-                        : 'border-[#E6E6E6] text-[#4A4A4A]'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
+          <React.Fragment key={statement.id}>
+            {sectionBreak && (
+              <>
+                <hr className="divider" />
+                <span className="div-label">{sectionBreak.label}</span>
+              </>
+            )}
+            <div className={`q-block ${hasAnswer ? 'answered' : ''}`}>
+              <div className="q-num">Statement {statementNum}</div>
+              <div className="q-text">{statement.text}</div>
+              <div className="likert">
+                {labels.map((label, rating) => {
+                  const selected = answer === rating + 1;
+                  const formattedLabel = label.split('\n').map((line, lIdx) => (
+                    <span key={lIdx}>
+                      {line}
+                      {lIdx < label.split('\n').length - 1 && <br />}
+                    </span>
+                  ));
+                  return (
+                    <button
+                      key={`${statement.id}-${label}`}
+                      type="button"
+                      disabled={rowLocked(statement.id)}
+                      onClick={() => onChange(rating + 1, statement.id)}
+                      className={`lk ${selected ? 'selected' : ''}`}
+                    >
+                      <div className="lk-dot"></div>
+                      <div className="lk-l">{formattedLabel}</div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </AssessmentItemCard>
+          </React.Fragment>
         );
       })}
     </div>

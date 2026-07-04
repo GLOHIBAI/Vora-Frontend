@@ -9,13 +9,14 @@ import {
 } from '../../../hooks/useGate1ActiveScreen';
 import { useGate1PostSubmitNavigation } from '../../../hooks/useGate1PostSubmitNavigation';
 import { useAssessmentGatesProgressQuery } from '../../../services/queries/assessments';
+import { useGetPublicRoleQuery } from '../../../services/queries/talent';
 import { GATE1_SCREEN_LABELS, findGate1ProgressEntry, unwrapAssessmentData } from '../../../utils/assessmentSession';
 import { GATE1_TOTAL_PARTS } from '../../../utils/assessmentFlow';
 import type { Gate1ScreenKey } from '../../../services/queries/assessments/types';
 import type { AssessmentDraftResponse } from '../../../services/queries/assessments/types';
 
 /**
- * Gate 1 active screen — one API screen per visit.
+ * Gate 1 active screen one API screen per visit.
  *
  * Flow per screen:
  *   1. GET resume-state → nextScreenKey
@@ -27,6 +28,11 @@ import type { AssessmentDraftResponse } from '../../../services/queries/assessme
 const Gate1ScreenView: React.FC = () => {
   const navigate = useNavigate();
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
+
+  const { data: roleResponse } = useGetPublicRoleQuery(roleSlug || '');
+  const roleData = roleResponse?.data || roleResponse;
+  const companyName = roleData?.companyName || 'Reach Africa';
+  const roleTitle = roleData?.roleTitle || 'Senior Programme Officer';
 
   const {
     assessmentId,
@@ -136,6 +142,12 @@ const Gate1ScreenView: React.FC = () => {
       screenData={screenData}
       draft={draft}
       headerSubtitle={`Stage 1 · ${resumeState.sessionLabel} · ${screenLabel}`}
+      session={resumeState.session}
+      sessionScreens={sessionScreens as readonly string[]}
+      screenIndex={screenIndex}
+      screenLabel={screenLabel}
+      companyName={companyName}
+      roleTitle={roleTitle}
       progress={{
         label: `Session ${resumeState.session} · Screen ${Math.max(screenIndex + 1, 1)} of ${sessionScreens.length} · ${partsCompleted} of ${partsRequired} parts complete`,
         percent: Math.round((partsCompleted / partsRequired) * 100),

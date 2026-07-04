@@ -132,7 +132,7 @@ const Login: React.FC = () => {
   const loginContent = (
     <AuthPageShell loading={showFullPage} centered={!role} className={role ? "flex-1 !min-h-0" : ""}>
       <AuthPageHeader
-        title="Welcome back to vora."
+        title="Welcome back to Vora."
         subtitle="Access your dashboard to manage jobs, mentorships, and career growth."
       />
 

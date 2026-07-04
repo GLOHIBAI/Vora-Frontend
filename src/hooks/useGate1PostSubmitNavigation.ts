@@ -27,9 +27,8 @@ export const useGate1PostSubmitNavigation = ({
       reloadAfterSubmit();
       return;
     }
-
     const result = await refetchResumeState();
-    const fresh = parseGateResumeState(result.data);
+    const fresh = parseGateResumeState((result as any).data);
 
     if (!fresh) {
       reloadAfterSubmit();

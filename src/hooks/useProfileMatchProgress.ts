@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from "react";
 import {
   buildInitialProfileMatchStatuses,
   type ProfileMatchStepStatus,
-} from '../constants/profileMatchBuilding';
+} from "../constants/profileMatchBuilding";
 
 const CV_PARSE_PROGRESS_CAP = 80;
 const MATCH_PROGRESS_CAP = 100;
@@ -13,9 +13,9 @@ const INITIAL_DELAY_MS = 800;
 export interface UseProfileMatchProgressOptions {
   /** CV parse finished and role is ready for matching scan. */
   cvReadyForMatch?: boolean;
-  /** CV parse failed — freeze progress and stop step animation. */
+  /** CV parse failed freeze progress and stop step animation. */
   cvParseFailed?: boolean;
-  /** Match API returned READY — finish bar and steps. */
+  /** Match API returned READY finish bar and steps. */
   matchReady?: boolean;
 }
 
@@ -24,8 +24,10 @@ export const useProfileMatchProgress = ({
   cvParseFailed = false,
   matchReady = false,
 }: UseProfileMatchProgressOptions = {}) => {
-  const [statuses, setStatuses] = useState<ProfileMatchStepStatus[]>(buildInitialProfileMatchStatuses);
-  const [headline, setHeadline] = useState('Reading and parsing your CV…');
+  const [statuses, setStatuses] = useState<ProfileMatchStepStatus[]>(
+    buildInitialProfileMatchStatuses,
+  );
+  const [headline, setHeadline] = useState("Reading and parsing your CV…");
   const [progress, setProgress] = useState(40);
 
   const matchPhaseStarted = cvReadyForMatch || matchReady;
@@ -39,7 +41,9 @@ export const useProfileMatchProgress = ({
 
     const intervalId = setInterval(() => {
       setProgress((prev) => {
-        const targetCap = matchPhaseStarted ? MATCH_PROGRESS_CAP : CV_PARSE_PROGRESS_CAP;
+        const targetCap = matchPhaseStarted
+          ? MATCH_PROGRESS_CAP
+          : CV_PARSE_PROGRESS_CAP;
         if (prev >= targetCap) return prev;
         return Math.min(prev + 1, targetCap);
       });
@@ -52,8 +56,8 @@ export const useProfileMatchProgress = ({
   useEffect(() => {
     if (matchReady) {
       setProgress(MATCH_PROGRESS_CAP);
-      setHeadline('Match complete! Preparing your results…');
-      setStatuses(['done', 'done', 'done', 'done', 'done', 'done']);
+      setHeadline("Match complete! Preparing your results…");
+      setStatuses(["done", "done", "done", "done", "done", "done"]);
     }
   }, [matchReady]);
 
@@ -64,27 +68,29 @@ export const useProfileMatchProgress = ({
     let stepIndex = 2;
     let timeoutId: ReturnType<typeof setTimeout>;
     const stepCount = buildInitialProfileMatchStatuses().length;
-    const cvPhaseLastStep = 4; // index 4 = 5th step — stop before final step until match phase
+    const cvPhaseLastStep = 4; // index 4 = 5th step stop before final step until match phase
 
     const advance = () => {
       if (cvParseFailed) return;
 
       if (!matchPhaseStarted && stepIndex >= cvPhaseLastStep) {
-        setHeadline('Finishing CV analysis…');
+        setHeadline("Finishing CV analysis…");
         return;
       }
 
       setStatuses((prev) => {
         const next = [...prev];
-        next[stepIndex] = 'done';
+        next[stepIndex] = "done";
         if (stepIndex + 1 < next.length) {
-          next[stepIndex + 1] = 'running';
+          next[stepIndex + 1] = "running";
         }
         return next;
       });
 
-      if (stepIndex === 2) setHeadline('Matching your profile against eligible roles…');
-      if (stepIndex === 3) setHeadline('Scanning all live roles for additional matches…');
+      if (stepIndex === 2)
+        setHeadline("Matching your profile against eligible roles…");
+      if (stepIndex === 3)
+        setHeadline("Scanning all live roles for additional matches…");
 
       stepIndex += 1;
 
@@ -93,7 +99,7 @@ export const useProfileMatchProgress = ({
       }
 
       if (stepIndex >= stepCount) {
-        setHeadline('Calculating your match score…');
+        setHeadline("Calculating your match score…");
         return;
       }
 
@@ -107,21 +113,22 @@ export const useProfileMatchProgress = ({
   // When CV parse completes, unlock match-phase steps and headline.
   const matchPhaseStartedRef = useRef(false);
   useEffect(() => {
-    if (!cvReadyForMatch || matchPhaseStartedRef.current || cvParseFailed) return;
+    if (!cvReadyForMatch || matchPhaseStartedRef.current || cvParseFailed)
+      return;
     matchPhaseStartedRef.current = true;
     setProgress((prev) => Math.max(prev, CV_PARSE_PROGRESS_CAP));
-    setHeadline('CV ready — checking work eligibility…');
+    setHeadline("CV ready checking work eligibility…");
     setStatuses((prev) => {
       const next = [...prev];
-      next[4] = 'done';
-      if (next[5] !== 'done') next[5] = 'running';
+      next[4] = "done";
+      if (next[5] !== "done") next[5] = "running";
       return next;
     });
   }, [cvReadyForMatch, cvParseFailed]);
 
   useEffect(() => {
     if (cvParseFailed) {
-      setHeadline('CV parsing failed');
+      setHeadline("CV parsing failed");
     }
   }, [cvParseFailed]);
 

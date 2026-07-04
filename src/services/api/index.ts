@@ -196,7 +196,7 @@ async function fetchWithInterceptors(options: ApiRequestOptions): Promise<any> {
       const errorList = data.data?.errors || data.errors;
       if (Array.isArray(errorList) && errorList.length > 0) {
         cleanMessage = errorList
-          .map(err => {
+          .map((err: any) => {
             if (typeof err === 'string') {
               return formatValidationError(err);
             }
@@ -208,7 +208,7 @@ async function fetchWithInterceptors(options: ApiRequestOptions): Promise<any> {
         if (data.message.includes(', ')) {
           cleanMessage = data.message
             .split(', ')
-            .map(err => formatValidationError(err))
+            .map((err: any) => formatValidationError(err))
             .filter(Boolean)
             .join('\n');
         } else {

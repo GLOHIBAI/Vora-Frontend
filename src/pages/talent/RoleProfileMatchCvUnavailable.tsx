@@ -47,7 +47,7 @@ const RoleProfileMatchCvUnavailable: React.FC = () => {
   const roleTitle = resolveRoleTitleFromScan(matchScan, appliedRole?.roleTitle ?? 'this role');
   const summary =
     resolveMatchSummary(matchScan) ||
-    "We couldn't score your profile against this role yet — your CV or profile isn't ready for matching.";
+    "We couldn't score your profile against this role yet your CV or profile isn't ready for matching.";
 
   useEffect(() => {
     if (!roleSlug) {
@@ -98,7 +98,7 @@ const RoleProfileMatchCvUnavailable: React.FC = () => {
             </div>
             <div>
               <h2 className="text-xl font-bold text-[#1A1A1A] tracking-tight mb-1.5">
-                Couldn&apos;t score — CV or profile not ready
+                Couldn&apos;t score CV or profile not ready
               </h2>
               <p className="text-sm text-[#4A5568] leading-relaxed">{summary}</p>
             </div>

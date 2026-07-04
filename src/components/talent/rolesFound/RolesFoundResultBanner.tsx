@@ -23,7 +23,7 @@ const RolesFoundResultBanner: React.FC<RolesFoundResultBannerProps> = ({ summary
           <>
             {' '}
             VORA found <strong>{summary.matchedRoleCount} other role{summary.matchedRoleCount === 1 ? '' : 's'}</strong>{' '}
-            you qualify for at {summary.matchThreshold}%+ — you can go straight to assessment on any of them.
+            you qualify for at {summary.matchThreshold}%+ you can go straight to assessment on any of them.
           </>
         ) : null}
       </p>

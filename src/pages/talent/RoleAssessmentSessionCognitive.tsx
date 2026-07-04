@@ -16,7 +16,7 @@ const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
 
 const BrainIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-    <path d="M12 2a4 4 0 0 0-4 4c0 1 .3 1.8.8 2.5C7.2 9.4 6 11.1 6 13a6 6 0 0 0 12 0c0-1.9-1.2-3.6-2.8-4.5.5-.7.8-1.5.8-2.5a4 4 0 0 0-4-4z"/>
+    <path d="M12 2a4 4 0 0 0-4 4c0 1 .3 1.8.8 2.5C7.2 9.4 6 11.1 6 13a6 6 0 0 0 12 0c0-1.9-1.2-3.6-2.8-4.5.5-.7.8-1.5.8-2.5a4 4 0 0 0-4-4z" />
   </svg>
 );
 
@@ -57,7 +57,7 @@ const RoleAssessmentSessionCognitive: React.FC = () => {
   const [asked, setAsked] = useState<number>(0);
   const [resp, setResp] = useState<{ b: number; correct: boolean }[]>([]);
   const [curPick, setCurPick] = useState<number | null>(null);
-  
+
   // Choose the initial item (closest difficulty to starting theta 0.0)
   const [curItemIdx, setCurItemIdx] = useState<number>(() => {
     let best = 0;
@@ -93,7 +93,7 @@ const RoleAssessmentSessionCognitive: React.FC = () => {
 
     // 1PL probability of a correct answer
     const p = 1 / (1 + Math.exp(-(theta - it.b)));
-    
+
     // Stochastic ability update (K step shrinks as asked count increases)
     const K = 1.4 / Math.sqrt(asked + 2);
     const newTheta = theta + (correct ? K * (1 - p) : -K * p);
@@ -123,7 +123,7 @@ const RoleAssessmentSessionCognitive: React.FC = () => {
           best = i;
         }
       }
-      
+
       if (best !== null) {
         setCurItemIdx(best);
         window.scrollTo(0, 0);
@@ -162,7 +162,7 @@ const RoleAssessmentSessionCognitive: React.FC = () => {
 
   // Rendering finished results screen
   if (finished) {
-    const se = 1.2 / Math.sqrt(asked); 
+    const se = 1.2 / Math.sqrt(asked);
     const lo = theta - se;
     const hi = theta + se;
     const pos = (t: number) => Math.max(0, Math.min(100, (t + 2.5) / 5 * 100));
@@ -218,19 +218,19 @@ const RoleAssessmentSessionCognitive: React.FC = () => {
             <h1 className="text-[23px] font-[800] text-[#182348] tracking-[-0.4px] leading-[1.25] mb-[10px]">
               Settled in {asked} items, not a fixed sheet
             </h1>
-            
+
             {/* Gauge */}
             <div className="h-[12px] bg-[#E6E6E6] rounded-full relative my-[20px] mb-[12px]">
-              <div 
-                className="absolute top-0 h-full bg-[#EBF6FF] rounded-full" 
+              <div
+                className="absolute top-0 h-full bg-[#EBF6FF] rounded-full"
                 style={{ left: `${pos(lo)}%`, width: `${pos(hi) - pos(lo)}%` }}
               ></div>
-              <i 
-                className="absolute top-[-3px] w-[4px] h-[18px] rounded-[2px] bg-[#182348] transition-all duration-500" 
+              <i
+                className="absolute top-[-3px] w-[4px] h-[18px] rounded-[2px] bg-[#182348] transition-all duration-500"
                 style={{ left: `${pos(theta)}%` }}
               ></i>
             </div>
-            
+
             <div className="flex justify-between text-[12px] color-[#808080] font-[700] mb-[20px]">
               <span>Foundational</span>
               <span>Moderate</span>
@@ -251,7 +251,7 @@ const RoleAssessmentSessionCognitive: React.FC = () => {
           <div className="text-[13px] text-[#808080] font-[600]">
             Assessment profile generated: <strong className="text-[#1A1A1A] font-[800]">{theta.toFixed(2)}</strong>
           </div>
-          <Button 
+          <Button
             onClick={handleContinueNextPart}
             fullWidth={false}
             className="rounded-[10px] px-[24px] py-[12px] bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] transition-all font-sans inline-flex items-center justify-center gap-[8px] text-[14px] font-[700] border-none w-full sm:w-auto"
@@ -308,7 +308,7 @@ const RoleAssessmentSessionCognitive: React.FC = () => {
       {/* Main Content */}
       <main className="max-w-[680px] w-full mx-auto px-[20px] sm:px-[22px] pt-[30px] pb-[100px] flex-1">
         <div className="mb-[14px]">
-          <Tag 
+          <Tag
             variant="blue-soft"
             className="uppercase font-[800] tracking-[0.7px] px-[12px] py-[5px]"
             label={
@@ -337,19 +337,19 @@ const RoleAssessmentSessionCognitive: React.FC = () => {
           {resp.map((r, i) => {
             const h = Math.max(8, Math.round((r.b + 2.2) / 4.4 * 44));
             return (
-              <div 
-                key={i} 
+              <div
+                key={i}
                 className="flex-1 rounded-t-[3px] opacity-85 transition-all duration-300"
-                style={{ 
-                  height: `${h}px`, 
-                  backgroundColor: r.correct ? '#2CA62C' : '#DC2626' 
+                style={{
+                  height: `${h}px`,
+                  backgroundColor: r.correct ? '#2CA62C' : '#DC2626'
                 }}
               />
             );
           })}
         </div>
 
-        {/* Question — reusable adaptive item component */}
+        {/* Question reusable adaptive item component */}
         <div className="relative">
           {adaptiveItem.content.difficultyLabel ? (
             <span className="inline-block text-[11px] font-[800] tracking-[0.3px] uppercase px-[9px] py-[3px] rounded-full bg-[#EBF6FF] text-[#0047CC] mb-[12px]">

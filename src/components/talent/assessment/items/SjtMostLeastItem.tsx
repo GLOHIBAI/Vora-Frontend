@@ -52,7 +52,7 @@ const SjtMostLeastItem: React.FC<AssessmentItemRendererProps> = ({
                     : 'border-[#E6E6E6] bg-white'
               }`}
             >
-              <p className="flex-1 text-sm text-[#1A1A1A]">{opt.label}</p>
+              <p className="flex-1 text-sm text-[#1A1A1A]">{opt.label ?? opt.text}</p>
               <div className="flex gap-2 shrink-0">
                 <button
                   type="button"

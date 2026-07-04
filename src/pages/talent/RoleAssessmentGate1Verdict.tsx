@@ -15,10 +15,7 @@ const RoleAssessmentGate1Verdict: React.FC = () => {
 
   const { data: verdictRaw } = useGateVerdictQuery(assessmentId, 1, {
     enabled: !!assessmentId,
-    refetchInterval: (query) => {
-      const verdict = unwrapAssessmentData<GateVerdictResponse>(query.state.data);
-      return verdict?.verdict === 'pending' ? VERDICT_POLL_MS : false;
-    },
+    refetchInterval: VERDICT_POLL_MS,
   });
 
   const verdict = unwrapAssessmentData<GateVerdictResponse>(verdictRaw);

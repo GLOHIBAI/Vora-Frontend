@@ -52,7 +52,7 @@ const RoleCvUpload: React.FC = () => {
     setUploadError('');
     try {
       await uploadCvMutation.mutateAsync({ file, roleLink: roleSlug });
-      // Go straight to match page — CV status is polled there until COMPLETED.
+      // Go straight to match page CV status is polled there until COMPLETED.
       navigate(`/onboarding/talent/${roleSlug}/match`, {
         state: { firstName, cvUploadPending: true },
       });

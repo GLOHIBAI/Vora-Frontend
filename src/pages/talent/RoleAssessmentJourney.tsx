@@ -15,7 +15,8 @@ import {
   pickRolePostingId,
   readStoredRolePostingId,
 } from '../../utils/rolePostingId';
-import { resolveGate1AssessmentId } from '../../config/gate1Api';
+import { resolveGate1AssessmentId, isGate1ApiEnabled } from '../../config/gate1Api';
+import { setActiveAssessmentId } from '../../utils/assessmentSession';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -145,19 +146,38 @@ const RoleAssessmentJourney: React.FC = () => {
     }
   }, [roleSlug, rolePostingId]);
 
+  useEffect(() => {
+    if (isGate1ApiEnabled()) {
+      const mockKeys = [
+        'vora_stage1_started',
+        'vora_stage2_unlocked',
+        'vora_stage2_completed',
+        'vora_stage3_unlocked',
+        'vora_stage3_completed',
+        'vora_stage4_unlocked',
+        'vora_stage4_completed',
+        'vora_stage2_part2_unlocked',
+        'vora_stage2_part3_unlocked',
+        'vora_hired',
+      ];
+      mockKeys.forEach(key => localStorage.removeItem(key));
+    }
+  }, []);
+
   const { data: readinessResponse, isLoading: isReadinessLoading } =
     useGetPreAssessmentReadinessQuery(roleSlug || '', rolePostingId);
-
   useEffect(() => {
     if (!isRoleLoading && !isReadinessLoading && readinessResponse) {
       const readiness = readinessResponse?.data || readinessResponse;
+      if (readiness?.assessmentId) {
+        setActiveAssessmentId(readiness.assessmentId);
+      }
       const isPreAssessmentRequired = readiness?.preAssessmentRequired === true;
-      
-      const hasPendingDocuments = 
-        Array.isArray(readiness?.requiredDocuments) &&
-        readiness.requiredDocuments.some((doc: any) => doc.required && !doc.submitted);
+      const isPreAssessmentComplete = 
+        readiness?.checks?.preAssessmentComplete === true || 
+        readiness?.preAssessmentComplete === true;
 
-      if (isPreAssessmentRequired && hasPendingDocuments) {
+      if (isPreAssessmentRequired && !isPreAssessmentComplete) {
         navigate(`/onboarding/talent/${roleSlug}/assessment/asks`, { replace: true });
       }
     }
@@ -175,12 +195,18 @@ const RoleAssessmentJourney: React.FC = () => {
   const companyName = appliedRole?.companyName || 'the employer';
   const roleTitle = appliedRole?.roleTitle || 'the role';
 
-  const hasStartedStage1 =
-    localStorage.getItem('vora_stage1_started') === 'true' &&
-    resolveGate1AssessmentId() !== null;
+  const readiness = readinessResponse?.data || readinessResponse;
+
+  const hasStartedStage1 = useMemo(() => {
+    return readiness?.assessmentStatus === 'IN_PROGRESS';
+  }, [readiness]);
+
   const gate1Tags = ['Personality', 'Values', 'Cognitive', 'Situational judgement'];
   const gate1EstimatedMinutes = '25 to 40 minutes';
-  const gate1Completed = isStage2Unlocked;
+  
+  const gate1Completed = useMemo(() => {
+    return readiness?.assessmentStatus === 'COMPLETED';
+  }, [readiness]);
 
   const handleStart = () => {
     localStorage.setItem('vora_stage1_started', 'true');
@@ -290,7 +316,6 @@ const RoleAssessmentJourney: React.FC = () => {
                   } else if (isStage2Unlocked && !isStage2Completed) {
                     navigate(`/onboarding/talent/${roleSlug}/assessment/resume`);
                   } else {
-                    const hasStartedStage1 = localStorage.getItem('vora_stage1_started') === 'true';
                     if (hasStartedStage1) {
                       navigate(`/onboarding/talent/${roleSlug}/assessment/resume`);
                     } else {
@@ -301,7 +326,13 @@ const RoleAssessmentJourney: React.FC = () => {
                 fullWidth={false}
                 className="bg-[#0047CC] text-white rounded-full p-[12px_24px] text-[14px] font-[800] hover:bg-[#344DA1] hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,71,204,0.36)] transition-all flex items-center gap-[8px] shadow-[0_4px_14px_rgba(0,71,204,0.28)]"
               >
-                {isStage2Completed ? 'Begin Stage 3' : isStage2Unlocked ? 'Begin Stage 2' : 'Begin Stage 1'}
+                {isStage2Completed 
+                  ? 'Begin Stage 3' 
+                  : isStage2Unlocked 
+                    ? 'Begin Stage 2' 
+                    : hasStartedStage1 
+                      ? 'Resume assessment' 
+                      : 'Begin Stage 1'}
               </Button>
             )}
           </div>
@@ -354,7 +385,7 @@ const RoleAssessmentJourney: React.FC = () => {
             }}
             className={gate1Completed 
               ? "bg-white border-[1.5px] border-[#0047CC]/20 rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all z-[1]"
-              : "bg-gradient-to-b from-[#FAFCFF] to-white border-[1.5px] border-[#0047CC] rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all shadow-[0_8px_24px_rgba(0,71,204,0.1)] z-[1] cursor-pointer"
+              : "bg-gradient-to-b from-[#FAFCFF] to-white border-[1.5px] border-[#0047CC] rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all shadow-[0_8px_24px_rgba(0,71,204,0.1)] z-[1] cursor-pointer group"
             }
           >
             <div className={`w-[54px] h-[54px] rounded-[14px] flex items-center justify-center shrink-0 relative z-[2] ${gate1Completed ? 'bg-gradient-to-br from-[#0047CC] to-[#387DFF] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)]' : 'text-[17px] font-[900] bg-gradient-to-br from-[#0047CC] to-[#387DFF] border-[1.5px] border-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.3)]'}`}>
@@ -390,7 +421,11 @@ const RoleAssessmentJourney: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="absolute top-[22px] right-[22px] hidden sm:flex items-center gap-[6px] text-[11px] font-[800] px-[11px] py-[5px] rounded-full tracking-[0.4px] bg-white border border-[#0047CC] text-[#0047CC]">
+            <div className={`absolute top-[22px] right-[22px] hidden sm:flex items-center gap-[6px] text-[11px] font-[800] px-[11px] py-[5px] rounded-full tracking-[0.4px] border transition-all duration-200 ${
+              gate1Completed
+                ? 'bg-white border-[#0047CC] text-[#0047CC]'
+                : 'bg-white border-[#0047CC] text-[#0047CC] group-hover:bg-[#0047CC] group-hover:text-white group-hover:border-[#0047CC] hover:bg-[#0047CC] hover:text-white hover:border-[#0047CC] cursor-pointer'
+            }`}>
               {gate1Completed ? 'Complete' : hasStartedStage1 ? 'Resume' : 'Start here'}
             </div>
           </div>
@@ -440,7 +475,7 @@ const RoleAssessmentJourney: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <div className="absolute top-[22px] right-[22px] hidden sm:flex items-center gap-[6px] text-[11px] font-[800] px-[11px] py-[5px] rounded-full tracking-[0.4px] bg-white border border-[#0047CC] text-[#0047CC]">
+              <div className="absolute top-[22px] right-[22px] hidden sm:flex items-center gap-[6px] text-[11px] font-[800] px-[11px] py-[5px] rounded-full tracking-[0.4px] bg-white border border-[#0047CC] text-[#0047CC] transition-all duration-200 group-hover:bg-[#0047CC] group-hover:text-white group-hover:border-[#0047CC] hover:bg-[#0047CC] hover:text-white hover:border-[#0047CC] cursor-pointer">
                 {isStage2Completed ? 'Complete' : 'Start here'}
               </div>
             </div>
@@ -523,7 +558,11 @@ const RoleAssessmentJourney: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <div className="absolute top-[22px] right-[22px] hidden sm:flex items-center gap-[6px] text-[11px] font-[800] px-[11px] py-[5px] rounded-full tracking-[0.4px] bg-white border border-[#0047CC] text-[#0047CC]">
+              <div className={`absolute top-[22px] right-[22px] hidden sm:flex items-center gap-[6px] text-[11px] font-[800] px-[11px] py-[5px] rounded-full tracking-[0.4px] border transition-all duration-200 ${
+                isStage3Completed
+                  ? 'bg-white border-[#0047CC] text-[#0047CC]'
+                  : 'bg-white border-[#0047CC] text-[#0047CC] group-hover:bg-[#0047CC] group-hover:text-white group-hover:border-[#0047CC] hover:bg-[#0047CC] hover:text-white hover:border-[#0047CC] cursor-pointer'
+              }`}>
                 {isStage3Completed ? 'Complete' : 'Start here'}
               </div>
             </div>

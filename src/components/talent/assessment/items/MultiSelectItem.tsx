@@ -31,13 +31,14 @@ const MultiSelectItem: React.FC<AssessmentItemRendererProps> = ({
         {maxSelect === 1 ? '' : 's'}.
       </p>
       <div className="space-y-2">
-        {options.map((opt) => {
+        {options.map((opt, idx) => {
           const isSelected = selected.includes(opt.id);
           const atMax = !isSelected && selected.length >= maxSelect;
           return (
             <OptionButton
               key={opt.id}
-              label={opt.label}
+              index={idx}
+              label={opt.label ?? opt.text ?? ''}
               selected={isSelected}
               disabled={disabled || atMax}
               onClick={() => toggle(opt.id)}

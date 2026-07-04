@@ -3,14 +3,13 @@ import { useLocation, useNavigate, Link, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
-import { 
-  useGetPublicRoleQuery, 
+import {
+  useGetPublicRoleQuery,
   useGetPreAssessmentReadinessQuery,
   useSubmitPreAssessmentSubmissionMutation,
   useUpdatePreAssessmentTextResponseMutation,
   useUpdatePreAssessmentReferencesMutation,
   useUpdatePreAssessmentLinksMutation,
-  useUpdatePreAssessmentConsentsMutation,
   useCompletePreAssessmentMutation
 } from '../../services/queries/talent';
 import {
@@ -22,25 +21,26 @@ import Select from '../../components/common/Select';
 import { loadRoleApplySlug } from '../../utils/roleSignup';
 import FullPageSpinner from '../../components/common/FullPageSpinner';
 import Tag from '../../components/common/Tag';
+import { setActiveAssessmentId } from '../../utils/assessmentSession';
 
 // Icons used in the page
 const Trash2Icon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <line x1="18" y1="6" x2="6" y2="18"/>
-    <line x1="6" y1="6" x2="18" y2="18"/>
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
   </svg>
 );
 
 const LinkIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
   </svg>
 );
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-    <polyline points="20 6 9 17 4 12"/>
+    <polyline points="20 6 9 17 4 12" />
   </svg>
 );
 
@@ -51,7 +51,7 @@ const StageRail: React.FC = () => (
       <div className="text-[11px] font-[700] text-[#0047CC]">Getting to know you</div>
     </div>
     <div className="w-[24px] h-[2px] bg-[#E6E6E6] rounded-[2px]" />
-    
+
     <div className="flex items-center gap-[6px] shrink-0">
       <div className="w-[20px] h-[20px] rounded-full bg-[#E6E6E6] flex items-center justify-center text-[10px] font-[800] text-white">2</div>
       <div className="text-[11px] font-[700] text-[#ADADAD]">Professional dimension</div>
@@ -85,7 +85,6 @@ const RoleEmployerAsks: React.FC = () => {
   const updateText = useUpdatePreAssessmentTextResponseMutation();
   const updateReferences = useUpdatePreAssessmentReferencesMutation();
   const updateLinks = useUpdatePreAssessmentLinksMutation();
-  const updateConsents = useUpdatePreAssessmentConsentsMutation();
   const completePreAssessment = useCompletePreAssessmentMutation();
 
   const [hasInitialized, setHasInitialized] = useState(false);
@@ -126,6 +125,29 @@ const RoleEmployerAsks: React.FC = () => {
     [readiness],
   );
 
+  const requiredDocs = useMemo(() => {
+    if (Array.isArray(readiness?.requiredDocuments) && readiness.requiredDocuments.length > 0) {
+      return readiness.requiredDocuments;
+    }
+    if (Array.isArray(readiness?.items)) {
+      return readiness.items
+        .filter((item: any) => item.kind === 'file' || item.inputType === 'file')
+        .map((item: any) => ({
+          code: item.id,
+          label: item.label,
+          category: item.category,
+          required: item.required ?? true,
+          submitted: item.complete === true || item.status === 'submitted',
+          submissionId: item.submissionId,
+          originalName: item.originalName,
+          uploadedAt: item.uploadedAt,
+          whyWeAsk: item.whyWeAsk,
+          instruction: item.instruction
+        }));
+    }
+    return [];
+  }, [readiness]);
+
   const textItem = useMemo(
     () => preAssessmentItems.find((i: any) => i.kind === 'text') ?? null,
     [preAssessmentItems],
@@ -163,20 +185,20 @@ const RoleEmployerAsks: React.FC = () => {
     [readiness, preAssessmentItems, portfolioUrls],
   );
 
-  // Dynamic section numbering — starts after the required-document uploads.
-  const docCount = Array.isArray(readiness?.requiredDocuments) ? readiness.requiredDocuments.length : 0;
-  const textSectionIdx   = docCount + 1;
-  const refSectionIdx    = docCount + (showTextResponse ? 1 : 0) + 1;
-  const linksSectionIdx  = docCount + (showTextResponse ? 1 : 0) + (showReferences ? 1 : 0) + 1;
+  // Dynamic section numbering starts after the required-document uploads.
+  const docCount = requiredDocs.length;
+  const textSectionIdx = docCount + 1;
+  const refSectionIdx = docCount + (showTextResponse ? 1 : 0) + 1;
+  const linksSectionIdx = docCount + (showTextResponse ? 1 : 0) + (showReferences ? 1 : 0) + 1;
 
   const hasRequiredFiles = useMemo(() => {
+    if (requiredDocs.length > 0) return true;
     if (readiness) {
       if (readiness.requiresSubmissions === true) return true;
       if (readiness.requiresSubmissions === false) return false;
       if (Array.isArray(readiness.requiredDocumentTypes) && readiness.requiredDocumentTypes.length > 0) return true;
       if (Array.isArray(readiness.preAssessmentDocumentTypes) && readiness.preAssessmentDocumentTypes.length > 0) return true;
       if (readiness.requiredDocumentsCount > 0) return true;
-      if (Array.isArray(readiness.requiredDocuments) && readiness.requiredDocuments.length > 0) return true;
       if (showTextResponse || showReferences) return true;
     }
 
@@ -190,12 +212,14 @@ const RoleEmployerAsks: React.FC = () => {
       return true; // Keep mockup visible for mock roles / local static viewing
     }
     return false;
-  }, [readinessResponse, response, showTextResponse, showReferences]);
+  }, [readiness, requiredDocs, showTextResponse, showReferences, response]);
 
-  // Sync state from API on initial load
   useEffect(() => {
     if (readiness && !hasInitialized) {
       setHasInitialized(true);
+      if (readiness.assessmentId) {
+        setActiveAssessmentId(readiness.assessmentId);
+      }
 
       // Text response
       if (readiness.textResponse) {
@@ -244,14 +268,19 @@ const RoleEmployerAsks: React.FC = () => {
     }
   }, [readiness, hasInitialized]);
 
+  const isPreAssessmentRequired = readiness?.preAssessmentRequired === true;
+  const isPreAssessmentComplete =
+    readiness?.checks?.preAssessmentComplete === true ||
+    readiness?.preAssessmentComplete === true;
+
   // Skip page redirect guard
   useEffect(() => {
-    if (!isRoleLoading && !isReadinessLoading) {
-      if (!hasRequiredFiles) {
+    if (!isRoleLoading && !isReadinessLoading && readiness) {
+      if (!isPreAssessmentRequired || isPreAssessmentComplete) {
         navigate(`/onboarding/talent/${roleSlug}/assessment/journey`, { replace: true });
       }
     }
-  }, [isRoleLoading, isReadinessLoading, hasRequiredFiles, navigate, roleSlug]);
+  }, [isRoleLoading, isReadinessLoading, readiness, isPreAssessmentRequired, isPreAssessmentComplete, navigate, roleSlug]);
 
   const appliedRole: PublicRoleLandingData | null = useMemo(() => {
     if (!roleSlug) return null;
@@ -277,7 +306,7 @@ const RoleEmployerAsks: React.FC = () => {
 
   const handleSaveReferences = async () => {
     if (!ref1.fullName || !ref1.roleAndOrganisation || !ref1.email ||
-        !ref2.fullName || !ref2.roleAndOrganisation || !ref2.email) {
+      !ref2.fullName || !ref2.roleAndOrganisation || !ref2.email) {
       return;
     }
     try {
@@ -291,25 +320,20 @@ const RoleEmployerAsks: React.FC = () => {
     }
   };
 
-  const handleConsentToggle = async (key: 'truthful' | 'usage' | 'references') => {
-    const nextConsents = { ...consents, [key]: !consents[key] };
-    setConsents(nextConsents);
-    try {
-      await updateConsents.mutateAsync({
-        truthfulWork: nextConsents.truthful,
-        dataUseConsent: nextConsents.usage,
-        referencesStage4: nextConsents.references,
-        roleLink: roleSlug
-      });
-      refetch();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to update consents");
-    }
+  const handleConsentToggle = (key: 'truthful' | 'usage' | 'references') => {
+    setConsents(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleSubmit = async () => {
     try {
-      await completePreAssessment.mutateAsync({ roleLink: roleSlug });
+      await completePreAssessment.mutateAsync({
+        roleLink: roleSlug,
+        consents: {
+          truthfulWork: consents.truthful,
+          dataUseConsent: consents.usage,
+          referencesStage4: consents.references
+        }
+      });
       toast.success("Pre-assessment finalized successfully!");
       navigate(`/onboarding/talent/${roleSlug}/assessment/journey`);
     } catch (err: any) {
@@ -320,7 +344,17 @@ const RoleEmployerAsks: React.FC = () => {
   const progressPercent = readiness?.progress?.percent ?? 0;
   const completedRequired = readiness?.progress?.completedRequired ?? 0;
   const totalRequired = readiness?.progress?.totalRequired ?? 0;
-  const canFinalize = readiness?.checks?.canFinalizePreAssessment === true;
+
+  const allDocsUploaded = requiredDocs.every((doc: any) => doc.submitted);
+  const allReferencesFilled = !showReferences ||
+    (!!ref1.fullName && !!ref1.roleAndOrganisation && !!ref1.email &&
+      !!ref2.fullName && !!ref2.roleAndOrganisation && !!ref2.email);
+  const textResponseFilled = !showTextResponse ||
+    (textValue.trim().split(/\s+/).filter(Boolean).length >= (textItem?.minWords ?? 150));
+
+  const canFinalize = allDocsUploaded && allReferencesFilled && textResponseFilled;
+  const hasCheckedAllConsents = consents.truthful && consents.usage && consents.references;
+  const canSubmit = canFinalize && hasCheckedAllConsents;
 
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans">
@@ -367,7 +401,7 @@ const RoleEmployerAsks: React.FC = () => {
 
           <div className="inline-flex items-center gap-[8px] bg-white/10 border border-white/20 backdrop-blur-sm rounded-full px-[14px] py-[6px] mb-[24px]">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-[14px] h-[14px] text-white">
-              <path d="M9 12l2 2 4-4M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
+              <path d="M9 12l2 2 4-4M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
             </svg>
             <span className="text-[11.5px] font-[800] tracking-[0.3px] text-white">Stage 1 unlocks once these are submitted</span>
           </div>
@@ -418,7 +452,7 @@ const RoleEmployerAsks: React.FC = () => {
         </div>
 
         {/* Render required document checklist items dynamically */}
-        {Array.isArray(readiness?.requiredDocuments) && readiness.requiredDocuments.map((doc: any, idx: number) => {
+        {requiredDocs.map((doc: any, idx: number) => {
           return (
             <div key={doc.code} className="bg-gradient-to-b from-[#F8FBFF] to-white border-[1.5px] border-[#387DFF]/50 rounded-[16px] p-[24px_26px] mb-[16px] relative overflow-visible z-50">
               <div className="flex items-start justify-between gap-[14px] mb-[14px]">
@@ -431,19 +465,20 @@ const RoleEmployerAsks: React.FC = () => {
                     {doc.label}
                   </div>
                   <div className="text-[13px] text-[#808080] leading-[1.55]">
-                    {doc.category === 'written_research' ? 'An abstract, paper, conference poster, or research note you\'ve authored or co-authored. One file.' : 'Please upload the requested material.'}
+                    {doc.instruction || (doc.category === 'written_research' ? 'An abstract, paper, conference poster, or research note you\'ve authored or co-authored. One file.' : 'Please upload the requested material.')}
                   </div>
                 </div>
-                <Tag 
-                  label={doc.submitted ? "SUBMITTED" : "REQUIRED"} 
-                  variant="blue" 
-                  className="uppercase shrink-0" 
+                <Tag
+                  label={doc.submitted ? "SUBMITTED" : "REQUIRED"}
+                  variant="blue"
+                  className="uppercase shrink-0"
                 />
               </div>
               <div className="text-[12px] text-[#4A4A4A] leading-[1.55] bg-[#EBF6FF] p-[9px_12px] rounded-[8px]">
-                <strong className="font-[800] text-[#182348]">Why we ask:</strong> to review your work and frame specific questions based on the evidence.
+                <strong className="font-[800] text-[#182348]">Why we ask:</strong>{' '}
+                {doc.whyWeAsk || 'to review your work and frame specific questions based on the evidence.'}
               </div>
-              
+
               <div className="mt-[14px]">
                 {doc.submitted || uploadingFile?.code === doc.code ? (
                   <div className="border border-[#0047CC] bg-white rounded-[12px] p-[16px_18px] flex items-center gap-[14px]">
@@ -459,7 +494,7 @@ const RoleEmployerAsks: React.FC = () => {
                     </div>
                     <div className="flex-1 text-left min-w-0">
                       <div className="text-[13.5px] text-[#1A1A1A] font-[700] break-all leading-[1.4]">
-                        {uploadingFile?.code === doc.code ? uploadingFile.name : (doc.originalName || 'uploaded_document.pdf')}
+                        {uploadingFile?.code === doc.code ? uploadingFile?.name : (doc.originalName || 'uploaded_document.pdf')}
                       </div>
                       <div className="text-[11.5px] text-[#0047CC] font-[600] mt-[3px]">
                         {uploadingFile?.code === doc.code ? (
@@ -472,15 +507,14 @@ const RoleEmployerAsks: React.FC = () => {
                       </div>
                     </div>
                     <div className="relative shrink-0">
-                      <label className={`text-[12.5px] font-[700] border rounded-full px-4 py-1.5 transition-colors relative shrink-0 inline-block text-center min-w-[90px] select-none ${
-                        uploadingFile?.code === doc.code 
+                      <label className={`text-[12.5px] font-[700] border rounded-full px-4 py-1.5 transition-colors relative shrink-0 inline-block text-center min-w-[90px] select-none ${uploadingFile?.code === doc.code
                           ? 'border-[#ADADAD] text-[#ADADAD] bg-white cursor-not-allowed'
                           : 'text-[#0047CC] border-[#0047CC] hover:bg-[#EBF6FF] cursor-pointer'
-                      }`}>
+                        }`}>
                         {uploadingFile?.code === doc.code ? 'Uploading…' : 'Change file'}
                         {uploadingFile?.code !== doc.code && (
-                          <input 
-                            type="file" 
+                          <input
+                            type="file"
                             className="hidden"
                             onChange={async (e) => {
                               const file = e.target.files?.[0];
@@ -493,7 +527,7 @@ const RoleEmployerAsks: React.FC = () => {
                                   roleLink: roleSlug
                                 });
                                 toast.success("Document updated successfully!");
-                                refetch();
+                                await refetch();
                               } catch (err: any) {
                                 toast.error(err?.message || "Failed to update document");
                               } finally {
@@ -507,8 +541,8 @@ const RoleEmployerAsks: React.FC = () => {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center border-2 border-dashed border-[#E6E6E6] rounded-[12px] p-[24px] bg-[#F7F7F7] hover:border-[#0047CC] transition-colors relative cursor-pointer group">
-                    <input 
-                      type="file" 
+                    <input
+                      type="file"
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
@@ -521,7 +555,7 @@ const RoleEmployerAsks: React.FC = () => {
                             roleLink: roleSlug
                           });
                           toast.success("Document uploaded successfully!");
-                          refetch();
+                          await refetch();
                         } catch (err: any) {
                           toast.error(err?.message || "Failed to upload document");
                         } finally {
@@ -541,7 +575,7 @@ const RoleEmployerAsks: React.FC = () => {
           );
         })}
 
-        {/* Written Response — rendered only when the API requests it */}
+        {/* Written Response rendered only when the API requests it */}
         {showTextResponse && (
           <div className="bg-gradient-to-b from-[#F8FBFF] to-white border-[1.5px] border-[#387DFF]/50 rounded-[16px] p-[24px_26px] mb-[16px] relative overflow-visible z-30">
             <div className="flex items-start justify-between gap-[14px] mb-[14px]">
@@ -555,10 +589,10 @@ const RoleEmployerAsks: React.FC = () => {
                 </div>
                 <div className="text-[13px] text-[#808080] leading-[1.55]">
                   {textItem?.prompt
-                    ? <>&quot;<em>{textItem.prompt}</em>&quot;</>  
+                    ? <>&quot;<em>{textItem.prompt}</em>&quot;</>
                     : readiness?.textPrompt
-                    ? <>&quot;<em>{readiness.textPrompt}</em>&quot;</>
-                    : null}
+                      ? <>&quot;<em>{readiness.textPrompt}</em>&quot;</>
+                      : null}
                   {textItem?.minWords || textItem?.maxWords
                     ? ` Around ${textItem.minWords ?? ''}–${textItem.maxWords ?? ''} words.`
                     : null}
@@ -604,7 +638,7 @@ const RoleEmployerAsks: React.FC = () => {
           </div>
         )}
 
-        {/* References — rendered only when the API requests them */}
+        {/* References rendered only when the API requests them */}
         {showReferences && (
           <div className="bg-white border-[1.5px] border-[#E6E6E6] rounded-[16px] p-[24px_26px] mb-[16px] relative overflow-visible transition-all duration-250 z-20">
             <div className="flex items-start justify-between gap-[14px] mb-[14px]">
@@ -750,7 +784,7 @@ const RoleEmployerAsks: React.FC = () => {
           </div>
         )}
 
-        {/* Portfolio links — rendered only when the API enables them */}
+        {/* Portfolio links rendered only when the API enables them */}
         {showLinks && (
           <div className="bg-white border-[1.5px] border-[#E6E6E6] rounded-[16px] p-[24px_26px] mb-[16px] relative overflow-visible transition-all duration-250 z-10">
             <div className="flex items-start justify-between gap-[14px] mb-[14px]">
@@ -843,7 +877,7 @@ const RoleEmployerAsks: React.FC = () => {
           </div>
 
           <div className="flex gap-[11px] items-start py-[10px]">
-            <div 
+            <div
               className={`mt-[2px] w-[18px] h-[18px] rounded-[5px] border-[1.5px] cursor-pointer flex items-center justify-center transition-all shrink-0 ${consents.truthful ? 'bg-[#0047CC] border-[#0047CC]' : 'bg-white border-[#0047CC]'}`}
               onClick={() => handleConsentToggle('truthful')}
             >
@@ -857,7 +891,7 @@ const RoleEmployerAsks: React.FC = () => {
           </div>
 
           <div className="flex gap-[11px] items-start py-[10px] border-t border-[#0047CC]/10">
-            <div 
+            <div
               className={`mt-[2px] w-[18px] h-[18px] rounded-[5px] border-[1.5px] cursor-pointer flex items-center justify-center transition-all shrink-0 ${consents.usage ? 'bg-[#0047CC] border-[#0047CC]' : 'bg-white border-[#0047CC]'}`}
               onClick={() => handleConsentToggle('usage')}
             >
@@ -871,7 +905,7 @@ const RoleEmployerAsks: React.FC = () => {
           </div>
 
           <div className="flex gap-[11px] items-start py-[10px] border-t border-[#0047CC]/10">
-            <div 
+            <div
               className={`mt-[2px] w-[18px] h-[18px] rounded-[5px] border-[1.5px] cursor-pointer flex items-center justify-center transition-all shrink-0 ${consents.references ? 'bg-[#0047CC] border-[#0047CC]' : 'bg-white border-[#0047CC]'}`}
               onClick={() => handleConsentToggle('references')}
             >
@@ -892,25 +926,24 @@ const RoleEmployerAsks: React.FC = () => {
           <span className="text-[#0047CC] text-[12.5px] font-[800]">
             {completedRequired} of {totalRequired} done
           </span>
-          {canFinalize ? 'All requirements met! Ready to submit.' : 'Please complete all required items before submitting.'}
+          {canSubmit ? 'All requirements met! Ready to submit.' : 'Please complete all required items and acknowledgements before submitting.'}
         </div>
         <div className="flex gap-[10px]">
-          <button 
+          <button
             type="button"
             onClick={handleSaveAndExit}
             className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-full px-[20px] py-[13px] text-[14px] font-[700] hover:border-[#ADADAD] transition-colors cursor-pointer"
           >
             Save and exit
           </button>
-          <button 
+          <button
             type="button"
-            disabled={!canFinalize || completePreAssessment.isPending}
+            disabled={!canSubmit || completePreAssessment.isPending}
             onClick={handleSubmit}
-            className={`rounded-full px-[26px] py-[13px] text-[14px] font-[700] cursor-pointer font-sans inline-flex items-center gap-[8px] transition-all border-none ${
-              canFinalize 
-                ? 'bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px]' 
+            className={`rounded-full px-[26px] py-[13px] text-[14px] font-[700] cursor-pointer font-sans inline-flex items-center gap-[8px] transition-all border-none ${canSubmit
+                ? 'bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px]'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            }`}
+              }`}
           >
             {completePreAssessment.isPending ? 'Submitting...' : 'Submit and open Stage 1'}
           </button>

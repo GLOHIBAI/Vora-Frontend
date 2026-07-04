@@ -1,6 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../../api';
-import { isGate1MockSession, shouldMockGate1 } from '../../../config/gate1Api';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "../../api";
+import { isGate1MockSession, shouldMockGate1 } from "../../../config/gate1Api";
 import {
   mockGate1AdaptiveStep,
   mockGate1Draft,
@@ -12,8 +12,8 @@ import {
   mockGate1StartScreen,
   mockGate1SubmitScreen,
   mockGate1Verdict,
-} from '../../../mocks/gate1MockSession';
-import type { Gate1ScreenKey } from './types';
+} from "../../../mocks/gate1MockSession";
+import type { Gate1ScreenKey } from "./types";
 import type {
   AssessmentGateStartResponse,
   AssessmentDraftResponse,
@@ -27,40 +27,58 @@ import type {
   GateResumeState,
   ReviewSummaryEntry,
   ResponsesMap,
-} from './types';
+} from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Query key factory — keeps cache keys DRY and consistent
+// Query key factory keeps cache keys DRY and consistent
 // ─────────────────────────────────────────────────────────────────────────────
 export const assessmentKeys = {
-  all: ['assessments'] as const,
+  all: ["assessments"] as const,
 
   // Catalog / journey (static-ish, no assessmentId needed)
   screens: (gate: number) =>
-    [...assessmentKeys.all, 'gate', gate, 'screens'] as const,
+    [...assessmentKeys.all, "gate", gate, "screens"] as const,
   journey: (gate: number) =>
-    [...assessmentKeys.all, 'gate', gate, 'journey'] as const,
+    [...assessmentKeys.all, "gate", gate, "journey"] as const,
 
   // Per-session
   resumeState: (assessmentId: string, gate: number) =>
-    [...assessmentKeys.all, assessmentId, 'gate', gate, 'resume-state'] as const,
+    [
+      ...assessmentKeys.all,
+      assessmentId,
+      "gate",
+      gate,
+      "resume-state",
+    ] as const,
   progress: (assessmentId: string) =>
-    [...assessmentKeys.all, assessmentId, 'progress'] as const,
+    [...assessmentKeys.all, assessmentId, "progress"] as const,
   verdict: (assessmentId: string, gate: number) =>
-    [...assessmentKeys.all, assessmentId, 'gate', gate, 'verdict'] as const,
+    [...assessmentKeys.all, assessmentId, "gate", gate, "verdict"] as const,
   reviewSummary: (assessmentId: string, gate: number) =>
-    [...assessmentKeys.all, assessmentId, 'gate', gate, 'review-summary'] as const,
+    [
+      ...assessmentKeys.all,
+      assessmentId,
+      "gate",
+      gate,
+      "review-summary",
+    ] as const,
 
   // Per-component (screen)
   draft: (assessmentId: string, componentId: string) =>
-    [...assessmentKeys.all, assessmentId, 'components', componentId, 'responses'] as const,
+    [
+      ...assessmentKeys.all,
+      assessmentId,
+      "components",
+      componentId,
+      "responses",
+    ] as const,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Catalog & journey — load once, cache aggressively
+// Catalog & journey load once, cache aggressively
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** GET /assessments/gates/{gate}/screens — screen catalog with composite flags */
+/** GET /assessments/gates/{gate}/screens screen catalog with composite flags */
 export const useAssessmentScreensQuery = (gate: 1 | 2 | 3 = 1) =>
   useQuery({
     queryKey: assessmentKeys.screens(gate),
@@ -74,7 +92,7 @@ export const useAssessmentScreensQuery = (gate: 1 | 2 | 3 = 1) =>
     staleTime: 10 * 60 * 1000, // catalog rarely changes mid-session
   });
 
-/** GET /assessments/gates/{gate}/journey — ordered screen list with session split */
+/** GET /assessments/gates/{gate}/journey ordered screen list with session split */
 export const useAssessmentJourneyQuery = (gate: 1 | 2 | 3 = 1) =>
   useQuery({
     queryKey: assessmentKeys.journey(gate),
@@ -92,11 +110,11 @@ export const useAssessmentJourneyQuery = (gate: 1 | 2 | 3 = 1) =>
  * The ONLY place the frontend should decide which session and screen to open.
  * Call this on every welcome-back / dashboard entry point.
  *
- * Decision logic (from the spec — do NOT re-implement this client-side):
+ * Decision logic (from the spec do NOT re-implement this client-side):
  *   inProgress != null  → POST start { screen: inProgress.screenKey }  (resume + regen)
  *   inProgress == null  → POST start { screen: nextScreenKey }          (fresh screen)
  *
- * Stale time is intentionally short — this changes every time a screen is
+ * Stale time is intentionally short this changes every time a screen is
  * submitted or a draft is saved.
  */
 export const useGateResumeStateQuery = (
@@ -114,11 +132,11 @@ export const useGateResumeStateQuery = (
             auth: true,
           }),
     enabled: (options?.enabled ?? true) && !!assessmentId,
-    staleTime: 30 * 1000, // 30s — re-fetch after each screen submit
+    staleTime: 30 * 1000, // 30s re-fetch after each screen submit
   });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Start a screen — load (or regenerate) questions for a given screen key
+// Start a screen load (or regenerate) questions for a given screen key
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -130,7 +148,7 @@ export const useGateResumeStateQuery = (
  *
  * NOTE: The backend currently returns existing questions when a screen is
  * IN_PROGRESS instead of regenerating them. Once the backend fixes that,
- * this mutation will automatically benefit — no frontend change needed.
+ * this mutation will automatically benefit no frontend change needed.
  */
 export const useStartAssessmentScreenMutation = (gate: 1 | 2 | 3 = 1) => {
   const queryClient = useQueryClient();
@@ -144,7 +162,7 @@ export const useStartAssessmentScreenMutation = (gate: 1 | 2 | 3 = 1) => {
       body: Record<string, string>;
     }) => {
       if (shouldMockGate1(gate)) {
-        const screenKey = (body.screen ?? 'personality') as Gate1ScreenKey;
+        const screenKey = (body.screen ?? "personality") as Gate1ScreenKey;
         return mockGate1StartScreen(screenKey);
       }
       return apiClient.post<AssessmentGateStartResponse>({
@@ -155,13 +173,15 @@ export const useStartAssessmentScreenMutation = (gate: 1 | 2 | 3 = 1) => {
     },
     onSuccess: (data, { assessmentId }) => {
       // Invalidate progress so the journey bar reflects the new screen start
-      queryClient.invalidateQueries({ queryKey: assessmentKeys.progress(assessmentId) });
+      queryClient.invalidateQueries({
+        queryKey: assessmentKeys.progress(assessmentId),
+      });
     },
   });
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Draft — save & load partial answers (no scoring)
+// Draft save & load partial answers (no scoring)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -171,7 +191,7 @@ export const useStartAssessmentScreenMutation = (gate: 1 | 2 | 3 = 1) => {
  *   • Single-answer items  → called on every selection (lightweight, fast)
  *   • Multiple-answer items → called once on Continue after all parts are set
  *
- * IMPORTANT — only send NEW (unlocked) keys in `responses`.
+ * IMPORTANT only send NEW (unlocked) keys in `responses`.
  * The server rejects any key that already exists in stored responses with a
  * 400 ASSESSMENT_RESPONSE_INVALID error. The useAssessmentScreen hook is
  * responsible for stripping locked keys before calling this mutation.
@@ -189,7 +209,7 @@ export const useSaveAssessmentDraftMutation = () => {
     }: {
       assessmentId: string;
       componentId: string;
-      /** Only NEW (unlocked) keys — never re-send already-saved answers */
+      /** Only NEW (unlocked) keys never re-send already-saved answers */
       responses: ResponsesMap;
     }) => {
       if (isGate1MockSession(assessmentId)) {
@@ -203,7 +223,9 @@ export const useSaveAssessmentDraftMutation = () => {
     },
     onSuccess: (_data, { assessmentId }) => {
       // Invalidate progress so the answered/total counts update in the UI
-      queryClient.invalidateQueries({ queryKey: assessmentKeys.progress(assessmentId) });
+      queryClient.invalidateQueries({
+        queryKey: assessmentKeys.progress(assessmentId),
+      });
     },
   });
 };
@@ -234,13 +256,13 @@ export const useAssessmentDraftQuery = (
   });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Submit — score the screen and mark it complete
+// Submit score the screen and mark it complete
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * POST /assessments/:assessmentId/components/:componentId/submit
  *
- * Include ALL itemIds for the screen in responses — including both parts of a
+ * Include ALL itemIds for the screen in responses including both parts of a
  * composite screen (e.g. values_rank + values_pairs).
  */
 export const useSubmitAssessmentScreenMutation = () => {
@@ -265,7 +287,9 @@ export const useSubmitAssessmentScreenMutation = () => {
       });
     },
     onSuccess: (_data, { assessmentId }) => {
-      queryClient.invalidateQueries({ queryKey: assessmentKeys.progress(assessmentId) });
+      queryClient.invalidateQueries({
+        queryKey: assessmentKeys.progress(assessmentId),
+      });
       queryClient.invalidateQueries({
         queryKey: assessmentKeys.resumeState(assessmentId, 1),
       });
@@ -274,7 +298,7 @@ export const useSubmitAssessmentScreenMutation = () => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Adaptive — per-step endpoint for adaptive_mcq items
+// Adaptive per-step endpoint for adaptive_mcq items
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -311,7 +335,7 @@ export const useSubmitAdaptiveStepMutation = () =>
 // Progress & verdict
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** GET /assessments/:assessmentId/gates/progress — gate-level rollup */
+/** GET /assessments/:assessmentId/gates/progress gate-level rollup */
 export const useAssessmentGatesProgressQuery = (
   assessmentId: string,
   options?: { enabled?: boolean; refetchInterval?: number | false },
@@ -333,7 +357,7 @@ export const useAssessmentGatesProgressQuery = (
  * GET /assessments/:assessmentId/gates/{gate}/verdict
  *
  * Poll until verdict !== 'pending'. Backend scores asynchronously after all
- * gate-1 screens are submitted — same pattern as CV parse status polling.
+ * gate-1 screens are submitted same pattern as CV parse status polling.
  */
 export const useGateVerdictQuery = (
   assessmentId: string,
@@ -355,7 +379,7 @@ export const useGateVerdictQuery = (
   });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Review summary (Gate 1 screen 17 — read-only, no submit)
+// Review summary (Gate 1 screen 17 read-only, no submit)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** GET /assessments/:assessmentId/gates/{gate}/review-summary */

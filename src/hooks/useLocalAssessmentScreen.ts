@@ -54,7 +54,7 @@ export function useLocalAssessmentScreen(
             typeof prev[itemId] === 'object' && !Array.isArray(prev[itemId])
               ? (prev[itemId] as Record<string, unknown>)
               : {};
-          return { ...prev, [itemId]: { ...existing, [subKey]: value } };
+          return { ...prev, [itemId]: { ...existing, [subKey]: value } as any };
         }
         return { ...prev, [itemId]: value };
       });

@@ -185,14 +185,12 @@ export const PSYCHOMETRIC_VALUES_SCREEN: ScreenConfig = {
       content: {
         pairs: [
           {
-            id: 'pair-1',
-            a: { label: 'Having a clear plan and sticking to it' },
-            b: { label: 'Staying flexible and adapting as things change' },
+            a: { id: 'a', label: 'Having a clear plan and sticking to it' },
+            b: { id: 'b', label: 'Staying flexible and adapting as things change' },
           },
           {
-            id: 'pair-2',
-            a: { label: 'Being direct even when it might create tension' },
-            b: { label: 'Keeping harmony even when it slows a decision' },
+            a: { id: 'a', label: 'Being direct even when it might create tension' },
+            b: { id: 'b', label: 'Keeping harmony even when it slows a decision' },
           },
         ],
       },

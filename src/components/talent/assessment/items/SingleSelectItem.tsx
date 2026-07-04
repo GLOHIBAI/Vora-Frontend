@@ -1,6 +1,7 @@
 import AssessmentItemCard from '../shared/AssessmentItemCard';
 import OptionButton from '../shared/OptionButton';
 import type { AssessmentItemRendererProps } from '../shared/types';
+import { DataDisplayBlock } from '../shared/DataDisplayBlock';
 
 const SingleSelectItem: React.FC<AssessmentItemRendererProps> = ({
   item,
@@ -22,11 +23,15 @@ const SingleSelectItem: React.FC<AssessmentItemRendererProps> = ({
       {content.subPrompt ? (
         <p className="text-sm text-[#808080] mb-4">{String(content.subPrompt)}</p>
       ) : null}
+      
+      <DataDisplayBlock table={content.table as any} chart={content.chart as any} />
+
       <div className="space-y-2">
-        {options.map((opt) => (
+        {options.map((opt, idx) => (
           <OptionButton
             key={opt.id}
-            label={opt.label}
+            index={idx}
+            label={opt.label ?? opt.text ?? ''}
             selected={value === opt.id}
             disabled={disabled}
             onClick={() => onChange(opt.id)}

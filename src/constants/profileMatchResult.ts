@@ -37,6 +37,6 @@ export const PROFILE_MATCH_BREAKDOWN: ProfileMatchBreakdownItem[] = [
   { label: 'Communication', pct: 90, barColor: 'success' },
 ];
 
-export const MATCH_ASSESSMENT_PILLS = ['Psychometric test', 'SJT', 'Video assessment'] as const;
+export const MATCH_ASSESSMENT_PILLS = ['Getting to know you', 'Your professional dimension', 'How you show up'] as const;
 
 export const MATCH_TOP_PERCENTILE_LABEL = 'You scored in the top 20% of applicants for this role';

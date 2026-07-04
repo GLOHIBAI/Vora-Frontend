@@ -32,6 +32,10 @@ export const canPersistDraftDelta = (
 ): boolean => {
   const type = normalizeAssessmentItemType(item.type);
 
+  if (item.content.layout === 'multi_question') {
+    return typeof value === 'string' && value.length > 0;
+  }
+
   if (type === 'likert_scale') {
     return typeof value === 'number' && value >= 1 && value <= 5;
   }
@@ -67,7 +71,7 @@ export const isItemAnswerComplete = (item: AssessmentItem, value: AnswerValue | 
     return (
       questions.length > 0 &&
       questions.every((q) => {
-        const rating = value[q.id];
+        const rating = (value as any)[q.id];
         return typeof rating === 'number' && rating >= 1 && rating <= 5;
       })
     );
@@ -76,24 +80,24 @@ export const isItemAnswerComplete = (item: AssessmentItem, value: AnswerValue | 
   if (type === 'forced_choice') {
     if (!isRecord(value)) return false;
     const blocks = getForcedChoiceBlocks(item);
-    return blocks.every((block) => isMostLeastPair(value[block.id]));
+    return blocks.every((block) => isMostLeastPair((value as any)[block.id]));
   }
 
-  if (type === 'rank' || type === 'drag_rank' || type === 'sjt_rank' || type === 'sjt_rank_all') {
+  if ((type as string) === 'rank' || (type as string) === 'drag_rank' || (type as string) === 'sjt_rank' || type === 'sjt_rank_all') {
     return Array.isArray(value) && value.length > 0 && value.every((id) => typeof id === 'string');
   }
 
   if (type === 'values_ab_pairs') {
     if (!isRecord(value)) return false;
     const pairs = getValuesAbPairs(item);
-    return pairs.every((pair) => value[pair.id] === 'A' || value[pair.id] === 'B');
+    return pairs.every((pair) => (value as any)[pair.id] === 'A' || (value as any)[pair.id] === 'B');
   }
 
   if (type === 'values_tradeoff' || type === 'sjt_values_tradeoff') {
     if (!isRecord(value)) return false;
     const tensions = getValuesTradeoffTensions(item);
     return tensions.every((tension) => {
-      const v = value[tension.id];
+      const v = (value as any)[tension.id];
       if (typeof v !== 'number') return false;
       const min = tension.scaleMin ?? -2;
       const max = tension.scaleMax ?? 2;
@@ -113,6 +117,14 @@ export const isItemAnswerComplete = (item: AssessmentItem, value: AnswerValue | 
   }
 
   if (type === 'adaptive_mcq' || type === 'mcq' || type === 'sjt_single_best') {
+    if (item.content.layout === 'multi_question' && Array.isArray(item.content.questions)) {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+      const ansObj = value as Record<string, unknown>;
+      return item.content.questions.every((q) => {
+        const val = ansObj[q.id];
+        return typeof val === 'string' && val.length > 0;
+      });
+    }
     return typeof value === 'string' && value.length > 0;
   }
 

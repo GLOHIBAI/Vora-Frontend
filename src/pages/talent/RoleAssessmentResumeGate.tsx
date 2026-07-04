@@ -324,14 +324,14 @@ const RoleAssessmentResumeGate: React.FC = () => {
             </div>
 
             <div className="flex gap-[10px] mb-[22px] items-stretch flex-wrap">
-              <div className="flex-1 min-w-[140px] bg-gradient-to-b from-[#FEF3C7] to-[#FFFCF5] border border-[#FDE68A] rounded-[12px] p-[12px_14px]">
-                <div className="text-[10px] font-[800] tracking-[0.7px] uppercase text-[#B45309] mb-[4px]">
+              <div className="flex-1 min-w-[140px] bg-gradient-to-b from-[#F0F4FF] to-white border border-[#387DFF]/30 rounded-[12px] p-[12px_14px]">
+                <div className="text-[10px] font-[800] tracking-[0.7px] uppercase text-[#0047CC] mb-[4px]">
                   {config.deadlineLabel}
                 </div>
-                <div className="text-[18px] font-[900] text-[#B45309] tabular-nums tracking-[-0.2px]">
+                <div className="text-[18px] font-[900] text-[#0047CC] tabular-nums tracking-[-0.2px]">
                   {timeLeft != null ? formatSecondsAsHms(timeLeft) : config.deadlineTotalFormatted}
                 </div>
-                <div className="text-[11px] text-[#B45309]/80 font-[600] mt-[2px]">
+                <div className="text-[11px] text-[#4A4A4A] font-[600] mt-[2px]">
                   {timeLeft != null
                     ? `remaining out of ${config.deadlineTotalFormatted}`
                     : '48-hour assessment window'}
@@ -366,13 +366,13 @@ const RoleAssessmentResumeGate: React.FC = () => {
             </div>
 
             {config.showRegenerationNotice ? (
-              <div className="bg-gradient-to-b from-[#FEF3C7] to-[#FFFBEB] border border-[#FDE68A] border-l-4 border-l-[#D97706] rounded-[12px] p-[16px_18px] mb-[24px] flex gap-[12px] items-start">
-                <InfoIcon className="w-[22px] h-[22px] text-[#D97706] shrink-0 mt-[1px]" />
+              <div className="bg-gradient-to-b from-[#F0F4FF] to-white border border-[#387DFF]/30 rounded-[12px] p-[16px_18px] mb-[24px] flex gap-[12px] items-start animate-pulse">
+                <InfoIcon className="w-[22px] h-[22px] text-[#0047CC] shrink-0 mt-[1px]" />
                 <div>
-                  <div className="text-[14px] font-[800] text-[#B45309] mb-[5px]">
+                  <div className="text-[14px] font-[800] text-[#0047CC] mb-[5px]">
                     Your questions have been regenerated
                   </div>
-                  <div className="text-[13px] text-[#78350F] leading-[1.6]">
+                  <div className="text-[13px] text-[#182348] leading-[1.6]">
                     Each time you pause and resume, the system generates a <strong>fresh set of questions</strong> on the same competency. This means you can&apos;t use the break to look things up. Same difficulty, same depth, different questions. <strong>It&apos;s by design.</strong>
                   </div>
                 </div>

@@ -2,7 +2,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import VoraLogo from '../../components/common/VoraLogo';
 import Button from '../../components/common/Button';
 import { ArrowRightIcon } from '../../components/common/Icons';
-import { useGetPublicRoleQuery, useBeginAssessmentMutation } from '../../services/queries/talent';
+import { useGetPublicRoleQuery, useBeginAssessmentMutation, useGetPreAssessmentReadinessQuery } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import { useMemo } from 'react';
 import { isGate1ApiEnabled } from '../../config/gate1Api';
@@ -49,12 +49,23 @@ const RoleAssessmentSessionInfo: React.FC = () => {
   const roleTitle = roleMeta?.roleTitle ?? 'this role';
   const companyName = roleMeta?.companyName ?? 'the employer';
 
+  const rolePostingId = useMemo(() => {
+    return readStoredRolePostingId(roleSlug) ||
+      extractRolePostingIdFromPublicRole(roleResponse) ||
+      '';
+  }, [roleSlug, roleResponse]);
+
+  const { data: readinessResponse } = useGetPreAssessmentReadinessQuery(roleSlug, rolePostingId);
+  const readiness = readinessResponse?.data || readinessResponse;
+
   const beginAssessment = useBeginAssessmentMutation();
 
   const handleStart = async () => {
     try {
       const storedId = getActiveAssessmentId();
-      if (storedId) {
+      const status = readiness?.assessmentStatus;
+
+      if (storedId && status === 'IN_PROGRESS') {
         if (isGate1ApiEnabled()) {
           navigate(`/onboarding/talent/${roleSlug}/assessment/gate-1/active`);
         } else {
@@ -63,13 +74,8 @@ const RoleAssessmentSessionInfo: React.FC = () => {
         return;
       }
 
-      const rolePostingId =
-        readStoredRolePostingId(roleSlug) ||
-        extractRolePostingIdFromPublicRole(roleResponse) ||
-        '';
-
       const res = await beginAssessment.mutateAsync({ rolePostingId });
-      const unwrapped = res?.data || res;
+      const unwrapped = (res?.data || res) as any;
       const assessmentId = unwrapped?.assessmentId || unwrapped?.id;
       if (assessmentId) {
         setActiveAssessmentId(assessmentId);

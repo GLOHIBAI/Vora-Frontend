@@ -215,7 +215,7 @@ const RoleProfileMatchBuilding: React.FC = () => {
               </>
             ) : (
               <>
-                Hang tight — we&apos;re reading your CV and building your profile for{' '}
+                Hang tight we&apos;re reading your CV and building your profile for{' '}
                 <strong className="text-[#0047CC] font-semibold">{role.roleTitle}</strong>.
               </>
             )}

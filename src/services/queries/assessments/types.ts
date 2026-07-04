@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Assessment domain types — mirrors the API contract exactly
+// Assessment domain types mirrors the API contract exactly
 // ---------------------------------------------------------------------------
 
 // ── Item types ──────────────────────────────────────────────────────────────
@@ -16,30 +16,27 @@
  *
  * ADAPTIVE items → each step goes through the per-step adaptive endpoint.
  */
-export type SingleAnswerItemType =
-  | 'mcq'
-  | 'likert_scale'
-  | 'sjt_single_best';
+export type SingleAnswerItemType = "mcq" | "likert_scale" | "sjt_single_best";
 
 export type MultipleAnswerItemType =
-  | 'rank'
-  | 'drag_rank'
-  | 'sjt_rank_all'
-  | 'sjt_most_least'
-  | 'sjt_multi_select';
+  | "rank"
+  | "drag_rank"
+  | "sjt_rank_all"
+  | "sjt_most_least"
+  | "sjt_multi_select";
 
-export type AdaptiveItemType = 'adaptive_mcq';
+export type AdaptiveItemType = "adaptive_mcq";
 
 /**
  * PATCH allows partial answers (one sub-key at a time).
  * Submit requires every item on the screen to be fully valid.
  */
 export type PartialDraftItemType =
-  | 'likert_scale'
-  | 'forced_choice'
-  | 'values_ab_pairs'
-  | 'values_tradeoff'
-  | 'sjt_values_tradeoff';
+  | "likert_scale"
+  | "forced_choice"
+  | "values_ab_pairs"
+  | "values_tradeoff"
+  | "sjt_values_tradeoff";
 
 export type AssessmentItemType =
   | SingleAnswerItemType
@@ -47,38 +44,44 @@ export type AssessmentItemType =
   | MultipleAnswerItemType
   | AdaptiveItemType;
 
-/** Runtime helper — derive save strategy from item type. */
-export function isSingleAnswerType(type: AssessmentItemType): type is SingleAnswerItemType {
+/** Runtime helper derive save strategy from item type. */
+export function isSingleAnswerType(
+  type: AssessmentItemType,
+): type is SingleAnswerItemType {
   const singles: AssessmentItemType[] = [
-    'mcq',
-    'likert_scale',
-    'sjt_single_best',
+    "mcq",
+    "likert_scale",
+    "sjt_single_best",
   ];
   return singles.includes(type);
 }
 
-export function isAdaptiveType(type: AssessmentItemType): type is AdaptiveItemType {
-  return type === 'adaptive_mcq';
+export function isAdaptiveType(
+  type: AssessmentItemType,
+): type is AdaptiveItemType {
+  return type === "adaptive_mcq";
 }
 
-export function isPartialDraftType(type: AssessmentItemType): type is PartialDraftItemType {
+export function isPartialDraftType(
+  type: AssessmentItemType,
+): type is PartialDraftItemType {
   const partial: AssessmentItemType[] = [
-    'likert_scale',
-    'forced_choice',
-    'values_ab_pairs',
-    'values_tradeoff',
-    'sjt_values_tradeoff',
+    "likert_scale",
+    "forced_choice",
+    "values_ab_pairs",
+    "values_tradeoff",
+    "sjt_values_tradeoff",
   ];
   return partial.includes(type);
 }
 
 export function isMultipleAnswerType(type: AssessmentItemType): boolean {
   const multiples: AssessmentItemType[] = [
-    'rank',
-    'drag_rank',
-    'sjt_rank_all',
-    'sjt_most_least',
-    'sjt_multi_select',
+    "rank",
+    "drag_rank",
+    "sjt_rank_all",
+    "sjt_most_least",
+    "sjt_multi_select",
   ];
   return multiples.includes(type);
 }
@@ -104,10 +107,14 @@ export type ValuesAbPairsAnswerValue = string[];
 export type ForcedChoiceBlockAnswer = { most: string; least: string };
 
 /** Values AB pairs → "A" | "B" per pairId. */
-export type ValuesAbPairAnswer = Record<string, 'A' | 'B'>;
+export type ValuesAbPairAnswer = Record<string, "A" | "B">;
 
 /** Values trade-off slider → number per tensionId (-2..2 default). */
 export type ValuesTradeoffAnswer = Record<string, number>;
+
+export interface NestedAnswerValue {
+  [key: string]: AnswerValue | number | string;
+}
 
 export type AnswerValue =
   | SingleAnswerValue
@@ -118,7 +125,7 @@ export type AnswerValue =
   | ForcedChoiceBlockAnswer
   | ValuesAbPairAnswer
   | ValuesTradeoffAnswer
-  | Record<string, AnswerValue | number | string>;
+  | NestedAnswerValue;
 
 /** responses map: { [itemId]: AnswerValue } */
 export type ResponsesMap = Record<string, AnswerValue>;
@@ -128,6 +135,7 @@ export type ResponsesMap = Record<string, AnswerValue>;
 export interface AssessmentOption {
   id: string;
   label: string;
+  text?: string;
   tag?: string;
   description?: string;
 }
@@ -161,6 +169,18 @@ export interface AssessmentItem {
   saveResume?: boolean;
   /** Human-readable section title from the API (e.g. "How you think"). */
   title?: string;
+  /** Dynamic eyebrow text from the API (e.g. "Part 2 · What matters to you"). */
+  eyebrow?: string;
+  /** Dynamic screen title from the API. */
+  screenTitle?: string;
+  /** Dynamic screen subtitle from the API. */
+  screenSubtitle?: string;
+  /** Dynamic "Why this matters" text from the API. */
+  whyThisMatters?: string;
+  /** Session index (0-based) from the API. */
+  sessionIndex?: number;
+  /** Session label from the API (e.g. "How you think"). */
+  sessionLabel?: string;
 }
 
 // ── Gate start response ──────────────────────────────────────────────────────
@@ -183,6 +203,20 @@ export interface AssessmentProgress {
   total?: number;
 }
 
+export interface AdaptiveMcqPriorStep {
+  step: number;
+  optionId: string;
+  content: AssessmentItemContent;
+}
+
+export interface AdaptiveMcqState {
+  itemId: string;
+  totalSteps: number;
+  currentStep: number;
+  complete: boolean;
+  priorSteps: AdaptiveMcqPriorStep[];
+}
+
 export interface AssessmentGateStartResponse {
   componentId: string;
   screenKey: string;
@@ -190,11 +224,16 @@ export interface AssessmentGateStartResponse {
   saveResume: boolean;
   progress: AssessmentProgress;
   timers?: AssessmentTimer;
-  sessionState?: 'new' | 'resumed';
+  sessionState?: "new" | "resumed";
   questionsRegenerated?: boolean;
+  adaptiveMcq?: AdaptiveMcqState;
+  gate?: number;
+  gateName?: string;
+  table?: any;
+  chart?: any;
 }
 
-/** Stage-agnostic alias — same shape for Gates 1, 2, and 3. */
+/** Stage-agnostic alias same shape for Gates 1, 2, and 3. */
 export type AssessmentScreenStartResponse = AssessmentGateStartResponse;
 
 // ── Draft / response load ────────────────────────────────────────────────────
@@ -231,19 +270,21 @@ export interface SaveDraftResponse {
  * carry a partial-lock response structure.
  */
 export type SubItemLockedType =
-  | 'likert_scale'
-  | 'forced_choice'
-  | 'values_ab_pairs'
-  | 'values_tradeoff'
-  | 'sjt_values_tradeoff';
+  | "likert_scale"
+  | "forced_choice"
+  | "values_ab_pairs"
+  | "values_tradeoff"
+  | "sjt_values_tradeoff";
 
-export function isSubItemLockedType(type: AssessmentItemType): type is SubItemLockedType {
+export function isSubItemLockedType(
+  type: AssessmentItemType,
+): type is SubItemLockedType {
   return (
-    type === 'likert_scale' ||
-    type === 'forced_choice' ||
-    type === 'values_ab_pairs' ||
-    type === 'values_tradeoff' ||
-    type === 'sjt_values_tradeoff'
+    type === "likert_scale" ||
+    type === "forced_choice" ||
+    type === "values_ab_pairs" ||
+    type === "values_tradeoff" ||
+    type === "sjt_values_tradeoff"
   );
 }
 
@@ -259,7 +300,7 @@ export function isSubKeyLocked(
 ): boolean {
   const itemResp = responses[itemId];
   if (itemResp === undefined || itemResp === null) return false;
-  if (typeof itemResp !== 'object' || Array.isArray(itemResp)) return false;
+  if (typeof itemResp !== "object" || Array.isArray(itemResp)) return false;
   const sub = (itemResp as Record<string, unknown>)[subKey];
   return sub !== undefined && sub !== null;
 }
@@ -268,7 +309,10 @@ export function isSubKeyLocked(
  * For whole-item types (SJT, rank, drag-rank, mcq, etc.) the item is locked
  * once ANY value is present for that itemId in responses.
  */
-export function isWholeItemLocked(responses: ResponsesMap, itemId: string): boolean {
+export function isWholeItemLocked(
+  responses: ResponsesMap,
+  itemId: string,
+): boolean {
   const v = responses[itemId];
   if (v === undefined || v === null) return false;
   if (Array.isArray(v)) return v.length > 0;
@@ -278,7 +322,7 @@ export function isWholeItemLocked(responses: ResponsesMap, itemId: string): bool
 // ── Lock-related API error ────────────────────────────────────────────────────
 
 export interface AssessmentLockError {
-  code: 'ASSESSMENT_RESPONSE_INVALID';
+  code: "ASSESSMENT_RESPONSE_INVALID";
   messages: string[]; // e.g. ["Answer \"q1\" is locked and cannot be changed."]
 }
 
@@ -294,8 +338,8 @@ export interface GateRollup {
 export interface AssessmentSubmitResponse {
   componentId: string;
   screenKey?: string;
-  status: 'completed' | 'partial';
-  /** Deprecated — submit does not return next screen; refetch resume-state instead. */
+  status: "completed" | "partial";
+  /** Deprecated submit does not return next screen; refetch resume-state instead. */
   nextScreenKey?: string;
   gateRollup?: GateRollup;
 }
@@ -308,7 +352,7 @@ export interface AdaptiveStepResponse {
   totalSteps: number;
   nextItem?: AssessmentItemContent;
   /** Present when complete = true */
-  componentStatus?: 'completed';
+  componentStatus?: "completed";
 }
 
 // ── Journey / catalog ────────────────────────────────────────────────────────
@@ -336,7 +380,7 @@ export interface AssessmentJourneyScreen {
 
 export interface GateProgressEntry {
   gate: number;
-  status: 'not_started' | 'in_progress' | 'completed' | 'passed' | 'failed';
+  status: "not_started" | "in_progress" | "completed" | "passed" | "failed";
   completedScreens: number;
   totalScreens: number;
   percent: number;
@@ -350,7 +394,7 @@ export interface GateProgressEntry {
 
 export interface GateVerdictResponse {
   gate: number;
-  verdict: 'pass' | 'fail' | 'pending';
+  verdict: "pass" | "fail" | "pending";
   score?: number;
   cutScore?: number;
   breakdown?: Record<string, number>;
@@ -368,16 +412,16 @@ export interface ReviewSummaryEntry {
 // ── Gate 1 session screen-key constants ──────────────────────────────────────
 
 /**
- * Ordered screen keys for Gate 1 — must match backend gate-1-journey.json.
+ * Ordered screen keys for Gate 1 must match backend gate-1-journey.json.
  * Registry-only keys (e.g. forced_choice as a screen) are not valid here.
  */
 export const GATE1_SESSION1_SCREENS = [
-  'personality',
-  'values',
-  'cognitive_fixed',
-  'numerical',
-  'pattern',
-  'verbal',
+  "personality",
+  "values",
+  "cognitive_fixed",
+  "numerical",
+  "pattern",
+  "verbal",
 ] as const;
 
 export type Gate1Session1ScreenKey = (typeof GATE1_SESSION1_SCREENS)[number];
@@ -386,11 +430,11 @@ export type Gate1Session1ScreenKey = (typeof GATE1_SESSION1_SCREENS)[number];
  * Ordered screen keys for Gate 1, Session 2 ("Your instincts" / SJT).
  */
 export const GATE1_SESSION2_SCREENS = [
-  'sjt_single_best',
-  'sjt_rank',
-  'sjt_most_least',
-  'sjt_multi_select',
-  'values_tradeoff',
+  "sjt_single_best",
+  "sjt_rank",
+  "sjt_most_least",
+  "sjt_multi_select",
+  "values_tradeoff",
 ] as const;
 
 export type Gate1Session2ScreenKey = (typeof GATE1_SESSION2_SCREENS)[number];
@@ -398,13 +442,13 @@ export type Gate1Session2ScreenKey = (typeof GATE1_SESSION2_SCREENS)[number];
 export type Gate1ScreenKey = Gate1Session1ScreenKey | Gate1Session2ScreenKey;
 
 /**
- * Gate 2 pillar keys — POST .../gates/2/start { pillar: ... }
+ * Gate 2 pillar keys POST .../gates/2/start { pillar: ... }
  */
 export const GATE2_PILLARS = [
-  'knowledge',
-  'expertise',
-  'reasoning',
-  'simulation',
+  "knowledge",
+  "expertise",
+  "reasoning",
+  "simulation",
 ] as const;
 
 export type Gate2PillarKey = (typeof GATE2_PILLARS)[number];
