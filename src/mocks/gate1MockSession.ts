@@ -48,7 +48,7 @@ const buildScreenItems = (screenKey: Gate1ScreenKey): AssessmentItem[] => {
         content: {
           stem: 'Adaptive reasoning sample (mock). Which approach is most systematic?',
           stepIndex: 0,
-          totalSteps: 2,
+          totalSteps: 1,
           complete: false,
           options: [
             { id: 'opt-a', label: 'Break the problem into smaller parts' },
@@ -239,14 +239,14 @@ export const mockGate1AdaptiveStep = async (
   const steps = (row?.adaptiveSteps[itemId] ?? 0) + 1;
   if (row) row.adaptiveSteps[itemId] = steps;
 
-  if (steps >= 2) {
-    return { complete: true, stepIndex: 1, totalSteps: 2, componentStatus: 'completed' };
+  if (steps >= 1) {
+    return { complete: true, stepIndex: 0, totalSteps: 1, componentStatus: 'completed' };
   }
 
   return {
     complete: false,
     stepIndex: steps,
-    totalSteps: 2,
+    totalSteps: 1,
     nextItem: {
       stem: 'Second adaptive step (mock). Which is the better validation approach?',
       options: [

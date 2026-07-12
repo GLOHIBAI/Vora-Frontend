@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useCallback, useState, useRef } from 'react';
 import VoraLogo from '../../common/VoraLogo';
 import Button from '../../common/Button';
 import AssessmentItemsList from './AssessmentItemsList';
@@ -135,9 +135,11 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
     answers,
     recordAnswer,
     confirmScreen,
+    saveCurrentDraft,
     isLocked,
     isSaving,
     isSubmitting,
+    isAdaptiveLoading,
     isScreenComplete,
     hydrateDraft,
   } = useAssessmentScreen({
@@ -145,6 +147,65 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
     screenData,
     onScreenComplete,
   });
+
+  const [showCheatModal, setShowCheatModal] = useState<boolean>(false);
+  const [cheatType, setCheatType] = useState<'tab-switch' | 'paste' | null>(null);
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [hasCamera, setHasCamera] = useState<boolean>(false);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  // Tab change & paste warning listener
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setCheatType('tab-switch');
+        setShowCheatModal(true);
+      }
+    };
+
+    const handlePaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      setCheatType('paste');
+      setShowCheatModal(true);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('paste', handlePaste);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('paste', handlePaste);
+    };
+  }, []);
+
+  // Proctoring camera emulator
+  useEffect(() => {
+    const startRecordingEmulation = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 320, height: 240 },
+          audio: true,
+        });
+        streamRef.current = stream;
+        setHasCamera(true);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (err) {
+        console.warn('Proctoring camera access denied or unavailable', err);
+        setHasCamera(false);
+      }
+    };
+
+    startRecordingEmulation();
+
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (draft?.responses) {
@@ -225,30 +286,65 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
     return label.replace(/·/g, '-').toUpperCase();
   }, [items, screenIndex, screenLabel, interpolate]);
 
+  console.log("DEBUG AssessmentScreenView rendering:", {
+    answers,
+    isScreenComplete
+  });
+
   return (
+
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col">
-      {/* Topbar */}
-      <header className="sticky top-0 bg-white/96 backdrop-blur-[10px] border-b border-[#E6E6E6] p-[14px_32px] flex items-center justify-between z-50">
-        <VoraLogo size="sm" to="/dashboard" />
-        <div className="text-[12.5px] text-[#808080] font-[600] text-center">
-          Stage {screenData.gate ?? 1} · {screenData.gateName ? formatGateName(screenData.gateName) : 'Getting to know you'}
-        </div>
-        <div className="flex items-center gap-[6px] text-[12px] text-[#808080] font-[600]">
-          <svg className="w-[13px] h-[13px] text-[#2E7D32]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-          {isSaving ? 'Saving…' : 'Auto-saved'}
-        </div>
-      </header>
+      {/* Fixed Header & Rails Wrapper */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-white flex flex-col">
+        {/* Topbar */}
+        <header className="bg-white/96 backdrop-blur-[10px] border-b border-[#E6E6E6] p-[14px_32px] flex items-center justify-between">
+          <VoraLogo size="sm" to="/dashboard" />
+          <div className="text-[12.5px] text-[#808080] font-[600] text-center">
+            Stage {screenData.gate ?? 1} · {screenData.gateName ? formatGateName(screenData.gateName) : 'Getting to know you'}
+          </div>
+          <div className="flex items-center gap-[6px] text-[12px] text-[#808080] font-[600]">
+            <svg className="w-[13px] h-[13px] text-[#2E7D32]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            {isSaving ? 'Saving…' : 'Auto-saved'}
+          </div>
+        </header>
 
-      {/* Chapter Rail */}
-      <SessionChapterRail activeSession={session as 1 | 2} />
+        {/* Chapter Rail */}
+        <SessionChapterRail
+          activeSession={session as 1 | 2}
+          leftContent={
+            <div className="w-[130px] h-[74px] rounded-none border-[1.5px] border-white shadow-[0_4px_12px_rgba(0,0,0,0.12)] overflow-hidden bg-slate-900 flex items-center justify-center relative">
+              {hasCamera ? (
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover scale-x-[-1]"
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-center text-white/50 bg-[#0B0F14]">
+                  <span className="text-[6px] font-extrabold tracking-wider leading-none">PROCTOR</span>
+                </div>
+              )}
+              {/* REC Indicator */}
+              <div className="absolute top-1 right-1 flex items-center justify-center bg-black/40 p-0.5 rounded-full select-none">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-600"></span>
+                </span>
+              </div>
+            </div>
+          }
+        />
 
-      {/* Pebble Rail */}
-      <SessionPebbleRail activeIndex={screenIndex} total={sessionScreens?.length ?? 6} />
+        {/* Pebble Rail */}
+        <SessionPebbleRail activeIndex={screenIndex} total={sessionScreens?.length ?? 6} />
+      </div>
 
       {/* Main Content */}
-      <main className="max-w-[780px] mx-auto p-[36px_28px_80px] w-full flex-1">
+      <main className="max-w-[780px] mx-auto p-[156px_28px_110px] w-full flex-1">
         <div className="mb-8">
           <div className="inline-flex items-center gap-[7px] bg-[#EBF6FF] text-[#0047CC] text-[10.5px] font-[800] tracking-[0.7px] uppercase p-[5px_12px] rounded-full mb-3.5">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-[12.5px] h-[12.5px] shrink-0">
@@ -278,44 +374,79 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
         <AssessmentItemsList
           items={items}
           answers={answers}
-          isLocked={(itemId, subKey) => isLocked(itemId, subKey) || isSubmitting}
+          isLocked={(itemId, subKey) => isLocked(itemId, subKey) || isSubmitting || isAdaptiveLoading}
           onAnswer={(itemId, val, item, subKey) => {
-            if (isSubmitting) return;
+            if (isSubmitting || isAdaptiveLoading) return;
             void recordAnswer(itemId, val, item, subKey);
           }}
+          isAdaptiveLoading={isAdaptiveLoading}
         />
       </main>
 
       {/* Footer */}
-      <footer className="sticky bottom-0 bg-white/96 backdrop-blur-[10px] border-t border-[#E6E6E6] p-[14px_32px] flex items-center justify-between gap-3 z-50">
+      <footer className="fixed bottom-0 left-0 right-0 bg-white/96 backdrop-blur-[10px] border-t border-[#E6E6E6] p-[14px_32px] flex items-center justify-between gap-3 z-50">
         <div className="text-[13px] text-[#808080] font-[600]">
           Part {screenIndex + 1} of {sessionScreens?.length ?? 6} - Stage {screenData.gate ?? 1}
         </div>
         <div className="flex gap-[10px]">
           <button 
             type="button"
-            className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] cursor-pointer transition-all hover:border-[#ADADAD]"
-            onClick={onSaveExit}
+            disabled={isSaving || isSubmitting || isAdaptiveLoading}
+            className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] cursor-pointer transition-all hover:border-[#ADADAD] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            onClick={async () => {
+              try {
+                await saveCurrentDraft();
+              } catch {
+                // ignore
+              }
+              onSaveExit();
+            }}
           >
-            Save & finish later
+            {isSaving ? 'Saving...' : 'Save & finish later'}
           </button>
           <button 
             type="button" 
-            disabled={!isScreenComplete || isSubmitting}
+            disabled={!isScreenComplete || isSubmitting || isAdaptiveLoading}
             className="bg-[#0047CC] text-white border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] cursor-pointer inline-flex items-center gap-2.5 transition-all shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px] disabled:bg-[#E6E6E6] disabled:text-white disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none" 
             onClick={() => void confirmScreen()}
           >
-            {isSubmitting ? 'Submitting...' : (
-              <span className="flex items-center gap-1.5">
-                {screenIndex === (sessionScreens?.length ?? 6) - 1 ? 'Finish session' : 'Continue'}
-                <svg className="w-[14px] h-[14px]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                </svg>
-              </span>
-            )}
+            {isSubmitting
+              ? 'Submitting...'
+              : screenIndex === (sessionScreens?.length ?? 6) - 1
+                ? 'Finish session'
+                : 'Continue'}
           </button>
         </div>
       </footer>
+
+
+
+      {/* Anti-cheat Alert Modal */}
+      {showCheatModal && (
+        <div className="fixed inset-0 bg-[#0A1129]/65 backdrop-blur-[6px] flex items-center justify-center p-[24px] z-[200]">
+          <div className="bg-white rounded-[18px] max-w-[440px] w-full p-[30px_30px_26px] text-center shadow-[0_24px_80px_rgba(0,0,0,0.25)]">
+            <div className="w-[64px] h-[64px] rounded-full bg-[#FEF2F2] text-[#DC2626] flex items-center justify-center mx-auto mb-[16px]">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-[30px] h-[30px]">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h3 className="text-[18px] font-[900] text-[#1A1A1A] mb-[8px] tracking-[-0.2px] font-sans">
+              {cheatType === 'tab-switch' ? 'You navigated away from this tab' : 'Pasting is prohibited'}
+            </h3>
+            <p className="text-[14px] text-[#4A4A4A] leading-[1.6] mb-[20px] font-sans">
+              {cheatType === 'tab-switch' 
+                ? 'Leaving or changing tabs is strictly prohibited during this assessment. This event has been flagged for review.'
+                : 'Pasting content is not permitted. Please type your responses directly. This action has been flagged.'}
+            </p>
+            <button
+              onClick={() => setShowCheatModal(false)}
+              className="bg-[#0047CC] hover:bg-[#344DA1] text-white border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_4px_14px_rgba(0,71,204,0.28)] w-full justify-center font-sans transition-all"
+            >
+              I understand and acknowledge
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

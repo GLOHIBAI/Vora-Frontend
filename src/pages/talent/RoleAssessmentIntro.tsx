@@ -1,5 +1,9 @@
 import { useNavigate, useParams } from 'react-router-dom';
+import { useMemo, useEffect } from 'react';
 import VoraLogo from '../../components/common/VoraLogo';
+import { useGetPublicRoleQuery, useGetPreAssessmentReadinessQuery } from '../../services/queries/talent';
+import { readStoredRolePostingId, extractRolePostingIdFromPublicRole } from '../../utils/rolePostingId';
+import FullPageSpinner from '../../components/common/FullPageSpinner';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -51,6 +55,30 @@ const RoleAssessmentIntro: React.FC = () => {
   const { roleSlug } = useParams<{ roleSlug: string }>();
   const navigate = useNavigate();
 
+  const { data: roleResponse, isLoading: isRoleLoading } = useGetPublicRoleQuery(roleSlug || '');
+  
+  const rolePostingId = useMemo(() => {
+    return readStoredRolePostingId(roleSlug || '') ||
+      extractRolePostingIdFromPublicRole(roleResponse) ||
+      '';
+  }, [roleSlug, roleResponse]);
+
+  const { data: readinessResponse, isLoading: isReadinessLoading } = useGetPreAssessmentReadinessQuery(roleSlug || '', rolePostingId);
+  const readiness = readinessResponse?.data || readinessResponse;
+
+  useEffect(() => {
+    if (!isRoleLoading && !isReadinessLoading && readinessResponse) {
+      const isPreAssessmentRequired = readiness?.preAssessmentRequired === true;
+      const isPreAssessmentComplete = 
+        readiness?.checks?.preAssessmentComplete === true || 
+        readiness?.preAssessmentComplete === true;
+
+      if (isPreAssessmentRequired && !isPreAssessmentComplete) {
+        navigate(`/onboarding/talent/${roleSlug}/assessment/asks`, { replace: true });
+      }
+    }
+  }, [isRoleLoading, isReadinessLoading, readinessResponse, navigate, roleSlug, readiness]);
+
   const handleBack = () => {
     navigate(`/onboarding/talent/${roleSlug}/assessment/journey`);
   };
@@ -58,6 +86,10 @@ const RoleAssessmentIntro: React.FC = () => {
   const handleStart = () => {
     navigate(`/onboarding/talent/${roleSlug}/assessment/session-1`);
   };
+
+  if (isRoleLoading || isReadinessLoading) {
+    return <FullPageSpinner />;
+  }
 
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col">

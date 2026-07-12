@@ -43,10 +43,12 @@ const RankItem: React.FC<AssessmentItemRendererProps> = ({
       if (disabled) return;
       setDragIdx(idx);
       e.dataTransfer.effectAllowed = 'move';
+      const el = e.currentTarget as HTMLElement;
       // Make the dragged element semi-transparent
       requestAnimationFrame(() => {
-        const el = e.currentTarget as HTMLElement;
-        el.style.opacity = '0.5';
+        if (el) {
+          el.style.opacity = '0.5';
+        }
       });
     },
     [disabled],
@@ -63,12 +65,13 @@ const RankItem: React.FC<AssessmentItemRendererProps> = ({
   const handleDragOver = useCallback(
     (targetIdx: number) => (e: React.DragEvent) => {
       e.preventDefault();
+      if (disabled) return;
       e.dataTransfer.dropEffect = 'move';
       if (dragIdx === null || dragIdx === targetIdx) return;
       move(dragIdx, targetIdx);
       setDragIdx(targetIdx);
     },
-    [dragIdx, move],
+    [dragIdx, move, disabled],
   );
 
   const scenario = item.content.scenario as string | undefined;
@@ -94,9 +97,11 @@ const RankItem: React.FC<AssessmentItemRendererProps> = ({
               onDragStart={handleDragStart(idx)}
               onDragEnd={handleDragEnd}
               onDragOver={handleDragOver(idx)}
-              className={`flex items-center gap-3 bg-white border-[1.5px] border-[#E6E6E6] rounded-xl px-4 py-[14px] select-none transition-all cursor-grab hover:border-[#387DFF] hover:bg-[#EBF6FF] ${
-                dragIdx === idx ? 'opacity-50' : ''
-              }`}
+              className={`flex items-center gap-3 bg-white border-[1.5px] border-[#E6E6E6] rounded-xl px-4 py-[14px] select-none transition-all ${
+                disabled
+                  ? 'cursor-not-allowed opacity-60 pointer-events-none'
+                  : 'cursor-grab hover:border-[#387DFF] hover:bg-[#EBF6FF]'
+              } ${dragIdx === idx ? 'opacity-50' : ''}`}
             >
               <div className="w-[30px] h-[30px] rounded-full bg-[#EBF6FF] text-[#0047CC] flex items-center justify-center text-[13px] font-black shrink-0">
                 {idx + 1}

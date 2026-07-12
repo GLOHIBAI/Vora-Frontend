@@ -512,6 +512,12 @@ export const SECTOR_BACKGROUND_GROUPS: OptionGroup[] = [
       { label: 'Teaching hospital (clinical training / elective hosting)', value: 'Teaching hospital (clinical training / elective hosting)' },
       { label: 'Clinical trials / CRO / regulatory environment', value: 'Clinical trials / CRO / regulatory environment' }
     ]
+  },
+  {
+    label: 'Other Sector',
+    options: [
+      { label: 'Other', value: 'other' }
+    ]
   }
 ];
 

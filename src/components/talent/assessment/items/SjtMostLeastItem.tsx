@@ -39,12 +39,17 @@ const SjtMostLeastItem: React.FC<AssessmentItemRendererProps> = ({
     <AssessmentItemCard title={prompt ? String(prompt) : undefined}>
       <div className="space-y-3">
         {options.map((opt) => {
+          const text = opt.label || opt.text || opt.description || (opt as any).statement || (opt as any).content || (opt as any).value || (opt as any).prompt || '';
+          if (!text.trim()) return null;
+
           const isMost = current.most === opt.id;
           const isLeast = current.least === opt.id;
           return (
             <div
               key={opt.id}
               className={`border-[1.5px] rounded-[14px] p-4 flex flex-col sm:flex-row gap-3 sm:items-center ${
+                disabled ? 'opacity-60 pointer-events-none' : ''
+              } ${
                 isMost
                   ? 'border-[#387DFF]/60 bg-gradient-to-b from-[#EBF6FF] to-white'
                   : isLeast
@@ -52,7 +57,7 @@ const SjtMostLeastItem: React.FC<AssessmentItemRendererProps> = ({
                     : 'border-[#E6E6E6] bg-white'
               }`}
             >
-              <p className="flex-1 text-sm text-[#1A1A1A]">{opt.label ?? opt.text}</p>
+              <p className="flex-1 text-sm text-[#1A1A1A]">{text}</p>
               <div className="flex gap-2 shrink-0">
                 <button
                   type="button"

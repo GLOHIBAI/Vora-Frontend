@@ -35,7 +35,7 @@ const MatchAssessmentCta: React.FC<MatchAssessmentCtaProps> = ({ pills, onStart 
       onClick={onStart}
       className="w-full lg:w-auto shrink-0"
     >
-      Go to assessment
+      Start interview
     </Button>
   </div>
 );

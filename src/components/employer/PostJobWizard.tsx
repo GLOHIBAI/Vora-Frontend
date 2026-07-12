@@ -830,7 +830,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                 opt.toLowerCase().includes(normalized) ||
                 normalized.includes(opt.toLowerCase())
             );
-            return found || '';
+            return found || v;
           })
           .filter(Boolean);
         return [...new Set(matched)];

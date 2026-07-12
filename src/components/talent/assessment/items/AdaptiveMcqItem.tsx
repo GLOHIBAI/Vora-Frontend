@@ -8,6 +8,7 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
   value,
   disabled = false,
   onChange,
+  isAdaptiveLoading = false,
 }) => {
   const content = item.content as any;
   const priorSteps = (content.priorSteps as AdaptiveMcqPriorStep[]) ?? [];
@@ -158,6 +159,55 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 3. Shimmer Loading for the Next Step */}
+      {isAdaptiveLoading && (
+        <div className="space-y-4 mt-8">
+          <style>{`
+            @keyframes shimmer {
+              0% {
+                background-position: -200% 0;
+              }
+              100% {
+                background-position: 200% 0;
+              }
+            }
+            .shimmer-bg {
+              background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+              background-size: 200% 100%;
+              animation: shimmer 1.5s infinite linear;
+            }
+          `}</style>
+          {/* Scenario Card Shimmer */}
+          <div className="bg-white border border-[#E6E6E6] rounded-2xl p-6 shadow-sm">
+            <div className="h-3 shimmer-bg rounded w-1/4 mb-3"></div>
+            <div className="space-y-2">
+              <div className="h-4 shimmer-bg rounded w-full"></div>
+              <div className="h-4 shimmer-bg rounded w-5/6"></div>
+              <div className="h-4 shimmer-bg rounded w-2/3"></div>
+            </div>
+          </div>
+
+          {/* Prompt Shimmer */}
+          <div className="mt-4 space-y-2">
+            <div className="h-5 shimmer-bg rounded w-1/3"></div>
+            <div className="h-3 shimmer-bg rounded w-1/4"></div>
+          </div>
+
+          {/* Option Button Shimmers */}
+          <div className="space-y-2.5 mt-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 bg-white border border-[#E6E6E6] rounded-xl p-4"
+              >
+                <div className="w-[18px] h-[18px] shimmer-bg rounded-full shrink-0"></div>
+                <div className="h-4 shimmer-bg rounded w-1/2"></div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

@@ -147,7 +147,7 @@ const MatchedRoleJdModal: React.FC<MatchedRoleJdModalProps> = ({
             onClick={() => onGoToAssessment?.(role.id)}
             className="sm:!w-auto !font-bold !min-h-0 !py-2.5 !px-5"
           >
-            Go to assessment
+            Start interview
           </Button>
         </div>
       </div>

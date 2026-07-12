@@ -82,8 +82,15 @@ const Login: React.FC = () => {
       const user = authData?.user;
 
       if (user) {
-        const targetRoute = routeAfterAuth(user);
+        let targetRoute = routeAfterAuth(user);
         const isRestrictedRole = slug && user.role && user.role.toUpperCase() !== 'TALENT';
+
+        if (slug && user.role?.toUpperCase() === 'TALENT') {
+          localStorage.setItem('active_assessment_role_slug', slug);
+          if (targetRoute !== '/verify-email' && targetRoute !== '/select-type') {
+            targetRoute = `/onboarding/talent/${slug}/assessment/journey`;
+          }
+        }
 
         navigate(targetRoute, { 
           state: { 

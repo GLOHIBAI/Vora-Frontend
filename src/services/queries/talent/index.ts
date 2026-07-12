@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../api";
 import { isGate1ApiEnabled } from "../../../config/gate1Api";
 import { mockBeginAssessment } from "../../../mocks/gate1MockSession";
@@ -245,9 +245,33 @@ export const useUpdatePreAssessmentLinksMutation = () => {
       });
     },
   });
+};export const useUpdatePreAssessmentConsentsMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      roleLink?: string;
+      rolePostingId?: string;
+      truthfulWork: boolean;
+      dataUseConsent: boolean;
+      referencesStage4: boolean;
+    }) => {
+      return apiClient.put<any>({
+        url: "/pre-assessment/consents",
+        body: data,
+        auth: true,
+      });
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["pre-assessment-readiness", variables.roleLink, variables.rolePostingId],
+      });
+    },
+  });
 };
 
+
 export const useCompletePreAssessmentMutation = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: {
       roleLink?: string;
@@ -269,8 +293,14 @@ export const useCompletePreAssessmentMutation = () => {
         auth: true,
       });
     },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["pre-assessment-readiness", variables.roleLink, variables.rolePostingId],
+      });
+    },
   });
 };
+
 
 export const useBeginAssessmentMutation = () => {
   return useMutation({

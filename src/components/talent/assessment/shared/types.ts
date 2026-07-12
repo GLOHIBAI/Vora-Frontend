@@ -6,6 +6,7 @@ export interface AssessmentItemRendererProps {
   value: AnswerValue | undefined;
   /** Whole item locked (whole-item types). */
   disabled?: boolean;
+  isAdaptiveLoading?: boolean;
   /** Per sub-key lock (likert questionId, forced-choice blockId, values pairId). */
   isAnswerLocked?: (subKey?: string) => boolean;
   onChange: (value: AnswerValue, subKey?: string) => void;

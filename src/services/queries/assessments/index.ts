@@ -219,6 +219,7 @@ export const useSaveAssessmentDraftMutation = () => {
         url: `/assessments/${assessmentId}/components/${componentId}/responses`,
         body: { responses },
         auth: true,
+        suppressErrorToast: true,
       });
     },
     onSuccess: (_data, { assessmentId }) => {
@@ -292,6 +293,58 @@ export const useSubmitAssessmentScreenMutation = () => {
       });
       queryClient.invalidateQueries({
         queryKey: assessmentKeys.resumeState(assessmentId, 1),
+      });
+    },
+  });
+};
+
+/**
+ * POST /assessments/:assessmentId/gates/{gate}/submit
+ * Final submit of the gate for scoring.
+ */
+export const useSubmitGateMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      assessmentId,
+      gate = 1,
+    }: {
+      assessmentId: string;
+      gate?: number;
+    }) => {
+      if (isGate1MockSession(assessmentId)) {
+        return Promise.resolve({
+          statusCode: 200,
+          message: "Stage 1 submitted for scoring.",
+          data: {
+            schemaVersion: 1,
+            assessmentId,
+            gate1Complete: true,
+            finalSubmittedAt: new Date().toISOString(),
+            status: "passed",
+            verdict: {
+              passed: true,
+              score: 81,
+              verdict: "qualified",
+              gate: 1,
+              integrityGate: "pass",
+              coreBandScore: 0.78,
+              unlocksNextGate: true
+            }
+          }
+        });
+      }
+      return apiClient.post<any>({
+        url: `/assessments/${assessmentId}/gates/${gate}/submit`,
+        auth: true,
+      });
+    },
+    onSuccess: (_data, { assessmentId, gate = 1 }) => {
+      queryClient.invalidateQueries({
+        queryKey: assessmentKeys.progress(assessmentId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: assessmentKeys.verdict(assessmentId, gate),
       });
     },
   });

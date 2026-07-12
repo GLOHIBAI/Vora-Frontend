@@ -25,10 +25,11 @@ export const parseGateResumeState = (
 ): GateResumeState | null => {
   const unwrapped = unwrapAssessmentData<unknown>(response);
   if (!unwrapped || typeof unwrapped !== "object") return null;
-
   const obj = unwrapped as Record<string, unknown>;
   const nextScreenKey = obj.nextScreenKey ?? obj.next_screen_key;
-  if (typeof nextScreenKey !== "string") return null;
+  if (nextScreenKey !== null && nextScreenKey !== undefined && typeof nextScreenKey !== "string") {
+    return null;
+  }
 
   const session = obj.session === 2 || obj.currentSession === 2 ? 2 : 1;
 

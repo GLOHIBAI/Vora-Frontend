@@ -27,7 +27,15 @@ export function useGoogleAuth() {
         toast.success('Welcome to VORA!');
       }
 
-      navigate(route, { state });
+      let targetRoute = route;
+      if (roleLink && response.data.user?.role?.toUpperCase() === 'TALENT') {
+        if (targetRoute !== '/verify-email' && targetRoute !== '/select-type') {
+          localStorage.setItem('active_assessment_role_slug', roleLink);
+          targetRoute = `/onboarding/talent/${roleLink}/assessment/journey`;
+        }
+      }
+
+      navigate(targetRoute, { state });
     } catch (error: unknown) {
       const err = error as { message?: string; status?: number };
       const message = err?.message || 'Google sign-in failed. Please try again.';

@@ -17,6 +17,7 @@ import {
 } from '../../utils/rolePostingId';
 import { resolveGate1AssessmentId, isGate1ApiEnabled } from '../../config/gate1Api';
 import { setActiveAssessmentId } from '../../utils/assessmentSession';
+import FullPageSpinner from '../../components/common/FullPageSpinner';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -164,8 +165,18 @@ const RoleAssessmentJourney: React.FC = () => {
     }
   }, []);
 
-  const { data: readinessResponse, isLoading: isReadinessLoading } =
+  const { data: readinessResponse, isLoading: isReadinessLoading, error } =
     useGetPreAssessmentReadinessQuery(roleSlug || '', rolePostingId);
+
+  useEffect(() => {
+    if (error) {
+      const apiError = error as any;
+      if (apiError.status === 403) {
+        navigate(`/onboarding/talent/${roleSlug}/match`, { replace: true });
+      }
+    }
+  }, [error, navigate, roleSlug]);
+
   useEffect(() => {
     if (!isRoleLoading && !isReadinessLoading && readinessResponse) {
       const readiness = readinessResponse?.data || readinessResponse;
@@ -212,6 +223,10 @@ const RoleAssessmentJourney: React.FC = () => {
     localStorage.setItem('vora_stage1_started', 'true');
     navigate(`/onboarding/talent/${roleSlug}/assessment/stage-1`);
   };
+
+  if (isRoleLoading || isReadinessLoading) {
+    return <FullPageSpinner />;
+  }
 
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col">

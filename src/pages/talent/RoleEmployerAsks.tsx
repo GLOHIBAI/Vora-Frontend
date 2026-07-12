@@ -10,7 +10,8 @@ import {
   useUpdatePreAssessmentTextResponseMutation,
   useUpdatePreAssessmentReferencesMutation,
   useUpdatePreAssessmentLinksMutation,
-  useCompletePreAssessmentMutation
+  useCompletePreAssessmentMutation,
+  useUpdatePreAssessmentConsentsMutation
 } from '../../services/queries/talent';
 import {
   ChevronDownIcon
@@ -79,19 +80,22 @@ const RoleEmployerAsks: React.FC = () => {
   const roleSlug = params.roleSlug || '';
 
   const { data: response, isLoading: isRoleLoading } = useGetPublicRoleQuery(roleSlug || '');
-  const { data: readinessResponse, isLoading: isReadinessLoading, refetch } = useGetPreAssessmentReadinessQuery(roleSlug || '');
+  const { data: readinessResponse, isLoading: isReadinessLoading, error, refetch } = useGetPreAssessmentReadinessQuery(roleSlug || '');
 
   const submitSubmission = useSubmitPreAssessmentSubmissionMutation();
   const updateText = useUpdatePreAssessmentTextResponseMutation();
   const updateReferences = useUpdatePreAssessmentReferencesMutation();
   const updateLinks = useUpdatePreAssessmentLinksMutation();
   const completePreAssessment = useCompletePreAssessmentMutation();
+  const updateConsents = useUpdatePreAssessmentConsentsMutation();
 
   const [hasInitialized, setHasInitialized] = useState(false);
   const [textValue, setTextValue] = useState('');
   const [portfolioUrls, setPortfolioUrls] = useState<string[]>([]);
   const [newUrl, setNewUrl] = useState('');
-  const [uploadingFile, setUploadingFile] = useState<{ code: string; name: string } | null>(null);
+  const [uploadingFiles, setUploadingFiles] = useState<Record<string, { name: string }>>({});
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [consents, setConsents] = useState({
     truthful: false,
@@ -258,11 +262,15 @@ const RoleEmployerAsks: React.FC = () => {
       }
 
       // Consents
-      if (readiness.consents) {
+      const consentsItem = Array.isArray(readiness.items)
+        ? readiness.items.find((item: any) => item.kind === 'consents' || item.id === 'consents')
+        : null;
+      const consentsData = readiness.consents || consentsItem?.consents;
+      if (consentsData) {
         setConsents({
-          truthful: readiness.consents.truthfulWork || false,
-          usage: readiness.consents.dataUseConsent || false,
-          references: readiness.consents.referencesStage4 || false
+          truthful: consentsData.truthfulWork || false,
+          usage: consentsData.dataUseConsent || false,
+          references: consentsData.referencesStage4 || false
         });
       }
     }
@@ -290,6 +298,36 @@ const RoleEmployerAsks: React.FC = () => {
     }
     return mapApiResponseToRoleData(roleSlug, apiData);
   }, [response, roleSlug]);
+
+  // Redirect guard if not matched (403 error from readiness API)
+  useEffect(() => {
+    if (error) {
+      const apiError = error as any;
+      if (apiError.status === 403) {
+        navigate(`/onboarding/talent/${roleSlug}/match`, { replace: true });
+      }
+    }
+  }, [error, navigate, roleSlug]);
+
+  const completedRequired = readiness?.progress?.completedRequired ?? 0;
+  const totalRequired = readiness?.progress?.totalRequired ?? 0;
+
+  const localCompletedRequired = useMemo(() => {
+    let count = completedRequired;
+    const consentsItem = Array.isArray(readiness?.items)
+      ? readiness.items.find((item: any) => item.kind === 'consents' || item.id === 'consents')
+      : null;
+    const consentsAlreadyComplete = consentsItem?.complete === true;
+    if (!consentsAlreadyComplete && consents.truthful && consents.usage && consents.references) {
+      count = Math.min(totalRequired, count + 1);
+    }
+    return count;
+  }, [completedRequired, totalRequired, readiness, consents]);
+
+  const localProgressPercent = useMemo(() => {
+    if (totalRequired <= 0) return 0;
+    return (localCompletedRequired / totalRequired) * 100;
+  }, [localCompletedRequired, totalRequired]);
 
   if (isRoleLoading || isReadinessLoading) {
     return <FullPageSpinner />;
@@ -325,7 +363,19 @@ const RoleEmployerAsks: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
+      // First save the consents draft to backend so they are persisted as part of the checklist
+      await updateConsents.mutateAsync({
+        roleLink: roleSlug,
+        rolePostingId: readiness?.rolePostingId,
+        truthfulWork: consents.truthful,
+        dataUseConsent: consents.usage,
+        referencesStage4: consents.references
+      });
+
+      // Then complete the pre-assessment
       await completePreAssessment.mutateAsync({
         roleLink: roleSlug,
         consents: {
@@ -338,12 +388,11 @@ const RoleEmployerAsks: React.FC = () => {
       navigate(`/onboarding/talent/${roleSlug}/assessment/journey`);
     } catch (err: any) {
       toast.error(err?.message || "Failed to finalize pre-assessment");
+      setIsSubmitting(false);
     }
   };
 
-  const progressPercent = readiness?.progress?.percent ?? 0;
-  const completedRequired = readiness?.progress?.completedRequired ?? 0;
-  const totalRequired = readiness?.progress?.totalRequired ?? 0;
+
 
   const allDocsUploaded = requiredDocs.every((doc: any) => doc.submitted);
   const allReferencesFilled = !showReferences ||
@@ -444,15 +493,18 @@ const RoleEmployerAsks: React.FC = () => {
             {companyName}&apos;s checklist
           </div>
           <div className="flex-1 h-[8px] bg-[#F7F7F7] rounded-full overflow-hidden relative">
-            <div className="h-full bg-gradient-to-r from-[#0047CC] to-[#387DFF] rounded-full transition-all duration-400" style={{ width: `${progressPercent}%` }} />
+            <div className="h-full bg-gradient-to-r from-[#0047CC] to-[#387DFF] rounded-full transition-all duration-400" style={{ width: `${localProgressPercent}%` }} />
           </div>
           <div className="text-[12px] font-[800] text-[#1A1A1A] shrink-0 tabular-nums">
-            {completedRequired} of {totalRequired} complete
+            {localCompletedRequired} of {totalRequired} complete
           </div>
         </div>
 
         {/* Render required document checklist items dynamically */}
         {requiredDocs.map((doc: any, idx: number) => {
+          const isThisUploading = !!uploadingFiles[doc.code];
+          const activeUpload = uploadingFiles[doc.code];
+
           return (
             <div key={doc.code} className="bg-gradient-to-b from-[#F8FBFF] to-white border-[1.5px] border-[#387DFF]/50 rounded-[16px] p-[24px_26px] mb-[16px] relative overflow-visible z-50">
               <div className="flex items-start justify-between gap-[14px] mb-[14px]">
@@ -480,10 +532,10 @@ const RoleEmployerAsks: React.FC = () => {
               </div>
 
               <div className="mt-[14px]">
-                {doc.submitted || uploadingFile?.code === doc.code ? (
+                {doc.submitted || isThisUploading ? (
                   <div className="border border-[#0047CC] bg-white rounded-[12px] p-[16px_18px] flex items-center gap-[14px]">
                     <div className="w-[38px] h-[38px] rounded-[10px] bg-[#EBF6FF] border border-[#387DFF]/50 text-[#0047CC] flex items-center justify-center shrink-0">
-                      {uploadingFile?.code === doc.code ? (
+                      {isThisUploading ? (
                         <svg className="animate-spin h-[18px] w-[18px] text-[#0047CC]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -494,10 +546,10 @@ const RoleEmployerAsks: React.FC = () => {
                     </div>
                     <div className="flex-1 text-left min-w-0">
                       <div className="text-[13.5px] text-[#1A1A1A] font-[700] break-all leading-[1.4]">
-                        {uploadingFile?.code === doc.code ? uploadingFile?.name : (doc.originalName || 'uploaded_document.pdf')}
+                        {isThisUploading ? activeUpload?.name : (doc.originalName || 'uploaded_document.pdf')}
                       </div>
                       <div className="text-[11.5px] text-[#0047CC] font-[600] mt-[3px]">
-                        {uploadingFile?.code === doc.code ? (
+                        {isThisUploading ? (
                           <span className="text-[#387DFF] font-medium animate-pulse">Uploading…</span>
                         ) : doc.uploadedAt ? (
                           `Uploaded on ${new Date(doc.uploadedAt).toLocaleDateString()}`
@@ -507,19 +559,19 @@ const RoleEmployerAsks: React.FC = () => {
                       </div>
                     </div>
                     <div className="relative shrink-0">
-                      <label className={`text-[12.5px] font-[700] border rounded-full px-4 py-1.5 transition-colors relative shrink-0 inline-block text-center min-w-[90px] select-none ${uploadingFile?.code === doc.code
+                      <label className={`text-[12.5px] font-[700] border rounded-full px-4 py-1.5 transition-colors relative shrink-0 inline-block text-center min-w-[90px] select-none ${(isThisUploading || isSubmitting)
                           ? 'border-[#ADADAD] text-[#ADADAD] bg-white cursor-not-allowed'
                           : 'text-[#0047CC] border-[#0047CC] hover:bg-[#EBF6FF] cursor-pointer'
                         }`}>
-                        {uploadingFile?.code === doc.code ? 'Uploading…' : 'Change file'}
-                        {uploadingFile?.code !== doc.code && (
+                        {isThisUploading ? 'Uploading…' : 'Change file'}
+                        {!(isThisUploading || isSubmitting) && (
                           <input
                             type="file"
                             className="hidden"
                             onChange={async (e) => {
                               const file = e.target.files?.[0];
                               if (!file) return;
-                              setUploadingFile({ code: doc.code, name: file.name });
+                              setUploadingFiles((prev) => ({ ...prev, [doc.code]: { name: file.name } }));
                               try {
                                 await submitSubmission.mutateAsync({
                                   file,
@@ -528,10 +580,16 @@ const RoleEmployerAsks: React.FC = () => {
                                 });
                                 toast.success("Document updated successfully!");
                                 await refetch();
+                                // Small delay to let React Query cache update and component render the new data
+                                await new Promise((resolve) => setTimeout(resolve, 300));
                               } catch (err: any) {
                                 toast.error(err?.message || "Failed to update document");
                               } finally {
-                                setUploadingFile(null);
+                                setUploadingFiles((prev) => {
+                                  const next = { ...prev };
+                                  delete next[doc.code];
+                                  return next;
+                                });
                               }
                             }}
                           />
@@ -539,6 +597,7 @@ const RoleEmployerAsks: React.FC = () => {
                       </label>
                     </div>
                   </div>
+
                 ) : (
                   <div className="flex flex-col items-center justify-center border-2 border-dashed border-[#E6E6E6] rounded-[12px] p-[24px] bg-[#F7F7F7] hover:border-[#0047CC] transition-colors relative cursor-pointer group">
                     <input
@@ -547,7 +606,7 @@ const RoleEmployerAsks: React.FC = () => {
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
-                        setUploadingFile({ code: doc.code, name: file.name });
+                        setUploadingFiles((prev) => ({ ...prev, [doc.code]: { name: file.name } }));
                         try {
                           await submitSubmission.mutateAsync({
                             file,
@@ -556,10 +615,16 @@ const RoleEmployerAsks: React.FC = () => {
                           });
                           toast.success("Document uploaded successfully!");
                           await refetch();
+                          // Small delay to let React Query cache update and component render the new data
+                          await new Promise((resolve) => setTimeout(resolve, 300));
                         } catch (err: any) {
                           toast.error(err?.message || "Failed to upload document");
                         } finally {
-                          setUploadingFile(null);
+                          setUploadingFiles((prev) => {
+                            const next = { ...prev };
+                            delete next[doc.code];
+                            return next;
+                          });
                         }
                       }}
                     />
@@ -574,6 +639,7 @@ const RoleEmployerAsks: React.FC = () => {
             </div>
           );
         })}
+
 
         {/* Written Response rendered only when the API requests it */}
         {showTextResponse && (
@@ -924,7 +990,7 @@ const RoleEmployerAsks: React.FC = () => {
       <footer className="fixed bottom-0 left-0 right-0 w-full bg-white/95 backdrop-blur-[10px] border-t border-[#E6E6E6] p-[14px_32px] flex items-center justify-between gap-[12px] z-[50]">
         <div className="text-[12.5px] text-[#4A4A4A] font-[600] flex items-center gap-[10px]">
           <span className="text-[#0047CC] text-[12.5px] font-[800]">
-            {completedRequired} of {totalRequired} done
+            {localCompletedRequired} of {totalRequired} done
           </span>
           {canSubmit ? 'All requirements met! Ready to submit.' : 'Please complete all required items and acknowledgements before submitting.'}
         </div>
@@ -938,14 +1004,14 @@ const RoleEmployerAsks: React.FC = () => {
           </button>
           <button
             type="button"
-            disabled={!canSubmit || completePreAssessment.isPending}
+            disabled={!canSubmit || isSubmitting}
             onClick={handleSubmit}
-            className={`rounded-full px-[26px] py-[13px] text-[14px] font-[700] cursor-pointer font-sans inline-flex items-center gap-[8px] transition-all border-none ${canSubmit
+            className={`rounded-full px-[26px] py-[13px] text-[14px] font-[700] cursor-pointer font-sans inline-flex items-center gap-[8px] transition-all border-none ${(canSubmit && !isSubmitting)
                 ? 'bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px]'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
               }`}
           >
-            {completePreAssessment.isPending ? 'Submitting...' : 'Submit and open Stage 1'}
+            {isSubmitting ? 'Submitting...' : 'Submit and open Stage 1'}
           </button>
         </div>
       </footer>

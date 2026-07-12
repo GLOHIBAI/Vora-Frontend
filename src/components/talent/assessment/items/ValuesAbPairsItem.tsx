@@ -46,7 +46,7 @@ const ValuesAbPairsItem: React.FC<AssessmentItemRendererProps> = ({
                     type="button"
                     disabled={rowLocked(pair.id)}
                     onClick={() => onChange(side, pair.id)}
-                    className={`text-left border-[1.5px] rounded-[14px] p-[18px] transition-all ${
+                    className={`text-left border-[1.5px] rounded-[14px] p-[18px] transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none ${
                       selected
                         ? 'border-[#0047CC] bg-[#EBF6FF] shadow-[0_0_0_3px_rgba(0,71,204,0.1)]'
                         : 'border-[#E6E6E6] bg-white hover:border-[#387DFF] hover:bg-[#EBF6FF]'

@@ -4,10 +4,11 @@ import Button from '../../components/common/Button';
 import { ArrowRightIcon } from '../../components/common/Icons';
 import { useGetPublicRoleQuery, useBeginAssessmentMutation, useGetPreAssessmentReadinessQuery } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { isGate1ApiEnabled } from '../../config/gate1Api';
 import { getActiveAssessmentId, setActiveAssessmentId } from '../../utils/assessmentSession';
 import { readStoredRolePostingId, extractRolePostingIdFromPublicRole } from '../../utils/rolePostingId';
+import FullPageSpinner from '../../components/common/FullPageSpinner';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -37,7 +38,7 @@ const RoleAssessmentSessionInfo: React.FC = () => {
   const screenCount = 6;
   const minuteRange = '15-25';
 
-  const { data: roleResponse } = useGetPublicRoleQuery(roleSlug);
+  const { data: roleResponse, isLoading: isRoleLoading } = useGetPublicRoleQuery(roleSlug);
   const roleMeta = useMemo(() => {
     const apiData = roleResponse?.data || roleResponse;
     if (apiData && Object.keys(apiData).length > 0) {
@@ -55,17 +56,47 @@ const RoleAssessmentSessionInfo: React.FC = () => {
       '';
   }, [roleSlug, roleResponse]);
 
-  const { data: readinessResponse } = useGetPreAssessmentReadinessQuery(roleSlug, rolePostingId);
+  const { data: readinessResponse, isLoading: isReadinessLoading, error } = useGetPreAssessmentReadinessQuery(roleSlug, rolePostingId);
   const readiness = readinessResponse?.data || readinessResponse;
+
+  // Redirect guard if not matched (403 error from readiness API)
+  useEffect(() => {
+    if (error) {
+      const apiError = error as any;
+      if (apiError.status === 403) {
+        navigate(`/onboarding/talent/${roleSlug}/match`, { replace: true });
+      }
+    }
+  }, [error, navigate, roleSlug]);
+
+  // Route guard: Redirect back to pre-assessment asks page if pre-assessment is required but not completed
+  useEffect(() => {
+    if (!isRoleLoading && !isReadinessLoading && readinessResponse) {
+      if (readiness?.assessmentId) {
+        setActiveAssessmentId(readiness.assessmentId);
+      }
+      const isPreAssessmentRequired = readiness?.preAssessmentRequired === true;
+      const isPreAssessmentComplete = 
+        readiness?.checks?.preAssessmentComplete === true || 
+        readiness?.preAssessmentComplete === true;
+
+      if (isPreAssessmentRequired && !isPreAssessmentComplete) {
+        navigate(`/onboarding/talent/${roleSlug}/assessment/asks`, { replace: true });
+      }
+    }
+  }, [isRoleLoading, isReadinessLoading, readinessResponse, navigate, roleSlug, readiness]);
 
   const beginAssessment = useBeginAssessmentMutation();
 
   const handleStart = async () => {
     try {
-      const storedId = getActiveAssessmentId();
+      const storedId = getActiveAssessmentId() || readiness?.assessmentId;
       const status = readiness?.assessmentStatus;
 
-      if (storedId && status === 'IN_PROGRESS') {
+      if (status === 'IN_PROGRESS') {
+        if (storedId) {
+          setActiveAssessmentId(storedId);
+        }
         if (isGate1ApiEnabled()) {
           navigate(`/onboarding/talent/${roleSlug}/assessment/gate-1/active`);
         } else {
@@ -90,6 +121,10 @@ const RoleAssessmentSessionInfo: React.FC = () => {
       console.error('Failed to begin assessment:', err);
     }
   };
+
+  if (isRoleLoading || isReadinessLoading) {
+    return <FullPageSpinner />;
+  }
 
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col">

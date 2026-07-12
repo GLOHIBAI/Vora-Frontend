@@ -11,6 +11,8 @@ import {
 import {
   normalizeSaveDraftResponse,
   normalizeAdaptiveStepResponse,
+  getRankOptionIds,
+  getValuesTradeoffTensions,
 } from "../utils/assessmentItems";
 import { buildScreenSubmitResponses } from "../utils/assessmentFlow";
 import {
@@ -36,8 +38,10 @@ const mergeResponseMaps = (
 ): ResponsesMap => {
   const next: ResponsesMap = { ...base };
   for (const [itemId, val] of Object.entries(incoming)) {
+    if (val === null || val === undefined) {
+      continue;
+    }
     if (
-      val !== null &&
       typeof val === "object" &&
       !Array.isArray(val) &&
       typeof next[itemId] === "object" &&
@@ -94,20 +98,18 @@ interface UseAssessmentScreenReturn {
     subKey?: string,
   ) => Promise<void>;
 
-  /** Submit the whole screen (flush unsaved multi-answer state, then score). */
+  /** Submit the whole screen (flush unsaved state, then score). */
   confirmScreen: () => Promise<void>;
 
-  /**
-   * Check whether an answer (or a specific sub-key within an answer) is
-   * already locked on the server and must be shown as read-only.
-   *
-   *   isLocked('item-1')        → true if the whole item is locked
-   *   isLocked('item-1', 'q3') → true if that specific sub-key is locked
-   */
+  /** Gathers all locally selected but unsaved answers and saves draft on the server. */
+  saveCurrentDraft: () => Promise<void>;
+
+  /** Check whether an answer (or a specific sub-key within an answer) is already locked. */
   isLocked: (itemId: string, subKey?: string) => boolean;
 
   isSaving: boolean;
   isSubmitting: boolean;
+  isAdaptiveLoading: boolean;
   /** True when every non-adaptive item has a non-empty local answer */
   isScreenComplete: boolean;
 
@@ -179,7 +181,31 @@ export function useAssessmentScreen({
   }, [items, priorSteps]);
 
   /** Local answer accumulator source of truth for UI rendering */
-  const [answers, setAnswers] = useState<ResponsesMap>({});
+  const [answers, setAnswers] = useState<ResponsesMap>(() => {
+    const initialAnswers: ResponsesMap = {};
+    initialItems.forEach((item) => {
+      const typeStr = item.type as string;
+      if (
+        typeStr === "rank" ||
+        typeStr === "drag_rank" ||
+        typeStr === "sjt_rank" ||
+        typeStr === "sjt_rank_all"
+      ) {
+        initialAnswers[item.id] = getRankOptionIds(item);
+      } else if (
+        typeStr === "values_tradeoff" ||
+        typeStr === "sjt_values_tradeoff"
+      ) {
+        const tensions = getValuesTradeoffTensions(item);
+        const record: Record<string, number> = {};
+        tensions.forEach((t) => {
+          record[t.id] = 0; // Default to 'Balanced'
+        });
+        initialAnswers[item.id] = record;
+      }
+    });
+    return initialAnswers;
+  });
 
   /** Tracks whether the final submit request is currently in-progress (including post-submit navigation) */
   const [isSubmitProcessActive, setIsSubmitProcessActive] = useState(false);
@@ -193,6 +219,38 @@ export function useAssessmentScreen({
    *   - Sub-item:   lockedResponses[itemId] = { subKey: value, ... }
    */
   const lockedResponses = useRef<ResponsesMap>({});
+
+  // Reset screen-specific states when moving to a new component/screen
+  useEffect(() => {
+    setItems(getInitialItems());
+
+    const initialAnswers: ResponsesMap = {};
+    initialItems.forEach((item) => {
+      const typeStr = item.type as string;
+      if (
+        typeStr === "rank" ||
+        typeStr === "drag_rank" ||
+        typeStr === "sjt_rank" ||
+        typeStr === "sjt_rank_all"
+      ) {
+        initialAnswers[item.id] = getRankOptionIds(item);
+      } else if (
+        typeStr === "values_tradeoff" ||
+        typeStr === "sjt_values_tradeoff"
+      ) {
+        const tensions = getValuesTradeoffTensions(item);
+        const record: Record<string, number> = {};
+        tensions.forEach((t) => {
+          record[t.id] = 0; // Default to 'Balanced'
+        });
+        initialAnswers[item.id] = record;
+      }
+    });
+    setAnswers(initialAnswers);
+    lockedResponses.current = {};
+    setPriorSteps(screenData.adaptiveMcq?.priorSteps ?? []);
+    setIsSubmitProcessActive(false);
+  }, [componentId, initialItems, getInitialItems, screenData.adaptiveMcq]);
 
   // ── Mutations ──────────────────────────────────────────────────────────────
 
@@ -234,65 +292,42 @@ export function useAssessmentScreen({
     }
   }, []);
 
-  const buildDelta = useCallback(
-    (
-      itemId: string,
-      value: AnswerValue,
-      subKey?: string,
-    ): ResponsesMap | null => {
-      if (subKey !== undefined) {
-        if (isSubKeyLocked(lockedResponses.current, itemId, subKey))
-          return null;
-        return { [itemId]: { [subKey]: value } };
-      }
-      if (isWholeItemLocked(lockedResponses.current, itemId)) return null;
-      return { [itemId]: value };
-    },
-    [],
-  );
+  const saveCurrentDraft = useCallback(async () => {
+    const unsavedBatch: ResponsesMap = {};
+    items.forEach((item) => {
+      if (isAdaptiveType(item.type) && item.content.layout !== "multi_question") return;
 
-  const persistDraftDelta = useCallback(
-    async (
-      itemId: string,
-      value: AnswerValue,
-      item: AssessmentItem,
-      subKey?: string,
-    ) => {
-      if (!canPersistDraftDelta(item, value, subKey)) return;
+      const val = answers[item.id];
+      if (val === undefined || val === null) return;
 
-      const delta = buildDelta(itemId, value, subKey);
-      if (!delta) return;
-
-      try {
-        const resp = await saveDraft.mutateAsync({
-          assessmentId,
-          componentId,
-          responses: delta,
-        });
-        applyServerResponse(normalizeSaveResponse(resp));
-      } catch (err: unknown) {
-        const status = (err as { status?: number })?.status;
-        if (status === 400) {
-          lockedResponses.current = {
-            ...lockedResponses.current,
-            [itemId]:
-              subKey !== undefined
-                ? ({
-                    ...(typeof lockedResponses.current[itemId] === "object"
-                      ? (lockedResponses.current[itemId] as Record<
-                          string,
-                          unknown
-                        >)
-                      : {}),
-                    [subKey]: value,
-                  } as any)
-                : value,
-          };
+      if (isSubItemLockedType(item.type)) {
+        if (typeof val === "object" && !Array.isArray(val)) {
+          const delta: Record<string, unknown> = {};
+          Object.entries(val).forEach(([subKey, subVal]) => {
+            if (!isSubKeyLocked(lockedResponses.current, item.id, subKey)) {
+              delta[subKey] = subVal;
+            }
+          });
+          if (Object.keys(delta).length > 0) {
+            unsavedBatch[item.id] = delta as AnswerValue;
+          }
+        }
+      } else {
+        if (!isWholeItemLocked(lockedResponses.current, item.id)) {
+          unsavedBatch[item.id] = val;
         }
       }
-    },
-    [assessmentId, componentId, saveDraft, buildDelta, applyServerResponse],
-  );
+    });
+
+    if (Object.keys(unsavedBatch).length > 0) {
+      const resp = await saveDraft.mutateAsync({
+        assessmentId,
+        componentId,
+        responses: unsavedBatch,
+      });
+      applyServerResponse(normalizeSaveResponse(resp));
+    }
+  }, [assessmentId, componentId, items, answers, saveDraft, applyServerResponse]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -312,7 +347,15 @@ export function useAssessmentScreen({
 
   const hydrateDraft = useCallback(
     (savedResponses: ResponsesMap, draftItems?: AssessmentItem[]) => {
-      setAnswers(savedResponses);
+      setAnswers((prev) => {
+        const result = mergeResponseMaps(prev, savedResponses);
+        console.log("DEBUG hydrateDraft mergeAnswers:", {
+          prev,
+          savedResponses,
+          result
+        });
+        return result;
+      });
       lockedResponses.current = mergeResponseMaps({}, savedResponses);
       if (draftItems?.length) {
         const merged = draftItems.map((item) => {
@@ -428,26 +471,13 @@ export function useAssessmentScreen({
         return;
       }
 
-      // ── 3. Immediate draft PATCH (single-select + partial-draft sub-keys) ──
-      if (
-        isSingleAnswerType(item.type) ||
-        (isPartialDraftType(item.type) && subKey !== undefined) ||
-        (item.type === "adaptive_mcq" &&
-          item.content.layout === "multi_question" &&
-          subKey !== undefined)
-      ) {
-        await persistDraftDelta(itemId, value, item, subKey);
-        return;
-      }
-
-      // ── 4. Batch types (rank, SJT whole-item) → local until Continue ─────
+      // ── 3. Immediate draft PATCH skipped (handled in batch on continue/save) ──
     },
     [
       assessmentId,
       componentId,
       submitAdaptive,
       onAdaptiveStep,
-      persistDraftDelta,
     ],
   );
 
@@ -468,24 +498,7 @@ export function useAssessmentScreen({
 
     setIsSubmitProcessActive(true);
     try {
-      const unsavedBatch: ResponsesMap = {};
-      items.forEach((item) => {
-        if (!isMultipleAnswerType(item.type)) return;
-        if (isWholeItemLocked(lockedResponses.current, item.id)) return;
-        const v = answers[item.id];
-        if (v !== undefined && isItemAnswerComplete(item, v)) {
-          unsavedBatch[item.id] = v;
-        }
-      });
-
-      if (Object.keys(unsavedBatch).length > 0) {
-        const resp = await saveDraft.mutateAsync({
-          assessmentId,
-          componentId,
-          responses: unsavedBatch,
-        });
-        applyServerResponse(normalizeSaveResponse(resp));
-      }
+      await saveCurrentDraft();
 
       const submitPayload = buildScreenSubmitResponses(items, answers);
 
@@ -505,30 +518,23 @@ export function useAssessmentScreen({
     componentId,
     items,
     answers,
-    saveDraft,
+    saveCurrentDraft,
     submitScreen,
     onScreenComplete,
-    applyServerResponse,
   ]);
 
-  // ── Reset on screen change ─────────────────────────────────────────────────
 
-  useEffect(() => {
-    setItems(getInitialItems());
-    setAnswers({});
-    lockedResponses.current = {};
-    setPriorSteps(screenData.adaptiveMcq?.priorSteps ?? []);
-    setIsSubmitProcessActive(false);
-  }, [componentId, screenData.adaptiveMcq?.priorSteps, getInitialItems]);
 
   return {
     items: itemsWithPriorSteps,
     answers,
     recordAnswer,
     confirmScreen,
+    saveCurrentDraft,
     isLocked,
     isSaving,
     isSubmitting,
+    isAdaptiveLoading: submitAdaptive.isPending,
     isScreenComplete,
     hydrateDraft,
   };

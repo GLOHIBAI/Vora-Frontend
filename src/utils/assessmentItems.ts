@@ -386,6 +386,8 @@ export interface ValuesTradeoffTension {
   id: string;
   leftLabel: string;
   rightLabel: string;
+  leftSub?: string;
+  rightSub?: string;
   scaleMin: number;
   scaleMax: number;
 }
@@ -405,6 +407,29 @@ export const getValuesTradeoffTensions = (
     const right = row.right as Record<string, unknown> | undefined;
     const a = row.a as Record<string, unknown> | undefined;
     const b = row.b as Record<string, unknown> | undefined;
+    const leanA = row.leanA as Record<string, unknown> | undefined;
+    const leanB = row.leanB as Record<string, unknown> | undefined;
+    
+    const leftSubVal =
+      left?.subHeadline ??
+      left?.description ??
+      a?.subHeadline ??
+      a?.description ??
+      leanA?.subHeadline ??
+      leanA?.description ??
+      row.leftSub ??
+      undefined;
+
+    const rightSubVal =
+      right?.subHeadline ??
+      right?.description ??
+      b?.subHeadline ??
+      b?.description ??
+      leanB?.subHeadline ??
+      leanB?.description ??
+      row.rightSub ??
+      undefined;
+
     return {
       id: String(row.id ?? `tension-${index}`),
       leftLabel: String(
@@ -413,6 +438,10 @@ export const getValuesTradeoffTensions = (
           left?.text ??
           a?.label ??
           a?.text ??
+          leanA?.headline ??
+          leanA?.title ??
+          leanA?.label ??
+          leanA?.text ??
           row.leftLabel ??
           "A",
       ),
@@ -422,9 +451,15 @@ export const getValuesTradeoffTensions = (
           right?.text ??
           b?.label ??
           b?.text ??
+          leanB?.headline ??
+          leanB?.title ??
+          leanB?.label ??
+          leanB?.text ??
           row.rightLabel ??
           "B",
       ),
+      leftSub: leftSubVal ? String(leftSubVal) : undefined,
+      rightSub: rightSubVal ? String(rightSubVal) : undefined,
       scaleMin: typeof row.scaleMin === "number" ? row.scaleMin : -2,
       scaleMax: typeof row.scaleMax === "number" ? row.scaleMax : 2,
     };

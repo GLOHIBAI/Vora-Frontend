@@ -47,7 +47,7 @@ const MatchResultAssessmentCTA: React.FC = () => {
           className="w-full sm:w-auto shrink-0 !px-6"
           onClick={handleAssessmentClick}
         >
-          Go to assessment
+          Start interview
         </Button>
     </div>
 
