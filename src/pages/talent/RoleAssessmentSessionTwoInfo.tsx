@@ -132,7 +132,7 @@ const RoleAssessmentSessionTwoInfo: React.FC = () => {
             <Button 
               onClick={handleStart}
               pill={false}
-              className="rounded-[10px] p-[14px_28px] transition-all bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,71,204,0.36)] w-full flex justify-center items-center"
+              className="rounded-xl p-[14px_28px] transition-all bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,71,204,0.36)] w-full sm:w-auto sm:min-w-[200px] flex justify-center items-center"
             >
               <span className="text-[14px] font-[700]">
                 Begin session

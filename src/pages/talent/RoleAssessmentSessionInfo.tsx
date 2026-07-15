@@ -9,6 +9,7 @@ import { isGate1ApiEnabled } from '../../config/gate1Api';
 import { getActiveAssessmentId, setActiveAssessmentId } from '../../utils/assessmentSession';
 import { readStoredRolePostingId, extractRolePostingIdFromPublicRole } from '../../utils/rolePostingId';
 import FullPageSpinner from '../../components/common/FullPageSpinner';
+import toast from 'react-hot-toast';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -128,8 +129,22 @@ const RoleAssessmentSessionInfo: React.FC = () => {
       } else {
         navigate(`/onboarding/talent/${roleSlug}/assessment/session-1/psychometric`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to begin assessment:', err);
+      const errMsg = err?.message || '';
+      if (errMsg.toLowerCase().includes('already in progress') || errMsg.toLowerCase().includes('in_progress')) {
+        const assessmentId = readiness?.assessmentId;
+        if (assessmentId) {
+          setActiveAssessmentId(assessmentId);
+        }
+        if (isGate1ApiEnabled()) {
+          navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
+        } else {
+          navigate(`/onboarding/talent/${roleSlug}/assessment/session-1/psychometric`);
+        }
+      } else {
+        toast.error(errMsg || 'Failed to start assessment. Please try again.');
+      }
     }
   };
 
