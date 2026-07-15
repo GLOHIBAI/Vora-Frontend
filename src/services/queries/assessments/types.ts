@@ -393,11 +393,88 @@ export interface GateProgressEntry {
 }
 
 export interface GateVerdictResponse {
+  // Status check during polling
+  status?: "generating" | "ready";
+
   gate: number;
-  verdict: "pass" | "fail" | "pending";
+  verdict: "pass" | "fail" | "pending" | "qualified" | "not_yet";
+  passed?: boolean;
   score?: number;
-  cutScore?: number;
-  breakdown?: Record<string, number>;
+  threshold?: number;
+  outcome?: "passed" | "failed";
+  roleLocked?: boolean;
+
+  talent?: { firstName: string };
+  role?: {
+    rolePostingId: string;
+    roleTitle: string;
+    employerName: string;
+  };
+
+  headline?: string;
+  summary?: string;
+  narrativeParagraphs?: string[];
+
+  // Pass fields
+  strengths?: Array<{
+    title: string;
+    description: string;
+  }>;
+  traits?: Array<{
+    key: string;
+    label: string;
+    description: string;
+    scorePercent: number;
+  }>;
+  nextStage?: {
+    gate: number;
+    label: string;
+    windowHours: number;
+    estimatedMinutesMin: number;
+    estimatedMinutesMax: number;
+    partsCount: number;
+    deadlineAt: string;
+  };
+
+  // Fail fields
+  gaps?: Array<{
+    key: string;
+    label: string;
+    scorePercent: number;
+    thresholdPercent: number;
+    explanation: string;
+  }>;
+  diagnosis?: {
+    recommendationType: "mentorship" | "course" | "self_directed";
+    rationale: string;
+  };
+  mentor?: {
+    id: string;
+    name: string;
+    professionalTitle: string;
+    bio: string;
+    credentials: string[];
+    programmeTitle: string;
+    programmeDescription: string;
+    durationWeeks: number;
+    format: string;
+    sessionMinutes: number;
+    priceAmount: number;
+    priceCurrency: string;
+    fixesSummary: string[];
+  } | null;
+  futureRoles?: Array<{
+    rolePostingId: string;
+    roleLink: string;
+    roleTitle: string;
+    employerName: string;
+    location: string;
+    salaryLabel: string;
+    currentMatchPercent: number;
+    projectedMatchPercent: number;
+    closesAt: string;
+    postedAt: string;
+  }>;
 }
 
 // ── Review summary ───────────────────────────────────────────────────────────

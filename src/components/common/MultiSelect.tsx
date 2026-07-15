@@ -88,10 +88,10 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
           }}
           className={`w-full min-h-[48px] px-4 py-2.5 sm:py-3 rounded-lg border ${error ? 'border-red-500 bg-white' : 'border-border-default bg-white'} text-left focus:outline-none focus:ring-2 ${error ? 'focus:ring-red-500/20 focus:border-red-500' : 'focus:ring-blue-500/20 focus:border-blue-500'} transition-all cursor-pointer flex items-center justify-between gap-2`}
         >
-          <div className="flex-1 flex flex-col gap-1.5">
+          <div className="flex-1 flex flex-col gap-1 sm:gap-1.5">
             {selected.length > 0 ? (
               <>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1 sm:gap-1.5">
                   {selected.map(value => (
                     <Tag
                       key={value}
@@ -100,7 +100,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                     />
                   ))}
                 </div>
-                <span className="text-xs text-gray-400">{selected.length} option{selected.length !== 1 ? 's' : ''} selected</span>
+                <span className="text-[10px] sm:text-xs text-gray-400">{selected.length} option{selected.length !== 1 ? 's' : ''} selected</span>
               </>
             ) : (
               <span className="text-gray-400">{placeholder}</span>

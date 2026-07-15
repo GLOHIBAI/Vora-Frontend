@@ -47,7 +47,7 @@ const RoleAssessmentSessionTwoInfo: React.FC = () => {
 
   const handleStart = () => {
     if (isGate1ApiEnabled()) {
-      navigate(`/onboarding/talent/${roleSlug}/assessment/gate-1/active`);
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
     } else {
       navigate(`/onboarding/talent/${roleSlug}/assessment/session-2/situational`);
     }

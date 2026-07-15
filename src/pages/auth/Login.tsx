@@ -141,6 +141,7 @@ const Login: React.FC = () => {
       <AuthPageHeader
         title="Welcome back to Vora."
         subtitle="Access your dashboard to manage jobs, mentorships, and career growth."
+        showLogo={!role}
       />
 
       <AuthFormCard>

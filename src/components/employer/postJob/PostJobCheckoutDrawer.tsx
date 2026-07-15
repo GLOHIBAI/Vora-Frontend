@@ -208,7 +208,7 @@ const PostJobCheckoutDrawer: React.FC<PostJobCheckoutDrawerProps> = ({
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="rounded-full border border-[#E6E6E6] py-3 text-sm font-bold text-[#4A4A4A] hover:border-[#ADADAD] cursor-pointer disabled:opacity-50"
+            className="rounded-xl border border-[#E6E6E6] py-3 text-sm font-bold text-[#4A4A4A] hover:border-[#ADADAD] cursor-pointer disabled:opacity-50 whitespace-nowrap"
           >
             Cancel
           </button>
@@ -216,7 +216,7 @@ const PostJobCheckoutDrawer: React.FC<PostJobCheckoutDrawerProps> = ({
             type="button"
             onClick={onSubmit}
             disabled={isSubmitting || isLoadingConfig}
-            className="rounded-full bg-[#0047CC] hover:bg-[#344DA1] py-3 text-sm font-bold text-white cursor-pointer disabled:opacity-60"
+            className="rounded-xl bg-[#0047CC] hover:bg-[#344DA1] py-3 text-sm font-bold text-white cursor-pointer disabled:opacity-60 whitespace-nowrap"
           >
             {isSubmitting
               ? 'Processing…'

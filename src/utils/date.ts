@@ -5,8 +5,12 @@ export const toISODate = (date: Date): string =>
 
 export const parseISODate = (iso: string): Date | null => {
   if (!iso) return null;
-  const [y, m, d] = iso.split('-').map(Number);
-  if (!y || !m || !d) return null;
+  const datePart = iso.split('T')[0];
+  const [y, m, d] = datePart.split('-').map(Number);
+  if (!y || !m || !d) {
+    const nativeDate = new Date(iso);
+    return Number.isNaN(nativeDate.getTime()) ? null : nativeDate;
+  }
   const date = new Date(y, m - 1, d);
   return Number.isNaN(date.getTime()) ? null : date;
 };

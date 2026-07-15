@@ -18,14 +18,14 @@ export const PageTitle: React.FC<TypographyProps> = ({ children, className, as: 
 
 /** Primary title inside a wizard step card. */
 export const WizardStepTitle: React.FC<TypographyProps> = ({ children, className, as: Tag = 'h2' }) => (
-  <Tag className={merge('text-[20px] font-semibold text-[#1A1A1A] tracking-tight', className)}>
+  <Tag className={merge('text-lg sm:text-[20px] font-semibold text-[#1A1A1A] tracking-tight', className)}>
     {children}
   </Tag>
 );
 
 /** Major section heading within a wizard step. */
 export const SectionTitle: React.FC<TypographyProps> = ({ children, className, as: Tag = 'h2' }) => (
-  <Tag className={merge('text-xl md:text-[22px] font-semibold text-[#1A1A1A] tracking-tight', className)}>
+  <Tag className={merge('text-base sm:text-lg md:text-[22px] font-semibold text-[#1A1A1A] tracking-tight', className)}>
     {children}
   </Tag>
 );
@@ -56,7 +56,7 @@ export const DrawerTitle: React.FC<TypographyProps> = ({
   as: Tag = 'h2',
   id,
 }) => (
-  <Tag id={id} className={merge('text-[22px] font-semibold text-[#1A1A1A] tracking-tight', className)}>
+  <Tag id={id} className={merge('text-lg sm:text-[22px] font-semibold text-[#1A1A1A] tracking-tight', className)}>
     {children}
   </Tag>
 );

@@ -498,8 +498,6 @@ export function useAssessmentScreen({
 
     setIsSubmitProcessActive(true);
     try {
-      await saveCurrentDraft();
-
       const submitPayload = buildScreenSubmitResponses(items, answers);
 
       await submitScreen.mutateAsync({
@@ -518,7 +516,6 @@ export function useAssessmentScreen({
     componentId,
     items,
     answers,
-    saveCurrentDraft,
     submitScreen,
     onScreenComplete,
   ]);

@@ -71,8 +71,8 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
         );
       })}
 
-      {/* 2. Active Step (only render if complete is not true) */}
-      {content.complete ? null : (
+      {/* 2. Active Step (only render if complete is not true and not loading next step) */}
+      {content.complete || isAdaptiveLoading ? null : (
         <div className="space-y-6">
           {content.layout === 'multi_question' && content.sharedContext && (
             <DataDisplayBlock

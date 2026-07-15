@@ -51,10 +51,10 @@ const RoleShareSection: React.FC<RoleShareSectionProps> = ({
         onClose={() => setPendingChannel(null)}
         footer={
           <div className="flex gap-3 justify-end mt-2">
-            <Button variant="outline" size="md" onClick={() => setPendingChannel(null)}>
+            <Button variant="outline" size="md" pill={false} className="rounded-xl" onClick={() => setPendingChannel(null)}>
               Cancel
             </Button>
-            <Button variant="primary" size="md" onClick={confirmShare}>
+            <Button variant="primary" size="md" pill={false} className="rounded-xl" onClick={confirmShare}>
               Continue to {pendingChannel?.label}
             </Button>
           </div>

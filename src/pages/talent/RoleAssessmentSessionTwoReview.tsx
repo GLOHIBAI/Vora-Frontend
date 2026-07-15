@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import VoraLogo from '../../components/common/VoraLogo';
 import Button from '../../components/common/Button';
 import Tag from '../../components/common/Tag';
+import StageRail from '../../components/talent/StageRail';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -84,27 +85,7 @@ const RoleAssessmentSessionTwoReview: React.FC = () => {
       </header>
 
       {/* Stage Rail */}
-      <div className="bg-white border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[10px] flex items-center justify-center gap-[10px] overflow-x-auto">
-        <div className="flex items-center gap-[6px] shrink-0">
-          <div className="w-[20px] h-[20px] rounded-full bg-[#0047CC] shadow-[0_0_0_3px_rgba(0,71,204,0.12)] flex items-center justify-center text-[10px] font-[800] text-white">1</div>
-          <div className="text-[11px] font-[700] text-[#0047CC]">Getting to know you</div>
-        </div>
-        <div className="w-[24px] h-[2px] bg-[#E6E6E6] rounded-[2px] shrink-0"></div>
-        <div className="flex items-center gap-[6px] shrink-0">
-          <div className="w-[20px] h-[20px] rounded-full bg-[#E6E6E6] flex items-center justify-center text-[10px] font-[800] text-white">2</div>
-          <div className="text-[11px] font-[700] text-[#ADADAD]">Professional dimension</div>
-        </div>
-        <div className="w-[24px] h-[2px] bg-[#E6E6E6] rounded-[2px] shrink-0"></div>
-        <div className="flex items-center gap-[6px] shrink-0">
-          <div className="w-[20px] h-[20px] rounded-full bg-[#E6E6E6] flex items-center justify-center text-[10px] font-[800] text-white">3</div>
-          <div className="text-[11px] font-[700] text-[#ADADAD]">How you show up</div>
-        </div>
-        <div className="w-[24px] h-[2px] bg-[#E6E6E6] rounded-[2px] shrink-0"></div>
-        <div className="flex items-center gap-[6px] shrink-0">
-          <div className="w-[20px] h-[20px] rounded-full bg-[#E6E6E6] flex items-center justify-center text-[10px] font-[800] text-white">4</div>
-          <div className="text-[11px] font-[700] text-[#ADADAD]">Final decision</div>
-        </div>
-      </div>
+      <StageRail activeStage={1} />
 
       {/* Main Content */}
       <main className="max-w-[780px] w-full mx-auto px-[20px] sm:px-[28px] pt-[36px] pb-[100px] flex-1">
@@ -199,19 +180,19 @@ const RoleAssessmentSessionTwoReview: React.FC = () => {
         <div className="text-[13px] text-[#808080] font-[600] hidden sm:block">
           Final review · Stage 1 of 4
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-[10px] w-full sm:w-auto justify-end">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto justify-end">
           <Button
             variant="outline"
             onClick={handleBack}
-            className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] px-[18px] py-[11px] text-[13.5px] font-[700] hover:border-[#ADADAD] hover:bg-white w-full sm:w-auto"
-            fullWidth={false}
+            className="w-full sm:w-auto"
+            pill={false}
           >
             Back
           </Button>
           <Button
             onClick={handleSubmit}
-            className="rounded-[10px] px-[24px] py-[13px] transition-all font-sans inline-flex items-center justify-center gap-[8px] text-[14px] font-[700] border-none w-full sm:w-auto bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px]"
-            fullWidth={false}
+            className="w-full sm:w-auto text-white bg-[#0047CC] shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] font-[800]"
+            pill={false}
           >
             Submit Stage 1
           </Button>

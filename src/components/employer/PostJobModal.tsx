@@ -247,14 +247,14 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
   };
 
   return (
-    <div className="fixed inset-0 z-[800] flex items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[800] flex items-center justify-center p-4 animate-in fade-in duration-200">
       {/* Overlay Background */}
       <div className="absolute inset-0 bg-[#000]/50 backdrop-blur-xs" onClick={resetModal} />
 
       {/* Modal Content container */}
-      <div className="relative bg-white w-full sm:max-w-[520px] max-h-[92vh] sm:max-h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden fixed bottom-0 sm:relative">
+      <div className="relative bg-white w-full max-w-[520px] max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-5 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-5 sm:px-6 py-4 sm:py-5 flex items-center justify-between z-10">
           <ModalTitle className="text-[18px]">Post a Job</ModalTitle>
           <button 
             onClick={resetModal} 
@@ -265,7 +265,7 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
         </div>
 
         <ScrollArea className="flex-1 min-h-0">
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* STEP 1: When do you want to hire? */}
           <div className="space-y-3">
             <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
@@ -527,9 +527,9 @@ const PostJobModal: React.FC<PostJobModalProps> = ({ isOpen, onClose, onContinue
             onClick={handleProceed}
             variant="primary"
             fullWidth={true}
-            pill={true}
+            pill={false}
             size="lg"
-            className="mt-4"
+            className="mt-4 rounded-xl"
           >
             {buttonState.text}
           </Button>

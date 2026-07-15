@@ -76,8 +76,8 @@ const DateInput: React.FC<DateInputProps> = ({
             error ? 'focus:ring-red-500/20 focus:border-red-500' : 'focus:ring-brand-blue/20 focus:border-brand-blue'
           } ${disabled ? 'opacity-60 cursor-not-allowed' : ''} ${className}`}
         >
-          <span className={value ? 'text-[#1A1A1A] font-medium' : 'text-gray-400'}>
-            {value ? formatDateDisplay(value) : placeholder}
+          <span className={(value && formatDateDisplay(value)) ? 'text-[#1A1A1A] font-medium' : 'text-gray-400'}>
+            {(value && formatDateDisplay(value)) || placeholder}
           </span>
         </button>
 

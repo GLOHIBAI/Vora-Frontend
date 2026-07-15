@@ -27,7 +27,7 @@ const StageRail: React.FC<StageRailProps> = ({
 
   return (
     <div
-      className={`bg-white px-[20px] sm:px-[32px] py-[10px] flex items-center justify-center gap-[10px] overflow-x-auto${
+      className={`bg-white px-4 sm:px-[32px] py-[10px] flex items-center justify-start sm:justify-center gap-[10px] overflow-x-auto custom-scrollbar scrollbar-none${
         showBottomBorder ? ' border-b border-[#E6E6E6]' : ''
       }`}
     >

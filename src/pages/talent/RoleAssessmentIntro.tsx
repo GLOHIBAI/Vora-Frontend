@@ -181,16 +181,16 @@ const RoleAssessmentIntro: React.FC = () => {
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-[12px] items-stretch sm:items-center">
+            <div className="flex flex-col-reverse sm:flex-row gap-[12px] items-stretch sm:items-center">
               <button 
                 onClick={handleBack}
-                className="bg-transparent border-[1.5px] border-[#E6E6E6] text-[#808080] text-[13px] font-[600] cursor-pointer font-sans p-[14px_20px] rounded-[10px] transition-all hover:bg-[#F7F7F7] hover:text-[#1A1A1A] w-full sm:w-auto text-center"
+                className="bg-transparent border-[1.5px] border-[#E6E6E6] text-[#808080] text-[13px] font-[600] cursor-pointer font-sans p-[14px_20px] rounded-xl transition-all hover:bg-[#F7F7F7] hover:text-[#1A1A1A] w-full sm:w-auto text-center"
               >
                 Not now
               </button>
               <button 
                 onClick={handleStart}
-                className="bg-[#0047CC] text-white border-none rounded-full p-[14px_28px] text-[14px] font-[700] cursor-pointer font-sans flex items-center justify-center gap-[8px] transition-all shadow-[0_4px_14px_rgba(0,71,204,0.28)] flex-1 w-full sm:w-auto hover:bg-[#344DA1] hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,71,204,0.36)]"
+                className="bg-[#0047CC] text-white border-none rounded-xl p-[14px_28px] text-[14px] font-[700] cursor-pointer font-sans flex items-center justify-center gap-[8px] transition-all shadow-[0_4px_14px_rgba(0,71,204,0.28)] flex-grow sm:flex-initial w-full sm:w-auto hover:bg-[#344DA1] hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,71,204,0.36)]"
               >
                 I'm ready, let's begin
               </button>

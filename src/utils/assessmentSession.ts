@@ -196,8 +196,10 @@ const GATE1_COGNITIVE_KEYS = new Set<Gate1ScreenKey>([
   "verbal",
 ]);
 
-export const getGate1ScreenLabel = (screenKey: string): string =>
-  GATE1_SCREEN_LABELS[screenKey as Gate1ScreenKey] ?? screenKey;
+export const getGate1ScreenLabel = (screenKey: string | undefined | null): string => {
+  if (!screenKey) return "Review";
+  return GATE1_SCREEN_LABELS[screenKey as Gate1ScreenKey] ?? screenKey;
+};
 
 export const getGate1TotalScreens = (resume: GateResumeState): number =>
   resume.session1Screens.length + resume.session2Screens.length;
@@ -214,9 +216,11 @@ export const getGate1HighLevelTags = (resume: GateResumeState): string[] => {
   return tags;
 };
 
-export const isGate1TimedScreen = (screenKey: string): boolean =>
-  GATE1_COGNITIVE_KEYS.has(screenKey as Gate1ScreenKey) ||
-  screenKey.startsWith("sjt_");
+export const isGate1TimedScreen = (screenKey: string | undefined | null): boolean => {
+  if (!screenKey) return false;
+  return GATE1_COGNITIVE_KEYS.has(screenKey as Gate1ScreenKey) ||
+    screenKey.startsWith("sjt_");
+};
 
 export const buildGate1ResumeCrumbs = (
   resume: GateResumeState,

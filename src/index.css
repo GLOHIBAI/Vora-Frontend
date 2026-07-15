@@ -407,6 +407,30 @@ input.vora-block-autofill:-webkit-autofill {
   }
 }
 
+@media(max-width: 440px) {
+  .likert {
+    gap: 3px;
+  }
+  .lk {
+    padding: 8px 2px 6px;
+    border-radius: 8px;
+  }
+  .lk-dot {
+    width: 14px;
+    height: 14px;
+    border-width: 1.5px;
+  }
+  .lk.selected .lk-dot::after {
+    width: 4px;
+    height: 4px;
+  }
+  .lk-l {
+    font-size: 8px;
+    letter-spacing: -0.2px;
+    line-height: 1.15;
+  }
+}
+
 .divider {
   border: none;
   border-top: 1px dashed var(--n200);

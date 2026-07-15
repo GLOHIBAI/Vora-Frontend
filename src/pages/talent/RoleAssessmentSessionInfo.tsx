@@ -16,6 +16,13 @@ const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
+const LockClosedIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+);
+
 const QuestionCircleIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <circle cx="12" cy="12" r="10"/>
@@ -59,6 +66,10 @@ const RoleAssessmentSessionInfo: React.FC = () => {
   const { data: readinessResponse, isLoading: isReadinessLoading, error } = useGetPreAssessmentReadinessQuery(roleSlug, rolePostingId);
   const readiness = readinessResponse?.data || readinessResponse;
 
+  const isLocked = useMemo(() => {
+    return readiness?.assessmentStatus === 'LOCKED' || readiness?.isLocked === true;
+  }, [readiness]);
+
   // Redirect guard if not matched (403 error from readiness API)
   useEffect(() => {
     if (error) {
@@ -98,7 +109,7 @@ const RoleAssessmentSessionInfo: React.FC = () => {
           setActiveAssessmentId(storedId);
         }
         if (isGate1ApiEnabled()) {
-          navigate(`/onboarding/talent/${roleSlug}/assessment/gate-1/active`);
+          navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
         } else {
           navigate(`/onboarding/talent/${roleSlug}/assessment/session-1/psychometric`);
         }
@@ -113,7 +124,7 @@ const RoleAssessmentSessionInfo: React.FC = () => {
       }
 
       if (isGate1ApiEnabled()) {
-        navigate(`/onboarding/talent/${roleSlug}/assessment/gate-1/active`);
+        navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
       } else {
         navigate(`/onboarding/talent/${roleSlug}/assessment/session-1/psychometric`);
       }
@@ -161,6 +172,15 @@ const RoleAssessmentSessionInfo: React.FC = () => {
       <div className="flex-1 flex items-center justify-center p-[20px] sm:p-[40px_24px]">
         <div className="bg-white rounded-[24px] border-[1.5px] border-[#E6E6E6] shadow-sm max-w-[720px] w-full text-center animate-[fadeUp_0.5s_ease_both] relative overflow-hidden p-[32px_22px_28px] sm:p-[44px_44px_36px]">
 
+          {isLocked && (
+            <div className="bg-[#FEF2F2] border border-[#FECACA] text-[#991B1B] rounded-xl p-4 text-left text-[13px] leading-[1.6] mb-5 flex gap-3 items-start animate-[fadeUp_0.4s_ease]">
+              <LockClosedIcon className="w-5 h-5 text-[#DC2626] shrink-0 mt-0.5" />
+              <div>
+                <strong className="font-[800]">Assessment Locked:</strong> Your previous assessment is locked. Please submit a new CV on your profile to request a reset.
+              </div>
+            </div>
+          )}
+
           <div className="w-[84px] h-[84px] rounded-[24px] bg-gradient-to-br from-[#EBF6FF] to-white border-[1.5px] border-[#EBF6FF] mx-auto mb-[22px] flex items-center justify-center relative">
             <div className="absolute -inset-[4px] border-[1.5px] border-dashed border-[#387DFF] rounded-[28px] opacity-40 animate-[spin_18s_linear_infinite]"></div>
             <BrainIcon className="w-[38px] h-[38px] text-[#0047CC]" />
@@ -200,15 +220,25 @@ const RoleAssessmentSessionInfo: React.FC = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-[12px] justify-center items-stretch sm:items-center mt-[10px]">
-            <Button 
-              onClick={handleStart}
-              isLoading={beginAssessment.isPending}
-              className="rounded-full px-[48px] min-w-[200px] py-[12px] transition-all bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,71,204,0.36)] w-full sm:w-auto flex justify-center items-center"
-            >
-              <span className="flex items-center justify-center gap-[8px] text-[14px] font-[700]">
+            {isLocked ? (
+              <Button 
+                onClick={() => navigate(`/onboarding/talent/${roleSlug}/cv`)}
+                className="bg-[#DC2626] hover:bg-[#B91C1C] text-white shadow-[0_4px_14px_rgba(220,38,38,0.28)] min-w-[220px] flex items-center justify-center gap-2 font-[800]"
+                pill={false}
+              >
+                <LockClosedIcon className="w-4 h-4" />
+                Upload new CV to reset
+              </Button>
+            ) : (
+              <Button 
+                onClick={handleStart}
+                isLoading={beginAssessment.isPending}
+                className="px-[48px] min-w-[200px] py-[12px] bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] w-full sm:w-auto flex justify-center items-center font-[700]"
+                pill={false}
+              >
                 Start session
-              </span>
-            </Button>
+              </Button>
+            )}
           </div>
 
           <p className="text-[12px] text-[#808080] mt-[14px] leading-[1.5]">

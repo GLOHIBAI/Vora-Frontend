@@ -46,7 +46,7 @@ const RoleAssessmentGate1Review: React.FC = () => {
         assessmentId,
         body: { screen: screenKey },
       });
-      navigate(`/onboarding/talent/${roleSlug}/assessment/gate-1/active`);
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
     } catch (err) {
       console.error(err);
     } finally {
@@ -137,7 +137,13 @@ const RoleAssessmentGate1Review: React.FC = () => {
         </p>
 
         {isLoading ? (
-          <p className="text-sm text-[#808080]">Loading review…</p>
+          <div className="flex flex-col items-center justify-center py-16 gap-3">
+            <svg className="animate-spin h-8 w-8 text-[#0047CC]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p className="text-sm text-[#808080] font-medium">Loading review…</p>
+          </div>
         ) : (
           <>
             {/* Completion Banner */}
@@ -216,23 +222,16 @@ const RoleAssessmentGate1Review: React.FC = () => {
       </main>
 
       {/* Fixed Footer */}
-      <footer className="fixed bottom-0 left-0 right-0 bg-white/96 backdrop-blur-[10px] border-t border-[#E6E6E6] p-[14px_32px] flex items-center justify-between gap-3 z-50">
-        <div className="text-[13px] text-[#808080] font-[600]">
+      <footer className="fixed bottom-0 left-0 right-0 bg-white/96 backdrop-blur-[10px] border-t border-[#E6E6E6] p-[16px_24px] sm:p-[14px_32px] flex flex-col sm:flex-row items-center justify-between gap-[12px] z-50">
+        <div className="text-[13px] text-[#808080] font-[600] w-full sm:w-auto text-left">
           Final review · Stage 1 of 4
         </div>
-        <div className="flex gap-[10px]">
-          <button
-            type="button"
-            onClick={handleBack}
-            className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] cursor-pointer transition-all hover:border-[#ADADAD]"
-          >
-            Back
-          </button>
+        <div className="flex w-full sm:w-auto">
           <button
             type="button"
             disabled={isLoading || isSubmitting || !reviewData.canSubmit}
             onClick={handleSubmit}
-            className="bg-[#0047CC] text-white border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] cursor-pointer inline-flex items-center gap-2.5 transition-all shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] disabled:bg-[#E6E6E6] disabled:text-white disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none"
+            className="bg-[#0047CC] text-white border-none rounded-xl p-[12px_24px] text-[14px] font-[700] cursor-pointer inline-flex items-center justify-center gap-2.5 transition-all shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] disabled:bg-[#E6E6E6] disabled:text-white disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none w-full sm:w-auto"
           >
             {isSubmitting ? 'Submitting…' : 'Submit Stage 1'}
           </button>

@@ -146,11 +146,6 @@ const PostJobPreviewStep: React.FC<PostJobPreviewStepProps> = ({
 
   return (
     <div className="w-full space-y-4 animate-in fade-in duration-300">
-      <AlertBanner variant="blue">
-        Click any <strong>checkmark</strong> in the sidebar to go back and edit that section. Click{' '}
-        <strong>Edit</strong> on any card below to jump directly to that section. Nothing is posted or
-        charged until you confirm payment.
-      </AlertBanner>
 
       {isScheduled && (
         <div className="inline-flex items-center gap-2 text-[13px] text-[#4A4A4A]">

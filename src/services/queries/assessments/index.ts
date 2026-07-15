@@ -287,13 +287,79 @@ export const useSubmitAssessmentScreenMutation = () => {
         auth: true,
       });
     },
-    onSuccess: (_data, { assessmentId }) => {
-      queryClient.invalidateQueries({
-        queryKey: assessmentKeys.progress(assessmentId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: assessmentKeys.resumeState(assessmentId, 1),
-      });
+    onSuccess: (data, { assessmentId }) => {
+      const normalized = data?.data || data;
+      if (normalized) {
+        queryClient.setQueryData<GateResumeState>(
+          assessmentKeys.resumeState(assessmentId, 1),
+          (old) => {
+            if (!old) return old;
+            
+            const isEnveloped = typeof old === 'object' && old !== null && 'data' in old;
+            const target: any = isEnveloped ? (old as any).data : old;
+            if (!target) return old;
+            
+            const finishedScreenKey = target.nextScreenKey;
+            const updatedCompleteKeys = target.completedScreenKeys.includes(finishedScreenKey)
+              ? target.completedScreenKeys
+              : [...target.completedScreenKeys, finishedScreenKey];
+              
+            const nextScreenInfo = normalized.nextScreen || {};
+            const nextScreenKey = nextScreenInfo.nextScreenKey ?? normalized.nextScreenKey ?? target.nextScreenKey;
+            const session = nextScreenInfo.session ?? normalized.gateRollup?.session ?? target.session;
+            const sessionLabel = nextScreenInfo.sessionLabel ?? normalized.gateRollup?.sessionLabel ?? target.sessionLabel;
+            
+            const gate1Complete =
+              nextScreenInfo.gate1Complete === true ||
+              normalized.gateRollup?.gateStatus === "completed" ||
+              normalized.gateRollup?.gate1Complete === true ||
+              (normalized.status === "completed" && 
+               normalized.nextScreenKey === undefined && 
+               normalized.nextScreen === undefined);
+
+            const updatedTarget = {
+              ...target,
+              session,
+              sessionLabel,
+              nextScreenKey: nextScreenKey as any,
+              completedScreenKeys: updatedCompleteKeys,
+              gate1Complete,
+              inProgress: null,
+            };
+
+            if (isEnveloped) {
+              return {
+                ...old,
+                data: updatedTarget,
+              } as any;
+            }
+            return updatedTarget as any;
+          }
+        );
+
+        // 2. Update progress cache manually
+        queryClient.setQueryData<{ data: GateProgressEntry[] }>(
+          assessmentKeys.progress(assessmentId),
+          (old) => {
+            if (!old?.data) return old;
+            const updatedData = old.data.map((entry) => {
+              if (entry.gate === 1) {
+                const rollup = normalized.gateRollup || {};
+                const completed = rollup.partsCompleted ?? entry.completedScreens;
+                const total = rollup.partsTotal ?? entry.totalScreens;
+                return {
+                  ...entry,
+                  completedScreens: completed,
+                  totalScreens: total,
+                  percent: total > 0 ? Math.round((completed / total) * 100) : entry.percent,
+                };
+              }
+              return entry;
+            });
+            return { ...old, data: updatedData };
+          }
+        );
+      }
     },
   });
 };

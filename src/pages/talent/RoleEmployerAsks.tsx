@@ -46,7 +46,7 @@ const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 
 const StageRail: React.FC = () => (
-  <div className="bg-white border-b border-[#E6E6E6] px-[32px] py-[10px] flex items-center justify-center gap-[10px] overflow-x-auto whitespace-nowrap">
+  <div className="bg-white border-b border-[#E6E6E6] px-4 sm:px-[32px] py-[10px] flex items-center justify-start sm:justify-center gap-[10px] overflow-x-auto whitespace-nowrap custom-scrollbar scrollbar-none">
     <div className="flex items-center gap-[6px] shrink-0">
       <div className="w-[20px] h-[20px] rounded-full bg-[#0047CC] flex items-center justify-center text-[10px] font-[800] text-white" style={{ boxShadow: '0 0 0 3px rgba(0,71,204,.12)' }}>1</div>
       <div className="text-[11px] font-[700] text-[#0047CC]">Getting to know you</div>
@@ -411,7 +411,7 @@ const RoleEmployerAsks: React.FC = () => {
         <span className="inline-flex items-center gap-[1px] text-[#0047CC]">
           <VoraLogo size="sm" to="/dashboard" />
         </span>
-        <div className="text-[12.5px] text-[#808080] font-[600]">
+        <div className="hidden sm:block text-[12.5px] text-[#808080] font-[600] truncate mx-4">
           Before Stage 1 opens · {companyName}&apos;s additional asks
         </div>
         <div className="flex items-center gap-[6px] text-[12px] text-[#808080] font-[600]">
@@ -425,7 +425,7 @@ const RoleEmployerAsks: React.FC = () => {
 
       <StageRail />
 
-      <section className="relative px-[32px] pt-[48px] pb-[48px] bg-gradient-to-br from-[#182348] to-[#0047CC] overflow-hidden text-white">
+      <section className="relative px-5 sm:px-[32px] pt-8 sm:pt-[48px] pb-8 sm:pb-[48px] bg-gradient-to-br from-[#182348] to-[#0047CC] overflow-hidden text-white">
         <div className="absolute top-[-60px] right-[20%] w-[220px] h-[220px] rounded-full bg-white/5 pointer-events-none" />
         <div className="absolute bottom-[-80px] right-[-40px] w-[280px] h-[280px] rounded-full bg-[#387DFF]/20 pointer-events-none" />
         <div className="absolute top-[40%] left-[-100px] w-[260px] h-[260px] rounded-full bg-white/5 pointer-events-none" />
@@ -464,7 +464,7 @@ const RoleEmployerAsks: React.FC = () => {
         </div>
       </section>
 
-      <main className="max-w-[820px] mx-auto px-[28px] pt-[32px] pb-[110px]">
+      <main className="max-w-[820px] mx-auto px-4 sm:px-[28px] pt-8 sm:pt-[32px] pb-[110px]">
         {/* Already on file */}
         <div className="bg-white border-[1.5px] border-[#E6E6E6] rounded-[14px] p-[18px_22px] mb-[28px] flex gap-[14px] items-start">
           <div className="w-[38px] h-[38px] rounded-[10px] bg-[#EBF6FF] border border-[#387DFF]/30 flex items-center justify-center text-[#0047CC] shrink-0">
@@ -987,18 +987,27 @@ const RoleEmployerAsks: React.FC = () => {
 
       </main>
 
-      <footer className="fixed bottom-0 left-0 right-0 w-full bg-white/95 backdrop-blur-[10px] border-t border-[#E6E6E6] p-[14px_32px] flex items-center justify-between gap-[12px] z-[50]">
-        <div className="text-[12.5px] text-[#4A4A4A] font-[600] flex items-center gap-[10px]">
-          <span className="text-[#0047CC] text-[12.5px] font-[800]">
+      <footer className="fixed bottom-0 left-0 right-0 w-full bg-white/95 backdrop-blur-[10px] border-t border-[#E6E6E6] p-3.5 sm:px-8 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-[12px] z-[50]">
+        <div className="text-[12.5px] text-[#4A4A4A] font-[600] flex flex-row items-center gap-2 sm:gap-[10px]">
+          <span className="text-[#0047CC] text-[12.5px] font-[800] whitespace-nowrap shrink-0">
             {localCompletedRequired} of {totalRequired} done
           </span>
-          {canSubmit ? 'All requirements met! Ready to submit.' : 'Please complete all required items and acknowledgements before submitting.'}
+          <span className="text-[11px] sm:text-[12.5px] text-[#808080] sm:text-[#4A4A4A] truncate">
+            {canSubmit ? (
+              'All requirements met! Ready to submit.'
+            ) : (
+              <>
+                <span className="hidden sm:inline">Please complete all required items and acknowledgements before submitting.</span>
+                <span className="inline sm:hidden">Complete all items to submit.</span>
+              </>
+            )}
+          </span>
         </div>
-        <div className="flex gap-[10px]">
+        <div className="flex items-center gap-2.5 sm:gap-[10px] w-full sm:w-auto">
           <button
             type="button"
             onClick={handleSaveAndExit}
-            className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-full px-[20px] py-[13px] text-[14px] font-[700] hover:border-[#ADADAD] transition-colors cursor-pointer"
+            className="flex-1 sm:flex-initial bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-xl px-3 sm:px-[20px] py-2.5 sm:py-[13px] text-xs sm:text-[14px] font-[700] hover:border-[#ADADAD] transition-colors cursor-pointer whitespace-nowrap text-center justify-center flex items-center"
           >
             Save and exit
           </button>
@@ -1006,12 +1015,17 @@ const RoleEmployerAsks: React.FC = () => {
             type="button"
             disabled={!canSubmit || isSubmitting}
             onClick={handleSubmit}
-            className={`rounded-full px-[26px] py-[13px] text-[14px] font-[700] cursor-pointer font-sans inline-flex items-center gap-[8px] transition-all border-none ${(canSubmit && !isSubmitting)
+            className={`flex-1 sm:flex-initial rounded-xl px-4 sm:px-[26px] py-2.5 sm:py-[13px] text-xs sm:text-[14px] font-[700] cursor-pointer font-sans inline-flex items-center justify-center gap-[8px] transition-all border-none whitespace-nowrap ${(canSubmit && !isSubmitting)
                 ? 'bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px]'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
               }`}
           >
-            {isSubmitting ? 'Submitting...' : 'Submit and open Stage 1'}
+            {isSubmitting ? 'Submitting...' : (
+              <>
+                <span className="inline sm:hidden">Submit</span>
+                <span className="hidden sm:inline">Submit and open Stage 1</span>
+              </>
+            )}
           </button>
         </div>
       </footer>

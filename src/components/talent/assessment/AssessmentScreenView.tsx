@@ -384,15 +384,15 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
       </main>
 
       {/* Footer */}
-      <footer className="fixed bottom-0 left-0 right-0 bg-white/96 backdrop-blur-[10px] border-t border-[#E6E6E6] p-[14px_32px] flex items-center justify-between gap-3 z-50">
-        <div className="text-[13px] text-[#808080] font-[600]">
-          Part {screenIndex + 1} of {sessionScreens?.length ?? 6} - Stage {screenData.gate ?? 1}
+      <footer className="fixed bottom-0 left-0 right-0 bg-white/96 backdrop-blur-[10px] border-t border-[#E6E6E6] px-[16px] sm:px-[32px] py-[12px] sm:py-[14px] flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-[12px] z-50">
+        <div className="text-[12.5px] sm:text-[13px] text-[#808080] font-[600] text-center sm:text-left">
+          Part {screenIndex + 1} of {sessionScreens?.length ?? 6} · Stage {screenData.gate ?? 1}
         </div>
-        <div className="flex gap-[10px]">
+        <div className="flex items-center gap-[8px] sm:gap-[10px] w-full sm:w-auto">
           <button 
             type="button"
             disabled={isSaving || isSubmitting || isAdaptiveLoading}
-            className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] cursor-pointer transition-all hover:border-[#ADADAD] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className="flex-1 sm:flex-initial bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-xl py-2.5 sm:py-[11px] px-3 sm:px-[18px] text-[12px] sm:text-[13.5px] font-[700] cursor-pointer transition-all hover:border-[#ADADAD] whitespace-nowrap text-center justify-center flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             onClick={async () => {
               try {
                 await saveCurrentDraft();
@@ -406,8 +406,8 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
           </button>
           <button 
             type="button" 
-            disabled={!isScreenComplete || isSubmitting || isAdaptiveLoading}
-            className="bg-[#0047CC] text-white border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] cursor-pointer inline-flex items-center gap-2.5 transition-all shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px] disabled:bg-[#E6E6E6] disabled:text-white disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none" 
+            disabled={!isScreenComplete || isSubmitting || isAdaptiveLoading || isSaving}
+            className="flex-1 sm:flex-initial bg-[#0047CC] text-white border-none rounded-xl py-2.5 sm:py-[12px] px-4 sm:px-[24px] text-[12.5px] sm:text-[14px] font-[700] cursor-pointer inline-flex items-center justify-center gap-2.5 transition-all shadow-[0_4px_14px_rgba(0,71,204,0.28)] whitespace-nowrap hover:bg-[#344DA1] hover:-translate-y-[1px] disabled:bg-[#E6E6E6] disabled:text-white disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none" 
             onClick={() => void confirmScreen()}
           >
             {isSubmitting

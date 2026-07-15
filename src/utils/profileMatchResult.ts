@@ -241,7 +241,7 @@ export const buildMatchConfirmedSubtitle = (
   const positions = positionsRow
     ? positionsRow.includes("position")
       ? positionsRow
-      : positionsRow.replace(/^(\d+)/, "$1 positions")
+      : `${positionsRow} position${positionsRow === "1" ? "" : "s"}`
     : "2 positions available";
   const salary =
     role.overviewRows.find((row) => row.label === "Salary")?.value ??

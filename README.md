@@ -17,6 +17,11 @@ VORA is a modern, high-fidelity talent matching and employer alignment platform 
 
 ### 👤 Talent Hub & Modernized Onboarding
 *   **Robust Multi-Step Onboarding**: Smoothly guides professionals through identity verification, interest mapping, and professional backgrounds.
+*   **Stage 1 Verdict & Interview Route Renovation**:
+    *   Renamed active assessment routes to `/interview/stage-1` for a clean applicant-facing layout.
+    *   Fully integrated asynchronous verdict evaluation (`GET .../gates/1/verdict`), introducing polling feedback spinners while scoring completes.
+    *   Renders dynamic LLM outcome content on pass (headlines, narrative logs, traits percentages, and next-stage window slots).
+    *   Renders targeted feedback on fail (gap metrics, diagnosis, recommended mentors, and future matches).
 *   **Bidirectional ISO-2 Translation**: Seamlessly translates user-friendly dropdown options (like `Nigeria`, `United Kingdom`) into standard 2-letter ISO codes (`NG`, `GB`) to conform with strict backend API schemas, while performing reverse-mapping to keep components fully populated and reactive upon page reloads.
 
 ### 🔒 Core Services & Security

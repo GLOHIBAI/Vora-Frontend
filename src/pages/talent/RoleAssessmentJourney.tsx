@@ -45,6 +45,13 @@ const WindowIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
+const LockClosedIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+);
+
 const ThresholdIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
@@ -212,6 +219,10 @@ const RoleAssessmentJourney: React.FC = () => {
     return readiness?.assessmentStatus === 'IN_PROGRESS';
   }, [readiness]);
 
+  const isLocked = useMemo(() => {
+    return readiness?.assessmentStatus === 'LOCKED' || readiness?.isLocked === true;
+  }, [readiness]);
+
   const gate1Tags = ['Personality', 'Values', 'Cognitive', 'Situational judgement'];
   const gate1EstimatedMinutes = '25 to 40 minutes';
   
@@ -306,17 +317,31 @@ const RoleAssessmentJourney: React.FC = () => {
                   : `Ready when you are, ${firstName}`}
             </div>
             <div className="text-[13.5px] text-[#808080] leading-[1.55]">
-              {isStage3Completed
-                ? "You have completed all assessment stages! Reach Africa's hiring panel is currently reviewing your application file."
-                : isStage2Completed 
-                  ? 'Your Stage 2 professional dimension scored 87/100, clearing the threshold. Stage 3 is a short asynchronous video interview about how you show up.' 
-                  : isStage2Unlocked 
-                    ? `${companyName}'s hiring panel has your full file. Stage 2 takes about 60 to 100 minutes, split across three parts. You can pause between them. Your progress saves automatically.`
-                    : `${companyName}'s hiring panel has your full file. Stage 1 takes about 35 minutes and is a single sitting. Your progress saves automatically.`}
+              {isLocked ? (
+                <span className="text-[#DC2626] font-[600]">Your previous assessment is locked. Please submit a new CV on your profile to reset and retry.</span>
+              ) : isStage3Completed ? (
+                "You have completed all assessment stages! Reach Africa's hiring panel is currently reviewing your application file."
+              ) : isStage2Completed ? (
+                'Your Stage 2 professional dimension scored 87/100, clearing the threshold. Stage 3 is a short asynchronous video interview about how you show up.'
+              ) : isStage2Unlocked ? (
+                `${companyName}'s hiring panel has your full file. Stage 2 takes about 60 to 100 minutes, split across three parts. You can pause between them. Your progress saves automatically.`
+              ) : (
+                `${companyName}'s hiring panel has your full file. Stage 1 takes about 35 minutes and is a single sitting. Your progress saves automatically.`
+              )}
             </div>
           </div>
           <div className="ml-auto flex items-end">
-            {isStage3Completed ? (
+            {isLocked ? (
+              <Button
+                onClick={() => navigate(`/onboarding/talent/${roleSlug}/cv`)}
+                fullWidth={false}
+                className="bg-[#DC2626] text-white shadow-[0_4px_14px_rgba(220,38,38,0.28)] hover:bg-[#B91C1C] flex items-center justify-center gap-2"
+                pill={false}
+              >
+                <LockClosedIcon className="w-4 h-4" />
+                Upload new CV to reset
+              </Button>
+            ) : isStage3Completed ? (
               <div className="flex items-center gap-1.5 text-[12px] font-[800] text-[#0047CC] bg-[#FAFCFF] border border-[#0047CC]/20 rounded-full px-4 py-2 uppercase tracking-[0.4px]">
                 <DocumentCheckIcon className="w-3.5 h-3.5" />
                 All stages complete
@@ -390,6 +415,10 @@ const RoleAssessmentJourney: React.FC = () => {
           {/* Stage 1 (active/complete) */}
           <div 
             onClick={() => {
+              if (isLocked) {
+                navigate(`/onboarding/talent/${roleSlug}/cv`);
+                return;
+              }
               if (!gate1Completed) {
                 if (hasStartedStage1) {
                   navigate(`/onboarding/talent/${roleSlug}/assessment/resume`);
@@ -400,25 +429,35 @@ const RoleAssessmentJourney: React.FC = () => {
             }}
             className={gate1Completed 
               ? "bg-white border-[1.5px] border-[#0047CC]/20 rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all z-[1]"
-              : "bg-gradient-to-b from-[#FAFCFF] to-white border-[1.5px] border-[#0047CC] rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all shadow-[0_8px_24px_rgba(0,71,204,0.1)] z-[1] cursor-pointer group"
+              : isLocked
+                ? "bg-white border-[1.5px] border-[#DC2626]/30 rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all z-[1] cursor-pointer group hover:border-[#DC2626]"
+                : "bg-gradient-to-b from-[#FAFCFF] to-white border-[1.5px] border-[#0047CC] rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all shadow-[0_8px_24px_rgba(0,71,204,0.1)] z-[1] cursor-pointer group"
             }
           >
-            <div className={`w-[54px] h-[54px] rounded-[14px] flex items-center justify-center shrink-0 relative z-[2] ${gate1Completed ? 'bg-gradient-to-br from-[#0047CC] to-[#387DFF] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)]' : 'text-[17px] font-[900] bg-gradient-to-br from-[#0047CC] to-[#387DFF] border-[1.5px] border-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.3)]'}`}>
-              {gate1Completed ? <DocumentCheckIcon className="w-[22px] h-[22px] stroke-[3]" /> : '01'}
+            <div className={`w-[54px] h-[54px] rounded-[14px] flex items-center justify-center shrink-0 relative z-[2] ${gate1Completed ? 'bg-gradient-to-br from-[#0047CC] to-[#387DFF] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)]' : isLocked ? 'bg-gradient-to-br from-[#DC2626] to-[#EF4444] text-white shadow-[0_4px_14px_rgba(220,38,38,0.28)]' : 'text-[17px] font-[900] bg-gradient-to-br from-[#0047CC] to-[#387DFF] border-[1.5px] border-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.3)]'}`}>
+              {gate1Completed ? <DocumentCheckIcon className="w-[22px] h-[22px] stroke-[3]" /> : isLocked ? <LockClosedIcon className="w-5 h-5 text-white" /> : '01'}
             </div>
             <div className="flex-1 min-w-0 pt-[2px]">
               <div className="text-[10.5px] font-[800] tracking-[0.8px] uppercase mb-[4px] text-[#0047CC]">
                 {gate1Completed
                   ? 'Stage 1 · Complete'
-                  : hasStartedStage1
-                    ? 'Stage 1 · In progress'
-                    : 'Starting here'}
+                  : isLocked
+                    ? 'Stage 1 · Locked'
+                    : hasStartedStage1
+                      ? 'Stage 1 · In progress'
+                      : 'Starting here'}
               </div>
               <div className="text-[17px] font-[600] text-[#1A1A1A] mb-[6px] tracking-[-0.2px] leading-[1.3]">Getting to know you</div>
-              <div className="text-[13.5px] text-[#4A4A4A] leading-[1.65] mb-[14px]">A relaxed first stage about how you think, what you value, and your instincts in real situations. No clinical recall required. Just be yourself.</div>
+              {isLocked ? (
+                <div className="text-[13px] text-[#DC2626] font-[600] leading-[1.5] mb-[14px]">
+                  Your assessment is locked. Please submit a new CV on your profile to request a reset.
+                </div>
+              ) : (
+                <div className="text-[13.5px] text-[#4A4A4A] leading-[1.65] mb-[14px]">A relaxed first stage about how you think, what you value, and your instincts in real situations. No clinical recall required. Just be yourself.</div>
+              )}
               <div className="flex flex-wrap gap-[6px] mb-[14px]">
                 {gate1Tags.map((item) => (
-                  <span key={item} className="text-[11px] font-[700] px-[10px] py-[4px] rounded-full border border-[#0047CC] bg-white text-[#0047CC]">{item}</span>
+                  <span key={item} className={`text-[11px] font-[700] px-[10px] py-[4px] rounded-full border bg-white ${isLocked ? 'border-[#DC2626]/40 text-[#DC2626]' : 'border-[#0047CC] text-[#0047CC]'}`}>{item}</span>
                 ))}
               </div>
               <div className="flex flex-wrap gap-[14px]">
@@ -439,9 +478,11 @@ const RoleAssessmentJourney: React.FC = () => {
             <div className={`absolute top-[22px] right-[22px] hidden sm:flex items-center gap-[6px] text-[11px] font-[800] px-[11px] py-[5px] rounded-full tracking-[0.4px] border transition-all duration-200 ${
               gate1Completed
                 ? 'bg-white border-[#0047CC] text-[#0047CC]'
-                : 'bg-white border-[#0047CC] text-[#0047CC] group-hover:bg-[#0047CC] group-hover:text-white group-hover:border-[#0047CC] hover:bg-[#0047CC] hover:text-white hover:border-[#0047CC] cursor-pointer'
+                : isLocked
+                  ? 'bg-white border-[#DC2626] text-[#DC2626] group-hover:bg-[#DC2626] group-hover:text-white group-hover:border-[#DC2626] cursor-pointer'
+                  : 'bg-white border-[#0047CC] text-[#0047CC] group-hover:bg-[#0047CC] group-hover:text-white group-hover:border-[#0047CC] cursor-pointer'
             }`}>
-              {gate1Completed ? 'Complete' : hasStartedStage1 ? 'Resume' : 'Start here'}
+              {gate1Completed ? 'Complete' : isLocked ? 'Locked' : hasStartedStage1 ? 'Resume' : 'Start here'}
             </div>
           </div>
 

@@ -197,6 +197,7 @@ const VerifyOTP: React.FC = () => {
             . Enter the code below to verify your email.
           </>
         }
+        showLogo={!isRoleFlow || !role}
       />
 
       <AuthFormCard className={isRoleFlow ? 'max-w-[470px]' : undefined}>

@@ -1,5 +1,6 @@
 import type { FormEventHandler, KeyboardEvent, MutableRefObject, ReactNode } from 'react';
 import FullPageSpinner from '../common/FullPageSpinner';
+import VoraLogo from '../common/VoraLogo';
 
 export const authFooterLinkClass =
   'font-medium text-[#60A5FA] hover:text-[#2563EB] transition-colors duration-200';
@@ -41,11 +42,17 @@ type AuthPageHeaderProps = {
   title: string;
   subtitle?: ReactNode;
   className?: string;
+  showLogo?: boolean;
 };
 
-export function AuthPageHeader({ title, subtitle, className = '' }: AuthPageHeaderProps) {
+export function AuthPageHeader({ title, subtitle, className = '', showLogo = true }: AuthPageHeaderProps) {
   return (
     <div className={`mb-8 text-center sm:mb-10 lg:mb-12 ${className}`}>
+      {showLogo && (
+        <div className="flex justify-center mb-6">
+          <VoraLogo size="lg" />
+        </div>
+      )}
       <h1 className="text-xl font-medium leading-tight tracking-[-0.01em] text-[#1C1C1C] sm:text-2xl sm:leading-[32px]">
         {title}
       </h1>

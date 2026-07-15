@@ -83,9 +83,6 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
     setScreenData(null);
     setError(null);
     setBootToken((n) => n + 1);
-    void queryClient.invalidateQueries({
-      queryKey: assessmentKeys.resumeState(assessmentId ?? "", 1),
-    });
   }, [assessmentId, queryClient]);
 
   useEffect(() => {
@@ -223,7 +220,10 @@ export const useGate1ScreenDraft = (
   assessmentId: string | null,
   screenData: AssessmentGateStartResponse | null,
 ) => {
-  const shouldLoadDraft = !!assessmentId && !!screenData?.componentId;
+  const shouldLoadDraft =
+    !!assessmentId &&
+    !!screenData?.componentId &&
+    screenData.sessionState === "resumed";
 
   return useAssessmentDraftQuery(
     assessmentId ?? "",

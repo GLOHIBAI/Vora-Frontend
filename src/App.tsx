@@ -1,5 +1,5 @@
-import { Suspense, lazy } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Suspense, lazy, useEffect } from 'react'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import MainLayout from './layout/MainLayout'
 import ProtectedDashboardLayout from './layout/ProtectedDashboardLayout'
 import EmployerRoute from './components/auth/EmployerRoute'
@@ -92,9 +92,24 @@ const JobPostedConfirmation = lazy(() => import('./pages/employer/JobPostedConfi
 const RoleLanding = lazy(() => import('./pages/public/RoleLanding'))
 const RoleSignup = lazy(() => import('./pages/auth/RoleSignup'))
 
+const ScrollToTop = () => {
+  const { pathname, search } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    const scrollContainers = document.querySelectorAll('.overflow-y-auto, main');
+    scrollContainers.forEach((container) => {
+      container.scrollTo(0, 0);
+    });
+  }, [pathname, search]);
+
+  return null;
+};
+
 const App = () => {
   return (
     <MainLayout>
+      <ScrollToTop />
       <Toaster
         position="top-right"
         reverseOrder={false}
@@ -140,7 +155,7 @@ const App = () => {
             <Route path="assessment/asks" element={<RoleEmployerAsks />} />
             <Route path="assessment/journey" element={<RoleAssessmentJourney />} />
             <Route path="assessment/stage-1" element={<RoleAssessmentIntro />} />
-            <Route path="assessment/gate-1/active" element={<RoleAssessmentGate1Active />} />
+            <Route path="interview/stage-1" element={<RoleAssessmentGate1Active />} />
             <Route path="assessment/gate-1/review" element={<RoleAssessmentGate1Review />} />
             <Route path="assessment/gate-1/verdict" element={<RoleAssessmentGate1Verdict />} />
             <Route path="assessment/session-1" element={<RoleAssessmentSessionInfo />} />

@@ -4,6 +4,11 @@ import toast from 'react-hot-toast';
 import VoraLogo from '../../components/common/VoraLogo';
 import Button from '../../components/common/Button';
 import { useAuth } from '../../context/AuthContext';
+import StageRail from '../../components/talent/StageRail';
+import { useGateVerdictQuery } from '../../services/queries/assessments';
+import { resolveGate1AssessmentId } from '../../config/gate1Api';
+import { unwrapAssessmentData } from '../../utils/assessmentSession';
+import type { GateVerdictResponse } from '../../services/queries/assessments/types';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -61,6 +66,12 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
   const { user } = useAuth();
   const firstName = user?.firstName || 'there';
 
+  const assessmentId = resolveGate1AssessmentId() ?? '';
+  const { data: verdictRaw } = useGateVerdictQuery(assessmentId, 1, {
+    enabled: !!assessmentId,
+  });
+  const verdict = unwrapAssessmentData<GateVerdictResponse>(verdictRaw);
+
   const handleNextStage = () => {
     localStorage.setItem('vora_stage2_unlocked', 'true');
     navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2`);
@@ -106,6 +117,30 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
     { name: 'Decisiveness', desc: 'Moving when more deliberation would cost more than it gains', val: 74 },
   ];
 
+  const getIconForStrength = (index: number) => {
+    switch (index) {
+      case 0: return <ClockIcon className="w-[20px] h-[20px]" />;
+      case 1: return <AwardIcon className="w-[20px] h-[20px]" />;
+      case 2: return <UsersIcon className="w-[20px] h-[20px]" />;
+      default: return <MessageSquareIcon className="w-[20px] h-[20px]" />;
+    }
+  };
+
+  const strengthsList = verdict?.strengths?.map((st, i) => ({
+    label: `Strength ${i + 1}`,
+    title: st.title,
+    desc: st.description,
+    icon: getIconForStrength(i),
+  })) || strengths;
+
+  const traitsList = verdict?.traits?.map(tr => ({
+    name: tr.label,
+    desc: tr.description,
+    val: tr.scorePercent,
+  })) || traits;
+
+  const displayScore = verdict?.score ?? 84;
+
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col relative pb-[80px]">
       <style>{`
@@ -144,29 +179,7 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
       </header>
 
       {/* Stage Rail */}
-      <div className="bg-white border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[10px] flex items-center justify-center gap-[10px] overflow-x-auto">
-        <div className="flex items-center gap-[6px] shrink-0">
-          <div className="w-[20px] h-[20px] rounded-full bg-[#0047CC] flex items-center justify-center text-white">
-            <DocumentCheckIcon className="w-[10px] h-[10px]" />
-          </div>
-          <div className="text-[11px] font-[700] text-[#808080]">Getting to know you</div>
-        </div>
-        <div className="w-[24px] h-[2px] bg-[#0047CC] rounded-[2px] shrink-0"></div>
-        <div className="flex items-center gap-[6px] shrink-0">
-          <div className="w-[20px] h-[20px] rounded-full bg-[#0047CC] shadow-[0_0_0_3px_rgba(0,71,204,0.12)] flex items-center justify-center text-[10px] font-[800] text-white">2</div>
-          <div className="text-[11px] font-[700] text-[#0047CC]">Professional dimension</div>
-        </div>
-        <div className="w-[24px] h-[2px] bg-[#E6E6E6] rounded-[2px] shrink-0"></div>
-        <div className="flex items-center gap-[6px] shrink-0">
-          <div className="w-[20px] h-[20px] rounded-full bg-[#E6E6E6] flex items-center justify-center text-[10px] font-[800] text-white">3</div>
-          <div className="text-[11px] font-[700] text-[#ADADAD]">How you show up</div>
-        </div>
-        <div className="w-[24px] h-[2px] bg-[#E6E6E6] rounded-[2px] shrink-0"></div>
-        <div className="flex items-center gap-[6px] shrink-0">
-          <div className="w-[20px] h-[20px] rounded-full bg-[#E6E6E6] flex items-center justify-center text-[10px] font-[800] text-white">4</div>
-          <div className="text-[11px] font-[700] text-[#ADADAD]">Final decision</div>
-        </div>
-      </div>
+      <StageRail activeStage={2} />
 
       {/* Hero (Deep Blue theme instead of green) */}
       <section className="bg-gradient-to-br from-[#0A1029] via-[#182348] to-[#0047CC] color-white text-white p-[46px_32px_38px] text-center relative overflow-hidden">
@@ -187,21 +200,41 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
           </div>
 
           <h1 className="text-[30px] font-[900] tracking-[-0.5px] leading-[1.2] mb-[10px]">
-            You came through clearly, {firstName}
+            {verdict?.headline || `You came through clearly, ${firstName}`}
           </h1>
           <p className="text-[15px] text-white/85 leading-[1.6] max-w-[580px] mx-auto">
-            Your responses across both sessions painted a coherent and credible picture of how you think and what you stand by. Here&apos;s exactly what we saw, and what happens next. You cleared the eighty per cent wall, so Stage 2 is now unlocked. The stages run in order, Stage 2 stays locked until Stage 1 is passed and Stage 3 until Stage 2 is passed, so reaching the next one means you genuinely met this one.
+            {verdict?.summary || `Your responses across both sessions painted a coherent and credible picture of how you think and what you stand by. Here's exactly what we saw, and what happens next. You cleared the eighty per cent wall, so Stage 2 is now unlocked. The stages run in order, Stage 2 stays locked until Stage 1 is passed and Stage 3 until Stage 2 is passed, so reaching the next one means you genuinely met this one.`}
           </p>
 
           {/* Score ring section */}
           <div className="flex justify-center items-center gap-[32px] mt-[28px] flex-wrap">
             <div className="relative w-[140px] h-[140px]">
               <svg className="w-[140px] h-[140px] transform rotate-[-90deg]">
-                <circle className="fill-none stroke-white/10 stroke-[10]" cx="70" cy="70" r="60"/>
-                <circle className="fill-none stroke-white stroke-[10] stroke-linecap-round stroke-dasharray-[377] fill-ring-anim" cx="70" cy="70" r="60"/>
+                <circle 
+                  cx="70" 
+                  cy="70" 
+                  r="60"
+                  fill="none"
+                  stroke="rgba(255, 255, 255, 0.15)"
+                  strokeWidth="10"
+                />
+                <circle 
+                  cx="70" 
+                  cy="70" 
+                  r="60"
+                  fill="none"
+                  stroke="#387DFF"
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                  style={{
+                    strokeDasharray: '377',
+                    strokeDashoffset: `${377 - (377 * displayScore) / 100}`,
+                    transition: 'stroke-dashoffset 1.5s ease-out',
+                  }}
+                />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-[34px] font-[900] leading-none">84%</span>
+                <span className="text-[34px] font-[900] leading-none">{displayScore}%</span>
                 <span className="text-[10px] font-[700] tracking-[1px] uppercase text-white/70 mt-[2px]">Stage 1 fit</span>
               </div>
             </div>
@@ -213,7 +246,7 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
                 Above the threshold required for this role
               </div>
               <div className="text-[13.5px] text-white/80 leading-[1.55]">
-                A Stage 1 fit of 80% or higher is the minimum for progressing to the professional dimension. Yours is comfortably above.
+                A Stage 1 fit of {verdict?.threshold ?? 80}% or higher is the minimum for progressing to the professional dimension. Yours is comfortably above.
               </div>
             </div>
           </div>
@@ -234,16 +267,26 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
           <h3 className="text-[16px] font-[800] text-[#1A1A1A] mb-[10px] tracking-[-0.2px]">
             Your Stage 1 picture
           </h3>
-          <p className="text-[14.5px] text-[#4A4A4A] leading-[1.7] mb-[10px]">
-            <span className="font-[800] text-[#0047CC]">{firstName}, </span>
-            across both sessions you read as someone who weighs decisions before moving, but doesn&apos;t get stuck in deliberation. When the maternal health outreach scenario hit you with a regulatory gap, you went staged and documented rather than either freezing or barreling ahead. That instinct repeated through the rest of the scenarios. It says you can hold the tension between doing the right thing and doing the thing that&apos;s needed right now.
-          </p>
-          <p className="text-[14.5px] text-[#4A4A4A] leading-[1.7] mb-[10px]">
-            Your values lean strongly toward consultative leadership, integrity over expedience, and protecting the people closest to the work. Your psychometric profile (high conscientiousness, high openness, moderate-high agreeableness, low neuroticism) lines up neatly with what your scenario answers showed. That alignment matters more than any single score, because it suggests how you say you are, and how you actually behave under pressure, are the same person.
-          </p>
-          <p className="text-[14.5px] text-[#4A4A4A] leading-[1.7]">
-            One nuance worth naming: you lean slightly toward caution over speed, which serves you well in ethical calls but may need balancing in fast-moving operational decisions. The hiring team at Reach Africa will see this in context, not as a flag.
-          </p>
+          {verdict?.narrativeParagraphs && verdict.narrativeParagraphs.length > 0 ? (
+            verdict.narrativeParagraphs.map((para, idx) => (
+              <p key={idx} className="text-[14.5px] text-[#4A4A4A] leading-[1.7] mb-[10px] last:mb-0">
+                {para}
+              </p>
+            ))
+          ) : (
+            <>
+              <p className="text-[14.5px] text-[#4A4A4A] leading-[1.7] mb-[10px]">
+                <span className="font-[900] text-[#1A1A1A]">{firstName}, </span>
+                across both sessions you read as someone who weighs decisions before moving, but doesn&apos;t get stuck in deliberation. When the maternal health outreach scenario hit you with a regulatory gap, you went staged and documented rather than either freezing or barreling ahead. That instinct repeated through the rest of the scenarios. It says you can hold the tension between doing the right thing and doing the thing that&apos;s needed right now.
+              </p>
+              <p className="text-[14.5px] text-[#4A4A4A] leading-[1.7] mb-[10px]">
+                Your values lean strongly toward consultative leadership, integrity over expedience, and protecting the people closest to the work. Your psychometric profile (high conscientiousness, high openness, moderate-high agreeableness, low neuroticism) lines up neatly with what your scenario answers showed. That alignment matters more than any single score, because it suggests how you say you are, and how you actually behave under pressure, are the same person.
+              </p>
+              <p className="text-[14.5px] text-[#4A4A4A] leading-[1.7]">
+                One nuance worth naming: you lean slightly toward caution over speed, which serves you well in ethical calls but may need balancing in fast-moving operational decisions. The hiring team at Reach Africa will see this in context, not as a flag.
+              </p>
+            </>
+          )}
         </div>
 
         <h2 className="text-[20px] font-[900] text-[#1A1A1A] tracking-[-0.3px] mb-[6px]">
@@ -255,18 +298,15 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
 
         {/* Strengths Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px] mb-[30px]">
-          {strengths.map((str, idx) => (
-            <div key={idx} className="bg-white border-[1.5px] border-[#E6E6E6] rounded-[14px] p-[18px_20px] relative overflow-hidden">
-              
-              <div className="w-[36px] h-[36px] rounded-[10px] bg-[#EBF6FF] text-[#0047CC] flex items-center justify-center mb-[12px]">
-                {str.icon}
+          {strengthsList.map((str) => (
+            <div key={str.label} className="bg-white border-[1.5px] border-[#E6E6E6] rounded-[16px] p-[20px_22px] flex flex-col justify-between">
+              <div className="flex justify-between items-start mb-[14px]">
+                <span className="text-[10px] font-[800] tracking-[1px] uppercase text-[#808080]">{str.label}</span>
+                <span className="text-[#0047CC]">{str.icon}</span>
               </div>
-              <div className="text-[10.5px] font-[800] tracking-[0.8px] uppercase text-[#0047CC] mb-[4px]">
-                {str.label}
-              </div>
-              <div className="text-[15px] font-[800] text-[#1A1A1A] mb-[6px] leading-[1.35]">
+              <h3 className="text-[15.5px] font-[900] text-[#1A1A1A] tracking-[-0.2px] mb-[4px] leading-snug">
                 {str.title}
-              </div>
+              </h3>
               <div className="text-[13px] text-[#808080] leading-[1.55]">
                 {str.desc}
               </div>
@@ -281,18 +321,18 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
               Trait-by-trait breakdown
             </h3>
             <div className="text-[12px] font-[700] text-[#808080] bg-[#F7F7F7] px-[10px] py-[4px] rounded-[100px]">
-              Overall: 84%
+              Overall: {displayScore}%
             </div>
           </div>
 
           <div className="flex flex-col">
-            {traits.map((tr) => (
+            {traitsList.map((tr) => (
               <div key={tr.name} className="p-[16px_22px] border-b border-[#F7F7F7] last:border-none flex flex-col sm:flex-row sm:items-center gap-[18px]">
                 <div className="flex-1 min-w-0">
                   <div className="text-[14px] font-[700] text-[#1A1A1A] mb-[4px]">{tr.name}</div>
                   <div className="text-[12.5px] text-[#808080] leading-[1.45]">{tr.desc}</div>
                 </div>
-                <div className="flex-[0_0_200px] w-full sm:w-auto flex items-center gap-[12px]">
+                <div className="w-full sm:w-[200px] sm:shrink-0 flex items-center gap-[12px]">
                   <div className="flex-1 h-[8px] bg-[#F7F7F7] rounded-[100px] overflow-hidden">
                     <div 
                       className="height-[100%] h-full rounded-[100px] bg-gradient-to-r from-[#387DFF] to-[#0047CC]" 
@@ -312,23 +352,23 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
         <div className="bg-gradient-to-br from-[#EBF6FF] to-[#F8FBFF] border-[1.5px] border-[#EBF6FF] rounded-[18px] p-[26px_28px] text-center mb-[18px] relative overflow-hidden">
           <div className="absolute top-[-40px] right-[-40px] w-[140px] h-[140px] rounded-full bg-[#0047CC]/5" />
           <div className="text-[11px] font-[800] tracking-[1px] uppercase text-[#0047CC] mb-[8px] relative z-10">
-            Stage 2 is now open
+            Stage {verdict?.nextStage?.gate ?? 2} is now open
           </div>
           <h3 className="text-[20px] font-[900] text-[#182348] tracking-[-0.3px] mb-[8px] leading-[1.3] relative z-10">
-            Ready to show us your professional side?
+            Ready to show us your {verdict?.nextStage?.label?.toLowerCase() || 'professional'} side?
           </h3>
           <p className="text-[14px] text-[#4A4A4A] leading-[1.6] mb-[20px] max-w-[520px] mx-auto relative z-10">
-            The next stage goes into the specific work itself. It&apos;s longer and the questions are tied directly to what a Senior Health Programme Officer at Reach Africa actually does day to day. You have 72 hours from now to complete it.
+            The next stage goes into the specific work itself. It&apos;s longer and the questions are tied directly to what a {verdict?.role?.roleTitle || 'Senior Health Programme Officer'} at {verdict?.role?.employerName || 'Reach Africa'} actually does day to day. You have {verdict?.nextStage?.windowHours ?? 72} hours from now to complete it.
           </p>
 
           <div className="flex justify-center gap-[18px] flex-wrap font-[600] text-[12px] text-[#808080] mb-[20px] relative z-10">
             <div className="flex items-center gap-[6px]">
               <ClockIcon className="w-[14px] h-[14px] text-[#0047CC]" />
-              Estimated 75 to 110 minutes
+              Estimated {verdict?.nextStage?.estimatedMinutesMin ?? 75} to {verdict?.nextStage?.estimatedMinutesMax ?? 110} minutes
             </div>
             <div className="flex items-center gap-[6px]">
               <MenuIcon className="w-[14px] h-[14px] text-[#0047CC]" />
-              Broken into 3 parts
+              Broken into {verdict?.nextStage?.partsCount ?? 3} parts
             </div>
             <div className="flex items-center gap-[6px]">
               <DocumentCheckIcon className="w-[14px] h-[14px] text-[#0047CC]" />
@@ -336,13 +376,15 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
             </div>
           </div>
 
-          <Button
-            onClick={handleNextStage}
-            className="rounded-[10px] px-[32px] py-[14px] transition-all font-sans inline-flex items-center justify-center gap-[8px] text-[14.5px] font-[700] border-none bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.32)] hover:bg-[#344DA1] hover:-translate-y-[1px] relative z-10"
-            fullWidth={false}
-          >
-            Continue to Stage 2
-          </Button>
+          <div className="flex justify-center relative z-10">
+            <Button
+              onClick={handleNextStage}
+              className="text-white bg-[#0047CC] shadow-[0_4px_14px_rgba(0,71,204,0.32)] hover:bg-[#344DA1] w-full sm:w-auto font-[800]"
+              pill={false}
+            >
+              Continue to Stage {verdict?.nextStage?.gate ?? 2}
+            </Button>
+          </div>
 
           <div className="relative z-10">
             <button 

@@ -28,7 +28,7 @@ const RoleApplyRestrictedModal: React.FC<RoleApplyRestrictedModalProps> = ({
       onClose={onContinue}
       footer={
         <div className="w-full pt-2">
-          <Button variant="primary" onClick={onContinue} fullWidth>
+          <Button variant="primary" pill={false} className="rounded-xl" onClick={onContinue} fullWidth>
             Got it
           </Button>
         </div>

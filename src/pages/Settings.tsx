@@ -1296,10 +1296,10 @@ const Settings: React.FC = () => {
         maxWidth="max-w-[480px]"
         footer={
           <div className="flex justify-end gap-3">
-            <Button variant="outline" type="button" fullWidth={false} onClick={() => setPwModalOpen(false)}>
+            <Button variant="outline" type="button" pill={false} className="rounded-xl" fullWidth={false} onClick={() => setPwModalOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit" form="change-password-form" fullWidth={false}>
+            <Button variant="primary" type="submit" pill={false} className="rounded-xl" form="change-password-form" fullWidth={false}>
               Change password
             </Button>
           </div>

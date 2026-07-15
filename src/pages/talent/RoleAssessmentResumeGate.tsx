@@ -205,7 +205,7 @@ const RoleAssessmentResumeGate: React.FC = () => {
         completedValue: '—',
         completedSub: 'screens in Stage 1',
         resumePath: isGate1ApiEnabled()
-          ? `/onboarding/talent/${roleSlug}/assessment/gate-1/active`
+          ? `/onboarding/talent/${roleSlug}/interview/stage-1`
           : `/onboarding/talent/${roleSlug}/assessment/session-1/situational`,
         showRegenerationNotice: false,
         rulesList: STAGE1_RULES,
@@ -275,7 +275,7 @@ const RoleAssessmentResumeGate: React.FC = () => {
           <div className="bg-gradient-to-br from-[#182348] to-[#0047CC] text-white p-[30px_36px_26px] relative overflow-hidden">
             <div className="absolute top-[-60px] right-[-60px] w-[200px] h-[200px] rounded-full bg-white/[0.05]" />
 
-            <div className="relative z-10 flex gap-[18px] items-center">
+            <div className="relative z-10 flex flex-col sm:flex-row gap-4 sm:gap-[18px] items-start sm:items-center">
               <div className="w-[60px] h-[60px] rounded-full bg-white/[0.16] border-2 border-white/[0.3] flex items-center justify-center text-white font-[900] text-[18px] shrink-0 backdrop-blur-[8px]">
                 {avatarText}
               </div>
@@ -396,22 +396,19 @@ const RoleAssessmentResumeGate: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex gap-[10px] flex-wrap">
+            <div className="flex flex-col-reverse sm:flex-row gap-[10px] items-stretch sm:items-center">
               <button
                 onClick={handleNotNow}
-                className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[14px_22px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7]"
+                className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-xl p-[14px_22px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] w-full sm:w-auto text-center"
               >
                 Not now
               </button>
 
               <button
                 onClick={handleResume}
-                className="flex-1 min-w-[200px] bg-[#0047CC] hover:bg-[#344DA1] text-white border-none rounded-[10px] p-[14px_24px] text-[14px] font-[700] cursor-pointer flex items-center justify-center gap-[8px] transition-all shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:translate-y-[-1px] hover:shadow-[0_6px_18px_rgba(0,71,204,0.36)]"
+                className="bg-[#0047CC] hover:bg-[#344DA1] text-white border-none rounded-xl p-[14px_24px] text-[14px] font-[700] cursor-pointer flex items-center justify-center gap-[8px] transition-all shadow-[0_4px_14px_rgba(0,71,204,0.28)] w-full sm:w-auto hover:translate-y-[-1px] hover:shadow-[0_6px_18px_rgba(0,71,204,0.36)]"
               >
                 Resume interview
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M3 8h10M9 4l4 4-4 4"/>
-                </svg>
               </button>
             </div>
           </div>

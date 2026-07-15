@@ -547,7 +547,8 @@ const EditVaultRole: React.FC = () => {
           variant="outline"
           fullWidth={false}
           size="md"
-          className="border-[#E6E6E6] text-[#4A4A4A] font-bold"
+          pill={false}
+          className="border-[#E6E6E6] text-[#4A4A4A] font-bold rounded-xl"
           onClick={() => navigate(vaultDashboardHref)}
         >
           Discard changes
@@ -555,8 +556,9 @@ const EditVaultRole: React.FC = () => {
         <Button
           fullWidth={false}
           size="md"
+          pill={false}
           disabled={!hasChanges}
-          className="bg-[#D97706] hover:bg-[#92400E] text-white font-bold disabled:opacity-45"
+          className="bg-[#D97706] hover:bg-[#92400E] text-white font-bold rounded-xl disabled:opacity-45"
           onClick={() => setConfirmOpen(true)}
         >
           Submit edit for review
@@ -574,7 +576,8 @@ const EditVaultRole: React.FC = () => {
               variant="outline"
               fullWidth
               size="md"
-              className="font-bold"
+              pill={false}
+              className="font-bold rounded-xl"
               onClick={() => setConfirmOpen(false)}
             >
               Go back and review
@@ -582,7 +585,8 @@ const EditVaultRole: React.FC = () => {
             <Button
               fullWidth
               size="md"
-              className="bg-[#D97706] hover:bg-[#92400E] text-white font-bold"
+              pill={false}
+              className="bg-[#D97706] hover:bg-[#92400E] text-white font-bold rounded-xl"
               onClick={handleSubmit}
             >
               Submit edit and enter 48hr review

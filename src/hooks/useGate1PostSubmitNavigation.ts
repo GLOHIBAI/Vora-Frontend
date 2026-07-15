@@ -1,8 +1,10 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { assessmentKeys } from '../services/queries/assessments';
 import { parseGateResumeState } from '../utils/assessmentSession';
 import { resolveGate1PostSubmitRoute } from '../utils/assessmentFlow';
-import type { Gate1ScreenKey, GateResumeState } from '../services/queries/assessments/types';
+import type { Gate1ScreenKey } from '../services/queries/assessments/types';
 
 interface UseGate1PostSubmitNavigationOptions {
   roleSlug: string;
@@ -12,23 +14,27 @@ interface UseGate1PostSubmitNavigationOptions {
   reloadAfterSubmit: () => void;
 }
 
-/** After submit: refetch resume-state (submit has no nextScreenKey) and route. */
+/** After submit: resolve next route directly from query cache state. */
 export const useGate1PostSubmitNavigation = ({
   roleSlug,
   assessmentId,
   finishedScreenKey,
-  refetchResumeState,
   reloadAfterSubmit,
 }: UseGate1PostSubmitNavigationOptions) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  return useCallback(async () => {
+  return useCallback(() => {
     if (!roleSlug || !assessmentId) {
       reloadAfterSubmit();
       return;
     }
-    const result = await refetchResumeState();
-    const fresh = parseGateResumeState((result as any).data);
+    
+    // Read the fresh state directly from the query client cache (which was just updated in onSuccess)
+    const cachedData = queryClient.getQueryData<unknown>(
+      assessmentKeys.resumeState(assessmentId, 1)
+    );
+    const fresh = parseGateResumeState(cachedData);
 
     if (!fresh) {
       reloadAfterSubmit();
@@ -52,8 +58,8 @@ export const useGate1PostSubmitNavigation = ({
     roleSlug,
     assessmentId,
     finishedScreenKey,
-    refetchResumeState,
     reloadAfterSubmit,
     navigate,
+    queryClient,
   ]);
 };

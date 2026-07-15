@@ -47,7 +47,8 @@ export interface Gate1ResumeViewModel {
 
 const DEFAULT_GATE1_WINDOW_SECONDS = 48 * 3600;
 
-const resolveScreenTimerLabel = (screenKey: Gate1ScreenKey): string => {
+const resolveScreenTimerLabel = (screenKey: Gate1ScreenKey | undefined | null): string => {
+  if (!screenKey) return 'Estimated time';
   if (screenKey.startsWith('sjt_') || screenKey === 'values_tradeoff') {
     return 'Section timer';
   }
@@ -58,10 +59,11 @@ const resolveScreenTimerLabel = (screenKey: Gate1ScreenKey): string => {
 };
 
 const resolveScreenTimerValue = (
-  screenKey: Gate1ScreenKey,
+  screenKey: Gate1ScreenKey | undefined | null,
   limitSeconds: number | undefined,
   catalog: AssessmentScreenCatalog[],
 ): string => {
+  if (!screenKey) return '—';
   if (limitSeconds != null && limitSeconds > 0) {
     return formatSecondsAsHms(limitSeconds);
   }
@@ -135,7 +137,7 @@ const buildViewModel = (
     completedSub: 'screens in Stage 1',
     showRegenerationNotice: hasInProgress,
     resumePath: isGate1ApiEnabled()
-      ? `/onboarding/talent/${roleSlug}/assessment/gate-1/active`
+      ? `/onboarding/talent/${roleSlug}/interview/stage-1`
       : `/onboarding/talent/${roleSlug}/assessment/session-1/situational`,
   };
 };

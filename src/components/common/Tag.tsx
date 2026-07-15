@@ -26,7 +26,7 @@ const Tag: React.FC<TagProps> = ({ label, onRemove, className = '', variant = 'b
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-full animate-in fade-in zoom-in-95 duration-200 border max-w-full break-words whitespace-normal text-left ${styles[variant] || styles.blue} ${className}`}
+      className={`inline-flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-[11px] font-medium px-2 sm:px-3 py-0.5 sm:py-1.5 rounded-full animate-in fade-in zoom-in-95 duration-200 border max-w-full break-words whitespace-normal text-left ${styles[variant] || styles.blue} ${className}`}
     >
       {label}
       {onRemove && (
@@ -36,9 +36,9 @@ const Tag: React.FC<TagProps> = ({ label, onRemove, className = '', variant = 'b
             e.stopPropagation();
             onRemove();
           }}
-          className="cursor-pointer transition-colors focus:outline-none opacity-60 hover:opacity-100 ml-1"
+          className="cursor-pointer transition-colors focus:outline-none opacity-60 hover:opacity-100 ml-0.5 sm:ml-1"
         >
-          <CloseIcon className="w-3.5 h-3.5" />
+          <CloseIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
         </button>
       )}
     </span>

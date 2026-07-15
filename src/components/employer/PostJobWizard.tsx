@@ -171,6 +171,8 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
   const [isPollingFinished, setIsPollingFinished] = useState(false);
   const [parseStatus, setParseStatus] = useState<'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'>('PENDING');
 
+  const isWizardLoading = isProceeding || isSavingDraft || (!!initialConfig?.isPrefilled && !isPollingFinished);
+
   const { data: prefillRes } = useGetRolePostingPrefillQuery(rolePostingId || '', {
     enabled: isOpen && !!rolePostingId && !!initialConfig?.isPrefilled && !isPollingFinished,
     refetchInterval: 3000,
@@ -193,7 +195,11 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
           setShowPrefillBanner(false);
         } else {
           setIsPollingFinished(true);
-          setShowPrefillBanner(true);
+          setShowPrefillBanner(false);
+          toast.success(
+            "We have pre-filled your job post using your uploaded document. Review each section and make any changes before publishing.",
+            { duration: 6000 }
+          );
         }
       }
     }
@@ -1470,6 +1476,24 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
   }, [isOpen]);
 
   useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTop = 0;
+    }
+  }, [currentStep]);
+
+  useEffect(() => {
+    if (currentStep === 6) {
+      toast(
+        "Click Edit on any card below to jump directly to that section. Nothing is posted or charged until you confirm payment.",
+        {
+          icon: 'ℹ️',
+          duration: 6000,
+        }
+      );
+    }
+  }, [currentStep]);
+
+  useEffect(() => {
     if (!isCheckoutOpen) return;
     document.body.style.overflow = 'hidden';
   }, [isCheckoutOpen]);
@@ -1478,6 +1502,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
   if (!isEmployer) return null;
 
   const prevStep = () => {
+    if (isWizardLoading) return;
     setFieldErrors({});
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
@@ -1579,6 +1604,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
             steps={STEPS}
             currentStep={currentStep}
             onStepClick={(stepId) => {
+              if (isWizardLoading) return;
               if (stepId < currentStep) jumpToStep(stepId);
             }}
           />
@@ -1589,12 +1615,18 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
           <div ref={contentRef} className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
             {/* Mobile Step Nav Dropdown */}
             <button
-              onClick={() => setIsMobStepNavOpen(!isMobStepNavOpen)}
-              className="mt-4 flex lg:hidden items-center justify-between px-6 py-3.5 bg-white border-b border-[#E6E6E6] text-[13px] font-medium text-[#4A4A4A] w-full cursor-pointer"
+              onClick={() => {
+                if (isWizardLoading) return;
+                setIsMobStepNavOpen(!isMobStepNavOpen);
+              }}
+              disabled={isWizardLoading}
+              className="mt-4 flex lg:hidden items-center justify-between px-6 py-3.5 bg-white border-b border-[#E6E6E6] text-[13px] font-medium text-[#4A4A4A] w-full cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span>
                 Step {currentStep} of {WIZARD_STEP_COUNT}: {getWizardStepTitle(currentStep)}
-                {currentStep < WIZARD_STEP_COUNT ? ', tap a completed step to edit' : ''}
+                <span className="hidden sm:inline">
+                  {currentStep < WIZARD_STEP_COUNT ? ', tap a completed step to edit' : ''}
+                </span>
               </span>
               <svg
                 width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -1611,6 +1643,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                   currentStep={currentStep}
                   size="sm"
                   onStepClick={(stepId) => {
+                    if (isWizardLoading) return;
                     if (stepId < currentStep) jumpToStep(stepId);
                     setIsMobStepNavOpen(false);
                   }}
@@ -1620,7 +1653,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
 
             <div className="px-5 py-6 md:px-10 md:py-8 space-y-5">
               {initialConfig?.isPrefilled && !isPollingFinished ? (
-                <div className="flex flex-col items-center justify-center py-32 text-center animate-in fade-in duration-300 bg-white border border-[#E6E6E6] rounded-xl shadow-sm">
+                <div className="flex flex-col items-center justify-center py-20 sm:py-32 px-4 sm:px-6 text-center animate-in fade-in duration-300 bg-white border border-[#E6E6E6] rounded-xl shadow-sm">
                   {parseStatus === 'FAILED' ? (
                     <>
                       <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mb-5">
@@ -1653,17 +1686,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                 </div>
               ) : (
                 <>
-                  {/* Prefill Notification Banner */}
-                  {showPrefillBanner && (
-                    <AlertBanner
-                      variant="blue"
-                      className="animate-in fade-in duration-300"
-                      onDismiss={() => setShowPrefillBanner(false)}
-                    >
-                      We have pre-filled your job post using your uploaded document. Review each section and make
-                      any changes before publishing.
-                    </AlertBanner>
-                  )}
+                  {/* Prefill Notification Banner (converted to toast) */}
 
                   {/* STEP 1: ROLE DETAILS */}
                   {currentStep === 1 && (
@@ -1853,7 +1876,8 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                               <button
                                 type="button"
                                 onClick={() => handleAddLocation()}
-                                className="shrink-0 px-4 py-2.5 rounded-lg bg-[#0047CC] text-white text-[13px] font-bold cursor-pointer hover:bg-[#003d99] transition-colors"
+                                disabled={!newLocationInput.trim()}
+                                className="shrink-0 px-4 py-2.5 rounded-lg bg-[#0047CC] text-white text-[13px] font-bold cursor-pointer hover:bg-[#003d99] transition-colors disabled:bg-[#E6E6E6] disabled:text-[#ADADAD] disabled:cursor-not-allowed"
                               >
                                 Add
                               </button>
@@ -2932,13 +2956,15 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
           </div>
 
           {/* Bottom actions, always visible; form scrolls above */}
-          <div className="min-h-[64px] bg-white border-t border-[#E6E6E6] px-6 md:px-8 py-4 flex items-center justify-between shrink-0 z-[5]">
+          <div className="min-h-[64px] bg-white border-t border-[#E6E6E6] px-3 sm:px-6 md:px-8 py-3 sm:py-4 flex items-center justify-between shrink-0 z-[5]">
             {currentStep > 1 ? (
               <Button
                 variant="outline"
                 fullWidth={false}
+                pill={false}
                 onClick={prevStep}
-                className="px-6 min-h-[38px] border-[#E6E6E6] text-[#4A4A4A] font-bold text-xs rounded-full flex items-center gap-1 hover:bg-gray-50 transition-all cursor-pointer"
+                disabled={isWizardLoading}
+                className="px-2.5 sm:px-4 min-h-[32px] sm:min-h-[38px] border-[#E6E6E6] text-[#4A4A4A] font-bold text-[10px] sm:text-xs rounded-xl flex items-center gap-1 hover:bg-gray-50 transition-all cursor-pointer"
               >
                 Back
               </Button>
@@ -2946,13 +2972,14 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
               <div />
             )}
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5 sm:gap-3">
               <Button
                 variant="outline"
                 fullWidth={false}
+                pill={false}
                 onClick={handleSaveDraft}
-                disabled={isProceeding || isSavingDraft}
-                className="px-6 min-h-[38px] border-[#E6E6E6] text-[#4A4A4A] font-bold text-xs rounded-full hover:bg-gray-50 transition-all cursor-pointer"
+                disabled={isWizardLoading}
+                className="px-2.5 sm:px-5 min-h-[32px] sm:min-h-[38px] border-[#E6E6E6] text-[#4A4A4A] font-bold text-[10px] sm:text-xs rounded-xl hover:bg-gray-50 transition-all cursor-pointer"
               >
                 Save as draft
               </Button>
@@ -2960,11 +2987,19 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                 onClick={currentStep === 6 ? handleFinalStep : handleNextStep}
                 isLoading={isProceeding}
                 loadingLabel="Proceeding"
-                disabled={isProceeding || isSavingDraft}
+                disabled={isWizardLoading}
                 fullWidth={false}
-                className="px-7 min-h-[38px] bg-[#0047CC] hover:bg-[#003d99] text-white font-bold text-xs rounded-full flex items-center gap-1.5 transition-all cursor-pointer shadow-none"
+                pill={false}
+                className="px-3 sm:px-5 min-h-[32px] sm:min-h-[38px] bg-[#0047CC] hover:bg-[#003d99] text-white font-bold text-[10px] sm:text-xs rounded-xl flex items-center gap-1 sm:gap-1.5 transition-all cursor-pointer shadow-none"
               >
-                {currentStep === 6 ? 'Continue to payment' : 'Proceed'}
+                {currentStep === 6 ? (
+                  <>
+                    <span className="inline sm:hidden">Continue</span>
+                    <span className="hidden sm:inline">Continue to payment</span>
+                  </>
+                ) : (
+                  'Proceed'
+                )}
               </Button>
             </div>
           </div>
