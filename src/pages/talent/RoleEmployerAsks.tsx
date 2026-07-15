@@ -988,7 +988,7 @@ const RoleEmployerAsks: React.FC = () => {
       </main>
 
       <footer className="fixed bottom-0 left-0 right-0 w-full bg-white/95 backdrop-blur-[10px] border-t border-[#E6E6E6] p-3.5 sm:px-8 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-[12px] z-[50]">
-        <div className="text-[12.5px] text-[#4A4A4A] font-[600] flex flex-row items-center gap-2 sm:gap-[10px]">
+        <div className="text-[12.5px] text-[#4A4A4A] font-[600] flex flex-row items-center gap-2 sm:gap-[10px] min-w-0">
           <span className="text-[#0047CC] text-[12.5px] font-[800] whitespace-nowrap shrink-0">
             {localCompletedRequired} of {totalRequired} done
           </span>
@@ -1003,11 +1003,11 @@ const RoleEmployerAsks: React.FC = () => {
             )}
           </span>
         </div>
-        <div className="flex items-center gap-2.5 sm:gap-[10px] w-full sm:w-auto">
+        <div className="flex items-center gap-2.5 sm:gap-[10px] w-full sm:w-auto shrink-0">
           <button
             type="button"
             onClick={handleSaveAndExit}
-            className="flex-1 sm:flex-initial bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-xl px-3 sm:px-[20px] py-2.5 sm:py-[13px] text-xs sm:text-[14px] font-[700] hover:border-[#ADADAD] transition-colors cursor-pointer whitespace-nowrap text-center justify-center flex items-center"
+            className="flex-1 sm:flex-initial bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-xl px-3 sm:px-[20px] py-2.5 sm:py-[13px] text-xs sm:text-[14px] font-[700] hover:border-[#ADADAD] transition-colors cursor-pointer whitespace-nowrap text-center justify-center flex items-center shrink-0"
           >
             Save and exit
           </button>
@@ -1015,7 +1015,7 @@ const RoleEmployerAsks: React.FC = () => {
             type="button"
             disabled={!canSubmit || isSubmitting}
             onClick={handleSubmit}
-            className={`flex-1 sm:flex-initial rounded-xl px-4 sm:px-[26px] py-2.5 sm:py-[13px] text-xs sm:text-[14px] font-[700] cursor-pointer font-sans inline-flex items-center justify-center gap-[8px] transition-all border-none whitespace-nowrap ${(canSubmit && !isSubmitting)
+            className={`flex-1 sm:flex-initial rounded-xl px-4 sm:px-[26px] py-2.5 sm:py-[13px] text-xs sm:text-[14px] font-[700] cursor-pointer font-sans inline-flex items-center justify-center gap-[8px] transition-all border-none whitespace-nowrap shrink-0 ${(canSubmit && !isSubmitting)
                 ? 'bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px]'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
               }`}
