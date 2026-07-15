@@ -287,7 +287,7 @@ export const useSubmitAssessmentScreenMutation = () => {
         auth: true,
       });
     },
-    onSuccess: (data, { assessmentId }) => {
+    onSuccess: (data: any, { assessmentId }) => {
       const normalized = data?.data || data;
       if (normalized) {
         queryClient.setQueryData<GateResumeState>(

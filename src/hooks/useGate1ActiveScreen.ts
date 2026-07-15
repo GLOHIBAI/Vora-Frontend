@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "react-router-dom";
 import {
   assessmentKeys,
   useAssessmentDraftQuery,
@@ -37,7 +38,12 @@ interface UseGate1ActiveScreenResult {
 
 export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
   const queryClient = useQueryClient();
+  const location = useLocation();
   const assessmentId = resolveGate1AssessmentId();
+
+  const startFresh = useMemo(() => {
+    return (location.state as any)?.startFresh === true;
+  }, [location.state]);
 
   const [screenData, setScreenData] =
     useState<AssessmentGateStartResponse | null>(null);
@@ -54,12 +60,27 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
     isFetched: resumeFetched,
     refetch: refetchResumeState,
   } = useGateResumeStateQuery(assessmentId ?? "", 1, {
-    enabled: !!assessmentId,
+    enabled: !!assessmentId && !startFresh,
   });
 
+  const initialState = useMemo((): GateResumeState => ({
+    assessmentId: assessmentId ?? "",
+    session: 1,
+    sessionLabel: "How you think",
+    nextScreenKey: "personality" as any,
+    completedScreenKeys: [],
+    session1Screens: ["personality", "values", "cognitive_fixed", "numerical", "pattern", "verbal"],
+    session2Screens: ["sjt_single_best", "sjt_rank", "sjt_most_least", "sjt_multi_select", "values_tradeoff"],
+    gate1Complete: false,
+    inProgress: null,
+  }), [assessmentId]);
+
   const resumeState = useMemo(
-    () => parseGateResumeState(resumeRaw),
-    [resumeRaw],
+    () => {
+      if (startFresh) return initialState;
+      return parseGateResumeState(resumeRaw);
+    },
+    [resumeRaw, startFresh, initialState],
   );
 
   const resumeSnapshot = useMemo(
@@ -86,13 +107,13 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
   }, [assessmentId, queryClient]);
 
   useEffect(() => {
-    if (!assessmentId || !resumeFetched || resumeLoading) return;
+    if (!assessmentId || (!startFresh && (!resumeFetched || resumeLoading))) return;
     if (!resumeState) {
       setError(
         "Could not load your assessment progress. Return to the journey and try again.",
       );
     }
-  }, [assessmentId, resumeFetched, resumeLoading, resumeState]);
+  }, [assessmentId, resumeFetched, resumeLoading, resumeState, startFresh]);
 
   useEffect(() => {
     if (!assessmentId) {
@@ -101,7 +122,7 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
       );
       return;
     }
-    if (!resumeFetched || !resumeState) return;
+    if ((!startFresh && !resumeFetched) || !resumeState) return;
     if (resumeState.gate1Complete) return;
 
     const screenKey = resolveGate1StartScreenKey(resumeState);
@@ -186,13 +207,14 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
     resumeSnapshot,
     resumeState,
     bootToken,
+    startFresh,
     startScreenAsync,
     queryClient,
     refetchResumeState,
   ]);
 
   const isLoading =
-    (!!assessmentId && resumeLoading) ||
+    (!!assessmentId && !startFresh && resumeLoading) ||
     isBooting ||
     (!!assessmentId &&
       !!resumeState &&

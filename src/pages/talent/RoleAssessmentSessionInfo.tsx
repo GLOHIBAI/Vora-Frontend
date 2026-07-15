@@ -124,7 +124,7 @@ const RoleAssessmentSessionInfo: React.FC = () => {
       }
 
       if (isGate1ApiEnabled()) {
-        navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
+        navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`, { state: { startFresh: true } });
       } else {
         navigate(`/onboarding/talent/${roleSlug}/assessment/session-1/psychometric`);
       }

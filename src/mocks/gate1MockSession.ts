@@ -305,6 +305,6 @@ export const mockGate1Verdict = async (): Promise<GateVerdictResponse> => {
     gate: 1,
     verdict: 'pass',
     score: 0.82,
-    cutScore: 0.7,
+    threshold: 0.7,
   };
 };
