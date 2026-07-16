@@ -67,7 +67,11 @@ const RoleAssessmentGate1Verdict: React.FC = () => {
     navigate(`/onboarding/talent/${roleSlug}/assessment/session-2/outcome`, { replace: true });
   }, [verdict, roleSlug, navigate]);
 
-  const currentPercent = Math.round(((activeStep + 1) / SCORING_STEPS.length) * 100);
+  const isGeneratingOrPending = !verdict || verdict.status === 'generating' || verdict.verdict === 'pending';
+  let currentPercent = Math.round(((activeStep + 1) / SCORING_STEPS.length) * 100);
+  if (isGeneratingOrPending && currentPercent >= 100) {
+    currentPercent = 95;
+  }
 
   return (
     <div className="min-h-screen bg-[#F7F7F7] flex flex-col items-center justify-center p-6">

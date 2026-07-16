@@ -101,6 +101,13 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
                     <span className="text-[10.5px] font-[800] tracking-[0.8px] text-[#0047CC] uppercase block">
                       Question {qIdx + 1} of {content.questions.length}
                     </span>
+                    {q.scenario && (
+                      <div className="bg-[#F9FAFB] border border-[#E6E6E6] rounded-xl p-4">
+                        <p className="text-[14.5px] text-[#2D2D2D] text-center font-semibold whitespace-pre-line leading-relaxed">
+                          {String(q.scenario)}
+                        </p>
+                      </div>
+                    )}
                     <h3 className="text-[15.5px] font-[800] text-[#1A1A1A] leading-snug">
                       {String(q.prompt)}
                     </h3>

@@ -1,11 +1,13 @@
 import { Suspense, lazy, useEffect } from 'react'
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import MainLayout from './layout/MainLayout'
 import ProtectedDashboardLayout from './layout/ProtectedDashboardLayout'
 import EmployerRoute from './components/auth/EmployerRoute'
-import { Toaster } from 'react-hot-toast'
+import { Toaster, toast } from 'react-hot-toast'
 import { defaultToastOptions } from './config/toastOptions'
 import FullPageSpinner from './components/common/FullPageSpinner'
+import { useOnlineStatus } from './hooks/useOnlineStatus'
+import OfflineFallback from './components/common/OfflineFallback'
 
 // Lazy load pages for performance
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -107,6 +109,48 @@ const ScrollToTop = () => {
 };
 
 const App = () => {
+  const isOnline = useOnlineStatus();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!isOnline) {
+      const isAssessmentOrInterview = 
+        location.pathname.includes('/assessment') || 
+        location.pathname.includes('/interview');
+
+      if (isAssessmentOrInterview) {
+        // Try to trigger the 'Save & finish later' button in the page if it exists
+        const buttons = Array.from(document.querySelectorAll('button'));
+        const saveButton = buttons.find(btn => {
+          const text = btn.textContent?.toLowerCase() || '';
+          return text.includes('save & finish later') || text.includes('save and finish later');
+        });
+
+        if (saveButton) {
+          saveButton.click();
+        } else {
+          // If no button is found, fall back directly to dashboard
+          navigate('/dashboard');
+        }
+        
+        toast.error('Connection lost. Saving progress and returning to the dashboard.', {
+          id: 'offline-assessment-redirect',
+          duration: 5000,
+        });
+      } else {
+        // For other pages, redirect to dashboard if not already there
+        if (location.pathname !== '/dashboard' && location.pathname !== '/login') {
+          navigate('/dashboard');
+          toast.error('Connection lost. Please check your internet connection.', {
+            id: 'offline-redirect',
+            duration: 5000,
+          });
+        }
+      }
+    }
+  }, [isOnline, location.pathname, navigate]);
+
   return (
     <MainLayout>
       <ScrollToTop />
@@ -147,7 +191,7 @@ const App = () => {
           {/* Normal Onboarding Routes */}
           <Route path="/onboarding/talent" element={<TalentOnboarding />} />
 
-          {/* Job-Link Role Apply Routes (Dynamic & Protected) */}
+          {/* Job-Link RoDynamic & Protected) */}
           <Route path="/onboarding/talent/:roleSlug" element={<RoleApplyRoute />}>
             <Route path="cv" element={<RoleCvUpload />} />
             <Route path="match" element={<RoleProfileMatchBuilding />} />

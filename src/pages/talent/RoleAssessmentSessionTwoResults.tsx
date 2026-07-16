@@ -186,7 +186,7 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
         <div className="absolute top-[-80px] right-[-80px] w-[280px] h-[280px] rounded-full bg-[#387DFF]/10" />
         <div className="absolute bottom-[-100px] left-[-60px] w-[300px] h-[300px] rounded-full bg-white/5" />
         
-        <div className="relative z-10 max-w-[780px] mx-auto">
+        <div className="relative z-10 max-w-[780px] mx-auto text-center">
           {/* Check Ring */}
           <div className="w-[92px] h-[92px] rounded-full mx-auto mb-[22px] flex items-center justify-center bg-white/10 border-2 border-white/30 backdrop-blur-[8px] relative check-ring-pulse">
             <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
@@ -199,15 +199,8 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
             <span className="text-[11px] font-[800] tracking-[0.7px] color-white uppercase">Stage 1 cleared</span>
           </div>
 
-          <h1 className="text-[30px] font-[900] tracking-[-0.5px] leading-[1.2] mb-[10px]">
-            {verdict?.headline || `You came through clearly, ${firstName}`}
-          </h1>
-          <p className="text-[15px] text-white/85 leading-[1.6] max-w-[580px] mx-auto">
-            {verdict?.summary || `Your responses across both sessions painted a coherent and credible picture of how you think and what you stand by. Here's exactly what we saw, and what happens next. You cleared the eighty per cent wall, so Stage 2 is now unlocked. The stages run in order, Stage 2 stays locked until Stage 1 is passed and Stage 3 until Stage 2 is passed, so reaching the next one means you genuinely met this one.`}
-          </p>
-
           {/* Score ring section */}
-          <div className="flex justify-center items-center gap-[32px] mt-[28px] flex-wrap">
+          <div className="flex justify-center mb-6">
             <div className="relative w-[140px] h-[140px]">
               <svg className="w-[140px] h-[140px] transform rotate-[-90deg]">
                 <circle 
@@ -238,16 +231,25 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
                 <span className="text-[10px] font-[700] tracking-[1px] uppercase text-white/70 mt-[2px]">Stage 1 fit</span>
               </div>
             </div>
-            <div className="text-left max-w-[280px]">
-              <div className="text-[10.5px] font-[800] tracking-[0.8px] uppercase text-white/65 mb-[6px]">
-                What this score means
-              </div>
-              <div className="text-[18px] font-[800] tracking-[-0.2px] leading-[1.3] mb-[5px]">
-                Above the threshold required for this role
-              </div>
-              <div className="text-[13.5px] text-white/80 leading-[1.55]">
-                A Stage 1 fit of {verdict?.threshold ?? 80}% or higher is the minimum for progressing to the professional dimension. Yours is comfortably above.
-              </div>
+          </div>
+
+          <h1 className="text-[30px] font-[900] tracking-[-0.5px] leading-[1.2] mb-[10px]">
+            {verdict?.headline || `You came through clearly, ${firstName}`}
+          </h1>
+          <p className="text-[15px] text-white/85 leading-[1.6] max-w-[580px] mx-auto mb-[28px]">
+            {verdict?.summary || `Your responses across both sessions painted a coherent and credible picture of how you think and what you stand by. Here's exactly what we saw, and what happens next. You cleared the eighty per cent wall, so Stage 2 is now unlocked. The stages run in order, Stage 2 stays locked until Stage 1 is passed and Stage 3 until Stage 2 is passed, so reaching the next one means you genuinely met this one.`}
+          </p>
+
+          {/* What this score means section (Centered) */}
+          <div className="max-w-[480px] mx-auto bg-white/10 border border-white/15 rounded-[16px] p-6 text-center backdrop-blur-[6px]">
+            <div className="text-[10.5px] font-[800] tracking-[0.8px] uppercase text-white/65 mb-[6px]">
+              What this score means
+            </div>
+            <div className="text-[18px] font-[800] tracking-[-0.2px] leading-[1.3] mb-[5px]">
+              Above the threshold required for this role
+            </div>
+            <div className="text-[13.5px] text-white/80 leading-[1.55]">
+              A Stage 1 fit of {verdict?.threshold ?? 80}% or higher is the minimum for progressing to the professional dimension. Yours is comfortably above.
             </div>
           </div>
         </div>

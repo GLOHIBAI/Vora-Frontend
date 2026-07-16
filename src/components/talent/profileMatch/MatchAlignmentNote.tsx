@@ -5,7 +5,7 @@ const MatchAlignmentNote: React.FC = () => (
     </h2>
     <p className="text-[13px] text-[#808080] leading-relaxed">
       Some employers add a brief <strong className="text-[#4A4A4A] font-medium">team alignment session</strong>{' '}
-      (video or in-person) after assessment, a short conversation to check team culture fit and
+      (video or in-person) after your interview, a short conversation to check team culture fit and
       working style. Not every role has one. But if you are invited to one,{' '}
       <strong className="text-[#4A4A4A] font-medium">treat it as a near-certain offer</strong>. The technical
       screening is done; they are just deciding where to seat you.

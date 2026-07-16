@@ -161,29 +161,69 @@ async function fetchWithInterceptors(options: ApiRequestOptions): Promise<any> {
     reqBody = JSON.stringify(body);
   }
 
-  let response = await fetch(fullUrl, {
-    ...fetchOptions,
-    headers,
-    body: reqBody,
-  });
+  let response: Response;
+  try {
+    response = await fetch(fullUrl, {
+      ...fetchOptions,
+      headers,
+      body: reqBody,
+    });
 
-  if (response.status === 401 && authToken === 'access') {
-    // Attempt token refresh
-    const refreshed = await singleFlightRefresh();
-    if (refreshed) {
-      // Retry original request with new token
-      const newToken = localStorage.getItem('auth_token');
-      if (newToken) headers.set('Authorization', `Bearer ${newToken}`);
-      response = await fetch(fullUrl, {
-        ...fetchOptions,
-        headers,
-        body: reqBody,
-      });
-    } else {
-      // Refresh failed, trigger global logout
-      localStorage.removeItem('auth_token');
-      window.dispatchEvent(new Event('auth:unauthorized'));
+    if (response.status === 401 && authToken === 'access') {
+      // Attempt token refresh
+      const refreshed = await singleFlightRefresh();
+      if (refreshed) {
+        // Retry original request with new token
+        const newToken = localStorage.getItem('auth_token');
+        if (newToken) headers.set('Authorization', `Bearer ${newToken}`);
+        response = await fetch(fullUrl, {
+          ...fetchOptions,
+          headers,
+          body: reqBody,
+        });
+      } else {
+        // Refresh failed, trigger global logout
+        localStorage.removeItem('auth_token');
+        window.dispatchEvent(new Event('auth:unauthorized'));
+      }
     }
+  } catch (error) {
+    const isNetworkError = error instanceof TypeError || (error as any).message?.includes('fetch');
+    const cleanMessage = isNetworkError
+      ? 'Network error. Please check your internet connection.'
+      : (error as Error).message || 'Something went wrong';
+
+    const apiError: ApiError = {
+      message: cleanMessage,
+      status: 0,
+    };
+
+    if (!suppressErrorToast) {
+      toast.error(
+        React.createElement(
+          'div',
+          { style: { display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'left' } },
+          React.createElement(
+            'div',
+            { key: 0, style: { fontSize: '13px', lineHeight: '1.4', fontWeight: 500 } },
+            cleanMessage
+          )
+        ),
+        {
+          duration: 6000,
+          style: {
+            background: '#fff',
+            color: '#333',
+            border: '1px solid #ecc9c9',
+            padding: '12px 16px',
+            maxWidth: '450px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+          }
+        }
+      );
+    }
+
+    throw apiError;
   }
 
   // Read response

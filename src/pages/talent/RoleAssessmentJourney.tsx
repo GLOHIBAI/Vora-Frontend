@@ -440,16 +440,18 @@ const RoleAssessmentJourney: React.FC = () => {
                 navigate(`/onboarding/talent/${roleSlug}/cv`);
                 return;
               }
-              if (!gate1Completed) {
-                if (hasStartedStage1) {
-                  navigate(`/onboarding/talent/${roleSlug}/assessment/resume`);
-                } else {
-                  void handleStart();
-                }
+              if (gate1Completed) {
+                navigate(`/onboarding/talent/${roleSlug}/assessment/session-2/results`);
+                return;
+              }
+              if (hasStartedStage1) {
+                navigate(`/onboarding/talent/${roleSlug}/assessment/resume`);
+              } else {
+                void handleStart();
               }
             }}
             className={gate1Completed 
-              ? "bg-white border-[1.5px] border-[#0047CC]/20 rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all z-[1]"
+              ? "bg-white border-[1.5px] border-[#0047CC]/20 rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all z-[1] cursor-pointer group hover:border-[#0047CC] hover:shadow-[0_8px_24px_rgba(0,71,204,0.05)]"
               : isLocked
                 ? "bg-white border-[1.5px] border-[#DC2626]/30 rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all z-[1] cursor-pointer group hover:border-[#DC2626]"
                 : "bg-gradient-to-b from-[#FAFCFF] to-white border-[1.5px] border-[#0047CC] rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all shadow-[0_8px_24px_rgba(0,71,204,0.1)] z-[1] cursor-pointer group"
@@ -498,12 +500,12 @@ const RoleAssessmentJourney: React.FC = () => {
             </div>
             <div className={`absolute top-[22px] right-[22px] hidden sm:flex items-center gap-[6px] text-[11px] font-[800] px-[11px] py-[5px] rounded-full tracking-[0.4px] border transition-all duration-200 ${
               gate1Completed
-                ? 'bg-white border-[#0047CC] text-[#0047CC]'
+                ? 'bg-white border-[#0047CC] text-[#0047CC] group-hover:bg-[#0047CC] group-hover:text-white cursor-pointer'
                 : isLocked
                   ? 'bg-white border-[#DC2626] text-[#DC2626] group-hover:bg-[#DC2626] group-hover:text-white group-hover:border-[#DC2626] cursor-pointer'
                   : 'bg-white border-[#0047CC] text-[#0047CC] group-hover:bg-[#0047CC] group-hover:text-white group-hover:border-[#0047CC] cursor-pointer'
             }`}>
-              {gate1Completed ? 'Complete' : isLocked ? 'Locked' : hasStartedStage1 ? 'Resume' : 'Start here'}
+              {gate1Completed ? 'View results' : isLocked ? 'Locked' : hasStartedStage1 ? 'Resume' : 'Start here'}
             </div>
           </div>
 
