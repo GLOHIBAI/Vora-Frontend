@@ -92,7 +92,7 @@ const RankItem: React.FC<AssessmentItemRendererProps> = ({
           const opt = options.find((o) => o.id === optionId);
           return (
             <div
-              key={optionId}
+              key={`rank-item-${optionId || idx}-${idx}`}
               draggable={!disabled}
               onDragStart={handleDragStart(idx)}
               onDragEnd={handleDragEnd}

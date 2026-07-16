@@ -126,12 +126,6 @@ const RoleAssessmentJourney: React.FC = () => {
   const firstName =
     locationState?.firstName || user?.firstName || 'there';
 
-  const isStage2Unlocked = localStorage.getItem('vora_stage2_unlocked') === 'true';
-  const isStage2Completed = localStorage.getItem('vora_stage2_completed') === 'true';
-  const isStage3Unlocked = localStorage.getItem('vora_stage3_unlocked') === 'true';
-  const isStage3Completed = localStorage.getItem('vora_stage3_completed') === 'true';
-  const isStage4Unlocked = localStorage.getItem('vora_stage4_unlocked') === 'true';
-
   const { data: response, isLoading: isRoleLoading } = useGetPublicRoleQuery(roleSlug || '');
 
   const rolePostingId = useMemo(() => {
@@ -216,7 +210,8 @@ const RoleAssessmentJourney: React.FC = () => {
   const readiness = readinessResponse?.data || readinessResponse;
 
   const hasStartedStage1 = useMemo(() => {
-    return readiness?.assessmentStatus === 'IN_PROGRESS';
+    if (!readiness) return false;
+    return readiness.assessmentStatus === 'IN_PROGRESS' && readiness.stage === 1;
   }, [readiness]);
 
   const isLocked = useMemo(() => {
@@ -227,7 +222,33 @@ const RoleAssessmentJourney: React.FC = () => {
   const gate1EstimatedMinutes = '25 to 40 minutes';
   
   const gate1Completed = useMemo(() => {
-    return readiness?.assessmentStatus === 'COMPLETED';
+    if (!readiness) return false;
+    return readiness.stage > 1 || readiness.assessmentStatus === 'COMPLETED';
+  }, [readiness]);
+
+  const isStage2Unlocked = useMemo(() => {
+    if (!readiness) return false;
+    return readiness.stage >= 2 || readiness.assessmentStatus === 'COMPLETED';
+  }, [readiness]);
+
+  const isStage2Completed = useMemo(() => {
+    if (!readiness) return false;
+    return readiness.stage > 2 || readiness.assessmentStatus === 'COMPLETED';
+  }, [readiness]);
+
+  const isStage3Unlocked = useMemo(() => {
+    if (!readiness) return false;
+    return readiness.stage >= 3 || readiness.assessmentStatus === 'COMPLETED';
+  }, [readiness]);
+
+  const isStage3Completed = useMemo(() => {
+    if (!readiness) return false;
+    return readiness.stage > 3 || readiness.assessmentStatus === 'COMPLETED';
+  }, [readiness]);
+
+  const isStage4Unlocked = useMemo(() => {
+    if (!readiness) return false;
+    return readiness.assessmentStatus === 'COMPLETED' || readiness.nextStep === 'COMPLETED';
   }, [readiness]);
 
   const handleStart = () => {

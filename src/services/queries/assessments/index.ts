@@ -28,6 +28,7 @@ import type {
   ReviewSummaryEntry,
   ResponsesMap,
 } from "./types";
+import { parseGateProgressEntries } from "../../../utils/assessmentSession";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Query key factory keeps cache keys DRY and consistent
@@ -338,13 +339,21 @@ export const useSubmitAssessmentScreenMutation = () => {
         );
 
         // 2. Update progress cache manually
-        queryClient.setQueryData<{ data: GateProgressEntry[] }>(
+        queryClient.setQueryData<any>(
           assessmentKeys.progress(assessmentId),
-          (old) => {
-            if (!old?.data) return old;
-            const updatedData = old.data.map((entry) => {
+          (old: any) => {
+            if (!old) return old;
+            
+            const isEnveloped = typeof old === 'object' && old !== null && 'data' in old;
+            const target = isEnveloped ? old.data : old;
+            if (!target) return old;
+
+            const entries = parseGateProgressEntries(old);
+            if (!entries.length) return old;
+
+            const rollup = normalized.gateRollup || {};
+            const updatedEntries = entries.map((entry: GateProgressEntry) => {
               if (entry.gate === 1) {
-                const rollup = normalized.gateRollup || {};
                 const completed = rollup.partsCompleted ?? entry.completedScreens;
                 const total = rollup.partsTotal ?? entry.totalScreens;
                 return {
@@ -356,7 +365,26 @@ export const useSubmitAssessmentScreenMutation = () => {
               }
               return entry;
             });
-            return { ...old, data: updatedData };
+
+            let updatedTarget = target;
+            if (Array.isArray(target)) {
+              updatedTarget = updatedEntries;
+            } else if (typeof target === 'object' && Array.isArray((target as any).gates)) {
+              updatedTarget = {
+                ...target,
+                gates: updatedEntries,
+              };
+            } else if (typeof target === 'object' && (target as any).gate === 1) {
+              updatedTarget = updatedEntries[0] || target;
+            }
+
+            if (isEnveloped) {
+              return {
+                ...old,
+                data: updatedTarget,
+              };
+            }
+            return updatedTarget;
           }
         );
       }

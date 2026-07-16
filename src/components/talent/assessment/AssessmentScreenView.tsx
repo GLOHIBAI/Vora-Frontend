@@ -286,11 +286,6 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
     return label.replace(/·/g, '-').toUpperCase();
   }, [items, screenIndex, screenLabel, interpolate]);
 
-  console.log("DEBUG AssessmentScreenView rendering:", {
-    answers,
-    isScreenComplete
-  });
-
   return (
 
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col">
@@ -374,9 +369,9 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
         <AssessmentItemsList
           items={items}
           answers={answers}
-          isLocked={(itemId, subKey) => isLocked(itemId, subKey) || isSubmitting || isAdaptiveLoading}
+          isLocked={(itemId, subKey) => isLocked(itemId, subKey) || isSubmitting || isAdaptiveLoading || isSaving}
           onAnswer={(itemId, val, item, subKey) => {
-            if (isSubmitting || isAdaptiveLoading) return;
+            if (isSubmitting || isAdaptiveLoading || isSaving) return;
             void recordAnswer(itemId, val, item, subKey);
           }}
           isAdaptiveLoading={isAdaptiveLoading}

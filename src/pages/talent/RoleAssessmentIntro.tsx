@@ -181,7 +181,7 @@ const RoleAssessmentIntro: React.FC = () => {
               </p>
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row gap-[12px] items-stretch sm:items-center">
+            <div className="flex flex-col-reverse sm:flex-row gap-[12px] justify-center items-stretch sm:items-center">
               <button 
                 onClick={handleBack}
                 className="bg-transparent border-[1.5px] border-[#E6E6E6] text-[#808080] text-[13px] font-[600] cursor-pointer font-sans p-[14px_20px] rounded-xl transition-all hover:bg-[#F7F7F7] hover:text-[#1A1A1A] w-full sm:w-auto text-center"

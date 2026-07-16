@@ -347,15 +347,7 @@ export function useAssessmentScreen({
 
   const hydrateDraft = useCallback(
     (savedResponses: ResponsesMap, draftItems?: AssessmentItem[]) => {
-      setAnswers((prev) => {
-        const result = mergeResponseMaps(prev, savedResponses);
-        console.log("DEBUG hydrateDraft mergeAnswers:", {
-          prev,
-          savedResponses,
-          result
-        });
-        return result;
-      });
+      setAnswers((prev) => mergeResponseMaps(prev, savedResponses));
       lockedResponses.current = mergeResponseMaps({}, savedResponses);
       if (draftItems?.length) {
         const merged = draftItems.map((item) => {

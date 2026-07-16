@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import OptionButton from '../shared/OptionButton';
 import type { AssessmentItemRendererProps } from '../shared/types';
 import type { AdaptiveMcqPriorStep } from '../../../../services/queries/assessments/types';
@@ -12,6 +13,16 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
 }) => {
   const content = item.content as any;
   const priorSteps = (content.priorSteps as AdaptiveMcqPriorStep[]) ?? [];
+
+  const shimmerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (isAdaptiveLoading && shimmerRef.current) {
+      setTimeout(() => {
+        shimmerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 100);
+    }
+  }, [isAdaptiveLoading]);
 
   return (
     <div className="space-y-8">
@@ -71,8 +82,8 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
         );
       })}
 
-      {/* 2. Active Step (only render if complete is not true and not loading next step) */}
-      {content.complete || isAdaptiveLoading ? null : (
+      {/* 2. Active Step (only render if complete is not true) */}
+      {content.complete ? null : (
         <div className="space-y-6">
           {content.layout === 'multi_question' && content.sharedContext && (
             <DataDisplayBlock
@@ -164,7 +175,7 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
 
       {/* 3. Shimmer Loading for the Next Step */}
       {isAdaptiveLoading && (
-        <div className="space-y-4 mt-8">
+        <div ref={shimmerRef} className="space-y-4 mt-8">
           <style>{`
             @keyframes shimmer {
               0% {

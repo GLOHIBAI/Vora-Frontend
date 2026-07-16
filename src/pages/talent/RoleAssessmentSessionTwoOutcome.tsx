@@ -73,7 +73,6 @@ const LockRectIcon: React.FC<{ className?: string }> = ({ className }) => (
 const RoleAssessmentSessionTwoOutcome: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const firstName = user?.firstName || 'there';
 
   const assessmentId = resolveGate1AssessmentId() ?? '';
   const { data: verdictRaw } = useGateVerdictQuery(assessmentId, 1, {
@@ -81,12 +80,44 @@ const RoleAssessmentSessionTwoOutcome: React.FC = () => {
   });
   const verdict = unwrapAssessmentData<GateVerdictResponse>(verdictRaw);
 
+  const firstName = verdict?.talent?.firstName || user?.firstName || 'there';
+  const recType = verdict?.diagnosis?.recommendationType || 'mentorship';
+
+  const formatRecType = (type?: string) => {
+    if (!type) return 'mentorship';
+    if (type === 'self_directed') return 'self-directed learning';
+    if (type === 'course') return 'a structured course';
+    return type;
+  };
+
   const handleApplyMentorship = () => {
     alert('Mentorship application opens here');
   };
 
   const handleBackToDashboard = () => {
     navigate('/dashboard');
+  };
+
+  const getPrimaryActionLabel = () => {
+    if (recType === 'mentorship') {
+      return `Apply for ${verdict?.mentor?.name ? `${verdict.mentor.name}'s ` : ''}mentorship`;
+    }
+    if (recType === 'course') {
+      return 'Enroll in recommended course';
+    }
+    return 'Explore learning resources';
+  };
+
+  const handlePrimaryAction = () => {
+    if (recType === 'mentorship') {
+      handleApplyMentorship();
+    } else if (recType === 'course') {
+      toast.success('Redirecting to course enrollment...');
+      navigate('/dashboard');
+    } else {
+      toast.success('Redirecting to learning resources...');
+      navigate('/dashboard');
+    }
   };
 
   const gaps = [
@@ -151,6 +182,22 @@ const RoleAssessmentSessionTwoOutcome: React.FC = () => {
     icon: getIconForGap(gp.key),
   })) || gaps;
 
+  const gapLabels = verdict?.gaps && verdict.gaps.length > 0
+    ? verdict.gaps.map(g => g.label.toLowerCase()).join(', ')
+    : 'decisiveness and stakeholder judgement';
+
+  const endorsementPhrase = recType === 'mentorship'
+    ? `Once ${verdict?.mentor?.name || 'your mentor'}'s endorsement lands on your skills ledger`
+    : recType === 'course'
+    ? 'Once your course completion certificate lands on your skills ledger'
+    : 'Once your self-directed development lands on your skills ledger';
+
+  const endorsementSubject = recType === 'mentorship'
+    ? `${verdict?.mentor?.name || 'Your mentor'}'s endorsement`
+    : recType === 'course'
+    ? 'Your course certification'
+    : 'Your verified skill development';
+
   const formatPostedLabel = (postedAtStr: string) => {
     try {
       const diffMs = Date.now() - new Date(postedAtStr).getTime();
@@ -197,6 +244,16 @@ const RoleAssessmentSessionTwoOutcome: React.FC = () => {
     match: rl.projectedMatchPercent,
     logoColor: getLogoColor(idx),
   })) || alternativeRoles;
+
+  const rolesCloseTitle = alternativeRolesList.length === 1
+    ? "If that role closes before you finish, you still don't lose anything"
+    : `If those ${alternativeRolesList.length} roles close before you finish, you still don't lose anything`;
+
+  const qualificationSuffix = recType === 'mentorship' 
+    ? 'once the mentorship is complete' 
+    : recType === 'course' 
+    ? 'once the course is complete' 
+    : 'once you complete your self-directed learning';
 
   const showMentor = verdict === undefined ? true : verdict?.mentor != null;
   const showAlternativeRoles = verdict === undefined ? true : (verdict?.futureRoles && verdict.futureRoles.length > 0);
@@ -330,7 +387,7 @@ const RoleAssessmentSessionTwoOutcome: React.FC = () => {
           </div>
           <div className="flex-1">
             <div className="text-[14px] font-[800] text-[#1E40AF] mb-[5px]">
-              Why we&apos;re suggesting {verdict?.diagnosis?.recommendationType || 'mentorship'} rather than a course
+              Why we&apos;re suggesting {formatRecType(verdict?.diagnosis?.recommendationType)} rather than a course
             </div>
             <div className="text-[13px] text-[#1E40AF] leading-[1.65]">
               {verdict?.diagnosis?.rationale || 'Both gaps are about how you think when pressured, not what you know. A course can teach frameworks, but for this kind of growth, a mentor who\'s lived the seat and can stress-test your reasoning in real situations moves the needle more reliably. We\'ve made this call for you specifically, not as a default.'}
@@ -447,12 +504,14 @@ const RoleAssessmentSessionTwoOutcome: React.FC = () => {
                     Roles waiting on the other side
                   </div>
                   <h2 className="text-[19px] font-[900] text-[#1A1A1A] tracking-[-0.2px] leading-[1.3]">
-                    {alternativeRolesList.length === 1 ? 'One open role you\'ll directly qualify for once the mentorship is complete' : `${alternativeRolesList.length} open roles you'll directly qualify for once the mentorship is complete`}
+                    {alternativeRolesList.length === 1 
+                      ? `One open role you'll directly qualify for ${qualificationSuffix}` 
+                      : `${alternativeRolesList.length} open roles you'll directly qualify for ${qualificationSuffix}`}
                   </h2>
                 </div>
               </div>
               <p className="text-[13.5px] text-[#808080] leading-[1.65] mt-[6px] mb-[18px] max-w-[600px]">
-                These employers have all explicitly named decisiveness and stakeholder judgement as competencies their hiring panels prioritise. Once Dr Mwangi&apos;s endorsement lands on your skills ledger, <strong className="font-[800]">your profile gets surfaced to them automatically.</strong>
+                These employers have all explicitly named {gapLabels} as competencies their hiring panels prioritise. {endorsementPhrase}, <strong className="font-[800]">your profile gets surfaced to them automatically.</strong>
               </p>
 
               <div className="flex flex-col gap-[10px]">
@@ -506,10 +565,10 @@ const RoleAssessmentSessionTwoOutcome: React.FC = () => {
               </div>
               <div className="flex-1">
                 <div className="text-[14px] font-[800] text-[#1E40AF] mb-[5px]">
-                  If those three roles close before you finish, you still don&apos;t lose anything
+                  {rolesCloseTitle}
                 </div>
                 <div className="text-[13px] text-[#2563EB] leading-[1.65]">
-                  Dr Mwangi&apos;s endorsement lives permanently on <strong className="font-[800] text-[#1E40AF]">your skills ledger</strong>. The moment a role posts that matches your updated profile, you&apos;ll get an email the same day with a direct match link. No reapplication, no recompete. You&apos;ll be one of the first profiles surfaced to that employer.
+                  {endorsementSubject} lives permanently on <strong className="font-[800] text-[#1E40AF]">your skills ledger</strong>. The moment a role posts that matches your updated profile, you&apos;ll get an email the same day with a direct match link. No reapplication, no recompete. You&apos;ll be one of the first profiles surfaced to that employer.
                 </div>
               </div>
             </div>
@@ -527,11 +586,11 @@ const RoleAssessmentSessionTwoOutcome: React.FC = () => {
             Back to dashboard
           </Button>
           <Button
-            onClick={handleApplyMentorship}
+            onClick={handlePrimaryAction}
             className="bg-[#0047CC] text-white hover:bg-[#344DA1] shadow-[0_4px_14px_rgba(0,71,204,0.22)] w-full sm:w-auto flex items-center justify-center gap-2 font-[800]"
             pill={false}
           >
-            Apply for Dr Mwangi&apos;s mentorship
+            {getPrimaryActionLabel()}
           </Button>
         </div>
       </main>

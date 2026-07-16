@@ -45,6 +45,8 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
     return (location.state as any)?.startFresh === true;
   }, [location.state]);
 
+  const [localStartFresh, setLocalStartFresh] = useState(startFresh);
+
   const [screenData, setScreenData] =
     useState<AssessmentGateStartResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -53,15 +55,6 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
   const [isGenerating, setIsGenerating] = useState(false);
   const bootedKeyRef = useRef<string | null>(null);
   const recoverAttemptsRef = useRef(0);
-
-  const {
-    data: resumeRaw,
-    isLoading: resumeLoading,
-    isFetched: resumeFetched,
-    refetch: refetchResumeState,
-  } = useGateResumeStateQuery(assessmentId ?? "", 1, {
-    enabled: !!assessmentId && !startFresh,
-  });
 
   const initialState = useMemo((): GateResumeState => ({
     assessmentId: assessmentId ?? "",
@@ -75,12 +68,31 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
     inProgress: null,
   }), [assessmentId]);
 
+  // Seed cache with initialState if startFresh is true so subsequent onSuccess handlers can merge updates cleanly
+  useEffect(() => {
+    if (localStartFresh && assessmentId) {
+      queryClient.setQueryData(
+        assessmentKeys.resumeState(assessmentId, 1),
+        initialState
+      );
+    }
+  }, [localStartFresh, assessmentId, initialState, queryClient]);
+
+  const {
+    data: resumeRaw,
+    isLoading: resumeLoading,
+    isFetched: resumeFetched,
+    refetch: refetchResumeState,
+  } = useGateResumeStateQuery(assessmentId ?? "", 1, {
+    enabled: !!assessmentId && !localStartFresh,
+  });
+
   const resumeState = useMemo(
     () => {
-      if (startFresh) return initialState;
+      if (localStartFresh) return initialState;
       return parseGateResumeState(resumeRaw);
     },
-    [resumeRaw, startFresh, initialState],
+    [resumeRaw, localStartFresh, initialState],
   );
 
   const resumeSnapshot = useMemo(
@@ -162,6 +174,7 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
         bootedKeyRef.current = bootKey;
         recoverAttemptsRef.current = 0;
         setScreenData(payload);
+        setLocalStartFresh(false);
       } catch (err: unknown) {
         setIsGenerating(false);
         if (cancelled) return;

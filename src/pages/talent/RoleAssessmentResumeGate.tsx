@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useGate1ResumePresentation } from '../../hooks/useGate1ResumePresentation';
 import { formatSecondsAsHms } from '../../utils/assessmentSession';
 import { isGate1ApiEnabled, resolveGate1AssessmentId } from '../../config/gate1Api';
+import { useGetPreAssessmentReadinessQuery } from '../../services/queries/talent';
 
 const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -91,10 +92,28 @@ const RoleAssessmentResumeGate: React.FC = () => {
     return 'AO';
   }, [user]);
 
-  const isStage2Unlocked = localStorage.getItem('vora_stage2_unlocked') === 'true';
-  const isStage2Completed = localStorage.getItem('vora_stage2_completed') === 'true';
-  const isStage3Unlocked = localStorage.getItem('vora_stage3_unlocked') === 'true';
-  const isStage3Completed = localStorage.getItem('vora_stage3_completed') === 'true';
+  const { data: readinessResponse, isLoading: isReadinessLoading } = useGetPreAssessmentReadinessQuery(roleSlug);
+  const readiness = readinessResponse?.data || readinessResponse;
+
+  const isStage2Unlocked = useMemo(() => {
+    if (!readiness) return false;
+    return readiness.stage >= 2 || readiness.assessmentStatus === 'COMPLETED';
+  }, [readiness]);
+
+  const isStage2Completed = useMemo(() => {
+    if (!readiness) return false;
+    return readiness.stage > 2 || readiness.assessmentStatus === 'COMPLETED';
+  }, [readiness]);
+
+  const isStage3Unlocked = useMemo(() => {
+    if (!readiness) return false;
+    return readiness.stage >= 3 || readiness.assessmentStatus === 'COMPLETED';
+  }, [readiness]);
+
+  const isStage3Completed = useMemo(() => {
+    if (!readiness) return false;
+    return readiness.stage > 3 || readiness.assessmentStatus === 'COMPLETED';
+  }, [readiness]);
 
   const gate1InProgress =
     gateProgress?.status === 'in_progress' ||
@@ -104,11 +123,12 @@ const RoleAssessmentResumeGate: React.FC = () => {
       gateProgress.completedScreens > 0);
 
   const currentStage = useMemo(() => {
+    if (readiness?.stage) return readiness.stage;
     if (isStage3Unlocked && !isStage3Completed) return 3;
     if (isStage2Unlocked && !isStage2Completed) return 2;
     if (gate1InProgress || gate1View) return 1;
     return 1;
-  }, [isStage2Unlocked, isStage2Completed, isStage3Unlocked, isStage3Completed, gate1InProgress, gate1View]);
+  }, [readiness, isStage2Unlocked, isStage2Completed, isStage3Unlocked, isStage3Completed, gate1InProgress, gate1View]);
 
   useEffect(() => {
     if (currentStage === 1 && !assessmentId && isGate1ApiEnabled() && !gate1Loading) {
@@ -237,7 +257,7 @@ const RoleAssessmentResumeGate: React.FC = () => {
     navigate(config.resumePath);
   };
 
-  const isPageLoading = currentStage === 1 && gate1Loading && !gate1View;
+  const isPageLoading = (currentStage === 1 && gate1Loading && !gate1View) || isReadinessLoading;
 
   if (isPageLoading) {
     return (
@@ -396,7 +416,7 @@ const RoleAssessmentResumeGate: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row gap-[10px] items-stretch sm:items-center">
+            <div className="flex flex-col-reverse sm:flex-row gap-[10px] justify-center items-stretch sm:items-center">
               <button
                 onClick={handleNotNow}
                 className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-xl p-[14px_22px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] w-full sm:w-auto text-center"
