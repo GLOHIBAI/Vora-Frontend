@@ -18,11 +18,6 @@ export const PROFILE_MATCH_STEPS: ProfileMatchStepDefinition[] = [
     subtitle: 'Combined with CV to form your complete profile',
   },
   {
-    id: 'matching',
-    title: 'Matching your profile against eligible roles',
-    subtitle: 'Profile scored only against roles you can actually access',
-  },
-  {
     id: 'scanning',
     title: 'Scanning all live roles for additional matches',
     subtitle: '200+ roles checked, eligibility-filtered first',
@@ -36,6 +31,11 @@ export const PROFILE_MATCH_STEPS: ProfileMatchStepDefinition[] = [
     id: 'eligibility',
     title: 'Checking work eligibility against each role',
     subtitle: 'Filtering out roles you cannot legally access',
+  },
+  {
+    id: 'matching',
+    title: 'Matching your profile against eligible roles',
+    subtitle: 'Profile scored only against roles you can actually access',
   },
 ];
 

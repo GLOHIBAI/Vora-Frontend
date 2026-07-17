@@ -215,7 +215,11 @@ const RoleAssessmentJourney: React.FC = () => {
   }, [readiness]);
 
   const isLocked = useMemo(() => {
-    return readiness?.assessmentStatus === 'LOCKED' || readiness?.isLocked === true;
+    return (
+      readiness?.assessmentStatus === 'LOCKED' ||
+      readiness?.assessmentStatus === 'FAILED' ||
+      readiness?.isLocked === true
+    );
   }, [readiness]);
 
   const gate1Tags = ['Personality', 'Values', 'Cognitive', 'Situational judgement'];
@@ -339,7 +343,7 @@ const RoleAssessmentJourney: React.FC = () => {
             </div>
             <div className="text-[13.5px] text-[#808080] leading-[1.55]">
               {isLocked ? (
-                <span className="text-[#DC2626] font-[600]">Your previous assessment is locked. Please submit a new CV on your profile to reset and retry.</span>
+                <span className="text-[#DC2626] font-[600]">Your previous assessment is locked. You did not meet the required threshold for this role, but you can explore other matching opportunities.</span>
               ) : isStage3Completed ? (
                 "You have completed all assessment stages! Reach Africa's hiring panel is currently reviewing your application file."
               ) : isStage2Completed ? (
@@ -354,13 +358,12 @@ const RoleAssessmentJourney: React.FC = () => {
           <div className="ml-auto flex items-end">
             {isLocked ? (
               <Button
-                onClick={() => navigate(`/onboarding/talent/${roleSlug}/cv`)}
+                onClick={() => navigate('/dashboard')}
                 fullWidth={false}
-                className="bg-[#DC2626] text-white shadow-[0_4px_14px_rgba(220,38,38,0.28)] hover:bg-[#B91C1C] flex items-center justify-center gap-2"
+                className="bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] flex items-center justify-center gap-2"
                 pill={false}
               >
-                <LockClosedIcon className="w-4 h-4" />
-                Upload new CV to reset
+                Explore other roles
               </Button>
             ) : isStage3Completed ? (
               <div className="flex items-center gap-1.5 text-[12px] font-[800] text-[#0047CC] bg-[#FAFCFF] border border-[#0047CC]/20 rounded-full px-4 py-2 uppercase tracking-[0.4px]">
@@ -437,7 +440,7 @@ const RoleAssessmentJourney: React.FC = () => {
           <div 
             onClick={() => {
               if (isLocked) {
-                navigate(`/onboarding/talent/${roleSlug}/cv`);
+                navigate('/dashboard');
                 return;
               }
               if (gate1Completed) {
@@ -453,34 +456,43 @@ const RoleAssessmentJourney: React.FC = () => {
             className={gate1Completed 
               ? "bg-white border-[1.5px] border-[#0047CC]/20 rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all z-[1] cursor-pointer group hover:border-[#0047CC] hover:shadow-[0_8px_24px_rgba(0,71,204,0.05)]"
               : isLocked
-                ? "bg-white border-[1.5px] border-[#DC2626]/30 rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all z-[1] cursor-pointer group hover:border-[#DC2626]"
+                ? "bg-white border-[1.5px] border-[#DC2626] rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative opacity-60 z-[1] cursor-pointer group hover:opacity-90 transition-all"
                 : "bg-gradient-to-b from-[#FAFCFF] to-white border-[1.5px] border-[#0047CC] rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all shadow-[0_8px_24px_rgba(0,71,204,0.1)] z-[1] cursor-pointer group"
             }
           >
-            <div className={`w-[54px] h-[54px] rounded-[14px] flex items-center justify-center shrink-0 relative z-[2] ${gate1Completed ? 'bg-gradient-to-br from-[#0047CC] to-[#387DFF] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)]' : isLocked ? 'bg-gradient-to-br from-[#DC2626] to-[#EF4444] text-white shadow-[0_4px_14px_rgba(220,38,38,0.28)]' : 'text-[17px] font-[900] bg-gradient-to-br from-[#0047CC] to-[#387DFF] border-[1.5px] border-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.3)]'}`}>
-              {gate1Completed ? <DocumentCheckIcon className="w-[22px] h-[22px] stroke-[3]" /> : isLocked ? <LockClosedIcon className="w-5 h-5 text-white" /> : '01'}
+            <div className={`w-[54px] h-[54px] rounded-[14px] flex items-center justify-center shrink-0 relative z-[2] ${
+              gate1Completed 
+                ? 'bg-gradient-to-br from-[#0047CC] to-[#387DFF] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)]' 
+                : isLocked 
+                  ? 'text-[17px] font-[900] bg-white border-[1.5px] border-[#DC2626]/30 text-[#DC2626] shadow-[0_4px_14px_rgba(220,38,38,0.05)]' 
+                  : 'text-[17px] font-[900] bg-gradient-to-br from-[#0047CC] to-[#387DFF] border-[1.5px] border-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.3)]'
+            }`}>
+              {gate1Completed ? <DocumentCheckIcon className="w-[22px] h-[22px] stroke-[3]" /> : '01'}
             </div>
             <div className="flex-1 min-w-0 pt-[2px]">
-              <div className="text-[10.5px] font-[800] tracking-[0.8px] uppercase mb-[4px] text-[#0047CC]">
+              <div className={`text-[10.5px] font-[800] tracking-[0.8px] uppercase mb-[4px] ${isLocked ? 'text-[#DC2626]' : 'text-[#0047CC]'}`}>
                 {gate1Completed
                   ? 'Stage 1 · Complete'
                   : isLocked
-                    ? 'Stage 1 · Locked'
+                    ? 'Stage 1 · Failed'
                     : hasStartedStage1
                       ? 'Stage 1 · In progress'
                       : 'Starting here'}
               </div>
               <div className="text-[17px] font-[600] text-[#1A1A1A] mb-[6px] tracking-[-0.2px] leading-[1.3]">Getting to know you</div>
-              {isLocked ? (
-                <div className="text-[13px] text-[#DC2626] font-[600] leading-[1.5] mb-[14px]">
-                  Your assessment is locked. Please submit a new CV on your profile to request a reset.
-                </div>
-              ) : (
-                <div className="text-[13.5px] text-[#4A4A4A] leading-[1.65] mb-[14px]">A relaxed first stage about how you think, what you value, and your instincts in real situations. No clinical recall required. Just be yourself.</div>
-              )}
+              <div className="text-[13.5px] text-[#4A4A4A] leading-[1.65] mb-[14px]">A relaxed first stage about how you think, what you value, and your instincts in real situations. No clinical recall required. Just be yourself.</div>
               <div className="flex flex-wrap gap-[6px] mb-[14px]">
                 {gate1Tags.map((item) => (
-                  <span key={item} className={`text-[11px] font-[700] px-[10px] py-[4px] rounded-full border bg-white ${isLocked ? 'border-[#DC2626]/40 text-[#DC2626]' : 'border-[#0047CC] text-[#0047CC]'}`}>{item}</span>
+                  <span 
+                    key={item} 
+                    className={`text-[11px] font-[700] px-[10px] py-[4px] rounded-full border bg-white ${
+                      isLocked 
+                        ? 'border-[#E6E6E6] text-[#808080]' 
+                        : 'border-[#0047CC] text-[#0047CC]'
+                    }`}
+                  >
+                    {item}
+                  </span>
                 ))}
               </div>
               <div className="flex flex-wrap gap-[14px]">
@@ -502,10 +514,10 @@ const RoleAssessmentJourney: React.FC = () => {
               gate1Completed
                 ? 'bg-white border-[#0047CC] text-[#0047CC] group-hover:bg-[#0047CC] group-hover:text-white cursor-pointer'
                 : isLocked
-                  ? 'bg-white border-[#DC2626] text-[#DC2626] group-hover:bg-[#DC2626] group-hover:text-white group-hover:border-[#DC2626] cursor-pointer'
+                  ? 'bg-[#DC2626] text-white border-transparent cursor-pointer'
                   : 'bg-white border-[#0047CC] text-[#0047CC] group-hover:bg-[#0047CC] group-hover:text-white group-hover:border-[#0047CC] cursor-pointer'
             }`}>
-              {gate1Completed ? 'View results' : isLocked ? 'Locked' : hasStartedStage1 ? 'Resume' : 'Start here'}
+              {gate1Completed ? 'View results' : isLocked ? 'Failed' : hasStartedStage1 ? 'Resume' : 'Start here'}
             </div>
           </div>
 

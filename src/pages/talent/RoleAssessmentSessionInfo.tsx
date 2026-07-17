@@ -68,7 +68,11 @@ const RoleAssessmentSessionInfo: React.FC = () => {
   const readiness = readinessResponse?.data || readinessResponse;
 
   const isLocked = useMemo(() => {
-    return readiness?.assessmentStatus === 'LOCKED' || readiness?.isLocked === true;
+    return (
+      readiness?.assessmentStatus === 'LOCKED' ||
+      readiness?.assessmentStatus === 'FAILED' ||
+      readiness?.isLocked === true
+    );
   }, [readiness]);
 
   // Redirect guard if not matched (403 error from readiness API)

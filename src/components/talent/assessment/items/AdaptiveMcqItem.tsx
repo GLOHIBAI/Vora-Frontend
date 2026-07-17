@@ -86,10 +86,30 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
       {content.complete ? null : (
         <div className="space-y-6">
           {content.layout === 'multi_question' && content.sharedContext && (
-            <DataDisplayBlock
-              table={content.sharedContext.table}
-              chart={content.sharedContext.chart}
-            />
+            <div className="space-y-6">
+              {content.sharedContext.kind === 'passage' && (
+                <div className="bg-white border border-[#E6E6E6] rounded-2xl p-6 shadow-sm space-y-4">
+                  {content.sharedContext.title && (
+                    <h2 className="text-[17px] font-[900] text-[#1A1A1A] tracking-tight leading-snug">
+                      {content.sharedContext.title}
+                    </h2>
+                  )}
+                  <div className="space-y-3.5 text-[14px] text-[#2D2D2D] leading-[1.65] text-left">
+                    {Array.isArray(content.sharedContext.paragraphs) &&
+                      content.sharedContext.paragraphs.map((p: string, idx: number) => (
+                        <p key={idx} className="whitespace-pre-line">
+                          {p}
+                        </p>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              <DataDisplayBlock
+                table={content.sharedContext.table}
+                chart={content.sharedContext.chart}
+              />
+            </div>
           )}
 
           {content.layout === 'multi_question' && Array.isArray(content.questions) ? (

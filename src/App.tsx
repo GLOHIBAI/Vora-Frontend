@@ -95,15 +95,30 @@ const RoleLanding = lazy(() => import('./pages/public/RoleLanding'))
 const RoleSignup = lazy(() => import('./pages/auth/RoleSignup'))
 
 const ScrollToTop = () => {
-  const { pathname, search } = useLocation();
+  const { pathname } = useLocation();
 
   useEffect(() => {
+    // Scroll window, document, and body
     window.scrollTo(0, 0);
-    const scrollContainers = document.querySelectorAll('.overflow-y-auto, main');
-    scrollContainers.forEach((container) => {
-      container.scrollTo(0, 0);
-    });
-  }, [pathname, search]);
+    if (document.documentElement) document.documentElement.scrollTo(0, 0);
+    if (document.body) document.body.scrollTo(0, 0);
+
+    const scrollElements = () => {
+      const scrollContainers = document.querySelectorAll(
+        '.overflow-y-auto, main, [style*="overflow-y: auto"], [style*="overflow-y: scroll"]'
+      );
+      scrollContainers.forEach((container) => {
+        container.scrollTo(0, 0);
+      });
+    };
+
+    // Run immediately
+    scrollElements();
+
+    // Run after a short delay to account for lazy-loaded route components mounting
+    const timer = setTimeout(scrollElements, 80);
+    return () => clearTimeout(timer);
+  }, [pathname]);
 
   return null;
 };

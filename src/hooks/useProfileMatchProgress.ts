@@ -5,7 +5,7 @@ import {
 } from "../constants/profileMatchBuilding";
 
 const CV_PARSE_PROGRESS_CAP = 80;
-const MATCH_PROGRESS_CAP = 100;
+const MATCH_PROGRESS_CAP = 97;
 const PROGRESS_TICK_MS = 350;
 const STEP_ADVANCE_MS = 2200;
 const INITIAL_DELAY_MS = 800;
@@ -88,9 +88,9 @@ export const useProfileMatchProgress = ({
       });
 
       if (stepIndex === 2)
-        setHeadline("Matching your profile against eligible roles…");
-      if (stepIndex === 3)
         setHeadline("Scanning all live roles for additional matches…");
+      if (stepIndex === 3)
+        setHeadline("Calculating Career Readiness Score…");
 
       stepIndex += 1;
 
@@ -117,7 +117,7 @@ export const useProfileMatchProgress = ({
       return;
     matchPhaseStartedRef.current = true;
     setProgress((prev) => Math.max(prev, CV_PARSE_PROGRESS_CAP));
-    setHeadline("CV ready checking work eligibility…");
+    setHeadline("Matching your profile against eligible roles…");
     setStatuses((prev) => {
       const next = [...prev];
       next[4] = "done";
