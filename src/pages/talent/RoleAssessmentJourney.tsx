@@ -255,6 +255,19 @@ const RoleAssessmentJourney: React.FC = () => {
     return readiness.assessmentStatus === 'COMPLETED' || readiness.nextStep === 'COMPLETED';
   }, [readiness]);
 
+  const timelineBg = useMemo(() => {
+    if (isLocked) {
+      return 'linear-gradient(to bottom, #0047CC 0%, #0047CC 10%, #DC2626 10%, #DC2626 12.5%, #E6E6E6 12.5%, #E6E6E6 100%)';
+    }
+    if (isStage3Unlocked) {
+      return 'linear-gradient(to bottom, #0047CC 0%, #0047CC 75%, #E6E6E6 75%, #E6E6E6 100%)';
+    }
+    if (isStage2Unlocked) {
+      return 'linear-gradient(to bottom, #0047CC 0%, #0047CC 50%, #E6E6E6 50%, #E6E6E6 100%)';
+    }
+    return 'linear-gradient(to bottom, #0047CC 0%, #0047CC 25%, #E6E6E6 25%, #E6E6E6 100%)';
+  }, [isLocked, isStage2Unlocked, isStage3Unlocked]);
+
   const handleStart = () => {
     localStorage.setItem('vora_stage1_started', 'true');
     navigate(`/onboarding/talent/${roleSlug}/assessment/stage-1`);
@@ -343,7 +356,7 @@ const RoleAssessmentJourney: React.FC = () => {
             </div>
             <div className="text-[13.5px] text-[#808080] leading-[1.55]">
               {isLocked ? (
-                <span className="text-[#DC2626] font-[600]">Your previous assessment is locked. You did not meet the required threshold for this role, but you can explore other matching opportunities.</span>
+                <span className="text-[#DC2626] font-[600]">You failed your previous interview. You did not meet the required threshold for this role, but you can explore other matching opportunities.</span>
               ) : isStage3Completed ? (
                 "You have completed all assessment stages! Reach Africa's hiring panel is currently reviewing your application file."
               ) : isStage2Completed ? (
@@ -414,7 +427,10 @@ const RoleAssessmentJourney: React.FC = () => {
         </div>
 
         {/* Stages timeline */}
-        <div className={`grid grid-cols-1 gap-[14px] mb-[36px] relative before:hidden sm:before:block before:absolute before:left-[28px] before:top-[54px] before:bottom-[54px] before:w-[2px] before:bg-gradient-to-b before:from-[#0047CC] before:via-[#0047CC] ${isStage3Unlocked ? 'before:to-[#E6E6E6] before:via-[75%] before:to-[75%]' : isStage2Unlocked ? 'before:to-[#E6E6E6] before:via-[50%] before:to-[50%]' : 'before:to-[#E6E6E6] before:via-[25%] before:to-[25%]'} before:z-0`}>
+        <div 
+          className="grid grid-cols-1 gap-[14px] mb-[36px] relative before:hidden sm:before:block before:absolute before:left-[28px] before:top-[54px] before:bottom-[54px] before:w-[2px] before:bg-[var(--timeline-bg)] before:z-0"
+          style={{ '--timeline-bg': timelineBg } as React.CSSProperties}
+        >
           
           {/* Pre stage (done) */}
           <div className="bg-white border-[1.5px] border-[#0047CC]/20 rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all z-[1]">
