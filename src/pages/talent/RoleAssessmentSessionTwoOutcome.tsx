@@ -9,6 +9,7 @@ import { useGateVerdictQuery } from '../../services/queries/assessments';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
 import { unwrapAssessmentData } from '../../utils/assessmentSession';
 import type { GateVerdictResponse } from '../../services/queries/assessments/types';
+import FullPageSpinner from '../../components/common/FullPageSpinner';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -75,10 +76,14 @@ const RoleAssessmentSessionTwoOutcome: React.FC = () => {
   const { user } = useAuth();
 
   const assessmentId = resolveGate1AssessmentId() ?? '';
-  const { data: verdictRaw } = useGateVerdictQuery(assessmentId, 1, {
+  const { data: verdictRaw, isLoading: isVerdictLoading } = useGateVerdictQuery(assessmentId, 1, {
     enabled: !!assessmentId,
   });
   const verdict = unwrapAssessmentData<GateVerdictResponse>(verdictRaw);
+
+  if (isVerdictLoading || !verdict) {
+    return <FullPageSpinner message="Retrieving your assessment outcome..." />;
+  }
 
   const firstName = verdict?.talent?.firstName || user?.firstName || 'there';
   const recType = verdict?.diagnosis?.recommendationType || 'mentorship';
@@ -260,6 +265,38 @@ const RoleAssessmentSessionTwoOutcome: React.FC = () => {
 
   const displayScore = verdict?.score ?? 73;
 
+  const renderTextWithBoldScore = (text: string, score: number) => {
+    if (!score) return text;
+    const scoreStr = String(score);
+    const scorePercentStr = `${scoreStr}%`;
+
+    if (text.includes(scorePercentStr)) {
+      const parts = text.split(scorePercentStr);
+      return (
+        <>
+          {parts.reduce((acc, part, i) => {
+            if (i === 0) return [part];
+            return [...acc, <strong key={i} className="font-extrabold text-[#1A1A1A]">{scorePercentStr}</strong>, part];
+          }, [] as React.ReactNode[])}
+        </>
+      );
+    }
+
+    if (text.includes(scoreStr)) {
+      const parts = text.split(scoreStr);
+      return (
+        <>
+          {parts.reduce((acc, part, i) => {
+            if (i === 0) return [part];
+            return [...acc, <strong key={i} className="font-extrabold text-[#1A1A1A]">{scoreStr}</strong>, part];
+          }, [] as React.ReactNode[])}
+        </>
+      );
+    }
+
+    return text;
+  };
+
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col relative pb-[80px]">
 
@@ -283,10 +320,20 @@ const RoleAssessmentSessionTwoOutcome: React.FC = () => {
       <StageRail activeStage={1} />
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-[#0F172A] via-[#1E293B] to-[#293548] text-white p-[48px_32px_60px] relative overflow-hidden">
+      <section className="bg-gradient-to-br from-[#0F172A] via-[#1E293B] to-[#293548] text-white p-[48px_32px_60px] relative overflow-hidden text-center">
         <div className="absolute top-[-100px] right-[-80px] w-[340px] h-[340px] rounded-full bg-white/[0.03]" />
         
-        <div className="relative z-10 max-w-[880px] mx-auto">
+        <div className="relative z-10 max-w-[880px] mx-auto flex flex-col items-center text-center">
+          {/* Centered Circle Score Badge */}
+          <div className="w-[90px] h-[90px] rounded-full border-[2px] border-[#E2E8F0]/40 bg-white/10 backdrop-blur-md flex flex-col items-center justify-center mb-[18px] text-white shadow-sm">
+            <span className="text-[28px] font-[900] tracking-tight leading-none font-sans text-white">
+              {displayScore}%
+            </span>
+            <span className="text-[9.5px] font-[800] uppercase tracking-[0.7px] text-[#CBD5E1] mt-1">
+              Score
+            </span>
+          </div>
+
           <div className="inline-flex items-center gap-[7px] bg-white/10 border border-white/18 rounded-[100px] p-[6px_14px] backdrop-blur-[6px] mb-[16px]">
             <InfoIcon className="w-[13px] h-[13px]" />
             <span className="text-[11.5px] font-[800] tracking-[0.7px] uppercase text-white/90">
@@ -311,7 +358,7 @@ const RoleAssessmentSessionTwoOutcome: React.FC = () => {
           {verdict?.narrativeParagraphs && verdict.narrativeParagraphs.length > 0 ? (
             verdict.narrativeParagraphs.map((para, idx) => (
               <p key={idx} className="text-[15px] text-[#4A4A4A] leading-[1.85] mb-[14px] last:mb-0">
-                {para}
+                {renderTextWithBoldScore(para, displayScore)}
               </p>
             ))
           ) : (

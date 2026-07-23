@@ -5,8 +5,18 @@ import AssessmentHeader from './AssessmentHeader';
 import StageRail from './StageRail';
 import PartRail from './PartRail';
 import AssessmentItemsList from './assessment/AssessmentItemsList';
+import FullPageSpinner from '../common/FullPageSpinner';
 import { useLocalAssessmentScreen } from '../../hooks/useLocalAssessmentScreen';
 import { questionsToMcqItems } from '../../mocks/stage1AssessmentScreens';
+import {
+  useStartAssessmentScreenMutation,
+  useSaveAssessmentDraftMutation,
+  useSubmitAssessmentScreenMutation,
+  useAssessmentDraftQuery,
+} from '../../services/queries/assessments';
+import { getActiveAssessmentId } from '../../utils/assessmentSession';
+import { resolveGate1AssessmentId } from '../../config/gate1Api';
+import type { AssessmentGateStartResponse } from '../../services/queries/assessments/types';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -97,8 +107,68 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
   // Selected answers via reusable assessment item renderer
   const mcqItems = useMemo(() => questionsToMcqItems(questions), [questions]);
-  const { answers, recordAnswer, isLocked, isScreenComplete } =
+  const { answers, recordAnswer, setAnswers, isLocked, isScreenComplete } =
     useLocalAssessmentScreen(mcqItems);
+
+  // API dynamic question flow integrations
+  const activeAssessmentId = resolveGate1AssessmentId() || getActiveAssessmentId();
+  const [apiScreenData, setApiScreenData] = useState<AssessmentGateStartResponse | null>(null);
+  const [apiLoading, setApiLoading] = useState<boolean>(!!activeAssessmentId);
+
+  const startScreenMutation = useStartAssessmentScreenMutation(2);
+  const saveDraftMutation = useSaveAssessmentDraftMutation();
+  const submitScreenMutation = useSubmitAssessmentScreenMutation();
+
+  const pillar = useMemo(() => {
+    const pillarMap: Record<number, string> = {
+      1: 'knowledge',
+      2: 'expertise',
+      3: 'reasoning',
+      4: 'simulation',
+    };
+    return pillarMap[partNumber] || 'knowledge';
+  }, [partNumber]);
+
+  useEffect(() => {
+    if (!activeAssessmentId) {
+      setApiLoading(false);
+      return;
+    }
+
+    startScreenMutation.mutate(
+      {
+        assessmentId: activeAssessmentId,
+        body: { pillar },
+      },
+      {
+        onSuccess: (res: any) => {
+          const data = res?.data || res;
+          if (data && data.items && data.items.length > 0) {
+            setApiScreenData(data);
+          }
+          setApiLoading(false);
+        },
+        onError: (err) => {
+          console.error('Failed to start Stage 2 screen from API, falling back to local questions:', err);
+          setApiLoading(false);
+        },
+      }
+    );
+  }, [activeAssessmentId, pillar]);
+
+  // Load drafts if the user has a resumed session
+  const { data: draftData } = useAssessmentDraftQuery(
+    activeAssessmentId || '',
+    apiScreenData?.componentId || '',
+    { enabled: !!activeAssessmentId && apiScreenData?.sessionState === 'resumed' }
+  );
+
+  useEffect(() => {
+    const responses = (draftData as any)?.data?.responses || draftData?.responses;
+    if (responses) {
+      setAnswers((prev: any) => ({ ...prev, ...responses }));
+    }
+  }, [draftData, setAnswers]);
 
   // Modals state
   const [showSaveModal, setShowSaveModal] = useState<boolean>(false);
@@ -170,12 +240,43 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     }, 1000);
   };
 
-  const handleSubmit = (reason?: string) => {
+  const handleAnswer = async (itemId: string, value: any, item: any, subKey?: string) => {
+    await recordAnswer(itemId, value, item, subKey);
+    if (activeAssessmentId && apiScreenData) {
+      try {
+        await saveDraftMutation.mutateAsync({
+          assessmentId: activeAssessmentId,
+          componentId: apiScreenData.componentId,
+          responses: { [itemId]: value },
+        });
+      } catch (err) {
+        console.error('Failed to save draft to API:', err);
+      }
+    }
+  };
+
+  const handleSubmit = async (reason?: string) => {
     if (reason) {
       sessionStorage.setItem('submitReason', reason);
     }
-    toast.success('Interview submitted successfully!');
-    navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);
+
+    if (activeAssessmentId && apiScreenData) {
+      try {
+        await submitScreenMutation.mutateAsync({
+          assessmentId: activeAssessmentId,
+          componentId: apiScreenData.componentId,
+          responses: answers,
+        });
+        toast.success('Interview submitted successfully!');
+        navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);
+      } catch (err) {
+        console.error('Failed to submit Stage 2 screen to API:', err);
+        toast.error('Failed to submit. Please try again.');
+      }
+    } else {
+      toast.success('Interview submitted successfully!');
+      navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);
+    }
   };
 
   const confirmSaveAndExit = () => {
@@ -197,6 +298,10 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     if (secondsLeft <= 180) return 'timer-chip caution';
     return 'timer-chip';
   };
+
+  if (apiLoading) {
+    return <FullPageSpinner message="Loading interview screen..." />;
+  }
 
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col">
@@ -235,9 +340,15 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       {/* Topbar */}
       <AssessmentHeader
         middleContent={
-          <span className="hidden sm:inline">
-            Stage 2 · Part {partNumber} · Interview {interviewNumber} of 3
-          </span>
+          apiScreenData ? (
+            <span className="hidden sm:inline">
+              {apiScreenData.gateName || 'Stage 2'} · {apiScreenData.items[0]?.sessionLabel || `Part ${partNumber}`}
+            </span>
+          ) : (
+            <span className="hidden sm:inline">
+              Stage 2 · Part {partNumber} · Interview {interviewNumber} of 3
+            </span>
+          )
         }
         rightContent={
           <div className="flex items-center gap-[14px]">
@@ -262,47 +373,69 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       <PartRail activePart={partNumber} />
 
       {/* Pebble Rail */}
-      <div className="bg-white border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[10px] flex items-center justify-center gap-[6px]">
-        <div className={`w-[32px] h-[5px] rounded-full ${interviewNumber >= 2 ? 'bg-[#387DFF]' : 'bg-[#E6E6E6]'}`} />
-        <div className={`w-[32px] h-[5px] rounded-full ${interviewNumber >= 3 ? 'bg-[#387DFF]' : interviewNumber === 2 ? 'bg-[#0047CC] w-[48px]' : 'bg-[#E6E6E6]'}`} />
-        <div className={`w-[32px] h-[5px] rounded-full ${interviewNumber === 3 ? 'bg-[#0047CC] w-[48px]' : 'bg-[#E6E6E6]'}`} />
-      </div>
+      {apiScreenData ? (
+        <div className="bg-white border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[10px] flex items-center justify-center gap-[12px] flex-wrap">
+          <span className="text-[11.5px] font-[800] tracking-[0.4px] uppercase text-[#0047CC]">
+            Question 1 of {apiScreenData.items.length}
+          </span>
+          <div className="flex gap-[5px] flex-wrap">
+            {apiScreenData.items.map((item, idx) => {
+              const isActive = idx === 0;
+              return (
+                <div
+                  key={item.id}
+                  className={`h-[5px] rounded-full transition-all duration-200 ${
+                    isActive ? 'bg-[#0047CC] w-[42px]' : 'bg-[#E6E6E6] w-[26px]'
+                  }`}
+                />
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[10px] flex items-center justify-center gap-[6px]">
+          <div className={`w-[32px] h-[5px] rounded-full ${interviewNumber >= 2 ? 'bg-[#387DFF]' : 'bg-[#E6E6E6]'}`} />
+          <div className={`w-[32px] h-[5px] rounded-full ${interviewNumber >= 3 ? 'bg-[#387DFF]' : interviewNumber === 2 ? 'bg-[#0047CC] w-[48px]' : 'bg-[#E6E6E6]'}`} />
+          <div className={`w-[32px] h-[5px] rounded-full ${interviewNumber === 3 ? 'bg-[#0047CC] w-[48px]' : 'bg-[#E6E6E6]'}`} />
+        </div>
+      )}
 
       {/* Main Body */}
       <main className="max-w-[780px] w-full mx-auto px-[24px] py-[32px] pb-[90px] flex-1">
         <div className="inline-flex items-center gap-[7px] bg-[#EBF6FF] text-[#0047CC] text-[11px] font-[800] tracking-[0.7px] uppercase px-[12px] py-[5px] rounded-full mb-[14px]">
-          Interview {interviewNumber} · {interviewTitle}
+          {apiScreenData ? (apiScreenData.items[0]?.eyebrow || `Part ${partNumber} · Knowledge`) : `Interview ${interviewNumber} · ${interviewTitle}`}
         </div>
         <h1 className="text-[22px] font-[900] text-[#1A1A1A] tracking-[-0.3px] leading-[1.3] mb-[8px]">
-          {sectionTitle}
+          {apiScreenData ? (apiScreenData.items[0]?.screenTitle || sectionTitle) : sectionTitle}
         </h1>
         <p className="text-[14px] text-[#808080] leading-[1.6] mb-[20px]">
-          {sectionSub}
+          {apiScreenData ? (apiScreenData.items[0]?.screenSubtitle || sectionSub) : sectionSub}
         </p>
 
-        {/* Why matters component (removed left border accent) */}
+        {/* Why matters component */}
         <div className="bg-[#EBF6FF] rounded-[8px] p-[12px_14px] flex gap-[10px] mb-[22px]">
           <InfoIcon className="w-[16px] h-[16px] text-[#0047CC] shrink-0 mt-[1px]" />
           <p className="text-[12.5px] text-[#182348] leading-[1.5]">
-            <strong className="font-[800]">Why this matters · </strong>{whyMattersText}
+            <strong className="font-[800]">Why this matters · </strong>
+            {apiScreenData ? (apiScreenData.items[0]?.whyThisMatters || whyMattersText) : whyMattersText}
           </p>
         </div>
 
         {topContent && <div className="mb-[22px]">{topContent}</div>}
 
-        {/* Questions reusable item components by type (mcq) */}
+        {/* Questions reusable item components */}
         <AssessmentItemsList
-          items={mcqItems}
+          items={apiScreenData ? apiScreenData.items : mcqItems}
           answers={answers}
           isLocked={isLocked}
-          onAnswer={(itemId, val, item, subKey) => void recordAnswer(itemId, val, item, subKey)}
+          onAnswer={(itemId, val, item, subKey) => void handleAnswer(itemId, val, item, subKey)}
         />
       </main>
 
       {/* Sticky Footer */}
       <footer className="sticky bottom-0 bg-white/96 backdrop-blur-[10px] border-t border-[#E6E6E6] p-[14px_32px] flex items-center justify-between gap-[12px] z-[40]">
         <div className="text-[13px] text-[#808080] font-[600]">
-          Interview {interviewNumber} of 3 · Part {partNumber}
+          {apiScreenData ? `Part ${partNumber}` : `Interview ${interviewNumber} of 3 · Part ${partNumber}`}
         </div>
         <div className="flex gap-[10px] items-center">
           <button
@@ -316,7 +449,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
             disabled={!isAllAnswered}
             className="bg-[#0047CC] text-white border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] disabled:bg-[#E6E6E6] disabled:shadow-none disabled:cursor-not-allowed font-sans"
           >
-            {interviewNumber === 3 ? `Complete Part ${partNumber}` : 'Submit interview'}
+            {apiScreenData ? `Complete Part ${partNumber}` : (interviewNumber === 3 ? `Complete Part ${partNumber}` : 'Submit interview')}
           </button>
         </div>
       </footer>

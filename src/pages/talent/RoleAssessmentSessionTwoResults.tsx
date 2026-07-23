@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import toast from 'react-hot-toast';
 import VoraLogo from '../../components/common/VoraLogo';
 import Button from '../../components/common/Button';
 import { useAuth } from '../../context/AuthContext';
@@ -9,6 +8,7 @@ import { useGateVerdictQuery } from '../../services/queries/assessments';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
 import { unwrapAssessmentData } from '../../utils/assessmentSession';
 import type { GateVerdictResponse } from '../../services/queries/assessments/types';
+import FullPageSpinner from '../../components/common/FullPageSpinner';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -67,10 +67,14 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
   const firstName = user?.firstName || 'there';
 
   const assessmentId = resolveGate1AssessmentId() ?? '';
-  const { data: verdictRaw } = useGateVerdictQuery(assessmentId, 1, {
+  const { data: verdictRaw, isLoading: isVerdictLoading } = useGateVerdictQuery(assessmentId, 1, {
     enabled: !!assessmentId,
   });
   const verdict = unwrapAssessmentData<GateVerdictResponse>(verdictRaw);
+
+  if (isVerdictLoading || !verdict) {
+    return <FullPageSpinner message="Retrieving your interview results..." />;
+  }
 
   const handleNextStage = () => {
     localStorage.setItem('vora_stage2_unlocked', 'true');
@@ -140,6 +144,38 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
   })) || traits;
 
   const displayScore = verdict?.score ?? 84;
+
+  const renderTextWithBoldScore = (text: string, score: number) => {
+    if (!score) return text;
+    const scoreStr = String(score);
+    const scorePercentStr = `${scoreStr}%`;
+
+    if (text.includes(scorePercentStr)) {
+      const parts = text.split(scorePercentStr);
+      return (
+        <>
+          {parts.reduce((acc, part, i) => {
+            if (i === 0) return [part];
+            return [...acc, <strong key={i} className="font-extrabold text-[#1A1A1A]">{scorePercentStr}</strong>, part];
+          }, [] as React.ReactNode[])}
+        </>
+      );
+    }
+
+    if (text.includes(scoreStr)) {
+      const parts = text.split(scoreStr);
+      return (
+        <>
+          {parts.reduce((acc, part, i) => {
+            if (i === 0) return [part];
+            return [...acc, <strong key={i} className="font-extrabold text-[#1A1A1A]">{scoreStr}</strong>, part];
+          }, [] as React.ReactNode[])}
+        </>
+      );
+    }
+
+    return text;
+  };
 
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col relative pb-[80px]">
@@ -272,7 +308,7 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
           {verdict?.narrativeParagraphs && verdict.narrativeParagraphs.length > 0 ? (
             verdict.narrativeParagraphs.map((para, idx) => (
               <p key={idx} className="text-[14.5px] text-[#4A4A4A] leading-[1.7] mb-[10px] last:mb-0">
-                {para}
+                {renderTextWithBoldScore(para, displayScore)}
               </p>
             ))
           ) : (

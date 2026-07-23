@@ -136,54 +136,79 @@ const RoleAssessmentResumeGate: React.FC = () => {
     }
   }, [currentStage, assessmentId, roleSlug, navigate, gate1Loading]);
 
-  const staticConfigs: Record<number, StageConfig> = useMemo(() => ({
-    2: {
-      activeStepNum: 2,
-      welcomeText: 'You paused mid-way through Stage 2. Your timer kept running, but everything else is exactly where you left it.',
-      pausedTimeText: 'Paused recently',
-      positionTitle: 'Professional dimension',
-      positionDesc: "You'd worked through about half of the questions when you tapped Save and finish later.",
-      crumbs: ['Stage 2', 'Part 1 · Knowledge', 'Interview 1 of 3'],
-      deadlineLabel: 'Stage 2 deadline',
-      deadlineRemainingSeconds: null,
-      deadlineTotalFormatted: '72:00:00',
-      interviewTimerLabel: 'Interview timer',
-      interviewTimerValue: '10:00',
-      completedLabel: 'Completed so far',
-      completedValue: '0 / 3',
-      completedSub: 'interviews in Part 1',
-      resumePath: `/onboarding/talent/${roleSlug}/assessment/stage-2/part-1/interview-1`,
-      showRegenerationNotice: true,
-      rulesList: [
-        { text: 'Each interview has its own 10 to 12 minute timer', icon: ClockIcon },
-        { text: "Don't switch tabs. Doing so auto-submits in 3 seconds", icon: StopIcon },
-        { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon },
-      ],
-    },
-    3: {
-      activeStepNum: 3,
-      welcomeText: 'You paused mid-way through Stage 3. Your timer kept running, but everything else is exactly where you left it.',
-      pausedTimeText: 'Paused recently',
-      positionTitle: 'Video Interview responses',
-      positionDesc: "You'd submitted some video answers when you tapped Save and finish later.",
-      crumbs: ['Stage 3', 'How you show up', 'Video responses'],
-      deadlineLabel: 'Stage 3 deadline',
-      deadlineRemainingSeconds: null,
-      deadlineTotalFormatted: '48:00:00',
-      interviewTimerLabel: 'Response timer',
-      interviewTimerValue: '3:00',
-      completedLabel: 'Completed so far',
-      completedValue: '0 / 5',
-      completedSub: 'questions recorded',
-      resumePath: `/onboarding/talent/${roleSlug}/assessment/stage-3/video`,
-      showRegenerationNotice: true,
-      rulesList: [
-        { text: 'Each response has a 30s think time and 3m record limit', icon: ClockIcon },
-        { text: "Don't switch tabs. Doing so auto-submits in 3 seconds", icon: StopIcon },
-        { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon },
-      ],
-    },
-  }), [roleSlug]);
+  const staticConfigs: Record<number, StageConfig> = useMemo(() => {
+    const isP4Unlocked = localStorage.getItem('vora_stage2_part4_unlocked') === 'true';
+    const isP3Unlocked = localStorage.getItem('vora_stage2_part3_unlocked') === 'true';
+    const isP2Unlocked = localStorage.getItem('vora_stage2_part2_unlocked') === 'true';
+
+    let crumbs = ['Stage 2', 'Part 1 · Knowledge', 'Interview 1 of 3'];
+    let completedValue = '0 / 4';
+    let completedSub = 'parts in Stage 2';
+    let resumePath = `/onboarding/talent/${roleSlug}/assessment/stage-2/part-1/interview-1`;
+
+    if (isP4Unlocked) {
+      crumbs = ['Stage 2', 'Part 4 · Simulation', 'Intro'];
+      completedValue = '3 / 4';
+      resumePath = `/onboarding/talent/${roleSlug}/assessment/stage-2/part-4/intro`;
+    } else if (isP3Unlocked) {
+      crumbs = ['Stage 2', 'Part 3 · Reasoning', 'Intro'];
+      completedValue = '2 / 4';
+      resumePath = `/onboarding/talent/${roleSlug}/assessment/stage-2/part-3/intro`;
+    } else if (isP2Unlocked) {
+      crumbs = ['Stage 2', 'Part 2 · Expertise', 'Intro'];
+      completedValue = '1 / 4';
+      resumePath = `/onboarding/talent/${roleSlug}/assessment/stage-2/part-2/intro`;
+    }
+
+    return {
+      2: {
+        activeStepNum: 2,
+        welcomeText: 'You paused mid-way through Stage 2. Your timer kept running, but everything else is exactly where you left it.',
+        pausedTimeText: 'Paused recently',
+        positionTitle: 'Professional dimension',
+        positionDesc: "You'd worked through some of the questions when you tapped Save and finish later.",
+        crumbs,
+        deadlineLabel: 'Stage 2 deadline',
+        deadlineRemainingSeconds: null,
+        deadlineTotalFormatted: '72:00:00',
+        interviewTimerLabel: 'Interview timer',
+        interviewTimerValue: '10:00',
+        completedLabel: 'Completed so far',
+        completedValue,
+        completedSub,
+        resumePath,
+        showRegenerationNotice: true,
+        rulesList: [
+          { text: 'Each interview has its own 10 to 12 minute timer', icon: ClockIcon },
+          { text: "Don't switch tabs. Doing so auto-submits in 3 seconds", icon: StopIcon },
+          { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon },
+        ],
+      },
+      3: {
+        activeStepNum: 3,
+        welcomeText: 'You paused mid-way through Stage 3. Your timer kept running, but everything else is exactly where you left it.',
+        pausedTimeText: 'Paused recently',
+        positionTitle: 'Video Interview responses',
+        positionDesc: "You'd submitted some video answers when you tapped Save and finish later.",
+        crumbs: ['Stage 3', 'How you show up', 'Video responses'],
+        deadlineLabel: 'Stage 3 deadline',
+        deadlineRemainingSeconds: null,
+        deadlineTotalFormatted: '48:00:00',
+        interviewTimerLabel: 'Response timer',
+        interviewTimerValue: '3:00',
+        completedLabel: 'Completed so far',
+        completedValue: '0 / 5',
+        completedSub: 'questions recorded',
+        resumePath: `/onboarding/talent/${roleSlug}/assessment/stage-3/video`,
+        showRegenerationNotice: true,
+        rulesList: [
+          { text: 'Each response has a 30s think time and 3m record limit', icon: ClockIcon },
+          { text: "Don't switch tabs. Doing so auto-submits in 3 seconds", icon: StopIcon },
+          { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon },
+        ],
+      },
+    };
+  }, [roleSlug]);
 
   const config: StageConfig = useMemo(() => {
     if (currentStage === 1 && gate1View) {
@@ -282,7 +307,7 @@ const RoleAssessmentResumeGate: React.FC = () => {
         middleContent="Resume your interviews"
         rightContent={
           <div className="flex items-center gap-[6px] text-[12px] text-[#808080] font-[600]">
-            <CheckIcon className="w-[13px] h-[13px] text-[#2CA62C]" />
+            <CheckIcon className="w-[13px] h-[13px] text-[#0047CC]" />
             Progress saved
           </div>
         }

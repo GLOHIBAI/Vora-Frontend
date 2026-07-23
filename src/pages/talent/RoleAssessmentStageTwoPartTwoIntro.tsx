@@ -29,13 +29,13 @@ const RoleAssessmentStageTwoPartTwoIntro: React.FC = () => {
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
 
   useEffect(() => {
-    // Flag to mark Part 2 has been entered/unlocked
-    localStorage.setItem('vora_stage2_part2_unlocked', 'true');
+    // Flag to mark Part 3 has been entered/unlocked
+    localStorage.setItem('vora_stage2_part3_unlocked', 'true');
   }, []);
 
   const handleBegin = () => {
-    toast.success('Starting Stage 2 Part 2...');
-    navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2/part-2/interview-1`);
+    toast.success('Starting Stage 2 Part 3...');
+    navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2/part-3/interview-1`);
   };
 
   return (
@@ -86,7 +86,7 @@ const RoleAssessmentStageTwoPartTwoIntro: React.FC = () => {
       <StageRail activeStage={2} />
 
       {/* Part Rail */}
-      <PartRail activePart={2} />
+      <PartRail activePart={3} />
 
       {/* Main Container */}
       <div className="flex-1 flex items-center justify-center p-[40px_24px]">
@@ -101,13 +101,13 @@ const RoleAssessmentStageTwoPartTwoIntro: React.FC = () => {
           </div>
 
           <div className="text-[11px] font-[800] text-[#0047CC] tracking-[1.4px] uppercase mb-[10px]">
-            About Part 2 of 3
+            About Part 3 of 4
           </div>
           <h1 className="text-[24px] font-[900] tracking-[-0.4px] text-[#1A1A1A] mb-[12px] leading-[1.25]">
             How you reason through the work
           </h1>
           <p className="text-[15px] text-[#4A4A4A] leading-[1.65] mb-[24px]">
-            Three reasoning interviews. You'll be given situations that read like the work itself. The aim isn't textbook recall, it's the shape of your thinking under realistic pressure.
+            Three reasoning interviews. You\'ll be given situations that read like the work itself. The aim isn\'t textbook recall, it\'s the shape of your thinking under realistic pressure.
           </p>
 
           {/* Why Section */}
@@ -117,14 +117,14 @@ const RoleAssessmentStageTwoPartTwoIntro: React.FC = () => {
               <div className="text-[10.5px] font-[800] tracking-[0.5px] uppercase text-[#0047CC] mb-[3px]">
                 Why these three
               </div>
-              Senior programme officers don't memorise answers. They reason through complexity. These three interviews put you in front of the kinds of situations Reach Africa team leads navigate every quarter.
+              Senior programme officers don\'t memorise answers. They reason through complexity. These three interviews put you in front of the kinds of situations Reach Africa team leads navigate every quarter.
             </div>
           </div>
 
-          {/* What's Inside Section */}
+          {/* What\'s Inside Section */}
           <div className="text-left bg-[#F7F7F7] border border-[#E6E6E6] rounded-[12px] p-[16px_18px] mb-[22px]">
             <div className="text-[10.5px] font-[800] tracking-[0.7px] uppercase text-[#808080] mb-[10px]">
-              What's inside Part 2
+              What\'s inside Part 3
             </div>
             <div className="flex flex-col">
               <div className="flex items-center gap-[10px] py-[7px] border-b border-[#E6E6E6] text-[13.5px] text-[#1A1A1A] font-[600]">

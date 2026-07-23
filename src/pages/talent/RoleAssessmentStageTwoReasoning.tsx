@@ -65,8 +65,8 @@ const RoleAssessmentStageTwoReasoning: React.FC = () => {
       sectionSub="Four programme situations that read like a real Reach Africa week. There's almost always a defensible 'good' answer and a more reasoned 'best' one. We're looking for the best."
       whyMattersText="Most weeks at Reach Africa, the cleanest answer isn't the right one. Your judgement under realistic pressure is what we're reading here."
       questions={QUESTIONS}
-      nextPath="assessment/stage-2/part-2/interview-2"
-      partNumber={2}
+      nextPath="assessment/stage-2/part-3/interview-2"
+      partNumber={3}
       timeLimitSeconds={12 * 60}
     />
   );

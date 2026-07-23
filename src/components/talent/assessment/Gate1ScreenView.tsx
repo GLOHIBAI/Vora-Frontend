@@ -118,7 +118,7 @@ const Gate1ScreenView: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-[#F7F7F7]">
         <FullPageSpinner
           isFullPage={false}
-          message={isGenerating ? "Generating questions, please wait…" : "Loading your assessment screen…"}
+          message={isGenerating ? "Generating questions, please wait…" : "Loading your interview screen…"}
         />
       </div>
     );

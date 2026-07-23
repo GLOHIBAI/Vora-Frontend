@@ -31,6 +31,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       'vora_stage4_completed',
       'vora_stage2_part2_unlocked',
       'vora_stage2_part3_unlocked',
+      'vora_stage2_part4_unlocked',
       'vora_hired',
     ];
     mockKeys.forEach(key => localStorage.removeItem(key));

@@ -1,9 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import AssessmentHeader from './AssessmentHeader';
 import StageRail from './StageRail';
 import PartRail from './PartRail';
+import FullPageSpinner from '../common/FullPageSpinner';
+import {
+  useStartAssessmentScreenMutation,
+  useSaveAssessmentDraftMutation,
+  useSubmitAssessmentScreenMutation,
+  useAssessmentDraftQuery,
+} from '../../services/queries/assessments';
+import { getActiveAssessmentId } from '../../utils/assessmentSession';
+import { resolveGate1AssessmentId } from '../../config/gate1Api';
+import type { AssessmentGateStartResponse } from '../../services/queries/assessments/types';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -47,8 +57,8 @@ const SaveIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 
 interface StageTwoSimulationBaseProps {
-  simulationNumber: number; // 1, 2, 3, or 4
-  simulationTitle: string; // e.g., "Safeguarding referral write-up"
+  simulationNumber: number; // e.g., 1 or 2
+  simulationTitle: string;
   sectionTitle: string;
   sectionSub: string;
   whyMattersText: string;
@@ -107,6 +117,61 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
   // Refs for tracking timers
   const blurTimerRef = useRef<any | null>(null);
   const cheatCountdownRef = useRef<any | null>(null);
+
+  // API dynamic simulation flow integrations
+  const activeAssessmentId = resolveGate1AssessmentId() || getActiveAssessmentId();
+  const [apiScreenData, setApiScreenData] = useState<AssessmentGateStartResponse | null>(null);
+  const [apiLoading, setApiLoading] = useState<boolean>(!!activeAssessmentId);
+
+  const startScreenMutation = useStartAssessmentScreenMutation(2);
+  const saveDraftMutation = useSaveAssessmentDraftMutation();
+  const submitScreenMutation = useSubmitAssessmentScreenMutation();
+
+  useEffect(() => {
+    if (!activeAssessmentId) {
+      setApiLoading(false);
+      return;
+    }
+
+    startScreenMutation.mutate(
+      {
+        assessmentId: activeAssessmentId,
+        body: { pillar: 'simulation' },
+      },
+      {
+        onSuccess: (res: any) => {
+          const data = res?.data || res;
+          if (data && data.items && data.items.length > 0) {
+            setApiScreenData(data);
+          }
+          setApiLoading(false);
+        },
+        onError: (err) => {
+          console.error('Failed to start Stage 2 simulation screen from API, falling back to local simulation:', err);
+          setApiLoading(false);
+        },
+      }
+    );
+  }, [activeAssessmentId]);
+
+  // Load drafts if the user has a resumed session
+  const { data: draftData } = useAssessmentDraftQuery(
+    activeAssessmentId || '',
+    apiScreenData?.componentId || '',
+    { enabled: !!activeAssessmentId && apiScreenData?.sessionState === 'resumed' }
+  );
+
+  useEffect(() => {
+    const responses = (draftData as any)?.data?.responses || draftData?.responses;
+    const itemKey = apiScreenData?.items[0]?.id || `simulation-${simulationNumber}`;
+    if (responses?.[itemKey] && editorRef.current) {
+      editorRef.current.innerHTML = responses[itemKey];
+      // Update word count
+      const text = editorRef.current.innerText.trim();
+      const words = text ? text.split(/\s+/).length : 0;
+      setWordCount(words);
+    }
+  }, [draftData, apiScreenData, simulationNumber]);
 
   // Timer effect
   useEffect(() => {
@@ -173,6 +238,17 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
     const text = editorRef.current.innerText.trim();
     const words = text ? text.split(/\s+/).length : 0;
     setWordCount(words);
+
+    // Save draft response to API in background on input change
+    const htmlContent = editorRef.current.innerHTML;
+    const itemKey = apiScreenData?.items[0]?.id || `simulation-${simulationNumber}`;
+    if (activeAssessmentId && apiScreenData) {
+      saveDraftMutation.mutate({
+        assessmentId: activeAssessmentId,
+        componentId: apiScreenData.componentId,
+        responses: { [itemKey]: htmlContent },
+      });
+    }
   };
 
   const executeCommand = (command: string, value: string = '') => {
@@ -185,16 +261,35 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
     setIsItalicActive(document.queryCommandState('italic'));
   };
 
-  const handleSubmit = (reason?: string) => {
+  const handleSubmit = async (reason?: string) => {
     if (reason) {
       sessionStorage.setItem('submitReason', reason);
     }
-    if (simulationNumber === 4) {
-      toast.success('Stage 2 completed successfully!');
+
+    const htmlContent = editorRef.current?.innerHTML || '';
+    const itemKey = apiScreenData?.items[0]?.id || `simulation-${simulationNumber}`;
+
+    if (activeAssessmentId && apiScreenData) {
+      try {
+        await submitScreenMutation.mutateAsync({
+          assessmentId: activeAssessmentId,
+          componentId: apiScreenData.componentId,
+          responses: { [itemKey]: htmlContent },
+        });
+        toast.success(`Simulation submitted successfully!`);
+        navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);
+      } catch (err) {
+        console.error('Failed to submit simulation screen to API:', err);
+        toast.error('Failed to submit. Please try again.');
+      }
     } else {
-      toast.success(`Simulation ${simulationNumber} submitted successfully!`);
+      if (simulationNumber === 4) {
+        toast.success('Stage 2 completed successfully!');
+      } else {
+        toast.success(`Simulation ${simulationNumber} submitted successfully!`);
+      }
+      navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);
     }
-    navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);
   };
 
   const confirmSaveAndExit = () => {
@@ -222,6 +317,10 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
     if (wordCount > wordCountMax) return 'text-[#D97706] font-bold';
     return 'text-[#808080]';
   };
+
+  if (apiLoading) {
+    return <FullPageSpinner message="Loading simulation screen..." />;
+  }
 
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col">
@@ -267,7 +366,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
       <AssessmentHeader
         middleContent={
           <span className="hidden sm:inline">
-            Stage 2 · Part 3 · Simulation {simulationNumber} of 4
+            Stage 2 · Part 4 · Simulation {simulationNumber} of 4
           </span>
         }
         rightContent={
@@ -290,7 +389,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
       <StageRail activeStage={2} showBottomBorder={false} />
 
       {/* Part Rail */}
-      <PartRail activePart={3} />
+      <PartRail activePart={4} />
 
       {/* Pebble Rail */}
       <div className="bg-white border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[10px] flex items-center justify-center gap-[6px]">

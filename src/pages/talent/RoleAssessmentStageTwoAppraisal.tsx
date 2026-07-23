@@ -115,8 +115,8 @@ const RoleAssessmentStageTwoAppraisal: React.FC = () => {
       sectionSub="Read the abstract below, then answer five appraisal questions about it. Don't worry about getting every methodological term word-perfect. We care about the shape of your critical reading."
       whyMattersText="Senior officers at Reach Africa frequently get sent 'evidence' by donors and partners. Reading it well, especially what it doesn't say, is a daily defence against bad decisions."
       questions={QUESTIONS}
-      nextPath="assessment/stage-2/part-2/interview-3"
-      partNumber={2}
+      nextPath="assessment/stage-2/part-3/interview-3"
+      partNumber={3}
       timeLimitSeconds={12 * 60}
       topContent={<AbstractBlock />}
     />

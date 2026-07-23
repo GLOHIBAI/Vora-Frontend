@@ -12,8 +12,6 @@ import {
   type FieldErrors,
 } from '../../utils/postJobValidation';
 import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
   CalendarIcon,
   CloseIcon
 } from '../common/Icons';
@@ -104,7 +102,6 @@ import {
   useUpdateRolePostingStepOneMutation,
   useUpdateRolePostingStepThreeMutation,
   useUpdateRolePostingStepTwoMutation,
-  useGetRolePostingQuery,
   useGetRolePostingPrefillQuery,
 } from '../../services/queries/rolePostings';
 import { buildUpdateRolePostingStepOneBody } from '../../utils/rolePostingStepOne';

@@ -190,7 +190,7 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
                     index={optIdx}
                     label={opt.label ?? opt.text ?? ''}
                     selected={value === opt.id}
-                    disabled={disabled}
+                    disabled={disabled || isAdaptiveLoading}
                     onClick={() => onChange(opt.id)}
                   />
                 ))}

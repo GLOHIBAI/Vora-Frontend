@@ -1,14 +1,15 @@
 import React from 'react';
 
 interface PartRailProps {
-  activePart: number; // 1, 2, or 3
+  activePart: number; // 1, 2, 3, or 4
 }
 
 const PartRail: React.FC<PartRailProps> = ({ activePart }) => {
   const parts = [
     { num: 1, label: 'Part 1 · Knowledge' },
-    { num: 2, label: 'Part 2 · Reasoning' },
-    { num: 3, label: 'Part 3 · Simulation' },
+    { num: 2, label: 'Part 2 · Expertise' },
+    { num: 3, label: 'Part 3 · Reasoning' },
+    { num: 4, label: 'Part 4 · Simulation' },
   ];
 
   return (

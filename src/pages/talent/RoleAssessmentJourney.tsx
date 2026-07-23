@@ -160,6 +160,7 @@ const RoleAssessmentJourney: React.FC = () => {
         'vora_stage4_completed',
         'vora_stage2_part2_unlocked',
         'vora_stage2_part3_unlocked',
+        'vora_stage2_part4_unlocked',
         'vora_hired',
       ];
       mockKeys.forEach(key => localStorage.removeItem(key));
@@ -543,8 +544,10 @@ const RoleAssessmentJourney: React.FC = () => {
               onClick={() => {
                 if (isStage2Completed) {
                   navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2/results`);
-                } else {
+                } else if (localStorage.getItem('vora_stage2_started') === 'true') {
                   navigate(`/onboarding/talent/${roleSlug}/assessment/resume`);
+                } else {
+                  navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2`);
                 }
               }}
               className={`bg-white border-[1.5px] rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all z-[1] ${
@@ -561,9 +564,9 @@ const RoleAssessmentJourney: React.FC = () => {
                   {isStage2Completed ? 'Stage 2 · Complete' : 'Starting here'}
                 </div>
                 <div className="text-[17px] font-[600] text-[#1A1A1A] mb-[6px] tracking-[-0.2px] leading-[1.3]">Your professional dimension</div>
-                <div className="text-[13.5px] text-[#4A4A4A] leading-[1.65] mb-[14px]">A focused look at the work itself, built around your CV, onboarding profile and this exact role. Three parts. Knowledge, then reasoning, then applied simulation.</div>
+                <div className="text-[13.5px] text-[#4A4A4A] leading-[1.65] mb-[14px]">A focused look at the work itself, built around your CV, onboarding profile and this exact role. Four parts. Knowledge, then expertise, then reasoning, then applied simulation.</div>
                 <div className="flex flex-wrap gap-[6px] mb-[14px]">
-                  {['Part 1 · Knowledge', 'Part 2 · Reasoning', 'Part 3 · Simulation'].map((item) => (
+                  {['Part 1 · Knowledge', 'Part 2 · Expertise', 'Part 3 · Reasoning', 'Part 4 · Simulation'].map((item) => (
                     <span key={item} className="text-[11px] font-[700] px-[10px] py-[4px] rounded-full border border-[#0047CC] bg-white text-[#0047CC]">{item}</span>
                   ))}
                 </div>
@@ -583,7 +586,7 @@ const RoleAssessmentJourney: React.FC = () => {
                 </div>
               </div>
               <div className="absolute top-[22px] right-[22px] hidden sm:flex items-center gap-[6px] text-[11px] font-[800] px-[11px] py-[5px] rounded-full tracking-[0.4px] bg-white border border-[#0047CC] text-[#0047CC] transition-all duration-200 group-hover:bg-[#0047CC] group-hover:text-white group-hover:border-[#0047CC] hover:bg-[#0047CC] hover:text-white hover:border-[#0047CC] cursor-pointer">
-                {isStage2Completed ? 'Complete' : 'Start here'}
+                {isStage2Completed ? 'Complete' : localStorage.getItem('vora_stage2_started') === 'true' ? 'Resume' : 'Start here'}
               </div>
             </div>
           ) : (
@@ -594,9 +597,9 @@ const RoleAssessmentJourney: React.FC = () => {
               <div className="flex-1 min-w-0 pt-[2px]">
                 <div className="text-[10.5px] font-[800] tracking-[0.8px] uppercase mb-[4px] text-[#ADADAD]">Up next once Stage 1 passes</div>
                 <div className="text-[17px] font-[600] text-[#1A1A1A] mb-[6px] tracking-[-0.2px] leading-[1.3]">Your professional dimension</div>
-                <div className="text-[13.5px] text-[#4A4A4A] leading-[1.65] mb-[14px]">A focused look at the work itself, built around your CV, onboarding profile and this exact role. Three parts. Knowledge, then reasoning, then applied simulation.</div>
+                <div className="text-[13.5px] text-[#4A4A4A] leading-[1.65] mb-[14px]">A focused look at the work itself, built around your CV, onboarding profile and this exact role. Four parts. Knowledge, then expertise, then reasoning, then applied simulation.</div>
                 <div className="flex flex-wrap gap-[6px] mb-[14px]">
-                  {['Part 1 · Knowledge', 'Part 2 · Reasoning', 'Part 3 · Simulation'].map((item) => (
+                  {['Part 1 · Knowledge', 'Part 2 · Expertise', 'Part 3 · Reasoning', 'Part 4 · Simulation'].map((item) => (
                     <span key={item} className="text-[11px] font-[700] px-[10px] py-[4px] rounded-full border border-[#0047CC] bg-white text-[#0047CC]">{item}</span>
                   ))}
                 </div>

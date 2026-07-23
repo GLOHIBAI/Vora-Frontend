@@ -127,7 +127,9 @@ export function useLocalAssessmentScreen(
 
   return {
     items,
+    setItems,
     answers,
+    setAnswers,
     recordAnswer,
     confirmScreen,
     isLocked,

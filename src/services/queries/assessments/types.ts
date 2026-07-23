@@ -583,3 +583,89 @@ export interface GateResumeState {
   /** Per-screen timer limit in seconds for the current/next screen. */
   screenTimerLimitSeconds?: number;
 }
+
+// ── Stage 2 (Gate 2) Intros ──────────────────────────────────────────────────
+
+export interface Gate2StageIntroResponse {
+  schemaVersion?: number;
+  assessmentId: string;
+  hero?: {
+    eyebrow?: string;
+    title?: string;
+    subtitle?: string;
+  };
+  pillarsSection?: {
+    title?: string;
+    subtitle?: string;
+  };
+  pillars?: Array<{
+    part: number;
+    eyebrow?: string;
+    title?: string;
+    body?: string;
+    tags?: string[];
+  }>;
+  roleFamilies?: {
+    eyebrow?: string;
+    title?: string;
+    body?: string;
+    tags?: Array<{
+      id: string;
+      label: string;
+      active?: boolean;
+    }>;
+    activeFamilyId?: string;
+    activeFamilyLabel?: string;
+  };
+  outcomes?: any;
+  footer?: {
+    ctaLabel?: string;
+    secondaryLabel?: string;
+    prepNote?: string;
+    profileNote?: string;
+    windowNote?: string;
+  };
+  fingerprint?: {
+    nicheSlug?: string;
+    nicheDisplayName?: string;
+    level?: string;
+    roleTitle?: string;
+  };
+  stats?: {
+    durationMins?: string;
+    windowHours?: number;
+  };
+  nextPillar?: Gate2PillarKey;
+}
+
+export interface Gate2PillarIntroResponse {
+  schemaVersion?: number;
+  assessmentId: string;
+  pillar: Gate2PillarKey;
+  part: number;
+  title: string;
+  subtitle: string;
+  partLabel?: string;
+  eyebrow?: string;
+  headsUp?: string;
+  ctas?: {
+    stageOverviewLabel?: string;
+    beginPartLabel?: string;
+  };
+  levelBand?: {
+    label: string;
+    years?: string;
+  };
+  questionCount?: number;
+  pillarLimitSecs?: number;
+  antiGame?: string;
+  summary?: string;
+  breadcrumb?: string;
+  fingerprint?: {
+    nicheSlug?: string;
+    nicheDisplayName?: string;
+    level?: string;
+    roleTitle?: string;
+  };
+}
+

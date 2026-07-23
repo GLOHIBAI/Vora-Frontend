@@ -21,11 +21,11 @@ const RoleAssessmentStageTwoPartTwoComplete: React.FC = () => {
     (location.state as { firstName?: string } | null)?.firstName || user?.firstName || 'there';
 
   useEffect(() => {
-    localStorage.setItem('vora_stage2_part3_unlocked', 'true');
+    localStorage.setItem('vora_stage2_part4_unlocked', 'true');
   }, []);
 
-  const handleBeginPart3 = () => {
-    navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2/part-3/intro`);
+  const handleBeginPart4 = () => {
+    navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2/part-4/intro`);
   };
 
   const handleContinueLater = () => {
@@ -75,7 +75,7 @@ const RoleAssessmentStageTwoPartTwoComplete: React.FC = () => {
 
       {/* Topbar */}
       <AssessmentHeader
-        middleContent="Between Part 2 and Part 3"
+        middleContent="Between Part 3 and Part 4"
         rightContent={
           <div className="flex items-center gap-[6px] text-[12px] text-[#808080] font-[600]">
             <DocumentCheckIcon className="w-[13px] h-[13px] text-[#0047CC]" />
@@ -88,7 +88,7 @@ const RoleAssessmentStageTwoPartTwoComplete: React.FC = () => {
       <StageRail activeStage={2} />
 
       {/* Part Rail */}
-      <PartRail activePart={3} />
+      <PartRail activePart={4} />
 
       {/* Content wrapper */}
       <div className="flex-1 flex items-center justify-center p-[40px_24px]">
@@ -101,13 +101,13 @@ const RoleAssessmentStageTwoPartTwoComplete: React.FC = () => {
           </div>
 
           <div className="text-[11px] font-[800] text-[#0047CC] tracking-[1.4px] uppercase mb-[10px]">
-            Part 2 of 3 complete
+            Part 3 of 4 complete
           </div>
           <h1 className="text-[26px] font-[900] text-[#1A1A1A] tracking-[-0.4px] leading-[1.25] mb-[14px]">
             One more stretch, {firstName}
           </h1>
           <p className="text-[15px] text-[#4A4A4A] leading-[1.65] mb-[26px]">
-            You've moved through the heaviest cognitive load of this stage. The final part is shorter, more applied, and quite different in feel. Take your time before continuing.
+            You\'ve moved through the heaviest cognitive load of this stage. The final part is shorter, more applied, and quite different in feel. Take your time before continuing.
           </p>
 
           {/* Completion Details Card (Themed Blue, No Left Accent) */}
@@ -115,7 +115,7 @@ const RoleAssessmentStageTwoPartTwoComplete: React.FC = () => {
             <div className="flex items-center gap-[10px] mb-[10px]">
               <DocumentCheckIcon className="w-[20px] h-[20px] text-[#0047CC] shrink-0" />
               <div className="text-[14px] font-[800] text-[#0047CC]">
-                What you completed in Part 2
+                What you completed in Part 3
               </div>
             </div>
             <ul className="flex flex-col gap-[6px] pl-[30px] list-none">
@@ -134,22 +134,22 @@ const RoleAssessmentStageTwoPartTwoComplete: React.FC = () => {
           {/* Next Up Card */}
           <div className="bg-gradient-to-br from-[#EBF6FF] to-[#F8FBFF] border-[1.5px] border-[#EBF6FF] rounded-[14px] p-[18px_20px] mb-[24px] text-left">
             <div className="text-[10.5px] font-[800] letter-spacing-[0.7px] uppercase text-[#0047CC] mb-[5px]">
-              Coming up · Part 3 of 3
+              Coming up · Part 4 of 4
             </div>
             <div className="text-[16px] font-[800] text-[#182348] mb-[4px] tracking-[-0.2px]">
               How you perform in practice
             </div>
             <div className="text-[13px] text-[#4A4A4A] leading-[1.55]">
-              Four short simulations. You'll write a clinical handover, draft a community message, handle a remote consultation query and walk through a safeguarding flag. Around 25 to 40 minutes.
+              Four short simulations. You\'ll write a clinical handover, draft a community message, handle a remote consultation query and walk through a safeguarding flag. Around 25 to 40 minutes.
             </div>
           </div>
 
           {/* Primary Action Button */}
           <button
-            onClick={handleBeginPart3}
+            onClick={handleBeginPart4}
             className="bg-[#0047CC] text-white border-none rounded-[10px] p-[14px_28px] text-[14px] font-[700] cursor-pointer w-full flex items-center justify-center gap-[8px] transition-all shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,71,204,0.36)] font-sans"
           >
-            I'm ready, begin Part 3
+            I\'m ready, begin Part 4
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M3 8h10M9 4l4 4-4 4"/>
             </svg>

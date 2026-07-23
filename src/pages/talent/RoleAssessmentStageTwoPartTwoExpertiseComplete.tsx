@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import AssessmentHeader from '../../components/talent/AssessmentHeader';
@@ -11,7 +11,7 @@ const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-const RoleAssessmentStageTwoPartOneComplete: React.FC = () => {
+const RoleAssessmentStageTwoPartTwoExpertiseComplete: React.FC = () => {
   const navigate = useNavigate();
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
   const location = useLocation();
@@ -20,8 +20,12 @@ const RoleAssessmentStageTwoPartOneComplete: React.FC = () => {
   const firstName =
     (location.state as { firstName?: string } | null)?.firstName || user?.firstName || 'there';
 
-  const handleBeginPart2 = () => {
-    navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2/part-2/intro`);
+  useEffect(() => {
+    localStorage.setItem('vora_stage2_part3_unlocked', 'true');
+  }, []);
+
+  const handleBeginPart3 = () => {
+    navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2/part-3/intro`);
   };
 
   const handleContinueLater = () => {
@@ -71,7 +75,7 @@ const RoleAssessmentStageTwoPartOneComplete: React.FC = () => {
 
       {/* Topbar */}
       <AssessmentHeader
-        middleContent="Between Part 1 and Part 2"
+        middleContent="Between Part 2 and Part 3"
         rightContent={
           <div className="flex items-center gap-[6px] text-[12px] text-[#808080] font-[600]">
             <DocumentCheckIcon className="w-[13px] h-[13px] text-[#0047CC]" />
@@ -84,7 +88,7 @@ const RoleAssessmentStageTwoPartOneComplete: React.FC = () => {
       <StageRail activeStage={2} />
 
       {/* Part Rail */}
-      <PartRail activePart={2} />
+      <PartRail activePart={3} />
 
       {/* Content wrapper */}
       <div className="flex-1 flex items-center justify-center p-[40px_24px]">
@@ -97,32 +101,32 @@ const RoleAssessmentStageTwoPartOneComplete: React.FC = () => {
           </div>
 
           <div className="text-[11px] font-[800] text-[#0047CC] tracking-[1.4px] uppercase mb-[10px]">
-            Part 1 of 4 complete
+            Part 2 of 4 complete
           </div>
           <h1 className="text-[26px] font-[900] text-[#1A1A1A] tracking-[-0.4px] leading-[1.25] mb-[14px]">
-            Take a breath, {firstName}
+            Nicely done, {firstName}
           </h1>
           <p className="text-[15px] text-[#4A4A4A] leading-[1.65] mb-[26px]">
-            You've just moved through the knowledge interviews. Stretch your shoulders. Get water. Whenever you're ready, Part 2 is here for you.
+            You've finished the domain expertise interviews. Take a moment to recover. Whenever you're ready, Part 3 is waiting.
           </p>
 
-          {/* Completion Details Card (Themed Blue, No Left Accent) */}
+          {/* Completion Details Card */}
           <div className="bg-gradient-to-b from-[#EBF6FF] to-[#F8FBFF] border-[1.5px] border-[#387DFF]/20 rounded-[14px] p-[18px_20px] mb-[22px] text-left">
             <div className="flex items-center gap-[10px] mb-[10px]">
               <DocumentCheckIcon className="w-[20px] h-[20px] text-[#0047CC] shrink-0" />
               <div className="text-[14px] font-[800] text-[#0047CC]">
-                What you just completed in Part 1
+                What you completed in Part 2
               </div>
             </div>
             <ul className="flex flex-col gap-[6px] pl-[30px] list-none">
               <li className="text-[13.5px] text-[#1A1A1A] font-[600] relative before:content-[''] before:absolute before:left-[-16px] before:top-[8px] before:w-[6px] before:h-[6px] before:rounded-full before:bg-[#0047CC]">
-                Pharmacology in the field
+                Child Malnutrition Screening
               </li>
               <li className="text-[13.5px] text-[#1A1A1A] font-[600] relative before:content-[''] before:absolute before:left-[-16px] before:top-[8px] before:w-[6px] before:h-[6px] before:rounded-full before:bg-[#0047CC]">
-                Biostatistics for programme decisions
+                Malaria Diagnostic Protocol
               </li>
               <li className="text-[13.5px] text-[#1A1A1A] font-[600] relative before:content-[''] before:absolute before:left-[-16px] before:top-[8px] before:w-[6px] before:h-[6px] before:rounded-full before:bg-[#0047CC]">
-                Compliance and ethics in health programmes
+                Cold-chain Compliance
               </li>
             </ul>
           </div>
@@ -130,22 +134,25 @@ const RoleAssessmentStageTwoPartOneComplete: React.FC = () => {
           {/* Next Up Card */}
           <div className="bg-gradient-to-br from-[#EBF6FF] to-[#F8FBFF] border-[1.5px] border-[#EBF6FF] rounded-[14px] p-[18px_20px] mb-[24px] text-left">
             <div className="text-[10.5px] font-[800] letter-spacing-[0.7px] uppercase text-[#0047CC] mb-[5px]">
-              Coming up · Part 2 of 4
+              Coming up · Part 3 of 4
             </div>
             <div className="text-[16px] font-[800] text-[#182348] mb-[4px] tracking-[-0.2px]">
-              The expertise you bring
+              How you reason through the work
             </div>
             <div className="text-[13px] text-[#4A4A4A] leading-[1.55]">
-              Domain expertise interviews. You'll be tested on your field-specific clinical knowledge, protocols, and programme operations. Around 20 to 30 minutes.
+              Three reasoning interviews. You'll be given live-feeling situations and shown what you'd do, not just what you know. Around 25 to 35 minutes.
             </div>
           </div>
 
           {/* Primary Action Button */}
           <button
-            onClick={handleBeginPart2}
+            onClick={handleBeginPart3}
             className="bg-[#0047CC] text-white border-none rounded-[10px] p-[14px_28px] text-[14px] font-[700] cursor-pointer w-full flex items-center justify-center gap-[8px] transition-all shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,71,204,0.36)] font-sans"
           >
-            I'm ready, begin Part 2
+            I'm ready, begin Part 3
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M3 8h10M9 4l4 4-4 4"/>
+            </svg>
           </button>
 
           {/* Secondary Exit Button */}
@@ -164,4 +171,4 @@ const RoleAssessmentStageTwoPartOneComplete: React.FC = () => {
   );
 };
 
-export default RoleAssessmentStageTwoPartOneComplete;
+export default RoleAssessmentStageTwoPartTwoExpertiseComplete;

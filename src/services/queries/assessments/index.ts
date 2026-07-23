@@ -27,6 +27,9 @@ import type {
   GateResumeState,
   ReviewSummaryEntry,
   ResponsesMap,
+  Gate2StageIntroResponse,
+  Gate2PillarIntroResponse,
+  Gate2PillarKey,
 } from "./types";
 import { parseGateProgressEntries } from "../../../utils/assessmentSession";
 
@@ -53,6 +56,18 @@ export const assessmentKeys = {
     ] as const,
   progress: (assessmentId: string) =>
     [...assessmentKeys.all, assessmentId, "progress"] as const,
+  gate2Intro: (assessmentId: string) =>
+    [...assessmentKeys.all, assessmentId, "gate", 2, "intro"] as const,
+  gate2PillarIntro: (assessmentId: string, pillar: string) =>
+    [
+      ...assessmentKeys.all,
+      assessmentId,
+      "gate",
+      2,
+      "pillars",
+      pillar,
+      "intro",
+    ] as const,
   verdict: (assessmentId: string, gate: number) =>
     [...assessmentKeys.all, assessmentId, "gate", gate, "verdict"] as const,
   reviewSummary: (assessmentId: string, gate: number) =>
@@ -546,3 +561,51 @@ export const useReviewSummaryQuery = (
           }),
     enabled: (options?.enabled ?? true) && !!assessmentId,
   });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stage 2 (Gate 2) Intro & Pillar Intro Queries
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/v1/assessments/:assessmentId/gates/2/intro
+ *
+ * General Stage 2 intro landing page data (hero, pillars, roleFamilies, stats, nextPillar).
+ * Side effect on server: enqueues background prefetch for nextPillar.
+ */
+export const useStage2IntroQuery = (
+  assessmentId: string,
+  options?: { enabled?: boolean },
+) =>
+  useQuery({
+    queryKey: assessmentKeys.gate2Intro(assessmentId),
+    queryFn: () =>
+      apiClient.get<Gate2StageIntroResponse>({
+        url: `/assessments/${assessmentId}/gates/2/intro`,
+        auth: true,
+      }),
+    enabled: (options?.enabled ?? true) && !!assessmentId,
+    staleTime: 2 * 60 * 1000,
+  });
+
+/**
+ * GET /api/v1/assessments/:assessmentId/gates/2/pillars/:pillar/intro
+ *
+ * Per-role pillar intro before starting questions (counts, timer, level band, etc).
+ * Side effect on server: re-ensures prefetch for that pillar.
+ */
+export const useStage2PillarIntroQuery = (
+  assessmentId: string,
+  pillar: Gate2PillarKey,
+  options?: { enabled?: boolean },
+) =>
+  useQuery({
+    queryKey: assessmentKeys.gate2PillarIntro(assessmentId, pillar),
+    queryFn: () =>
+      apiClient.get<Gate2PillarIntroResponse>({
+        url: `/assessments/${assessmentId}/gates/2/pillars/${pillar}/intro`,
+        auth: true,
+      }),
+    enabled: (options?.enabled ?? true) && !!assessmentId && !!pillar,
+    staleTime: 2 * 60 * 1000,
+  });
+

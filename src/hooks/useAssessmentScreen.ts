@@ -400,7 +400,7 @@ export function useAssessmentScreen({
         item.content.layout !== "multi_question"
       ) {
         const stepKey = `${itemId}-${priorSteps.length}`;
-        if (isAdaptiveSubmittingRef.current || lastSubmittedStepRef.current === stepKey) return;
+        if (isAdaptiveSubmittingRef.current || lastSubmittedStepRef.current === stepKey || submitAdaptive.isPending) return;
         isAdaptiveSubmittingRef.current = true;
         lastSubmittedStepRef.current = stepKey;
         try {

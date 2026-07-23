@@ -226,8 +226,8 @@ const RoleAssessmentStageTwoInterpretation: React.FC = () => {
       sectionSub="Below is a real-shaped dataset from a quarterly programme review. Four questions about what it actually tells you, and what it doesn't."
       whyMattersText="Programme dashboards arrive in your inbox every Monday at Reach Africa. Reading them well is the difference between catching a problem early and finding out from a donor in week ten."
       questions={QUESTIONS}
-      nextPath="assessment/stage-2/part-2/complete"
-      partNumber={2}
+      nextPath="assessment/stage-2/part-3/complete"
+      partNumber={3}
       timeLimitSeconds={12 * 60}
       topContent={<DatasetBlock />}
     />
