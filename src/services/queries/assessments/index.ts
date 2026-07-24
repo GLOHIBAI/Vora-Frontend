@@ -30,6 +30,8 @@ import type {
   Gate2StageIntroResponse,
   Gate2PillarIntroResponse,
   Gate2PillarKey,
+  Gate2PillarItemsResponse,
+  GateWindowInfo,
 } from "./types";
 import { parseGateProgressEntries } from "../../../utils/assessmentSession";
 
@@ -67,6 +69,22 @@ export const assessmentKeys = {
       "pillars",
       pillar,
       "intro",
+    ] as const,
+  gate2PillarItems: (
+    assessmentId: string,
+    pillar: string,
+    from?: number,
+    through?: number,
+  ) =>
+    [
+      ...assessmentKeys.all,
+      assessmentId,
+      "gate",
+      2,
+      "pillars",
+      pillar,
+      "items",
+      { from, through },
     ] as const,
   verdict: (assessmentId: string, gate: number) =>
     [...assessmentKeys.all, assessmentId, "gate", gate, "verdict"] as const,
@@ -608,4 +626,42 @@ export const useStage2PillarIntroQuery = (
     enabled: (options?.enabled ?? true) && !!assessmentId && !!pillar,
     staleTime: 2 * 60 * 1000,
   });
+
+/**
+ * GET /assessments/:assessmentId/gates/2/pillars/:pillar/items?from=...&through=...
+ * Fetch next window of items for Gate 2 pillar questions.
+ */
+export const fetchGate2PillarItems = async (
+  assessmentId: string,
+  pillar: Gate2PillarKey | string,
+  params?: { from?: number; through?: number },
+): Promise<Gate2PillarItemsResponse> => {
+  const queryParams: Record<string, string> = {};
+  if (params?.from !== undefined) queryParams.from = String(params.from);
+  if (params?.through !== undefined) queryParams.through = String(params.through);
+
+  return apiClient.get<Gate2PillarItemsResponse>({
+    url: `/assessments/${assessmentId}/gates/2/pillars/${pillar}/items`,
+    params: queryParams,
+    auth: true,
+  });
+};
+
+export const useGate2PillarItemsQuery = (
+  assessmentId: string,
+  pillar: Gate2PillarKey | string,
+  params?: { from?: number; through?: number },
+  options?: { enabled?: boolean },
+) =>
+  useQuery({
+    queryKey: assessmentKeys.gate2PillarItems(
+      assessmentId,
+      pillar,
+      params?.from,
+      params?.through,
+    ),
+    queryFn: () => fetchGate2PillarItems(assessmentId, pillar, params),
+    enabled: (options?.enabled ?? true) && !!assessmentId && !!pillar,
+  });
+
 

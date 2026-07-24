@@ -191,8 +191,11 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
     return () => clearInterval(timer);
   }, [savedForLater, showCheatModal]);
 
-  // Anti-cheat visibility change listener
+  // Anti-cheat visibility change listener (disabled for now per user instruction)
   useEffect(() => {
+    const ENABLE_ANTI_CHEAT_TAB_SWITCH = false;
+    if (!ENABLE_ANTI_CHEAT_TAB_SWITCH) return;
+
     const handleVisibilityChange = () => {
       if (document.hidden && !savedForLater && !alreadyCheated) {
         blurTimerRef.current = setTimeout(() => {
@@ -238,17 +241,6 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
     const text = editorRef.current.innerText.trim();
     const words = text ? text.split(/\s+/).length : 0;
     setWordCount(words);
-
-    // Save draft response to API in background on input change
-    const htmlContent = editorRef.current.innerHTML;
-    const itemKey = apiScreenData?.items[0]?.id || `simulation-${simulationNumber}`;
-    if (activeAssessmentId && apiScreenData) {
-      saveDraftMutation.mutate({
-        assessmentId: activeAssessmentId,
-        componentId: apiScreenData.componentId,
-        responses: { [itemKey]: htmlContent },
-      });
-    }
   };
 
   const executeCommand = (command: string, value: string = '') => {
@@ -292,8 +284,22 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
     }
   };
 
-  const confirmSaveAndExit = () => {
+  const confirmSaveAndExit = async () => {
     setSavedForLater(true);
+    const htmlContent = editorRef.current?.innerHTML || '';
+    const itemKey = apiScreenData?.items[0]?.id || `simulation-${simulationNumber}`;
+
+    if (activeAssessmentId && apiScreenData?.componentId && htmlContent) {
+      try {
+        await saveDraftMutation.mutateAsync({
+          assessmentId: activeAssessmentId,
+          componentId: apiScreenData.componentId,
+          responses: { [itemKey]: htmlContent },
+        });
+      } catch (err) {
+        console.error('Failed to save simulation draft on exit:', err);
+      }
+    }
     toast.success('Progress saved successfully.');
     navigate(`/onboarding/talent/${roleSlug}/assessment/journey`);
   };

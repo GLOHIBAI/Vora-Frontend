@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import AssessmentHeader from '../../components/talent/AssessmentHeader';
 import StageRail from '../../components/talent/StageRail';
 import PartRail from '../../components/talent/PartRail';
+import FullPageSpinner from '../../components/common/FullPageSpinner';
 import { useGetPublicRoleQuery } from '../../services/queries/talent';
 import { useStage2PillarIntroQuery } from '../../services/queries/assessments';
 import { getActiveAssessmentId } from '../../utils/assessmentSession';
@@ -23,12 +24,6 @@ const LockIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-const ArrowRightIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-    <path d="M3 8h10M9 4l4 4-4 4"/>
-  </svg>
-);
-
 const RoleAssessmentStageTwoPartOneIntro: React.FC = () => {
   const navigate = useNavigate();
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
@@ -37,7 +32,7 @@ const RoleAssessmentStageTwoPartOneIntro: React.FC = () => {
   const hasUnlockedPart2 = localStorage.getItem('vora_stage2_part2_unlocked') === 'true';
 
   const activeAssessmentId = resolveGate1AssessmentId() || getActiveAssessmentId();
-  const { data: pillarIntroData } = useStage2PillarIntroQuery(activeAssessmentId || '', 'knowledge');
+  const { data: pillarIntroData, isLoading } = useStage2PillarIntroQuery(activeAssessmentId || '', 'knowledge');
   const pillarIntro = (pillarIntroData as any)?.data || pillarIntroData;
 
   const { data: roleResponse } = useGetPublicRoleQuery(roleSlug || '');
@@ -64,6 +59,10 @@ const RoleAssessmentStageTwoPartOneIntro: React.FC = () => {
     navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2/part-1/interview-1`);
   };
 
+  if (activeAssessmentId && (isLoading || !pillarIntroData)) {
+    return <FullPageSpinner message="Preparing pillar intro..." />;
+  }
+
   const isClinical = 
     roleTitle.toLowerCase().includes('health') ||
     roleTitle.toLowerCase().includes('programme officer') ||
@@ -74,27 +73,21 @@ const RoleAssessmentStageTwoPartOneIntro: React.FC = () => {
     roleTitle.toLowerCase().includes('doctor') ||
     roleTitle.toLowerCase().includes('nurse');
 
-  const levelLower = rawLevel.toLowerCase();
-  const seniorityLabel = 
-    levelLower.includes('intern') ? 'Intern' :
-    levelLower.includes('entry') ? 'Entry level' :
-    levelLower.includes('mid') ? 'Mid level' :
-    levelLower.includes('senior') ? 'Senior' :
-    levelLower.includes('principal') || levelLower.includes('staff') ? 'Principal/Staff' : 'Senior';
+  const levelLabel = pillarIntro?.levelBand?.label || rawLevel || 'Senior';
+  const yearsDetail = pillarIntro?.levelBand?.years
+    ? (pillarIntro.levelBand.years.includes('years') || pillarIntro.levelBand.years.includes('training')
+        ? pillarIntro.levelBand.years
+        : `${pillarIntro.levelBand.years} years`)
+    : '8 to 15 years';
 
-  const yearsSuffix = 
-    levelLower.includes('intern') ? '· in training' :
-    levelLower.includes('entry') ? '· 0 to 3 years' :
-    levelLower.includes('mid') ? '· 3 to 6 years' :
-    levelLower.includes('senior') ? '· 6 to 10 years' :
-    levelLower.includes('principal') || levelLower.includes('staff') ? '· 10+ years' : '· 6 to 10 years';
-
-  const questionCount = 
-    levelLower.includes('intern') ? 19 :
-    levelLower.includes('entry') ? 13 :
-    levelLower.includes('mid') ? 13 :
-    levelLower.includes('senior') ? 15 :
-    levelLower.includes('principal') || levelLower.includes('staff') ? 15 : 15;
+  const titleText = pillarIntro?.title || 'The knowledge you carry';
+  const subtitleText = pillarIntro?.subtitle || 'The foundations your role draws on, asked as real situations. Mixed formats, one question per screen.';
+  const antiGameNotice = pillarIntro?.antiGame || 'This part has its own 12 minute timer that starts when you begin and keeps running across the questions. Leaving the tab will submit it. If you pause, the questions regenerate on return.';
+  const questionCount = pillarIntro?.questionCount ?? 15;
+  const summaryText = pillarIntro?.summary || `${questionCount} questions, each on its own screen, mixed formats · about 12 minutes`;
+  const stageOverviewLabel = pillarIntro?.ctas?.stageOverviewLabel || 'Stage overview';
+  const beginPartLabel = pillarIntro?.ctas?.beginPartLabel || 'Begin Part 1';
+  const headsUpText = pillarIntro?.headsUp || 'the timer starts when you tap continue. Switching tabs without saving will auto-submit.';
 
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col animate-[fadeUp_0.5s_ease_both]">
@@ -134,7 +127,7 @@ const RoleAssessmentStageTwoPartOneIntro: React.FC = () => {
             </>
           ) : (
             <>
-              {roleTitle} <span className="text-[#ADADAD]">·</span> Part 1 <span className="text-[#ADADAD]">·</span> Knowledge <span className="text-[#ADADAD]">·</span> {seniorityLabel}
+              {roleTitle} <span className="text-[#ADADAD]">·</span> Part 1 <span className="text-[#ADADAD]">·</span> Knowledge <span className="text-[#ADADAD]">·</span> {levelLabel}
             </>
           )
         }
@@ -180,7 +173,7 @@ const RoleAssessmentStageTwoPartOneIntro: React.FC = () => {
                 About Part 1 of 4
               </div>
               <h1 className="text-[24px] font-[900] tracking-[-0.4px] text-[#1A1A1A] mb-[12px] leading-[1.25]">
-                The knowledge you carry
+                {titleText}
               </h1>
               <p className="text-[15px] text-[#4A4A4A] leading-[1.65] mb-[24px]">
                 Three short interviews on the foundational knowledge a {roleTitle} at {companyName} draws on every day. Each interview is timed individually and is shaped by your background.
@@ -247,10 +240,13 @@ const RoleAssessmentStageTwoPartOneIntro: React.FC = () => {
             </>
           ) : (
             <>
-              {/* Dynamic Non-Clinical Reference HTML Layout */}
+              {/* Dynamic Non-Clinical Reference Layout */}
               <div className="flex justify-center mb-[18px]">
-                <div className="bg-[#182348] text-white text-[11px] font-[800] tracking-[0.5px] uppercase p-[5px_12px] rounded-full inline-flex items-center gap-[7px]">
-                  {seniorityLabel} <span className="text-[#387DFF] font-[700] normal-case tracking-normal">{yearsSuffix}</span>
+                <div className="bg-[#EBF6FF] border border-[#387DFF]/30 text-[#0047CC] text-[11.5px] font-[800] tracking-[0.6px] uppercase px-[14px] py-[5px] rounded-full inline-flex items-center gap-[7px]">
+                  {levelLabel.toUpperCase()}{' '}
+                  <span className="text-[#387DFF] font-[700] normal-case tracking-normal">
+                    · {yearsDetail}
+                  </span>
                 </div>
               </div>
 
@@ -262,17 +258,17 @@ const RoleAssessmentStageTwoPartOneIntro: React.FC = () => {
               </div>
 
               <h1 className="text-[23px] font-[900] text-[#1A1A1A] tracking-[-0.4px] leading-[1.28] mb-[8px]">
-                The knowledge you carry
+                {titleText}
               </h1>
               <p className="text-[14px] text-[#808080] leading-[1.6] mb-[18px]">
-                The foundations your role draws on, asked as real situations. Mixed formats, one question per screen.
+                {subtitleText}
               </p>
 
               {/* Lock notice card (.antigame style) */}
               <div className="bg-[#F7F7F7] border border-[#E6E6E6] rounded-[10px] p-[10px_14px] mb-[22px] flex items-center gap-[9px] text-left">
                 <LockIcon className="w-[16px] h-[16px] text-[#808080] shrink-0" />
                 <p className="text-[11.5px] text-[#808080] leading-[1.5] font-[600]">
-                  This part has its own 12 minute timer that starts when you begin and keeps running across the questions. Leaving the tab will submit it. If you pause, the questions regenerate on return.
+                  {antiGameNotice}
                 </p>
               </div>
 
@@ -280,7 +276,7 @@ const RoleAssessmentStageTwoPartOneIntro: React.FC = () => {
               <div className="bg-[#EBF6FF] rounded-[14px] p-[18px_20px] mb-[24px] flex gap-[14px] items-center text-left">
                 <div className="text-[30px] font-[900] text-[#0047CC]">{questionCount}</div>
                 <div className="text-[13.5px] text-[#182348] leading-[1.55] font-[600]">
-                  questions, each on its own screen, mixed formats · about 12 minutes
+                  {summaryText}
                 </div>
               </div>
 
@@ -290,20 +286,20 @@ const RoleAssessmentStageTwoPartOneIntro: React.FC = () => {
                   onClick={() => navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2`)}
                   className="flex-1 bg-white text-[#4A4A4A] border border-[#E6E6E6] rounded-[10px] p-[12px_20px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] transition-all font-sans"
                 >
-                  Stage overview
+                  {stageOverviewLabel}
                 </button>
                 <button
                   onClick={handleBegin}
                   className="flex-1 bg-[#0047CC] text-white border-none rounded-[10px] p-[12px_20px] text-[13.5px] font-[700] cursor-pointer inline-flex items-center justify-center gap-[7px] shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] transition-all font-sans"
                 >
-                  Begin Part 1
+                  {beginPartLabel}
                 </button>
               </div>
             </>
           )}
           
           <p className="text-[12px] text-[#808080] mt-[14px] leading-[1.5] text-center">
-            <strong>Heads up:</strong> the timer starts when you tap continue. Switching tabs without saving will auto-submit.
+            <strong>Heads up:</strong> {headsUpText}
           </p>
 
         </div>
@@ -313,3 +309,4 @@ const RoleAssessmentStageTwoPartOneIntro: React.FC = () => {
 };
 
 export default RoleAssessmentStageTwoPartOneIntro;
+

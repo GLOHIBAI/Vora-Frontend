@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import AssessmentHeader from '../../components/talent/AssessmentHeader';
 import StageRail from '../../components/talent/StageRail';
 import PartRail from '../../components/talent/PartRail';
+import FullPageSpinner from '../../components/common/FullPageSpinner';
 import { useStage2PillarIntroQuery } from '../../services/queries/assessments';
 import { getActiveAssessmentId } from '../../utils/assessmentSession';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
@@ -32,7 +33,7 @@ const RoleAssessmentStageTwoPartTwoExpertiseIntro: React.FC = () => {
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
 
   const activeAssessmentId = resolveGate1AssessmentId() || getActiveAssessmentId();
-  const { data: pillarIntroData } = useStage2PillarIntroQuery(activeAssessmentId || '', 'expertise');
+  const { data: pillarIntroData, isLoading } = useStage2PillarIntroQuery(activeAssessmentId || '', 'expertise');
   const _pillarIntro = (pillarIntroData as any)?.data || pillarIntroData;
 
   useEffect(() => {
@@ -43,6 +44,10 @@ const RoleAssessmentStageTwoPartTwoExpertiseIntro: React.FC = () => {
     toast.success('Starting Stage 2 Part 2...');
     navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2/part-2/interview-1`);
   };
+
+  if (activeAssessmentId && (isLoading || !pillarIntroData)) {
+    return <FullPageSpinner message="Preparing pillar intro..." />;
+  }
 
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col">

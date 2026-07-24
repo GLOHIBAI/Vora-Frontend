@@ -192,15 +192,23 @@ export interface AssessmentTimer {
   startedAt?: string;
 }
 
+export interface GateWindowInfo {
+  from: number;
+  through: number;
+  hasMore: boolean;
+}
+
 export interface AssessmentProgress {
   /** 0–100 */
-  percent: number;
-  completedScreens: number;
-  totalScreens: number;
+  percent?: number;
+  completedScreens?: number;
+  totalScreens?: number;
   /** Items answered within the current screen (returned by PATCH & start) */
   answered?: number;
-  /** Total items in the current screen */
+  /** Total items in the current screen / pillar */
   total?: number;
+  /** Index / position of the next unanswered question */
+  current?: number;
 }
 
 export interface AdaptiveMcqPriorStep {
@@ -223,6 +231,7 @@ export interface AssessmentGateStartResponse {
   items: AssessmentItem[];
   saveResume: boolean;
   progress: AssessmentProgress;
+  window?: GateWindowInfo;
   timers?: AssessmentTimer;
   sessionState?: "new" | "resumed";
   questionsRegenerated?: boolean;
@@ -231,6 +240,13 @@ export interface AssessmentGateStartResponse {
   gateName?: string;
   table?: any;
   chart?: any;
+}
+
+export interface Gate2PillarItemsResponse {
+  items: AssessmentItem[];
+  progress: AssessmentProgress;
+  window: GateWindowInfo;
+  componentId?: string;
 }
 
 /** Stage-agnostic alias same shape for Gates 1, 2, and 3. */

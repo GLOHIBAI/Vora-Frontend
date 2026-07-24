@@ -13,10 +13,15 @@ import {
   useSaveAssessmentDraftMutation,
   useSubmitAssessmentScreenMutation,
   useAssessmentDraftQuery,
+  fetchGate2PillarItems,
 } from '../../services/queries/assessments';
 import { getActiveAssessmentId } from '../../utils/assessmentSession';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
-import type { AssessmentGateStartResponse } from '../../services/queries/assessments/types';
+import type {
+  AssessmentGateStartResponse,
+  AssessmentItem,
+  GateWindowInfo,
+} from '../../services/queries/assessments/types';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -105,15 +110,36 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   const [secondsLeft, setSecondsLeft] = useState<number>(timeLimitSeconds);
   const [savedForLater, setSavedForLater] = useState<boolean>(false);
 
-  // Selected answers via reusable assessment item renderer
-  const mcqItems = useMemo(() => questionsToMcqItems(questions), [questions]);
-  const { answers, recordAnswer, setAnswers, isLocked, isScreenComplete } =
-    useLocalAssessmentScreen(mcqItems);
+  // Dynamic windowed items and progress state
+  const [activeItems, setActiveItems] = useState<AssessmentItem[]>([]);
+  const [windowInfo, setWindowInfo] = useState<GateWindowInfo>({
+    from: 1,
+    through: 4,
+    hasMore: false,
+  });
+  const [pillarProgress, setPillarProgress] = useState<{ total: number; current: number; answered: number }>({
+    total: 0,
+    current: 1,
+    answered: 0,
+  });
+  const [isFetchingWindow, setIsFetchingWindow] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // API dynamic question flow integrations
   const activeAssessmentId = resolveGate1AssessmentId() || getActiveAssessmentId();
   const [apiScreenData, setApiScreenData] = useState<AssessmentGateStartResponse | null>(null);
   const [apiLoading, setApiLoading] = useState<boolean>(!!activeAssessmentId);
+
+  // Selected answers via reusable assessment item renderer
+  const mcqItems = useMemo(() => questionsToMcqItems(questions), [questions]);
+  const activeDisplayedItems = useMemo(() => {
+    if (activeItems.length > 0) return activeItems;
+    if (apiScreenData?.items && apiScreenData.items.length > 0) return apiScreenData.items;
+    return mcqItems;
+  }, [activeItems, apiScreenData, mcqItems]);
+
+  const { answers, recordAnswer, setAnswers, isLocked } =
+    useLocalAssessmentScreen(activeDisplayedItems);
 
   const startScreenMutation = useStartAssessmentScreenMutation(2);
   const saveDraftMutation = useSaveAssessmentDraftMutation();
@@ -145,6 +171,16 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           const data = res?.data || res;
           if (data && data.items && data.items.length > 0) {
             setApiScreenData(data);
+            setActiveItems(data.items);
+            if (data.window) {
+              setWindowInfo(data.window);
+            } else {
+              setWindowInfo({ from: 1, through: data.items.length, hasMore: false });
+            }
+            const total = data.progress?.total || data.items.length;
+            const current = data.progress?.current || 1;
+            const answered = data.progress?.answered || 0;
+            setPillarProgress({ total, current, answered });
           }
           setApiLoading(false);
         },
@@ -169,6 +205,62 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       setAnswers((prev: any) => ({ ...prev, ...responses }));
     }
   }, [draftData, setAnswers]);
+
+  const fetchedRangesRef = useRef<Set<string>>(new Set());
+
+  // Prefetch next window of items near end of active window (e.g. Q3)
+  const prefetchNextWindowIfNeeded = async (updatedAnsweredCount: number) => {
+    if (!activeAssessmentId || !windowInfo.hasMore || isFetchingWindow) return;
+
+    const nextFrom = windowInfo.through + 1;
+    const nextThrough = windowInfo.through + 4;
+    const rangeKey = `${nextFrom}-${nextThrough}`;
+
+    if (fetchedRangesRef.current.has(rangeKey)) return;
+
+    if (updatedAnsweredCount >= windowInfo.through - 1) {
+      fetchedRangesRef.current.add(rangeKey);
+      setIsFetchingWindow(true);
+      try {
+        const res = await fetchGate2PillarItems(activeAssessmentId, pillar, {
+          from: nextFrom,
+          through: nextThrough,
+        });
+
+        if (res.items && res.items.length > 0) {
+          setActiveItems((prev) => {
+            const existingIds = new Set(prev.map((it) => it.id));
+            const newItems = res.items.filter((it) => !existingIds.has(it.id));
+            return [...prev, ...newItems];
+          });
+        }
+
+        if (res.window) {
+          setWindowInfo(res.window);
+        } else {
+          const itemsLen = res.items?.length || 0;
+          setWindowInfo({
+            from: nextFrom,
+            through: windowInfo.through + itemsLen,
+            hasMore: itemsLen >= 4,
+          });
+        }
+
+        if (res.progress) {
+          setPillarProgress((prev) => ({
+            total: res.progress.total ?? prev.total,
+            current: res.progress.current ?? prev.current,
+            answered: res.progress.answered ?? updatedAnsweredCount,
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to prefetch next item window:', err);
+        fetchedRangesRef.current.delete(rangeKey);
+      } finally {
+        setIsFetchingWindow(false);
+      }
+    }
+  };
 
   // Modals state
   const [showSaveModal, setShowSaveModal] = useState<boolean>(false);
@@ -198,8 +290,11 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     return () => clearInterval(timer);
   }, [savedForLater, showCheatModal]);
 
-  // Anti-cheat visibility change listener
+  // Anti-cheat visibility change listener (disabled for now per user instruction)
   useEffect(() => {
+    const ENABLE_ANTI_CHEAT_TAB_SWITCH = false;
+    if (!ENABLE_ANTI_CHEAT_TAB_SWITCH) return;
+
     const handleVisibilityChange = () => {
       if (document.hidden && !savedForLater && !alreadyCheated) {
         blurTimerRef.current = setTimeout(() => {
@@ -242,26 +337,33 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
   const handleAnswer = async (itemId: string, value: any, item: any, subKey?: string) => {
     await recordAnswer(itemId, value, item, subKey);
-    if (activeAssessmentId && apiScreenData) {
-      try {
-        await saveDraftMutation.mutateAsync({
-          assessmentId: activeAssessmentId,
-          componentId: apiScreenData.componentId,
-          responses: { [itemId]: value },
-        });
-      } catch (err) {
-        console.error('Failed to save draft to API:', err);
-      }
-    }
+    const newAnswers = { ...answers, [itemId]: value };
+    const updatedCount = Object.keys(newAnswers).length;
+    setPillarProgress((prev) => ({ ...prev, answered: updatedCount }));
+
+    // Responses are stored in local state while interacting and sent when completing/submitting or saving for later
+    void prefetchNextWindowIfNeeded(updatedCount);
   };
 
   const handleSubmit = async (reason?: string) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
     if (reason) {
       sessionStorage.setItem('submitReason', reason);
     }
 
     if (activeAssessmentId && apiScreenData) {
       try {
+        // Flush accumulated draft responses to API first
+        if (Object.keys(answers).length > 0) {
+          await saveDraftMutation.mutateAsync({
+            assessmentId: activeAssessmentId,
+            componentId: apiScreenData.componentId,
+            responses: answers,
+          }).catch((err) => console.warn('Draft save before submit warning:', err));
+        }
+
         await submitScreenMutation.mutateAsync({
           assessmentId: activeAssessmentId,
           componentId: apiScreenData.componentId,
@@ -269,9 +371,11 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         });
         toast.success('Interview submitted successfully!');
         navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to submit Stage 2 screen to API:', err);
-        toast.error('Failed to submit. Please try again.');
+        const serverMsg = err?.response?.data?.message || err?.message || 'Failed to submit. Please try again.';
+        toast.error(serverMsg);
+        setIsSubmitting(false);
       }
     } else {
       toast.success('Interview submitted successfully!');
@@ -279,8 +383,26 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     }
   };
 
-  const confirmSaveAndExit = () => {
+  const confirmSaveAndExit = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     setSavedForLater(true);
+
+    if (activeAssessmentId && apiScreenData?.componentId && Object.keys(answers).length > 0) {
+      try {
+        await saveDraftMutation.mutateAsync({
+          assessmentId: activeAssessmentId,
+          componentId: apiScreenData.componentId,
+          responses: answers,
+        });
+      } catch (err: any) {
+        console.error('Failed to save draft on exit:', err);
+        const serverMsg = err?.response?.data?.message || err?.message || 'Failed to save draft.';
+        toast.error(serverMsg);
+        setIsSubmitting(false);
+        return;
+      }
+    }
     toast.success('Progress saved successfully.');
     navigate(`/onboarding/talent/${roleSlug}/assessment/journey`);
   };
@@ -291,7 +413,87 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  const isAllAnswered = isScreenComplete;
+  const isAllAnswered = useMemo(() => {
+    if (activeDisplayedItems.length === 0) return false;
+    return activeDisplayedItems.every((item) => {
+      const val = answers[item.id];
+      if (val === undefined || val === null || val === '') return false;
+      if (typeof val === 'object' && !Array.isArray(val)) {
+        return Object.keys(val).length > 0;
+      }
+      return true;
+    });
+  }, [activeDisplayedItems, answers]);
+
+  const isHasMoreWindows = useMemo(() => {
+    if (windowInfo.hasMore) return true;
+    if (pillarProgress.total > 0 && windowInfo.through < pillarProgress.total) return true;
+    return false;
+  }, [windowInfo, pillarProgress]);
+
+  const displayPillar = useMemo(() => {
+    const p = apiScreenData?.items?.[0]?.pillar || pillar;
+    return p ? p.charAt(0).toUpperCase() + p.slice(1) : 'Knowledge';
+  }, [apiScreenData, pillar]);
+
+  const displayLevel = useMemo(() => {
+    const raw = (apiScreenData?.items?.[0] as any)?.level || (apiScreenData as any)?.level || 'Senior';
+    const str = String(raw);
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }, [apiScreenData]);
+
+  const footerLabel = useMemo(() => {
+    return `Part ${partNumber} · ${displayPillar} · ${displayLevel}`;
+  }, [partNumber, displayPillar, displayLevel]);
+
+  const handleContinueNextWindow = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      if (activeAssessmentId && apiScreenData?.componentId && Object.keys(answers).length > 0) {
+        await saveDraftMutation.mutateAsync({
+          assessmentId: activeAssessmentId,
+          componentId: apiScreenData.componentId,
+          responses: answers,
+        }).catch((err) => console.warn('Draft save on continue warning:', err));
+      }
+
+      const nextFrom = windowInfo.through + 1;
+      const nextThrough = windowInfo.through + 4;
+      const res = await fetchGate2PillarItems(activeAssessmentId || '', pillar, {
+        from: nextFrom,
+        through: nextThrough,
+      });
+
+      if (res.items && res.items.length > 0) {
+        setActiveItems(res.items);
+      }
+      if (res.window) {
+        setWindowInfo(res.window);
+      } else {
+        const itemsLen = res.items?.length || 0;
+        setWindowInfo({
+          from: nextFrom,
+          through: windowInfo.through + itemsLen,
+          hasMore: res.progress?.total ? windowInfo.through + itemsLen < res.progress.total : false,
+        });
+      }
+      if (res.progress) {
+        setPillarProgress((prev) => ({
+          total: res.progress.total ?? prev.total,
+          current: res.progress.current ?? nextFrom,
+          answered: res.progress.answered ?? prev.answered,
+        }));
+      }
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err: any) {
+      console.error('Failed to load next window:', err);
+      toast.error('Failed to load next questions. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const timerChipClass = () => {
     if (secondsLeft <= 60) return 'timer-chip warn';
@@ -376,16 +578,22 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       {apiScreenData ? (
         <div className="bg-white border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[10px] flex items-center justify-center gap-[12px] flex-wrap">
           <span className="text-[11.5px] font-[800] tracking-[0.4px] uppercase text-[#0047CC]">
-            Question 1 of {apiScreenData.items.length}
+            Question {Math.min(pillarProgress.current && Object.keys(answers).length === 0 ? pillarProgress.current : Object.keys(answers).length + 1, pillarProgress.total || apiScreenData.items.length)} of {pillarProgress.total || apiScreenData.items.length}
           </span>
           <div className="flex gap-[5px] flex-wrap">
-            {apiScreenData.items.map((item, idx) => {
-              const isActive = idx === 0;
+            {Array.from({ length: pillarProgress.total || apiScreenData.items.length }).map((_, idx) => {
+              const answeredCount = Object.keys(answers).length;
+              const isActive = idx === answeredCount;
+              const isDone = idx < answeredCount;
               return (
                 <div
-                  key={item.id}
+                  key={idx}
                   className={`h-[5px] rounded-full transition-all duration-200 ${
-                    isActive ? 'bg-[#0047CC] w-[42px]' : 'bg-[#E6E6E6] w-[26px]'
+                    isActive
+                      ? 'bg-[#0047CC] w-[42px]'
+                      : isDone
+                      ? 'bg-[#387DFF] w-[26px]'
+                      : 'bg-[#E6E6E6] w-[26px]'
                   }`}
                 />
               );
@@ -425,9 +633,9 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
         {/* Questions reusable item components */}
         <AssessmentItemsList
-          items={apiScreenData ? apiScreenData.items : mcqItems}
+          items={activeItems.length > 0 ? activeItems : (apiScreenData ? apiScreenData.items : mcqItems)}
           answers={answers}
-          isLocked={isLocked}
+          isLocked={isLocked || isSubmitting}
           onAnswer={(itemId, val, item, subKey) => void handleAnswer(itemId, val, item, subKey)}
         />
       </main>
@@ -435,21 +643,37 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       {/* Sticky Footer */}
       <footer className="sticky bottom-0 bg-white/96 backdrop-blur-[10px] border-t border-[#E6E6E6] p-[14px_32px] flex items-center justify-between gap-[12px] z-[40]">
         <div className="text-[13px] text-[#808080] font-[600]">
-          {apiScreenData ? `Part ${partNumber}` : `Interview ${interviewNumber} of 3 · Part ${partNumber}`}
+          {footerLabel}
         </div>
         <div className="flex gap-[10px] items-center">
           <button
             onClick={() => setShowSaveModal(true)}
-            className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] font-sans"
+            disabled={isSubmitting}
+            className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] font-sans disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Save and finish later
           </button>
           <button
-            onClick={() => handleSubmit()}
-            disabled={!isAllAnswered}
+            onClick={() => {
+              if (isHasMoreWindows) {
+                void handleContinueNextWindow();
+              } else {
+                void handleSubmit();
+              }
+            }}
+            disabled={!isAllAnswered || isSubmitting}
             className="bg-[#0047CC] text-white border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] disabled:bg-[#E6E6E6] disabled:shadow-none disabled:cursor-not-allowed font-sans"
           >
-            {apiScreenData ? `Complete Part ${partNumber}` : (interviewNumber === 3 ? `Complete Part ${partNumber}` : 'Submit interview')}
+            {isSubmitting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>{isHasMoreWindows ? 'Loading...' : 'Submitting...'}</span>
+              </>
+            ) : isHasMoreWindows ? (
+              'Continue'
+            ) : (
+              apiScreenData ? `Complete Part ${partNumber}` : (interviewNumber === 3 ? `Complete Part ${partNumber}` : 'Submit interview')
+            )}
           </button>
         </div>
       </footer>
@@ -473,15 +697,17 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
             <div className="flex gap-[10px] justify-center flex-wrap">
               <button
                 onClick={() => setShowSaveModal(false)}
-                className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] font-sans"
+                disabled={isSubmitting}
+                className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] font-sans disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Keep going
               </button>
               <button
-                onClick={confirmSaveAndExit}
-                className="bg-[#0047CC] text-white border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] font-sans"
+                onClick={() => void confirmSaveAndExit()}
+                disabled={isSubmitting}
+                className="bg-[#0047CC] text-white border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] disabled:opacity-50 disabled:cursor-not-allowed font-sans"
               >
-                Save and exit
+                {isSubmitting ? 'Saving...' : 'Save and exit'}
               </button>
             </div>
           </div>

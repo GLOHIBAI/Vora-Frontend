@@ -150,24 +150,61 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
 
   const [showCheatModal, setShowCheatModal] = useState<boolean>(false);
   const [cheatType, setCheatType] = useState<'tab-switch' | 'paste' | null>(null);
+  const [cheatCountdown, setCheatCountdown] = useState<number>(3);
+  const [alreadyCheated, setAlreadyCheated] = useState<boolean>(false);
+
+  const blurTimerRef = useRef<any | null>(null);
+  const cheatCountdownRef = useRef<any | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [hasCamera, setHasCamera] = useState<boolean>(false);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Tab change & paste warning listener
+  const triggerCheatWarning = useCallback(
+    (type: 'tab-switch' | 'paste') => {
+      setCheatType(type);
+      setShowCheatModal(true);
+      if (type === 'tab-switch') {
+        let n = 3;
+        setCheatCountdown(n);
+        cheatCountdownRef.current = setInterval(() => {
+          n--;
+          setCheatCountdown(n);
+          if (n <= 0) {
+            if (cheatCountdownRef.current) clearInterval(cheatCountdownRef.current);
+            void confirmScreen();
+          }
+        }, 1000);
+      }
+    },
+    [confirmScreen]
+  );
+
+  // Tab change & paste warning listener (tab-switch enforcement disabled for now per user instruction)
   useEffect(() => {
+    const ENABLE_ANTI_CHEAT_TAB_SWITCH = false;
+
     const handleVisibilityChange = () => {
-      if (document.hidden) {
-        setCheatType('tab-switch');
-        setShowCheatModal(true);
+      if (!ENABLE_ANTI_CHEAT_TAB_SWITCH) return;
+      if (document.hidden && !alreadyCheated) {
+        blurTimerRef.current = setTimeout(() => {
+          void confirmScreen();
+        }, 3000);
+      } else if (!document.hidden) {
+        if (blurTimerRef.current) {
+          clearTimeout(blurTimerRef.current);
+          blurTimerRef.current = null;
+          if (!alreadyCheated) {
+            setAlreadyCheated(true);
+            triggerCheatWarning('tab-switch');
+          }
+        }
       }
     };
 
     const handlePaste = (e: ClipboardEvent) => {
       e.preventDefault();
-      setCheatType('paste');
-      setShowCheatModal(true);
+      triggerCheatWarning('paste');
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -176,8 +213,10 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('paste', handlePaste);
+      if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
+      if (cheatCountdownRef.current) clearInterval(cheatCountdownRef.current);
     };
-  }, []);
+  }, [alreadyCheated, confirmScreen, triggerCheatWarning]);
 
   // Proctoring camera emulator
   useEffect(() => {
@@ -428,13 +467,24 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
             <h3 className="text-[18px] font-[900] text-[#1A1A1A] mb-[8px] tracking-[-0.2px] font-sans">
               {cheatType === 'tab-switch' ? 'You navigated away from this tab' : 'Pasting is prohibited'}
             </h3>
-            <p className="text-[14px] text-[#4A4A4A] leading-[1.6] mb-[20px] font-sans">
-              {cheatType === 'tab-switch' 
-                ? 'Leaving or changing tabs is strictly prohibited during this assessment. This event has been flagged for review.'
-                : 'Pasting content is not permitted. Please type your responses directly. This action has been flagged.'}
+            <p className="text-[14px] text-[#4A4A4A] leading-[1.6] mb-[18px] font-sans">
+              {cheatType === 'tab-switch'
+                ? 'Leaving or changing tabs is strictly prohibited during this assessment. Your assessment screen will auto-submit in:'
+                : 'Pasting content is not permitted. Please type your responses directly.'}
+            </p>
+            {cheatType === 'tab-switch' && (
+              <div className="inline-block bg-[#FEF2F2] text-[#B91C1C] font-[900] text-[20px] p-[4px_14px] rounded-[8px] mb-[14px] tabular-nums font-sans">
+                {cheatCountdown}
+              </div>
+            )}
+            <p className="text-[12.5px] text-[#808080] leading-[1.4] mb-[20px] font-sans">
+              To pause properly, use <strong>Save & finish later</strong> next time.
             </p>
             <button
-              onClick={() => setShowCheatModal(false)}
+              onClick={() => {
+                setShowCheatModal(false);
+                if (cheatCountdownRef.current) clearInterval(cheatCountdownRef.current);
+              }}
               className="bg-[#0047CC] hover:bg-[#344DA1] text-white border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_4px_14px_rgba(0,71,204,0.28)] w-full justify-center font-sans transition-all"
             >
               I understand and acknowledge

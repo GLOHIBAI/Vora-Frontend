@@ -57,7 +57,7 @@ const RoleAssessmentStageTwoIntro: React.FC = () => {
   };
 
   if (activeAssessmentId && (isLoading || !introData)) {
-    return <FullPageSpinner message="Preparing Stage 2 assessment..." />;
+    return <FullPageSpinner message="Preparing Stage 2 interview..." />;
   }
 
   return (

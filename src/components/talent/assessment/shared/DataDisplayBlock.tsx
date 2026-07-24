@@ -19,9 +19,24 @@ interface ChartData {
   data?: ChartItem[];
 }
 
+interface DatasetColumn {
+  name: string;
+  values: any[];
+}
+
+interface DatasetTable {
+  name: string;
+  columns: DatasetColumn[];
+}
+
+interface DatasetPayload {
+  tables?: DatasetTable[];
+}
+
 interface DataDisplayBlockProps {
   table?: TableData;
   chart?: ChartItem[] | ChartData;
+  dataset?: DatasetPayload;
 }
 
 const parseValue = (val: string | number): number => {
@@ -31,7 +46,7 @@ const parseValue = (val: string | number): number => {
   return isNaN(num) ? 0 : num;
 };
 
-export const DataDisplayBlock: React.FC<DataDisplayBlockProps> = ({ table, chart }) => {
+export const DataDisplayBlock: React.FC<DataDisplayBlockProps> = ({ table, chart, dataset }) => {
   const chartData = React.useMemo(() => {
     if (!chart) return null;
     if (Array.isArray(chart)) return chart;
@@ -54,10 +69,51 @@ export const DataDisplayBlock: React.FC<DataDisplayBlockProps> = ({ table, chart
     return Math.max(...chartData.map((d) => parseValue(d.value)), 1);
   }, [chartData]);
 
-  if (!table && !chartData) return null;
+  if (!table && !chartData && (!dataset || !dataset.tables || dataset.tables.length === 0)) return null;
 
   return (
     <div className="bg-white border-[1.5px] border-[#E6E6E6] rounded-[18px] p-6 mb-6 shadow-sm">
+      {/* 0. Render Dataset Tables */}
+      {dataset?.tables && dataset.tables.map((t, tIdx) => {
+        const headers = t.columns.map((c) => c.name);
+        const rowCount = Math.max(...t.columns.map((c) => c.values?.length ?? 0), 0);
+        const rows = Array.from({ length: rowCount }).map((_, rIdx) =>
+          t.columns.map((c) => c.values?.[rIdx] ?? '')
+        );
+
+        return (
+          <div key={tIdx} className="overflow-x-auto mb-6 last:mb-0">
+            <div className="text-[11px] font-[800] tracking-[0.7px] uppercase text-[#0047CC] mb-3">
+              {t.name || `Table ${tIdx + 1}`}
+            </div>
+            <table className="w-full border-collapse text-left text-[13.5px]">
+              <thead>
+                <tr>
+                  {headers.map((h, idx) => (
+                    <th
+                      key={idx}
+                      className="bg-[#F7F7F7] text-[#4A4A4A] font-[800] text-[11.5px] tracking-[0.4px] uppercase p-3 border-b-2 border-[#E6E6E6]"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, rIdx) => (
+                  <tr key={rIdx} className="border-b border-[#F7F7F7] hover:bg-[#F8FAFC]">
+                    {row.map((cell, cIdx) => (
+                      <td key={cIdx} className="p-3 text-[#1A1A1A] font-[600] tabular-nums">
+                        {String(cell)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      })}
       {/* 1. Render Table */}
       {table && (
         <div className="overflow-x-auto mb-6">

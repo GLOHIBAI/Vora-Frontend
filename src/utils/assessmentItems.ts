@@ -15,6 +15,12 @@ const ITEM_TYPE_ALIASES: Record<string, AssessmentItemType> = {
   sjt_rank: "sjt_rank_all",
   values_tradeoff: "values_tradeoff",
   adaptive: "adaptive_mcq",
+  sb: "mcq",
+  allocate: "mcq",
+  jb: "mcq",
+  data: "mcq",
+  dashboard: "mcq",
+  ml: "sjt_most_least",
 };
 
 export const normalizeAssessmentItemType = (
