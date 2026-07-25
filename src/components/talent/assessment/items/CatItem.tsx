@@ -21,8 +21,8 @@ const CatItem: React.FC<AssessmentItemRendererProps> = ({
 }) => {
   const { content } = item;
   const prompt = content.prompt ?? content.scenario ?? 'Sort each task by its urgency.';
-  const tasks = (content.items as CatTask[]) ?? [];
-  const buckets = (content.buckets as CatBucket[]) ?? [];
+  const tasks: CatTask[] = Array.isArray(content.items) ? (content.items as CatTask[]) : [];
+  const buckets: CatBucket[] = Array.isArray(content.buckets) ? (content.buckets as CatBucket[]) : [];
 
   const [showPasteWarning, setShowPasteWarning] = useState<boolean>(false);
 
@@ -40,7 +40,7 @@ const CatItem: React.FC<AssessmentItemRendererProps> = ({
 
   return (
     <AssessmentItemCard title={String(prompt)}>
-      {content.scenario && (
+      {Boolean(content.scenario) && (
         <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] p-4 mb-4 text-[14px] text-[#334155] leading-relaxed font-medium">
           {String(content.scenario)}
         </div>
@@ -48,7 +48,7 @@ const CatItem: React.FC<AssessmentItemRendererProps> = ({
 
       {/* Task Bucket Categorization List */}
       <div className="space-y-4 mb-5">
-        {tasks.map((task, idx) => {
+        {(tasks.map((task, idx) => {
           const currentBucket = selectedAssignments[task.id];
 
           return (
@@ -58,7 +58,7 @@ const CatItem: React.FC<AssessmentItemRendererProps> = ({
             >
               <div className="text-[13.5px] font-semibold text-[#1A1A1A] mb-3 leading-relaxed">
                 <span className="inline-block w-6 text-[#0047CC] font-bold">{idx + 1}.</span>
-                {task.text}
+                {String(task.text || (task as any).label || '')}
               </div>
 
               {/* Bucket Selection Pills */}
@@ -77,18 +77,18 @@ const CatItem: React.FC<AssessmentItemRendererProps> = ({
                           : 'bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]'
                       }`}
                     >
-                      {b.text}
+                      {String(b.text || (b as any).label || '')}
                     </button>
                   );
                 })}
               </div>
             </div>
           );
-        })}
+        }) as any)}
       </div>
 
       {/* Optional Reasoning prompt */}
-      {(content.reasonPrompt || content.reasoningPrompt) && (
+      {Boolean(content.reasonPrompt || content.reasoningPrompt) && (
         <div className="mt-5 pt-2">
           <div className="flex items-center gap-1.5 text-[11px] font-[800] text-[#0047CC] tracking-[0.6px] uppercase mb-2">
             <span>{String(content.reasonPrompt || content.reasoningPrompt).toUpperCase()}</span>

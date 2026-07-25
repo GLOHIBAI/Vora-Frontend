@@ -10,7 +10,7 @@ const NumericScaleItem: React.FC<AssessmentItemRendererProps> = ({
 }) => {
   const { content } = item;
   const prompt = content.prompt ?? content.scenario ?? 'Enter your numeric answer.';
-  const isScale = item.type === 'scale';
+  const isScale = (item.type as string) === 'scale';
   const unit = String(content.unit || '');
   const scaleLabels = (content.scaleLabels as string[]) || (content.options as any[])?.map((o) => typeof o === 'string' ? o : o.text) || ['1', '2', '3', '4', '5'];
 

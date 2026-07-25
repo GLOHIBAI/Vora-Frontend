@@ -33,7 +33,7 @@ export function useLocalAssessmentScreen(
   const [answers, setAnswers] = useState<ResponsesMap>(() => buildInitialAnswers(initialItems));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isLocked = useCallback(() => false, []);
+  const isLocked = useCallback((_itemId?: string, _subKey?: string) => false, []);
 
   const isScreenComplete = useMemo(
     () =>

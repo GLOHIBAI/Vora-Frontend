@@ -17,11 +17,13 @@ import {
 } from '../../services/queries/assessments';
 import { getActiveAssessmentId } from '../../utils/assessmentSession';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
+import { isItemAnswerComplete } from '../../utils/assessmentValidation';
 import type {
   AssessmentGateStartResponse,
   AssessmentItem,
   GateWindowInfo,
 } from '../../services/queries/assessments/types';
+import { formatGate2ResponsesPayload } from '../../catalog/gate2-submit-shape.util';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -181,6 +183,10 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
             const current = data.progress?.current || 1;
             const answered = data.progress?.answered || 0;
             setPillarProgress({ total, current, answered });
+
+            if (data.questionsRegenerated) {
+              toast('Fresh questions generated for remaining unanswered items.', { icon: '🔄' });
+            }
           }
           setApiLoading(false);
         },
@@ -207,8 +213,9 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   }, [draftData, setAnswers]);
 
   const fetchedRangesRef = useRef<Set<string>>(new Set());
+  const prefetchedItemsMapRef = useRef<Map<string, { items: AssessmentItem[]; window?: GateWindowInfo; progress?: any }>>(new Map());
 
-  // Prefetch next window of items near end of active window (e.g. Q3)
+  // Prefetch next window of items near end of active window (e.g. Q3 of 4)
   const prefetchNextWindowIfNeeded = async (updatedAnsweredCount: number) => {
     if (!activeAssessmentId || !windowInfo.hasMore || isFetchingWindow) return;
 
@@ -228,30 +235,11 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         });
 
         if (res.items && res.items.length > 0) {
-          setActiveItems((prev) => {
-            const existingIds = new Set(prev.map((it) => it.id));
-            const newItems = res.items.filter((it) => !existingIds.has(it.id));
-            return [...prev, ...newItems];
+          prefetchedItemsMapRef.current.set(rangeKey, {
+            items: res.items,
+            window: res.window,
+            progress: res.progress,
           });
-        }
-
-        if (res.window) {
-          setWindowInfo(res.window);
-        } else {
-          const itemsLen = res.items?.length || 0;
-          setWindowInfo({
-            from: nextFrom,
-            through: windowInfo.through + itemsLen,
-            hasMore: itemsLen >= 4,
-          });
-        }
-
-        if (res.progress) {
-          setPillarProgress((prev) => ({
-            total: res.progress.total ?? prev.total,
-            current: res.progress.current ?? prev.current,
-            answered: res.progress.answered ?? updatedAnsweredCount,
-          }));
         }
       } catch (err) {
         console.error('Failed to prefetch next item window:', err);
@@ -290,24 +278,40 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     return () => clearInterval(timer);
   }, [savedForLater, showCheatModal]);
 
-  // Anti-cheat visibility change listener (disabled for now per user instruction)
+  // Tab switch visibility listener: enforce question regeneration on tab switch (> 3 seconds) silently without modal
   useEffect(() => {
-    const ENABLE_ANTI_CHEAT_TAB_SWITCH = false;
-    if (!ENABLE_ANTI_CHEAT_TAB_SWITCH) return;
-
     const handleVisibilityChange = () => {
-      if (document.hidden && !savedForLater && !alreadyCheated) {
-        blurTimerRef.current = setTimeout(() => {
-          handleSubmit('tab-switch');
+      if (document.hidden && !savedForLater) {
+        blurTimerRef.current = setTimeout(async () => {
+          try {
+            // 1. Flush draft answers for current window
+            if (activeAssessmentId && apiScreenData?.componentId && Object.keys(answers).length > 0) {
+              await saveDraftMutation.mutateAsync({
+                assessmentId: activeAssessmentId,
+                componentId: apiScreenData.componentId,
+                responses: answers,
+              }).catch(() => {});
+            }
+
+            // 2. Fetch start / items window to regenerate unanswered questions
+            const res = await startScreenMutation.mutateAsync({
+              assessmentId: activeAssessmentId || '',
+              body: { pillar },
+            }).catch(() => null);
+
+            if ((res as any)?.data?.items || res?.items) {
+              const data = (res as any)?.data || res;
+              setApiScreenData(data);
+              setActiveItems(data.items);
+            }
+          } catch (err) {
+            console.warn('Tab switch question regeneration notice:', err);
+          }
         }, 3000);
       } else if (!document.hidden) {
         if (blurTimerRef.current) {
           clearTimeout(blurTimerRef.current);
           blurTimerRef.current = null;
-          if (!alreadyCheated) {
-            setAlreadyCheated(true);
-            triggerCheatWarning();
-          }
         }
       }
     };
@@ -316,24 +320,8 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
-      if (cheatCountdownRef.current) clearInterval(cheatCountdownRef.current);
     };
-  }, [alreadyCheated, savedForLater]);
-
-  const triggerCheatWarning = () => {
-    setShowCheatModal(true);
-    let n = 3;
-    setCheatCountdown(n);
-
-    cheatCountdownRef.current = setInterval(() => {
-      n--;
-      setCheatCountdown(n);
-      if (n <= 0) {
-        if (cheatCountdownRef.current) clearInterval(cheatCountdownRef.current);
-        handleSubmit('tab-switch');
-      }
-    }, 1000);
-  };
+  }, [activeAssessmentId, apiScreenData, answers, pillar, savedForLater]);
 
   const handleAnswer = async (itemId: string, value: any, item: any, subKey?: string) => {
     await recordAnswer(itemId, value, item, subKey);
@@ -343,6 +331,22 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
     // Responses are stored in local state while interacting and sent when completing/submitting or saving for later
     void prefetchNextWindowIfNeeded(updatedCount);
+  };
+
+  const allFetchedItemsRef = useRef<Map<string, any>>(new Map());
+
+  useEffect(() => {
+    activeDisplayedItems.forEach((i) => {
+      if (i && i.id) allFetchedItemsRef.current.set(i.id, i);
+    });
+  }, [activeDisplayedItems]);
+
+  const sanitizeAnswers = (rawAnswers: Record<string, any>) => {
+    const allItems = Array.from(allFetchedItemsRef.current.values()).concat(
+      apiScreenData?.items ?? [],
+      activeDisplayedItems ?? []
+    );
+    return formatGate2ResponsesPayload(rawAnswers, allItems);
   };
 
   const handleSubmit = async (reason?: string) => {
@@ -355,19 +359,20 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
     if (activeAssessmentId && apiScreenData) {
       try {
+        const payloadResponses = sanitizeAnswers(answers);
         // Flush accumulated draft responses to API first
-        if (Object.keys(answers).length > 0) {
+        if (Object.keys(payloadResponses).length > 0) {
           await saveDraftMutation.mutateAsync({
             assessmentId: activeAssessmentId,
             componentId: apiScreenData.componentId,
-            responses: answers,
+            responses: payloadResponses,
           }).catch((err) => console.warn('Draft save before submit warning:', err));
         }
 
         await submitScreenMutation.mutateAsync({
           assessmentId: activeAssessmentId,
           componentId: apiScreenData.componentId,
-          responses: answers,
+          responses: payloadResponses,
         });
         toast.success('Interview submitted successfully!');
         navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);
@@ -390,10 +395,11 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
     if (activeAssessmentId && apiScreenData?.componentId && Object.keys(answers).length > 0) {
       try {
+        const payloadResponses = sanitizeAnswers(answers);
         await saveDraftMutation.mutateAsync({
           assessmentId: activeAssessmentId,
           componentId: apiScreenData.componentId,
-          responses: answers,
+          responses: payloadResponses,
         });
       } catch (err: any) {
         console.error('Failed to save draft on exit:', err);
@@ -415,14 +421,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
   const isAllAnswered = useMemo(() => {
     if (activeDisplayedItems.length === 0) return false;
-    return activeDisplayedItems.every((item) => {
-      const val = answers[item.id];
-      if (val === undefined || val === null || val === '') return false;
-      if (typeof val === 'object' && !Array.isArray(val)) {
-        return Object.keys(val).length > 0;
-      }
-      return true;
-    });
+    return activeDisplayedItems.every((item) => isItemAnswerComplete(item, answers[item.id]));
   }, [activeDisplayedItems, answers]);
 
   const isHasMoreWindows = useMemo(() => {
@@ -432,7 +431,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   }, [windowInfo, pillarProgress]);
 
   const displayPillar = useMemo(() => {
-    const p = apiScreenData?.items?.[0]?.pillar || pillar;
+    const p = (apiScreenData?.items?.[0] as any)?.pillar || pillar;
     return p ? p.charAt(0).toUpperCase() + p.slice(1) : 'Knowledge';
   }, [apiScreenData, pillar]);
 
@@ -450,39 +449,60 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      if (activeAssessmentId && apiScreenData?.componentId && Object.keys(answers).length > 0) {
+      const payloadResponses = sanitizeAnswers(answers);
+      if (activeAssessmentId && apiScreenData?.componentId && Object.keys(payloadResponses).length > 0) {
         await saveDraftMutation.mutateAsync({
           assessmentId: activeAssessmentId,
           componentId: apiScreenData.componentId,
-          responses: answers,
+          responses: payloadResponses,
         }).catch((err) => console.warn('Draft save on continue warning:', err));
       }
 
       const nextFrom = windowInfo.through + 1;
       const nextThrough = windowInfo.through + 4;
-      const res = await fetchGate2PillarItems(activeAssessmentId || '', pillar, {
-        from: nextFrom,
-        through: nextThrough,
-      });
+      const rangeKey = `${nextFrom}-${nextThrough}`;
 
-      if (res.items && res.items.length > 0) {
-        setActiveItems(res.items);
-      }
-      if (res.window) {
-        setWindowInfo(res.window);
+      let nextItems: AssessmentItem[] = [];
+      let nextWindow: GateWindowInfo | undefined;
+      let nextProgress: any;
+
+      if (prefetchedItemsMapRef.current.has(rangeKey)) {
+        const prefetched = prefetchedItemsMapRef.current.get(rangeKey)!;
+        nextItems = prefetched.items;
+        nextWindow = prefetched.window;
+        nextProgress = prefetched.progress;
       } else {
-        const itemsLen = res.items?.length || 0;
+        const res = await fetchGate2PillarItems(activeAssessmentId || '', pillar, {
+          from: nextFrom,
+          through: nextThrough,
+        });
+        nextItems = res.items || [];
+        nextWindow = res.window;
+        nextProgress = res.progress;
+      }
+
+      if (nextItems.length > 0) {
+        setActiveItems(nextItems);
+        setApiScreenData((prev) => (prev ? { ...prev, items: nextItems } : prev));
+        setAnswers({});
+      }
+
+      if (nextWindow) {
+        setWindowInfo(nextWindow);
+      } else {
+        const itemsLen = nextItems.length;
         setWindowInfo({
           from: nextFrom,
           through: windowInfo.through + itemsLen,
-          hasMore: res.progress?.total ? windowInfo.through + itemsLen < res.progress.total : false,
+          hasMore: nextProgress?.total ? windowInfo.through + itemsLen < nextProgress.total : false,
         });
       }
-      if (res.progress) {
+
+      if (nextProgress) {
         setPillarProgress((prev) => ({
-          total: res.progress.total ?? prev.total,
-          current: res.progress.current ?? nextFrom,
-          answered: res.progress.answered ?? prev.answered,
+          total: nextProgress.total ?? prev.total,
+          current: nextProgress.current ?? nextFrom,
+          answered: nextProgress.answered ?? prev.answered,
         }));
       }
 
@@ -494,6 +514,13 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       setIsSubmitting(false);
     }
   };
+  const formattedGateName = useMemo(() => {
+    const raw = apiScreenData?.gateName || 'Professional Dimension';
+    return raw
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }, [apiScreenData]);
 
   const timerChipClass = () => {
     if (secondsLeft <= 60) return 'timer-chip warn';
@@ -544,7 +571,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         middleContent={
           apiScreenData ? (
             <span className="hidden sm:inline">
-              {apiScreenData.gateName || 'Stage 2'} · {apiScreenData.items[0]?.sessionLabel || `Part ${partNumber}`}
+              {formattedGateName} · {apiScreenData.items[0]?.sessionLabel || `Part ${partNumber}`}
             </span>
           ) : (
             <span className="hidden sm:inline">
@@ -577,28 +604,39 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       {/* Pebble Rail */}
       {apiScreenData ? (
         <div className="bg-white border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[10px] flex items-center justify-center gap-[12px] flex-wrap">
-          <span className="text-[11.5px] font-[800] tracking-[0.4px] uppercase text-[#0047CC]">
-            Question {Math.min(pillarProgress.current && Object.keys(answers).length === 0 ? pillarProgress.current : Object.keys(answers).length + 1, pillarProgress.total || apiScreenData.items.length)} of {pillarProgress.total || apiScreenData.items.length}
-          </span>
-          <div className="flex gap-[5px] flex-wrap">
-            {Array.from({ length: pillarProgress.total || apiScreenData.items.length }).map((_, idx) => {
-              const answeredCount = Object.keys(answers).length;
-              const isActive = idx === answeredCount;
-              const isDone = idx < answeredCount;
-              return (
-                <div
-                  key={idx}
-                  className={`h-[5px] rounded-full transition-all duration-200 ${
-                    isActive
-                      ? 'bg-[#0047CC] w-[42px]'
-                      : isDone
-                      ? 'bg-[#387DFF] w-[26px]'
-                      : 'bg-[#E6E6E6] w-[26px]'
-                  }`}
-                />
-              );
-            })}
-          </div>
+          {(() => {
+            const totalQuestions = pillarProgress.total || apiScreenData.items.length;
+            const answeredInCurrentWindow = activeDisplayedItems.filter((item) => answers[item.id] !== undefined && answers[item.id] !== null && answers[item.id] !== '').length;
+            const totalCompletedBeforeWindow = Math.max(0, windowInfo.from - 1);
+            const totalAnswered = totalCompletedBeforeWindow + answeredInCurrentWindow;
+            const currentQNum = Math.min(Math.max(1, totalAnswered + 1), totalQuestions);
+
+            return (
+              <>
+                <span className="text-[11.5px] font-[800] tracking-[0.4px] uppercase text-[#0047CC]">
+                  Question {currentQNum} of {totalQuestions}
+                </span>
+                <div className="flex gap-[5px] flex-wrap">
+                  {Array.from({ length: totalQuestions }).map((_, idx) => {
+                    const isActive = idx === totalAnswered;
+                    const isDone = idx < totalAnswered;
+                    return (
+                      <div
+                        key={idx}
+                        className={`h-[5px] rounded-full transition-all duration-200 ${
+                          isActive
+                            ? 'bg-[#0047CC] w-[42px]'
+                            : isDone
+                            ? 'bg-[#387DFF] w-[26px]'
+                            : 'bg-[#E6E6E6] w-[26px]'
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
+              </>
+            );
+          })()}
         </div>
       ) : (
         <div className="bg-white border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[10px] flex items-center justify-center gap-[6px]">
@@ -609,36 +647,41 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       )}
 
       {/* Main Body */}
-      <main className="max-w-[780px] w-full mx-auto px-[24px] py-[32px] pb-[90px] flex-1">
-        <div className="inline-flex items-center gap-[7px] bg-[#EBF6FF] text-[#0047CC] text-[11px] font-[800] tracking-[0.7px] uppercase px-[12px] py-[5px] rounded-full mb-[14px]">
-          {apiScreenData ? (apiScreenData.items[0]?.eyebrow || `Part ${partNumber} · Knowledge`) : `Interview ${interviewNumber} · ${interviewTitle}`}
-        </div>
-        <h1 className="text-[22px] font-[900] text-[#1A1A1A] tracking-[-0.3px] leading-[1.3] mb-[8px]">
-          {apiScreenData ? (apiScreenData.items[0]?.screenTitle || sectionTitle) : sectionTitle}
-        </h1>
-        <p className="text-[14px] text-[#808080] leading-[1.6] mb-[20px]">
-          {apiScreenData ? (apiScreenData.items[0]?.screenSubtitle || sectionSub) : sectionSub}
-        </p>
+      {(() => {
+        const currentHeaderItem = activeDisplayedItems[0];
+        return (
+          <main className="max-w-[780px] w-full mx-auto px-[24px] py-[32px] pb-[90px] flex-1">
+            <div className="inline-flex items-center gap-[7px] bg-[#EBF6FF] text-[#0047CC] text-[11px] font-[800] tracking-[0.7px] uppercase px-[12px] py-[5px] rounded-full mb-[14px]">
+              {apiScreenData ? (currentHeaderItem?.eyebrow || `Part ${partNumber} · Knowledge`) : `Interview ${interviewNumber} · ${interviewTitle}`}
+            </div>
+            <h1 className="text-[22px] font-[900] text-[#1A1A1A] tracking-[-0.3px] leading-[1.3] mb-[8px]">
+              {apiScreenData ? (currentHeaderItem?.screenTitle || currentHeaderItem?.title || sectionTitle) : sectionTitle}
+            </h1>
+            <p className="text-[14px] text-[#808080] leading-[1.6] mb-[20px]">
+              {apiScreenData ? (currentHeaderItem?.screenSubtitle || sectionSub) : sectionSub}
+            </p>
 
-        {/* Why matters component */}
-        <div className="bg-[#EBF6FF] rounded-[8px] p-[12px_14px] flex gap-[10px] mb-[22px]">
-          <InfoIcon className="w-[16px] h-[16px] text-[#0047CC] shrink-0 mt-[1px]" />
-          <p className="text-[12.5px] text-[#182348] leading-[1.5]">
-            <strong className="font-[800]">Why this matters · </strong>
-            {apiScreenData ? (apiScreenData.items[0]?.whyThisMatters || whyMattersText) : whyMattersText}
-          </p>
-        </div>
+            {/* Why matters component */}
+            <div className="bg-[#EBF6FF] rounded-[8px] p-[12px_14px] flex gap-[10px] mb-[22px]">
+              <InfoIcon className="w-[16px] h-[16px] text-[#0047CC] shrink-0 mt-[1px]" />
+              <p className="text-[12.5px] text-[#182348] leading-[1.5]">
+                <strong className="font-[800]">Why this matters · </strong>
+                {apiScreenData ? (currentHeaderItem?.whyThisMatters || whyMattersText) : whyMattersText}
+              </p>
+            </div>
 
-        {topContent && <div className="mb-[22px]">{topContent}</div>}
+            {topContent && <div className="mb-[22px]">{topContent}</div>}
 
-        {/* Questions reusable item components */}
-        <AssessmentItemsList
-          items={activeItems.length > 0 ? activeItems : (apiScreenData ? apiScreenData.items : mcqItems)}
-          answers={answers}
-          isLocked={isLocked || isSubmitting}
-          onAnswer={(itemId, val, item, subKey) => void handleAnswer(itemId, val, item, subKey)}
-        />
-      </main>
+            {/* Questions reusable item components */}
+            <AssessmentItemsList
+              items={activeDisplayedItems}
+              answers={answers}
+              isLocked={(itemId, subKey) => isSubmitting || isLocked(itemId, subKey)}
+              onAnswer={(itemId, val, item, subKey) => void handleAnswer(itemId, val, item, subKey)}
+            />
+          </main>
+        );
+      })()}
 
       {/* Sticky Footer */}
       <footer className="sticky bottom-0 bg-white/96 backdrop-blur-[10px] border-t border-[#E6E6E6] p-[14px_32px] flex items-center justify-between gap-[12px] z-[40]">
@@ -713,6 +756,8 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           </div>
         </div>
       )}
+
+
 
       {/* Anti-cheat Alert Modal */}
       {showCheatModal && (

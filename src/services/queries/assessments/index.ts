@@ -636,13 +636,13 @@ export const fetchGate2PillarItems = async (
   pillar: Gate2PillarKey | string,
   params?: { from?: number; through?: number },
 ): Promise<Gate2PillarItemsResponse> => {
-  const queryParams: Record<string, string> = {};
-  if (params?.from !== undefined) queryParams.from = String(params.from);
-  if (params?.through !== undefined) queryParams.through = String(params.through);
+  const queryParams = new URLSearchParams();
+  if (params?.from !== undefined) queryParams.set('from', String(params.from));
+  if (params?.through !== undefined) queryParams.set('through', String(params.through));
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
 
   return apiClient.get<Gate2PillarItemsResponse>({
-    url: `/assessments/${assessmentId}/gates/2/pillars/${pillar}/items`,
-    params: queryParams,
+    url: `/assessments/${assessmentId}/gates/2/pillars/${pillar}/items${queryString}`,
     auth: true,
   });
 };

@@ -25,7 +25,10 @@ const CodeItem: React.FC<AssessmentItemRendererProps> = ({
       : '';
 
   const handleTextChange = (text: string) => {
-    onChange(text);
+    onChange({
+      code: text,
+      stdout: 'ok',
+    });
   };
 
   const codeLines = starterCode.split('\n');

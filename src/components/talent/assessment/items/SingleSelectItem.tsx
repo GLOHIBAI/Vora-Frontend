@@ -28,13 +28,20 @@ const SingleSelectItem: React.FC<AssessmentItemRendererProps> = ({
       ? String((value as any).reason ?? (value as any).reasoning ?? '')
       : '';
 
+  const normalizedType = String(item.type ?? item.content?.type ?? '').toLowerCase();
+
+  // Choice + Reason types according to Stage 2 spec
+  const isChoiceReasonType = [
+    'allocate', 'jb', 'data', 'dashboard', 'hotspot', 'highlight', 'ml',
+    'nextq', 'diagnose', 'proofread', 'abtest', 'compare'
+  ].includes(normalizedType);
+
+  // Single option string types (sb) MUST send plain string unless explicitly configured with reasonPrompt
+  const isSingleOptionType = normalizedType === 'sb' || normalizedType === 'sjt_single_best';
+
   const showReasoning =
-    content.showReasoning !== false &&
-    (content.showReasoning === true ||
-      !!content.reasonPrompt ||
-      !!content.reasoningPrompt ||
-      !!content.requireReasoning ||
-      item.type === 'mcq');
+    isChoiceReasonType ||
+    (!isSingleOptionType && (content.showReasoning === true || !!content.reasonPrompt || !!content.reasoningPrompt || !!content.requireReasoning));
 
   const reasoningPrompt =
     String(
@@ -48,7 +55,7 @@ const SingleSelectItem: React.FC<AssessmentItemRendererProps> = ({
 
   const handleOptionSelect = (optId: string) => {
     if (showReasoning) {
-      onChange({ choice: optId, reason: reasoningText, optionId: optId, reasoning: reasoningText });
+      onChange({ choice: optId, reason: reasoningText });
     } else {
       onChange(optId);
     }
@@ -56,7 +63,11 @@ const SingleSelectItem: React.FC<AssessmentItemRendererProps> = ({
 
   const handleReasoningChange = (newReasoning: string) => {
     const currentChoice = selectedOptionId || '';
-    onChange({ choice: currentChoice, reason: newReasoning, optionId: currentChoice, reasoning: newReasoning });
+    if (showReasoning) {
+      onChange({ choice: currentChoice, reason: newReasoning });
+    } else {
+      onChange(currentChoice);
+    }
   };
 
   const [showPasteWarning, setShowPasteWarning] = React.useState<boolean>(false);

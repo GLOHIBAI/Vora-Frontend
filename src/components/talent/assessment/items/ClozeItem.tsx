@@ -18,7 +18,7 @@ const ClozeItem: React.FC<AssessmentItemRendererProps> = ({
   const { content } = item;
   const prompt = content.prompt ?? content.scenario ?? 'Complete the code by choosing the correct word for each blank.';
   const template = String(content.template ?? '');
-  const blanks = (content.blanks as ClozeBlank[]) ?? [];
+  const blanks: ClozeBlank[] = Array.isArray(content.blanks) ? (content.blanks as ClozeBlank[]) : [];
 
   const [showPasteWarning, setShowPasteWarning] = useState<boolean>(false);
 
@@ -35,17 +35,14 @@ const ClozeItem: React.FC<AssessmentItemRendererProps> = ({
   };
 
   // Render template with custom select dropdowns for blanks (matching ------ or ____)
-  const templateParts = template.split(/(---+|___+)/g);
+  const templateParts: string[] = template.split(/(---+|___+)/g);
   let blankIndex = 0;
 
   const scenarioText = String(content.scenario ?? '').trim();
-  const templateText = String(content.template ?? '').trim();
-  const isDuplicateScenario =
-    scenarioText && templateText && (templateText.includes(scenarioText) || scenarioText === templateText);
 
   return (
     <AssessmentItemCard title={String(prompt)}>
-      {content.scenario && !isDuplicateScenario && (
+      {Boolean(content.scenario) && (
         <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] p-4 mb-4 text-[14px] text-[#334155] leading-relaxed font-medium">
           {String(content.scenario)}
         </div>
@@ -57,7 +54,7 @@ const ClozeItem: React.FC<AssessmentItemRendererProps> = ({
           Fill in the Blank
         </div>
         <div className="whitespace-pre-wrap text-[#1E293B] font-sans">
-          {templateParts.map((part, idx) => {
+          {(templateParts.map((part, idx) => {
             if (/^(---+|___+)$/.test(part)) {
               const currentBlank = blanks[blankIndex];
               blankIndex++;
@@ -85,13 +82,13 @@ const ClozeItem: React.FC<AssessmentItemRendererProps> = ({
                 </span>
               );
             }
-            return <span key={idx}>{part}</span>;
-          })}
+            return <span key={idx}>{String(part)}</span>;
+          }) as any)}
         </div>
       </div>
 
       {/* Reasoning optional prompt */}
-      {(content.reasonPrompt || content.reasoningPrompt) && (
+      {Boolean(content.reasonPrompt || content.reasoningPrompt) && (
         <div className="mt-5 pt-2">
           <div className="flex items-center gap-1.5 text-[11px] font-[800] text-[#0047CC] tracking-[0.6px] uppercase mb-2">
             <span>{String(content.reasonPrompt || content.reasoningPrompt).toUpperCase()}</span>

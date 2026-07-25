@@ -17,8 +17,8 @@ const MatchItem: React.FC<AssessmentItemRendererProps> = ({
 }) => {
   const { content } = item;
   const prompt = content.prompt ?? content.scenario ?? 'Match each concept to its corresponding description.';
-  const left = (content.left as MatchSideItem[]) ?? [];
-  const rightChoices = (content.rightChoices as Array<MatchSideItem | string>) ?? [];
+  const left: MatchSideItem[] = Array.isArray(content.left) ? (content.left as MatchSideItem[]) : [];
+  const rightChoices: Array<MatchSideItem | string> = Array.isArray(content.rightChoices) ? (content.rightChoices as Array<MatchSideItem | string>) : [];
 
   const [showPasteWarning, setShowPasteWarning] = useState<boolean>(false);
 
@@ -42,7 +42,7 @@ const MatchItem: React.FC<AssessmentItemRendererProps> = ({
 
   return (
     <AssessmentItemCard title={String(prompt)}>
-      {content.scenario && (
+      {Boolean(content.scenario) && (
         <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] p-4 mb-4 text-[14px] text-[#334155] leading-relaxed font-medium">
           {String(content.scenario)}
         </div>
@@ -50,7 +50,7 @@ const MatchItem: React.FC<AssessmentItemRendererProps> = ({
 
       {/* Match concept rows using CustomSelect */}
       <div className="space-y-4 mb-5">
-        {left.map((lItem) => {
+        {(left.map((lItem) => {
           const currentChoice = selectedMatches[lItem.id] || '';
 
           return (
@@ -59,7 +59,7 @@ const MatchItem: React.FC<AssessmentItemRendererProps> = ({
               className="bg-white border border-[#E6E6E6] rounded-[14px] p-4 shadow-sm space-y-2.5"
             >
               <div className="text-[13.5px] font-bold text-[#0047CC]">
-                {lItem.text}
+                {String(lItem.text)}
               </div>
 
               <CustomSelect
@@ -71,11 +71,11 @@ const MatchItem: React.FC<AssessmentItemRendererProps> = ({
               />
             </div>
           );
-        })}
+        }) as any)}
       </div>
 
       {/* Optional Reasoning Prompt */}
-      {(content.reasonPrompt || content.reasoningPrompt) && (
+      {Boolean(content.reasonPrompt || content.reasoningPrompt) && (
         <div className="mt-5 pt-2">
           <div className="flex items-center gap-1.5 text-[11px] font-[800] text-[#0047CC] tracking-[0.6px] uppercase mb-2">
             <span>{String(content.reasonPrompt || content.reasoningPrompt).toUpperCase()}</span>
