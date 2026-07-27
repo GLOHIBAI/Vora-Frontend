@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import toast from 'react-hot-toast';
+import React from 'react';
 import AssessmentItemCard from '../shared/AssessmentItemCard';
 import type { AssessmentItemRendererProps } from '../shared/types';
+import ReasonTextarea from '../shared/ReasonTextarea';
+import { getReasonMinWords } from '../shared/reasonMinWords';
 
 const CompareItem: React.FC<AssessmentItemRendererProps> = ({
   item,
@@ -14,8 +15,9 @@ const CompareItem: React.FC<AssessmentItemRendererProps> = ({
   const optionA = content.optionA ? String(content.optionA) : 'Option A';
   const optionB = content.optionB ? String(content.optionB) : 'Option B';
   const justifyPrompt = String(content.justifyPrompt || content.reasonPrompt || 'Explain your reasoning for this choice.');
-
-  const [showPasteWarning, setShowPasteWarning] = useState<boolean>(false);
+  const minWords = getReasonMinWords(content as Record<string, unknown>, 'compare', {
+    reasonShown: true,
+  });
 
   const selectedChoice =
     typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -51,9 +53,7 @@ const CompareItem: React.FC<AssessmentItemRendererProps> = ({
         </div>
       )}
 
-      {/* Side-by-side A/B Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-        {/* Option A */}
         <div
           onClick={() => !disabled && handleSelect('A')}
           className={`p-5 rounded-[16px] border-2 cursor-pointer transition-all ${
@@ -77,7 +77,6 @@ const CompareItem: React.FC<AssessmentItemRendererProps> = ({
           </p>
         </div>
 
-        {/* Option B */}
         <div
           onClick={() => !disabled && handleSelect('B')}
           className={`p-5 rounded-[16px] border-2 cursor-pointer transition-all ${
@@ -102,33 +101,16 @@ const CompareItem: React.FC<AssessmentItemRendererProps> = ({
         </div>
       </div>
 
-      {/* Justification Textarea */}
-      <div className="mt-5 pt-2">
-        <div className="flex items-center gap-1.5 text-[11px] font-[800] text-[#0047CC] tracking-[0.6px] uppercase mb-2">
-          <span>{justifyPrompt.toUpperCase()}</span>
-        </div>
-
-        <textarea
-          disabled={disabled}
-          value={reasoningText}
-          onChange={(e) => handleReason(e.target.value)}
-          onPaste={(e) => {
-            const ENABLE_PASTE_BLOCKING = false;
-            if (!ENABLE_PASTE_BLOCKING) return;
-            e.preventDefault();
-            setShowPasteWarning(true);
-            toast.error('Pasting is disabled for reasoning answers');
-          }}
-          placeholder="Explain your choice in a sentence..."
-          className="w-full min-h-[76px] p-3.5 sm:p-4 bg-white border border-[#0047CC] focus:border-[#0047CC] focus:ring-2 focus:ring-[#0047CC]/20 rounded-[14px] text-[13.5px] text-[#1A1A1A] placeholder:text-[#94A3B8] outline-none transition-all resize-y font-sans leading-relaxed shadow-[0_2px_8px_rgba(0,71,204,0.06)] disabled:opacity-60 disabled:cursor-not-allowed"
-        />
-
-        {showPasteWarning && (
-          <div className="bg-[#FFF4EC] border border-[#FFD6B3] rounded-[10px] p-[10px_14px] mt-2.5 text-[12px] font-[600] text-[#C2410C] flex items-center justify-between animate-[fadeUp_0.2s_ease_both]">
-            <span>Please answer in your own words. Pasting is turned off here.</span>
-          </div>
-        )}
-      </div>
+      <ReasonTextarea
+        label={justifyPrompt}
+        value={reasoningText}
+        onChange={handleReason}
+        disabled={disabled}
+        placeholder="Explain your choice in a sentence..."
+        minWords={minWords}
+        content={content as Record<string, unknown>}
+        itemType="compare"
+      />
     </AssessmentItemCard>
   );
 };

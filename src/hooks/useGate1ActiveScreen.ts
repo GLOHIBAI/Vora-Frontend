@@ -54,6 +54,7 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
   const [isBooting, setIsBooting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const bootedKeyRef = useRef<string | null>(null);
+  const bootInFlightRef = useRef<string | null>(null);
   const recoverAttemptsRef = useRef(0);
 
   const initialState = useMemo((): GateResumeState => ({
@@ -141,8 +142,10 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
     const bootKey = `${bootToken}:${screenKey}:${resumeState.inProgress?.componentId ?? "new"}`;
 
     if (bootedKeyRef.current === bootKey) return;
+    if (bootInFlightRef.current === bootKey) return;
 
     let cancelled = false;
+    bootInFlightRef.current = bootKey;
 
     const boot = async () => {
       setIsBooting(true);
@@ -157,11 +160,13 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
         const payload = normalizeGateStartResponse(started, screenKey);
         if (!payload) {
           setError("Could not load this screen. Please try again.");
+          bootedKeyRef.current = null;
           return;
         }
 
         if (payload.items.length === 0) {
           setIsGenerating(true);
+          bootedKeyRef.current = null;
           setTimeout(() => {
             if (!cancelled) {
               setBootToken((n) => n + 1);
@@ -178,6 +183,8 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
       } catch (err: unknown) {
         setIsGenerating(false);
         if (cancelled) return;
+
+        bootedKeyRef.current = null;
 
         const message = getApiErrorMessage(
           err,
@@ -203,6 +210,9 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
 
         setError(message);
       } finally {
+        if (bootInFlightRef.current === bootKey) {
+          bootInFlightRef.current = null;
+        }
         if (!cancelled) {
           setIsBooting(false);
         }
@@ -213,6 +223,9 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
 
     return () => {
       cancelled = true;
+      if (bootInFlightRef.current === bootKey) {
+        bootInFlightRef.current = null;
+      }
     };
   }, [
     assessmentId,

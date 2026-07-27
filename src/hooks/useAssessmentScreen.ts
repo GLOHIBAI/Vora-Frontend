@@ -221,6 +221,8 @@ export function useAssessmentScreen({
   const lockedResponses = useRef<ResponsesMap>({});
   const isAdaptiveSubmittingRef = useRef(false);
   const lastSubmittedStepRef = useRef("");
+  const priorStepsRef = useRef(priorSteps);
+  priorStepsRef.current = priorSteps;
 
   // Reset screen-specific states when moving to a new component/screen
   useEffect(() => {
@@ -399,8 +401,8 @@ export function useAssessmentScreen({
         isAdaptiveType(item.type) &&
         item.content.layout !== "multi_question"
       ) {
-        const stepKey = `${itemId}-${priorSteps.length}`;
-        if (isAdaptiveSubmittingRef.current || lastSubmittedStepRef.current === stepKey || submitAdaptive.isPending) return;
+        const stepKey = `${itemId}-${priorStepsRef.current.length}`;
+        if (isAdaptiveSubmittingRef.current || lastSubmittedStepRef.current === stepKey) return;
         isAdaptiveSubmittingRef.current = true;
         lastSubmittedStepRef.current = stepKey;
         try {
@@ -466,6 +468,7 @@ export function useAssessmentScreen({
           });
           onAdaptiveStep?.(result);
         } catch (err) {
+          lastSubmittedStepRef.current = "";
           /* error toast shown by API client */
           throw err;
         } finally {

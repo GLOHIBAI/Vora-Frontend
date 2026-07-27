@@ -40,6 +40,7 @@ export function countWords(text: string): number {
 
 /**
  * Validates if a reason string satisfies minWords requirement.
+ * Matches backend: space-separated word count only.
  */
 export function validateMinWords(reason?: string, minWords?: number): boolean {
   if (!minWords || minWords <= 0) return true;

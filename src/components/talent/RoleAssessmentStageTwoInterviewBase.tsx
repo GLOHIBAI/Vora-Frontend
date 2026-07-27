@@ -7,7 +7,6 @@ import PartRail from './PartRail';
 import AssessmentItemsList from './assessment/AssessmentItemsList';
 import FullPageSpinner from '../common/FullPageSpinner';
 import { useLocalAssessmentScreen } from '../../hooks/useLocalAssessmentScreen';
-import { questionsToMcqItems } from '../../mocks/stage1AssessmentScreens';
 import {
   useStartAssessmentScreenMutation,
   useSaveAssessmentDraftMutation,
@@ -18,12 +17,36 @@ import {
 import { getActiveAssessmentId } from '../../utils/assessmentSession';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
 import { isItemAnswerComplete } from '../../utils/assessmentValidation';
+import { normalizeAssessmentItems } from '../../utils/assessmentItems';
+import { unwrapAssessmentData } from '../../utils/assessmentSession';
 import type {
   AssessmentGateStartResponse,
   AssessmentItem,
   GateWindowInfo,
 } from '../../services/queries/assessments/types';
 import { formatGate2ResponsesPayload } from '../../catalog/gate2-submit-shape.util';
+import { getApiErrorMessage } from '../../services/api';
+import { StageTwoValidationProvider } from './assessment/shared/StageTwoValidationContext';
+
+const applyGate2ScreenPayload = (raw: unknown) => {
+  const data = unwrapAssessmentData<Record<string, any>>(raw) ?? (raw as Record<string, any>);
+  if (!data || typeof data !== 'object') return null;
+  const items = normalizeAssessmentItems(data.items);
+  if (!items.length) return null;
+  return {
+    data: {
+      ...data,
+      items,
+    } as AssessmentGateStartResponse,
+    items,
+    window: data.window as GateWindowInfo | undefined,
+    progress: data.progress,
+  };
+};
+
+const QUESTIONS_PER_SESSION = 4;
+const FIXED_HEADER_OFFSET_PX = 196;
+const FIXED_FOOTER_OFFSET_PX = 96;
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -86,7 +109,8 @@ interface StageTwoInterviewBaseProps {
   sectionTitle: string;
   sectionSub: string;
   whyMattersText: string;
-  questions: Question[];
+  /** @deprecated Local mock questions are no longer used; Stage 2 loads from the start endpoint only. */
+  questions?: Question[];
   nextPath: string;
   partNumber?: number;
   timeLimitSeconds?: number;
@@ -94,12 +118,9 @@ interface StageTwoInterviewBaseProps {
 }
 
 const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> = ({
-  interviewNumber,
-  interviewTitle,
   sectionTitle,
   sectionSub,
   whyMattersText,
-  questions,
   nextPath,
   partNumber = 1,
   timeLimitSeconds = 10 * 60,
@@ -130,15 +151,15 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   // API dynamic question flow integrations
   const activeAssessmentId = resolveGate1AssessmentId() || getActiveAssessmentId();
   const [apiScreenData, setApiScreenData] = useState<AssessmentGateStartResponse | null>(null);
-  const [apiLoading, setApiLoading] = useState<boolean>(!!activeAssessmentId);
+  const [apiLoading, setApiLoading] = useState<boolean>(true);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [bootToken, setBootToken] = useState(0);
 
-  // Selected answers via reusable assessment item renderer
-  const mcqItems = useMemo(() => questionsToMcqItems(questions), [questions]);
   const activeDisplayedItems = useMemo(() => {
     if (activeItems.length > 0) return activeItems;
     if (apiScreenData?.items && apiScreenData.items.length > 0) return apiScreenData.items;
-    return mcqItems;
-  }, [activeItems, apiScreenData, mcqItems]);
+    return [];
+  }, [activeItems, apiScreenData]);
 
   const { answers, recordAnswer, setAnswers, isLocked } =
     useLocalAssessmentScreen(activeDisplayedItems);
@@ -146,6 +167,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   const startScreenMutation = useStartAssessmentScreenMutation(2);
   const saveDraftMutation = useSaveAssessmentDraftMutation();
   const submitScreenMutation = useSubmitAssessmentScreenMutation();
+  const startedPillarRef = useRef<string | null>(null);
 
   const pillar = useMemo(() => {
     const pillarMap: Record<number, string> = {
@@ -160,8 +182,17 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   useEffect(() => {
     if (!activeAssessmentId) {
       setApiLoading(false);
+      setApiError('No active assessment. Return to the journey and begin Stage 2.');
       return;
     }
+
+    const startKey = `${activeAssessmentId}:${pillar}:${bootToken}`;
+    if (startedPillarRef.current === startKey) return;
+    startedPillarRef.current = startKey;
+
+    let cancelled = false;
+    setApiLoading(true);
+    setApiError(null);
 
     startScreenMutation.mutate(
       {
@@ -170,33 +201,49 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       },
       {
         onSuccess: (res: any) => {
-          const data = res?.data || res;
-          if (data && data.items && data.items.length > 0) {
+          if (cancelled) return;
+          const payload = applyGate2ScreenPayload(res);
+          if (payload) {
+            const { data, items, window, progress } = payload;
             setApiScreenData(data);
-            setActiveItems(data.items);
-            if (data.window) {
-              setWindowInfo(data.window);
+            setActiveItems(items);
+            if (window) {
+              setWindowInfo(window);
             } else {
-              setWindowInfo({ from: 1, through: data.items.length, hasMore: false });
+              setWindowInfo({ from: 1, through: items.length, hasMore: false });
             }
-            const total = data.progress?.total || data.items.length;
-            const current = data.progress?.current || 1;
-            const answered = data.progress?.answered || 0;
+            const total = progress?.total || items.length;
+            const current = progress?.current || 1;
+            const answered = progress?.answered || 0;
             setPillarProgress({ total, current, answered });
 
             if (data.questionsRegenerated) {
               toast('Fresh questions generated for remaining unanswered items.', { icon: '🔄' });
             }
+            setApiLoading(false);
+            return;
           }
+
+          setApiError('No questions were returned for this part. Please try again.');
           setApiLoading(false);
         },
         onError: (err) => {
-          console.error('Failed to start Stage 2 screen from API, falling back to local questions:', err);
+          if (cancelled) return;
+          startedPillarRef.current = null;
+          console.error('Failed to start Stage 2 screen from API:', err);
+          setApiError(getApiErrorMessage(err, 'Could not start this interview. Please try again.'));
           setApiLoading(false);
         },
       }
     );
-  }, [activeAssessmentId, pillar]);
+
+    return () => {
+      cancelled = true;
+      if (startedPillarRef.current === startKey) {
+        startedPillarRef.current = null;
+      }
+    };
+  }, [activeAssessmentId, pillar, bootToken]);
 
   // Load drafts if the user has a resumed session
   const { data: draftData } = useAssessmentDraftQuery(
@@ -205,11 +252,28 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     { enabled: !!activeAssessmentId && apiScreenData?.sessionState === 'resumed' }
   );
 
+  const draftHydratedRef = useRef(false);
+
   useEffect(() => {
+    draftHydratedRef.current = false;
+  }, [apiScreenData?.componentId]);
+
+  useEffect(() => {
+    if (draftHydratedRef.current) return;
     const responses = (draftData as any)?.data?.responses || draftData?.responses;
-    if (responses) {
-      setAnswers((prev: any) => ({ ...prev, ...responses }));
-    }
+    if (!responses || typeof responses !== 'object') return;
+
+    draftHydratedRef.current = true;
+    setAnswers((prev: any) => {
+      const merged = { ...responses };
+      // Prefer in-progress local answers over empty/partial draft values
+      for (const [itemId, localVal] of Object.entries(prev || {})) {
+        if (localVal !== undefined && localVal !== null && localVal !== '') {
+          merged[itemId] = localVal;
+        }
+      }
+      return merged;
+    });
   }, [draftData, setAnswers]);
 
   const fetchedRangesRef = useRef<Set<string>>(new Set());
@@ -233,12 +297,12 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           from: nextFrom,
           through: nextThrough,
         });
-
-        if (res.items && res.items.length > 0) {
+        const payload = applyGate2ScreenPayload(res);
+        if (payload) {
           prefetchedItemsMapRef.current.set(rangeKey, {
-            items: res.items,
-            window: res.window,
-            progress: res.progress,
+            items: payload.items,
+            window: payload.window,
+            progress: payload.progress,
           });
         }
       } catch (err) {
@@ -255,6 +319,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   const [showCheatModal, setShowCheatModal] = useState<boolean>(false);
   const [cheatCountdown, setCheatCountdown] = useState<number>(3);
   const [alreadyCheated, setAlreadyCheated] = useState<boolean>(false);
+  const [showContinueValidation, setShowContinueValidation] = useState(false);
 
   // Refs for tracking timers
   const blurTimerRef = useRef<any | null>(null);
@@ -299,10 +364,10 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
               body: { pillar },
             }).catch(() => null);
 
-            if ((res as any)?.data?.items || res?.items) {
-              const data = (res as any)?.data || res;
-              setApiScreenData(data);
-              setActiveItems(data.items);
+            const payload = applyGate2ScreenPayload(res);
+            if (payload) {
+              setApiScreenData(payload.data);
+              setActiveItems(payload.items);
             }
           } catch (err) {
             console.warn('Tab switch question regeneration notice:', err);
@@ -325,13 +390,19 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
   const handleAnswer = async (itemId: string, value: any, item: any, subKey?: string) => {
     await recordAnswer(itemId, value, item, subKey);
-    const newAnswers = { ...answers, [itemId]: value };
-    const updatedCount = Object.keys(newAnswers).length;
-    setPillarProgress((prev) => ({ ...prev, answered: updatedCount }));
-
-    // Responses are stored in local state while interacting and sent when completing/submitting or saving for later
-    void prefetchNextWindowIfNeeded(updatedCount);
   };
+
+  useEffect(() => {
+    if (!apiScreenData) return;
+    const answeredInWindow = activeDisplayedItems.filter((item) =>
+      isItemAnswerComplete(item, answers[item.id]),
+    ).length;
+    const totalAnswered = Math.max(0, windowInfo.from - 1) + answeredInWindow;
+    setPillarProgress((prev) =>
+      prev.answered === totalAnswered ? prev : { ...prev, answered: totalAnswered },
+    );
+    void prefetchNextWindowIfNeeded(totalAnswered);
+  }, [answers, activeDisplayedItems, apiScreenData, windowInfo.from]);
 
   const allFetchedItemsRef = useRef<Map<string, any>>(new Map());
 
@@ -357,34 +428,35 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       sessionStorage.setItem('submitReason', reason);
     }
 
-    if (activeAssessmentId && apiScreenData) {
-      try {
-        const payloadResponses = sanitizeAnswers(answers);
-        // Flush accumulated draft responses to API first
-        if (Object.keys(payloadResponses).length > 0) {
-          await saveDraftMutation.mutateAsync({
-            assessmentId: activeAssessmentId,
-            componentId: apiScreenData.componentId,
-            responses: payloadResponses,
-          }).catch((err) => console.warn('Draft save before submit warning:', err));
-        }
+    if (!activeAssessmentId || !apiScreenData) {
+      toast.error('Assessment is not ready. Please reload and try again.');
+      setIsSubmitting(false);
+      return;
+    }
 
-        await submitScreenMutation.mutateAsync({
+    try {
+      const payloadResponses = sanitizeAnswers(answers);
+      // Flush accumulated draft responses to API first
+      if (Object.keys(payloadResponses).length > 0) {
+        await saveDraftMutation.mutateAsync({
           assessmentId: activeAssessmentId,
           componentId: apiScreenData.componentId,
           responses: payloadResponses,
-        });
-        toast.success('Interview submitted successfully!');
-        navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);
-      } catch (err: any) {
-        console.error('Failed to submit Stage 2 screen to API:', err);
-        const serverMsg = err?.response?.data?.message || err?.message || 'Failed to submit. Please try again.';
-        toast.error(serverMsg);
-        setIsSubmitting(false);
+        }).catch((err) => console.warn('Draft save before submit warning:', err));
       }
-    } else {
+
+      await submitScreenMutation.mutateAsync({
+        assessmentId: activeAssessmentId,
+        componentId: apiScreenData.componentId,
+        responses: payloadResponses,
+      });
       toast.success('Interview submitted successfully!');
       navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);
+    } catch (err: any) {
+      console.error('Failed to submit Stage 2 screen to API:', err);
+      const serverMsg = err?.response?.data?.message || err?.message || 'Failed to submit. Please try again.';
+      toast.error(serverMsg);
+      setIsSubmitting(false);
     }
   };
 
@@ -419,10 +491,25 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  const isAllAnswered = useMemo(() => {
-    if (activeDisplayedItems.length === 0) return false;
-    return activeDisplayedItems.every((item) => isItemAnswerComplete(item, answers[item.id]));
-  }, [activeDisplayedItems, answers]);
+  const incompleteItems = useMemo(
+    () => activeDisplayedItems.filter((item) => !isItemAnswerComplete(item, answers[item.id])),
+    [activeDisplayedItems, answers],
+  );
+
+  const incompleteCount = incompleteItems.length;
+
+  const isAllAnswered = activeDisplayedItems.length > 0 && incompleteCount === 0;
+
+  useEffect(() => {
+    if (isAllAnswered) setShowContinueValidation(false);
+  }, [isAllAnswered]);
+
+  const scrollToFirstIncomplete = () => {
+    const first = incompleteItems[0];
+    if (!first) return;
+    const el = document.getElementById(`assessment-item-${first.id}`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
 
   const isHasMoreWindows = useMemo(() => {
     if (windowInfo.hasMore) return true;
@@ -476,37 +563,40 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           from: nextFrom,
           through: nextThrough,
         });
-        nextItems = res.items || [];
-        nextWindow = res.window;
-        nextProgress = res.progress;
+        const payload = applyGate2ScreenPayload(res);
+        nextItems = payload?.items || [];
+        nextWindow = payload?.window;
+        nextProgress = payload?.progress;
       }
 
       if (nextItems.length > 0) {
+        setShowContinueValidation(false);
         setActiveItems(nextItems);
         setApiScreenData((prev) => (prev ? { ...prev, items: nextItems } : prev));
-        setAnswers({});
-      }
 
-      if (nextWindow) {
-        setWindowInfo(nextWindow);
+        if (nextWindow) {
+          setWindowInfo(nextWindow);
+        } else {
+          const itemsLen = nextItems.length;
+          setWindowInfo({
+            from: nextFrom,
+            through: windowInfo.through + itemsLen,
+            hasMore: nextProgress?.total ? windowInfo.through + itemsLen < nextProgress.total : false,
+          });
+        }
+
+        if (nextProgress) {
+          setPillarProgress((prev) => ({
+            total: nextProgress.total ?? prev.total,
+            current: nextProgress.current ?? nextFrom,
+            answered: nextProgress.answered ?? prev.answered,
+          }));
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        const itemsLen = nextItems.length;
-        setWindowInfo({
-          from: nextFrom,
-          through: windowInfo.through + itemsLen,
-          hasMore: nextProgress?.total ? windowInfo.through + itemsLen < nextProgress.total : false,
-        });
+        toast.error('No more questions were returned. Please try again.');
       }
-
-      if (nextProgress) {
-        setPillarProgress((prev) => ({
-          total: nextProgress.total ?? prev.total,
-          current: nextProgress.current ?? nextFrom,
-          answered: nextProgress.answered ?? prev.answered,
-        }));
-      }
-
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
       console.error('Failed to load next window:', err);
       toast.error('Failed to load next questions. Please try again.');
@@ -528,11 +618,78 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     return 'timer-chip';
   };
 
+  const progressMeta = useMemo(() => {
+    const totalQuestions = pillarProgress.total || apiScreenData?.items.length || 0;
+    const answeredInCurrentWindow = activeDisplayedItems.filter((item) =>
+      isItemAnswerComplete(item, answers[item.id]),
+    ).length;
+    const totalCompletedBeforeWindow = Math.max(0, windowInfo.from - 1);
+    const totalAnswered = totalCompletedBeforeWindow + answeredInCurrentWindow;
+    const currentQNum = totalQuestions > 0
+      ? Math.min(Math.max(1, totalAnswered + 1), totalQuestions)
+      : 1;
+    const totalSessions = Math.max(1, Math.ceil(totalQuestions / QUESTIONS_PER_SESSION));
+    const currentSession = Math.min(
+      Math.max(1, Math.ceil(currentQNum / QUESTIONS_PER_SESSION)),
+      totalSessions,
+    );
+    const completedSessions = Math.max(0, currentSession - 1);
+
+    return {
+      totalQuestions,
+      currentQNum,
+      totalSessions,
+      currentSession,
+      completedSessions,
+    };
+  }, [
+    pillarProgress.total,
+    apiScreenData?.items.length,
+    activeDisplayedItems,
+    answers,
+    windowInfo.from,
+  ]);
+
   if (apiLoading) {
     return <FullPageSpinner message="Loading interview screen..." />;
   }
 
+  if (apiError || !apiScreenData) {
+    return (
+      <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex items-center justify-center p-6">
+        <div className="bg-white border border-[#E6E6E6] rounded-[18px] max-w-[440px] w-full p-[30px] text-center shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
+          <h2 className="text-[18px] font-[900] mb-2">Could not load this interview</h2>
+          <p className="text-[14px] text-[#4A4A4A] leading-[1.6] mb-5">
+            {apiError || 'The Stage 2 start endpoint did not return questions.'}
+          </p>
+          <div className="flex gap-2 justify-center flex-wrap">
+            <button
+              type="button"
+              onClick={() => navigate(`/onboarding/talent/${roleSlug}/assessment/journey`)}
+              className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] px-4 py-2.5 text-[13.5px] font-[700]"
+            >
+              Back to journey
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                startedPillarRef.current = null;
+                setApiScreenData(null);
+                setActiveItems([]);
+                setBootToken((n) => n + 1);
+              }}
+              className="bg-[#0047CC] text-white border-none rounded-[10px] px-4 py-2.5 text-[13.5px] font-[700]"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
+    <StageTwoValidationProvider value={showContinueValidation}>
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col">
       <style>{`
         .timer-chip {
@@ -566,99 +723,77 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         }
       `}</style>
 
-      {/* Topbar */}
-      <AssessmentHeader
-        middleContent={
-          apiScreenData ? (
+      {/* Fixed Header & Rails */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-white flex flex-col">
+        <AssessmentHeader
+          middleContent={
             <span className="hidden sm:inline">
               {formattedGateName} · {apiScreenData.items[0]?.sessionLabel || `Part ${partNumber}`}
             </span>
-          ) : (
-            <span className="hidden sm:inline">
-              Stage 2 · Part {partNumber} · Interview {interviewNumber} of 3
-            </span>
-          )
-        }
-        rightContent={
-          <div className="flex items-center gap-[14px]">
-            <div className={timerChipClass()}>
-              <ClockIcon className="w-[14px] h-[14px] mr-[4px] inline-block align-middle" />
-              <span className="font-[800] text-[13.5px] tabular-nums inline-block align-middle">
-                {formatTime(secondsLeft)}
-              </span>
-            </div>
-            <div className="flex items-center gap-[6px] text-[12px] text-[#808080] font-[600]">
-              <DocumentCheckIcon className="w-[13px] h-[13px] text-[#0047CC]" />
-              Auto-saved
-            </div>
-          </div>
-        }
-      />
-
-      {/* Stage Rail */}
-      <StageRail activeStage={2} showBottomBorder={false} />
-
-      {/* Part Rail */}
-      <PartRail activePart={partNumber} />
-
-      {/* Pebble Rail */}
-      {apiScreenData ? (
-        <div className="bg-white border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[10px] flex items-center justify-center gap-[12px] flex-wrap">
-          {(() => {
-            const totalQuestions = pillarProgress.total || apiScreenData.items.length;
-            const answeredInCurrentWindow = activeDisplayedItems.filter((item) => answers[item.id] !== undefined && answers[item.id] !== null && answers[item.id] !== '').length;
-            const totalCompletedBeforeWindow = Math.max(0, windowInfo.from - 1);
-            const totalAnswered = totalCompletedBeforeWindow + answeredInCurrentWindow;
-            const currentQNum = Math.min(Math.max(1, totalAnswered + 1), totalQuestions);
-
-            return (
-              <>
-                <span className="text-[11.5px] font-[800] tracking-[0.4px] uppercase text-[#0047CC]">
-                  Question {currentQNum} of {totalQuestions}
+          }
+          rightContent={
+            <div className="flex items-center gap-[14px]">
+              <div className={timerChipClass()}>
+                <ClockIcon className="w-[14px] h-[14px] mr-[4px] inline-block align-middle" />
+                <span className="font-[800] text-[13.5px] tabular-nums inline-block align-middle">
+                  {formatTime(secondsLeft)}
                 </span>
-                <div className="flex gap-[5px] flex-wrap">
-                  {Array.from({ length: totalQuestions }).map((_, idx) => {
-                    const isActive = idx === totalAnswered;
-                    const isDone = idx < totalAnswered;
-                    return (
-                      <div
-                        key={idx}
-                        className={`h-[5px] rounded-full transition-all duration-200 ${
-                          isActive
-                            ? 'bg-[#0047CC] w-[42px]'
-                            : isDone
-                            ? 'bg-[#387DFF] w-[26px]'
-                            : 'bg-[#E6E6E6] w-[26px]'
-                        }`}
-                      />
-                    );
-                  })}
-                </div>
-              </>
-            );
-          })()}
+              </div>
+              <div className="flex items-center gap-[6px] text-[12px] text-[#808080] font-[600]">
+                <DocumentCheckIcon className="w-[13px] h-[13px] text-[#0047CC]" />
+                Auto-saved
+              </div>
+            </div>
+          }
+        />
+
+        <StageRail activeStage={2} showBottomBorder={false} />
+        <PartRail activePart={partNumber} />
+
+        <div className="bg-white border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[10px] flex items-center justify-center gap-[12px] flex-wrap">
+          <span className="text-[11.5px] font-[800] tracking-[0.4px] uppercase text-[#0047CC]">
+            Session {progressMeta.currentSession} of {progressMeta.totalSessions}
+          </span>
+          <div className="flex gap-[5px] flex-wrap">
+            {Array.from({ length: progressMeta.totalSessions }).map((_, idx) => {
+              const isActive = idx === progressMeta.completedSessions;
+              const isDone = idx < progressMeta.completedSessions;
+              return (
+                <div
+                  key={idx}
+                  className={`h-[5px] rounded-full transition-all duration-200 ${
+                    isActive
+                      ? 'bg-[#0047CC] w-[42px]'
+                      : isDone
+                      ? 'bg-[#387DFF] w-[26px]'
+                      : 'bg-[#E6E6E6] w-[26px]'
+                  }`}
+                />
+              );
+            })}
+          </div>
         </div>
-      ) : (
-        <div className="bg-white border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[10px] flex items-center justify-center gap-[6px]">
-          <div className={`w-[32px] h-[5px] rounded-full ${interviewNumber >= 2 ? 'bg-[#387DFF]' : 'bg-[#E6E6E6]'}`} />
-          <div className={`w-[32px] h-[5px] rounded-full ${interviewNumber >= 3 ? 'bg-[#387DFF]' : interviewNumber === 2 ? 'bg-[#0047CC] w-[48px]' : 'bg-[#E6E6E6]'}`} />
-          <div className={`w-[32px] h-[5px] rounded-full ${interviewNumber === 3 ? 'bg-[#0047CC] w-[48px]' : 'bg-[#E6E6E6]'}`} />
-        </div>
-      )}
+      </div>
 
       {/* Main Body */}
       {(() => {
         const currentHeaderItem = activeDisplayedItems[0];
         return (
-          <main className="max-w-[780px] w-full mx-auto px-[24px] py-[32px] pb-[90px] flex-1">
+          <main
+            className="max-w-[780px] w-full mx-auto px-[24px] py-[32px] flex-1"
+            style={{
+              paddingTop: FIXED_HEADER_OFFSET_PX,
+              paddingBottom: FIXED_FOOTER_OFFSET_PX,
+            }}
+          >
             <div className="inline-flex items-center gap-[7px] bg-[#EBF6FF] text-[#0047CC] text-[11px] font-[800] tracking-[0.7px] uppercase px-[12px] py-[5px] rounded-full mb-[14px]">
-              {apiScreenData ? (currentHeaderItem?.eyebrow || `Part ${partNumber} · Knowledge`) : `Interview ${interviewNumber} · ${interviewTitle}`}
+              {currentHeaderItem?.eyebrow || `Part ${partNumber} · Knowledge`}
             </div>
             <h1 className="text-[22px] font-[900] text-[#1A1A1A] tracking-[-0.3px] leading-[1.3] mb-[8px]">
-              {apiScreenData ? (currentHeaderItem?.screenTitle || currentHeaderItem?.title || sectionTitle) : sectionTitle}
+              {currentHeaderItem?.screenTitle || currentHeaderItem?.title || sectionTitle}
             </h1>
             <p className="text-[14px] text-[#808080] leading-[1.6] mb-[20px]">
-              {apiScreenData ? (currentHeaderItem?.screenSubtitle || sectionSub) : sectionSub}
+              {currentHeaderItem?.screenSubtitle || sectionSub}
             </p>
 
             {/* Why matters component */}
@@ -666,7 +801,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
               <InfoIcon className="w-[16px] h-[16px] text-[#0047CC] shrink-0 mt-[1px]" />
               <p className="text-[12.5px] text-[#182348] leading-[1.5]">
                 <strong className="font-[800]">Why this matters · </strong>
-                {apiScreenData ? (currentHeaderItem?.whyThisMatters || whyMattersText) : whyMattersText}
+                {currentHeaderItem?.whyThisMatters || whyMattersText}
               </p>
             </div>
 
@@ -678,15 +813,24 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
               answers={answers}
               isLocked={(itemId, subKey) => isSubmitting || isLocked(itemId, subKey)}
               onAnswer={(itemId, val, item, subKey) => void handleAnswer(itemId, val, item, subKey)}
+              incompleteItemIds={incompleteItems.map((item) => item.id)}
+              showIncompleteHighlight={showContinueValidation}
             />
           </main>
         );
       })()}
 
-      {/* Sticky Footer */}
-      <footer className="sticky bottom-0 bg-white/96 backdrop-blur-[10px] border-t border-[#E6E6E6] p-[14px_32px] flex items-center justify-between gap-[12px] z-[40]">
+      {/* Fixed Footer */}
+      <footer className="fixed bottom-0 left-0 right-0 bg-white/96 backdrop-blur-[10px] border-t border-[#E6E6E6] p-[14px_32px] flex items-center justify-between gap-[12px] z-50">
         <div className="text-[13px] text-[#808080] font-[600]">
           {footerLabel}
+          {showContinueValidation && incompleteCount > 0 ? (
+            <span className="block sm:inline sm:ml-2 text-[12px] text-[#DC2626] font-[600]">
+              {incompleteCount === 1
+                ? '1 question still needs a complete answer'
+                : `${incompleteCount} questions still need complete answers`}
+            </span>
+          ) : null}
         </div>
         <div className="flex gap-[10px] items-center">
           <button
@@ -697,15 +841,28 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
             Save and finish later
           </button>
           <button
+            type="button"
             onClick={() => {
+              if (isSubmitting) return;
+              if (!isAllAnswered) {
+                setShowContinueValidation(true);
+                // Wait a tick so highlight classes paint, then scroll
+                requestAnimationFrame(() => scrollToFirstIncomplete());
+                return;
+              }
               if (isHasMoreWindows) {
                 void handleContinueNextWindow();
               } else {
                 void handleSubmit();
               }
             }}
-            disabled={!isAllAnswered || isSubmitting}
-            className="bg-[#0047CC] text-white border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] disabled:bg-[#E6E6E6] disabled:shadow-none disabled:cursor-not-allowed font-sans"
+            disabled={isSubmitting}
+            aria-disabled={!isAllAnswered || isSubmitting}
+            className={`border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] inline-flex items-center gap-[8px] font-sans ${
+              !isAllAnswered || isSubmitting
+                ? 'bg-[#E6E6E6] text-white shadow-none cursor-pointer'
+                : 'bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] cursor-pointer hover:bg-[#344DA1]'
+            }`}
           >
             {isSubmitting ? (
               <>
@@ -715,7 +872,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
             ) : isHasMoreWindows ? (
               'Continue'
             ) : (
-              apiScreenData ? `Complete Part ${partNumber}` : (interviewNumber === 3 ? `Complete Part ${partNumber}` : 'Submit interview')
+              `Complete Part ${partNumber}`
             )}
           </button>
         </div>
@@ -782,6 +939,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         </div>
       )}
     </div>
+    </StageTwoValidationProvider>
   );
 };
 

@@ -20,9 +20,12 @@ const ITEM_TYPE_ALIASES: Record<string, AssessmentItemType> = {
 export const normalizeAssessmentItemType = (
   type: string,
 ): AssessmentItemType => {
-  const aliased = ITEM_TYPE_ALIASES[type];
+  const key = String(type || "")
+    .toLowerCase()
+    .trim();
+  const aliased = ITEM_TYPE_ALIASES[key];
   if (aliased) return aliased;
-  return type as AssessmentItemType;
+  return key as AssessmentItemType;
 };
 
 interface LikertQuestionLike {
@@ -69,6 +72,119 @@ const normalizeItemContent = (
     });
   }
 
+  if (Array.isArray(content.options)) {
+    next.options = content.options.map((row, idx) => {
+      if (!row || typeof row !== "object") return row;
+      const opt = row as Record<string, unknown>;
+      const id = String(
+        opt.id ?? opt.optionId ?? opt.value ?? opt.letter ?? `opt_${idx}`,
+      );
+      return {
+        ...opt,
+        id,
+        label:
+          opt.label ??
+          opt.text ??
+          opt.description ??
+          opt.statement ??
+          opt.content ??
+          "",
+      };
+    });
+  }
+
+  if (Array.isArray(content.values)) {
+    next.values = content.values.map((row, idx) => {
+      if (!row || typeof row !== "object") return row;
+      const opt = row as Record<string, unknown>;
+      return {
+        ...opt,
+        id: String(opt.id ?? opt.optionId ?? opt.value ?? opt.letter ?? `val_${idx}`),
+      };
+    });
+  }
+
+  // Match: normalize left / right choice ids
+  const leftRaw =
+    (Array.isArray(content.left) && content.left) ||
+    (Array.isArray(content.leftItems) && content.leftItems) ||
+    (Array.isArray(content.terms) && content.terms) ||
+    null;
+  if (leftRaw) {
+    next.left = leftRaw.map((row, idx) => {
+      if (typeof row === "string") return { id: `left_${idx}`, text: row };
+      if (!row || typeof row !== "object") return row;
+      const item = row as Record<string, unknown>;
+      return {
+        ...item,
+        id: String(item.id ?? item.key ?? item.term ?? `left_${idx}`),
+        text: String(item.text ?? item.label ?? item.term ?? item.name ?? ""),
+      };
+    });
+  }
+
+  const rightRaw =
+    (Array.isArray(content.rightChoices) && content.rightChoices) ||
+    (Array.isArray(content.right) && content.right) ||
+    (Array.isArray(content.choices) && content.choices) ||
+    null;
+  if (rightRaw) {
+    next.rightChoices = rightRaw.map((row, idx) => {
+      if (typeof row === "string") return { id: row, text: row };
+      if (!row || typeof row !== "object") return row;
+      const item = row as Record<string, unknown>;
+      const text = String(item.text ?? item.label ?? item.description ?? "");
+      return {
+        ...item,
+        id: String(item.id ?? item.key ?? text ?? `right_${idx}`),
+        text,
+      };
+    });
+  }
+
+  // Cat: normalize task ids (API may use items or tasks)
+  const tasksRaw =
+    (Array.isArray(content.items) && content.items) ||
+    (Array.isArray(content.tasks) && content.tasks) ||
+    null;
+  if (tasksRaw && (String(type) === "cat" || String(content.type || "").toLowerCase() === "cat")) {
+    next.items = tasksRaw.map((row, idx) => {
+      if (typeof row === "string") return { id: `task_${idx}`, text: row };
+      if (!row || typeof row !== "object") return row;
+      const item = row as Record<string, unknown>;
+      return {
+        ...item,
+        id: String(item.id ?? item.key ?? `task_${idx}`),
+        text: String(item.text ?? item.label ?? item.name ?? ""),
+      };
+    });
+  }
+
+  if (Array.isArray(content.buckets)) {
+    next.buckets = content.buckets.map((row, idx) => {
+      if (typeof row === "string") return { id: row, text: row };
+      if (!row || typeof row !== "object") return row;
+      const item = row as Record<string, unknown>;
+      const text = String(item.text ?? item.label ?? "");
+      return {
+        ...item,
+        id: String(item.id ?? item.key ?? text ?? `bucket_${idx}`),
+        text,
+      };
+    });
+  }
+
+  if (Array.isArray(content.blanks)) {
+    next.blanks = content.blanks.map((row, idx) => {
+      if (!row || typeof row !== "object") return row;
+      const blank = row as Record<string, unknown>;
+      return {
+        ...blank,
+        id: String(blank.id ?? blank.key ?? `blank${idx + 1}`),
+      };
+    });
+  }
+
   return next;
 };
 
@@ -77,12 +193,15 @@ export const normalizeAssessmentItem = (
 ): AssessmentItem | null => {
   if (!raw || typeof raw !== "object") return null;
   const item = raw as Record<string, unknown>;
-  const type = normalizeAssessmentItemType(String(item.type ?? ""));
   const contentRaw = item.content;
-  const content =
+  const contentObj =
     contentRaw && typeof contentRaw === "object"
-      ? normalizeItemContent(type, contentRaw as Record<string, unknown>)
+      ? (contentRaw as Record<string, unknown>)
       : {};
+  const type = normalizeAssessmentItemType(
+    String(item.type ?? contentObj.type ?? ""),
+  );
+  const content = normalizeItemContent(type, contentObj);
 
   return {
     id: String(item.id ?? ""),

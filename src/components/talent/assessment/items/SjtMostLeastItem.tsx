@@ -38,15 +38,18 @@ const SjtMostLeastItem: React.FC<AssessmentItemRendererProps> = ({
   return (
     <AssessmentItemCard title={prompt ? String(prompt) : undefined}>
       <div className="space-y-3">
-        {options.map((opt) => {
+        {options.map((opt, idx) => {
           const text = opt.label || opt.text || opt.description || (opt as any).statement || (opt as any).content || (opt as any).value || (opt as any).prompt || '';
           if (!text.trim()) return null;
 
-          const isMost = current.most === opt.id;
-          const isLeast = current.least === opt.id;
+          const optionId = String(
+            opt.id ?? (opt as any).optionId ?? (opt as any).value ?? (opt as any).letter ?? `opt_${idx}`,
+          );
+          const isMost = current.most === optionId;
+          const isLeast = current.least === optionId;
           return (
             <div
-              key={opt.id}
+              key={optionId}
               className={`border-[1.5px] rounded-[14px] p-4 flex flex-col sm:flex-row gap-3 sm:items-center ${
                 disabled ? 'opacity-60 pointer-events-none' : ''
               } ${
@@ -62,7 +65,7 @@ const SjtMostLeastItem: React.FC<AssessmentItemRendererProps> = ({
                 <button
                   type="button"
                   disabled={disabled}
-                  onClick={() => pickMost(opt.id)}
+                  onClick={() => pickMost(optionId)}
                   className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${
                     isMost ? 'border-[#0047CC] bg-[#0047CC] text-white' : 'border-[#E6E6E6]'
                   }`}
@@ -72,7 +75,7 @@ const SjtMostLeastItem: React.FC<AssessmentItemRendererProps> = ({
                 <button
                   type="button"
                   disabled={disabled}
-                  onClick={() => pickLeast(opt.id)}
+                  onClick={() => pickLeast(optionId)}
                   className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${
                     isLeast ? 'border-[#DC3545] bg-[#DC3545] text-white' : 'border-[#E6E6E6]'
                   }`}

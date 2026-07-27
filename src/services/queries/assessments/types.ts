@@ -21,6 +21,7 @@ export type SingleAnswerItemType = "mcq" | "likert_scale" | "sjt_single_best";
 export type MultipleAnswerItemType =
   | "rank"
   | "drag_rank"
+  | "sjt_rank"
   | "sjt_rank_all"
   | "sjt_most_least"
   | "sjt_multi_select";
@@ -38,11 +39,44 @@ export type PartialDraftItemType =
   | "values_tradeoff"
   | "sjt_values_tradeoff";
 
+/** Gate 2 / Stage 2 item families from the professional dimension API. */
+export type Gate2ItemType =
+  | "sb"
+  | "jb"
+  | "ms"
+  | "ml"
+  | "match"
+  | "cloze"
+  | "cat"
+  | "compare"
+  | "code"
+  | "livecode"
+  | "probe"
+  | "hotspot"
+  | "highlight"
+  | "work_sample"
+  | "numeric"
+  | "scale"
+  | "allocate"
+  | "data"
+  | "dashboard"
+  | "chartread"
+  | "abtest"
+  | "diagnose"
+  | "architect"
+  | "metric"
+  | "threshold"
+  | "visual"
+  | "visualrank"
+  | "visualspot"
+  | string;
+
 export type AssessmentItemType =
   | SingleAnswerItemType
   | PartialDraftItemType
   | MultipleAnswerItemType
-  | AdaptiveItemType;
+  | AdaptiveItemType
+  | Gate2ItemType;
 
 /** Runtime helper derive save strategy from item type. */
 export function isSingleAnswerType(
@@ -169,6 +203,7 @@ export interface AssessmentItem {
   saveResume?: boolean;
   /** Human-readable section title from the API (e.g. "How you think"). */
   title?: string;
+  subtitle?: string;
   /** Dynamic eyebrow text from the API (e.g. "Part 2 · What matters to you"). */
   eyebrow?: string;
   /** Dynamic screen title from the API. */
@@ -181,6 +216,12 @@ export interface AssessmentItem {
   sessionIndex?: number;
   /** Session label from the API (e.g. "How you think"). */
   sessionLabel?: string;
+  /** Per-item timer from Gate 2 payloads. */
+  timerSecs?: number;
+  /** Role niche / specialty key from Gate 2 payloads. */
+  niche?: string;
+  level?: string;
+  pillar?: string;
 }
 
 // ── Gate start response ──────────────────────────────────────────────────────
@@ -615,6 +656,7 @@ export interface Gate2StageIntroResponse {
     subtitle?: string;
   };
   pillars?: Array<{
+    pillar?: Gate2PillarKey | string;
     part: number;
     eyebrow?: string;
     title?: string;
@@ -633,7 +675,11 @@ export interface Gate2StageIntroResponse {
     activeFamilyId?: string;
     activeFamilyLabel?: string;
   };
-  outcomes?: any;
+  outcomes?: {
+    title?: string;
+    body?: string;
+    items?: Array<{ title?: string; body?: string }>;
+  };
   footer?: {
     ctaLabel?: string;
     secondaryLabel?: string;
@@ -648,8 +694,12 @@ export interface Gate2StageIntroResponse {
     roleTitle?: string;
   };
   stats?: {
-    durationMins?: string;
+    partsLabel?: string;
+    partsDetail?: string;
+    durationMins?: string | number;
+    durationLabel?: string;
     windowHours?: number;
+    windowLabel?: string;
   };
   nextPillar?: Gate2PillarKey;
 }

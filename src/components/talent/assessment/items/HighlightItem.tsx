@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import toast from 'react-hot-toast';
+import React from 'react';
 import AssessmentItemCard from '../shared/AssessmentItemCard';
 import type { AssessmentItemRendererProps } from '../shared/types';
+import ReasonTextarea from '../shared/ReasonTextarea';
+import { getReasonMinWords } from '../shared/reasonMinWords';
 
 interface HighlightOption {
   id: string;
@@ -17,15 +18,17 @@ const HighlightItem: React.FC<AssessmentItemRendererProps> = ({
   const { content } = item;
   const prompt = content.prompt ?? content.scenario ?? 'Tap the parts of the message that could be improved.';
   const options = (content.options as HighlightOption[]) ?? [];
-
-  const [showPasteWarning, setShowPasteWarning] = useState<boolean>(false);
+  const minWords = getReasonMinWords(content as Record<string, unknown>, 'highlight', {
+    reasonShown: true,
+  });
 
   const selectedAnswer =
     typeof value === 'object' && value !== null && !Array.isArray(value)
-      ? (value as { selectedIds?: string[]; reasoning?: string })
+      ? (value as { selectedIds?: string[]; reasoning?: string; reason?: string })
       : { selectedIds: [] };
 
   const selectedIds = selectedAnswer.selectedIds || [];
+  const reasoningText = String(selectedAnswer.reasoning ?? selectedAnswer.reason ?? '');
 
   const toggleHighlight = (optionId: string) => {
     const nextSelected = selectedIds.includes(optionId)
@@ -33,14 +36,16 @@ const HighlightItem: React.FC<AssessmentItemRendererProps> = ({
       : [...selectedIds, optionId];
 
     onChange({
-      ...selectedAnswer,
       selectedIds: nextSelected,
+      reason: reasoningText,
+      reasoning: reasoningText,
     });
   };
 
   const handleReasoning = (reasoning: string) => {
     onChange({
-      ...selectedAnswer,
+      selectedIds,
+      reason: reasoning,
       reasoning,
     });
   };
@@ -53,7 +58,6 @@ const HighlightItem: React.FC<AssessmentItemRendererProps> = ({
         </div>
       )}
 
-      {/* Interactive Highlightable Text Blocks */}
       <div className="mb-5 bg-white border border-[#E6E6E6] rounded-[14px] p-5 shadow-sm space-y-2">
         <div className="text-[11px] font-[800] text-[#0047CC] uppercase tracking-wider mb-2">
           Tap parts to highlight/select
@@ -81,33 +85,16 @@ const HighlightItem: React.FC<AssessmentItemRendererProps> = ({
         </div>
       </div>
 
-      {/* Reasoning text prompt */}
-      <div className="mt-5 pt-2">
-        <div className="flex items-center gap-1.5 text-[11px] font-[800] text-[#0047CC] tracking-[0.6px] uppercase mb-2">
-          <span>{String(content.reasonPrompt || content.reasoningPrompt || 'HOW CAN THIS BE IMPROVED?').toUpperCase()}</span>
-        </div>
-
-        <textarea
-          disabled={disabled}
-          value={selectedAnswer.reasoning || ''}
-          onChange={(e) => handleReasoning(e.target.value)}
-          onPaste={(e) => {
-            const ENABLE_PASTE_BLOCKING = false;
-            if (!ENABLE_PASTE_BLOCKING) return;
-            e.preventDefault();
-            setShowPasteWarning(true);
-            toast.error('Pasting is disabled for reasoning answers');
-          }}
-          placeholder="Explain how this error message or text can be improved..."
-          className="w-full min-h-[76px] p-3.5 sm:p-4 bg-white border border-[#0047CC] focus:border-[#0047CC] focus:ring-2 focus:ring-[#0047CC]/20 rounded-[14px] text-[13.5px] text-[#1A1A1A] placeholder:text-[#94A3B8] outline-none transition-all resize-y font-sans leading-relaxed shadow-[0_2px_8px_rgba(0,71,204,0.06)] disabled:opacity-60 disabled:cursor-not-allowed"
-        />
-
-        {showPasteWarning && (
-          <div className="bg-[#FFF4EC] border border-[#FFD6B3] rounded-[10px] p-[10px_14px] mt-2.5 text-[12px] font-[600] text-[#C2410C] flex items-center justify-between animate-[fadeUp_0.2s_ease_both]">
-            <span>Please answer in your own words. Pasting is turned off here.</span>
-          </div>
-        )}
-      </div>
+      <ReasonTextarea
+        label={String(content.reasonPrompt || content.reasoningPrompt || 'HOW CAN THIS BE IMPROVED?')}
+        value={reasoningText}
+        onChange={handleReasoning}
+        disabled={disabled}
+        placeholder="Explain how this error message or text can be improved..."
+        minWords={minWords}
+        content={content as Record<string, unknown>}
+        itemType="highlight"
+      />
     </AssessmentItemCard>
   );
 };

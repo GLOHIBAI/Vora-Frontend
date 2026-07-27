@@ -1,13 +1,18 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import type { AssessmentItem, AnswerValue, ResponsesMap } from '../services/queries/assessments/types';
 import { isAdaptiveType } from '../services/queries/assessments/types';
 import { isItemAnswerComplete } from '../utils/assessmentValidation';
 import { getRankOptionIds, getValuesTradeoffTensions } from '../utils/assessmentItems';
 
-const buildInitialAnswers = (items: AssessmentItem[]): ResponsesMap => {
+export const buildInitialAnswers = (items: AssessmentItem[]): ResponsesMap => {
   const answers: ResponsesMap = {};
   for (const item of items) {
-    if (item.type === 'rank' || item.type === 'drag_rank' || item.type === 'sjt_rank_all') {
+    if (
+      item.type === 'rank' ||
+      item.type === 'drag_rank' ||
+      item.type === 'sjt_rank' ||
+      item.type === 'sjt_rank_all'
+    ) {
       answers[item.id] = getRankOptionIds(item);
     }
     if (item.type === 'values_tradeoff' || item.type === 'sjt_values_tradeoff') {
@@ -33,18 +38,34 @@ export function useLocalAssessmentScreen(
   const [answers, setAnswers] = useState<ResponsesMap>(() => buildInitialAnswers(initialItems));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const itemsKey = useMemo(
+    () => initialItems.map((item) => item.id).join('|'),
+    [initialItems],
+  );
+  const prevItemsKeyRef = useRef(itemsKey);
+
+  // Keep items in sync, but only reset answers when the question set actually changes.
+  useEffect(() => {
+    setItems(initialItems);
+    if (prevItemsKeyRef.current !== itemsKey) {
+      prevItemsKeyRef.current = itemsKey;
+      setAnswers(buildInitialAnswers(initialItems));
+    }
+  }, [itemsKey, initialItems]);
+
   const isLocked = useCallback((_itemId?: string, _subKey?: string) => false, []);
 
-  const isScreenComplete = useMemo(
-    () =>
-      items.every((item) => {
-        if (isAdaptiveType(item.type)) {
-          return item.content.complete === true;
-        }
-        return isItemAnswerComplete(item, answers[item.id]);
-      }),
-    [items, answers],
-  );
+  // Completeness must follow the live question list + answers (not a stale items copy).
+  const isScreenComplete = useMemo(() => {
+    if (initialItems.length === 0) return false;
+    return initialItems.every((item) => {
+      const live = items.find((row) => row.id === item.id) ?? item;
+      if (isAdaptiveType(live.type)) {
+        return live.content.complete === true;
+      }
+      return isItemAnswerComplete(live, answers[live.id]);
+    });
+  }, [initialItems, items, answers]);
 
   const recordAnswer = useCallback(
     async (itemId: string, value: AnswerValue, item: AssessmentItem, subKey?: string) => {
