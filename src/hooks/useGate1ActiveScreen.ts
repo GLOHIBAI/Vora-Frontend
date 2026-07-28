@@ -54,7 +54,10 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
   const [isBooting, setIsBooting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const bootedKeyRef = useRef<string | null>(null);
-  const bootInFlightRef = useRef<string | null>(null);
+  /** Shared in-flight start promises so React Strict Mode remounts reuse one network call. */
+  const bootPromiseByKeyRef = useRef<Map<string, Promise<AssessmentGateStartResponse | null>>>(
+    new Map(),
+  );
   const recoverAttemptsRef = useRef(0);
 
   const initialState = useMemo((): GateResumeState => ({
@@ -139,94 +142,94 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
     if (resumeState.gate1Complete) return;
 
     const screenKey = resolveGate1StartScreenKey(resumeState);
-    const bootKey = `${bootToken}:${screenKey}:${resumeState.inProgress?.componentId ?? "new"}`;
+    // Key on screen only — do not include componentId. After startFresh boot,
+    // resume loads a real componentId and would otherwise re-POST /start.
+    const bootKey = `${bootToken}:${screenKey}`;
 
     if (bootedKeyRef.current === bootKey) return;
-    if (bootInFlightRef.current === bootKey) return;
 
-    let cancelled = false;
-    bootInFlightRef.current = bootKey;
+    const applyPayload = (payload: AssessmentGateStartResponse) => {
+      if (bootedKeyRef.current === bootKey) return;
+      setIsGenerating(false);
+      bootedKeyRef.current = bootKey;
+      recoverAttemptsRef.current = 0;
+      setScreenData(payload);
+      setLocalStartFresh(false);
+      setIsBooting(false);
+    };
 
-    const boot = async () => {
+    let bootPromise = bootPromiseByKeyRef.current.get(bootKey);
+    if (!bootPromise) {
       setIsBooting(true);
       setError(null);
-      try {
-        const started = await startScreenAsync({
-          assessmentId,
-          body: buildGate1StartBody(screenKey),
-        });
-        if (cancelled) return;
 
-        const payload = normalizeGateStartResponse(started, screenKey);
-        if (!payload) {
-          setError("Could not load this screen. Please try again.");
-          bootedKeyRef.current = null;
-          return;
-        }
-
-        if (payload.items.length === 0) {
-          setIsGenerating(true);
-          bootedKeyRef.current = null;
-          setTimeout(() => {
-            if (!cancelled) {
-              setBootToken((n) => n + 1);
-            }
-          }, 3000);
-          return;
-        }
-
-        setIsGenerating(false);
-        bootedKeyRef.current = bootKey;
-        recoverAttemptsRef.current = 0;
-        setScreenData(payload);
-        setLocalStartFresh(false);
-      } catch (err: unknown) {
-        setIsGenerating(false);
-        if (cancelled) return;
-
-        bootedKeyRef.current = null;
-
-        const message = getApiErrorMessage(
-          err,
-          "Could not start this assessment screen. Please try again.",
-        );
-        const status = (err as ApiError).status;
-
-        if (
-          status === 400 &&
-          isRecoverableGate1StartError(message) &&
-          recoverAttemptsRef.current < 1
-        ) {
-          recoverAttemptsRef.current += 1;
-          bootedKeyRef.current = null;
-          setError(null);
-          await queryClient.invalidateQueries({
-            queryKey: assessmentKeys.resumeState(assessmentId, 1),
+      bootPromise = (async () => {
+        try {
+          const started = await startScreenAsync({
+            assessmentId,
+            body: buildGate1StartBody(screenKey),
           });
-          await refetchResumeState();
-          setBootToken((n) => n + 1);
-          return;
-        }
 
-        setError(message);
-      } finally {
-        if (bootInFlightRef.current === bootKey) {
-          bootInFlightRef.current = null;
-        }
-        if (!cancelled) {
+          const payload = normalizeGateStartResponse(started, screenKey);
+          if (!payload) {
+            throw new Error("Could not load this screen. Please try again.");
+          }
+
+          if (payload.items.length === 0) {
+            setIsGenerating(true);
+            bootedKeyRef.current = null;
+            setTimeout(() => {
+              setBootToken((n) => n + 1);
+            }, 3000);
+            return null;
+          }
+
+          return payload;
+        } catch (err: unknown) {
+          setIsGenerating(false);
+
+          const message = getApiErrorMessage(
+            err,
+            "Could not start this assessment screen. Please try again.",
+          );
+          const status = (err as ApiError).status;
+
+          if (
+            status === 400 &&
+            isRecoverableGate1StartError(message) &&
+            recoverAttemptsRef.current < 1
+          ) {
+            recoverAttemptsRef.current += 1;
+            bootedKeyRef.current = null;
+            setError(null);
+            await queryClient.invalidateQueries({
+              queryKey: assessmentKeys.resumeState(assessmentId, 1),
+            });
+            await refetchResumeState();
+            setBootToken((n) => n + 1);
+            return null;
+          }
+
+          bootedKeyRef.current = null;
+          setError(message);
+          return null;
+        } finally {
+          // Keep the promise in the map until settle so Strict Mode remount
+          // reuses it; delete on next tick after resolve.
+          queueMicrotask(() => {
+            bootPromiseByKeyRef.current.delete(bootKey);
+          });
           setIsBooting(false);
         }
-      }
-    };
+      })();
 
-    void boot();
+      bootPromiseByKeyRef.current.set(bootKey, bootPromise);
+    }
 
-    return () => {
-      cancelled = true;
-      if (bootInFlightRef.current === bootKey) {
-        bootInFlightRef.current = null;
-      }
-    };
+    void bootPromise.then((payload) => {
+      if (!payload) return;
+      applyPayload(payload);
+    });
   }, [
     assessmentId,
     resumeFetched,

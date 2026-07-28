@@ -486,29 +486,42 @@ export const useSubmitGateMutation = () => {
  *
  * Called once per step. Response tells the UI whether the adaptive sequence is
  * complete and what the next step looks like.
+ *
+ * Module-level single-flight per item: duplicate callers (double-click, remount)
+ * share one in-flight promise so the network tab never shows two POSTs.
  */
+const adaptiveStepInflight = new Map<string, Promise<AdaptiveStepResponse>>();
+
+const submitAdaptiveStepOnce = (args: {
+  assessmentId: string;
+  componentId: string;
+  itemId: string;
+  optionId: string;
+}): Promise<AdaptiveStepResponse> => {
+  const { assessmentId, componentId, itemId, optionId } = args;
+  const flightKey = `${assessmentId}:${componentId}:${itemId}`;
+  const existing = adaptiveStepInflight.get(flightKey);
+  if (existing) return existing;
+
+  const request = (
+    isGate1MockSession(assessmentId)
+      ? mockGate1AdaptiveStep(componentId, itemId)
+      : apiClient.post<AdaptiveStepResponse>({
+          url: `/assessments/${assessmentId}/components/${componentId}/items/${itemId}/adaptive`,
+          body: { optionId },
+          auth: true,
+        })
+  ).finally(() => {
+    adaptiveStepInflight.delete(flightKey);
+  }) as Promise<AdaptiveStepResponse>;
+
+  adaptiveStepInflight.set(flightKey, request);
+  return request;
+};
+
 export const useSubmitAdaptiveStepMutation = () =>
   useMutation({
-    mutationFn: ({
-      assessmentId,
-      componentId,
-      itemId,
-      optionId,
-    }: {
-      assessmentId: string;
-      componentId: string;
-      itemId: string;
-      optionId: string;
-    }) => {
-      if (isGate1MockSession(assessmentId)) {
-        return mockGate1AdaptiveStep(componentId, itemId);
-      }
-      return apiClient.post<AdaptiveStepResponse>({
-        url: `/assessments/${assessmentId}/components/${componentId}/items/${itemId}/adaptive`,
-        body: { optionId },
-        auth: true,
-      });
-    },
+    mutationFn: submitAdaptiveStepOnce,
   });
 
 // ─────────────────────────────────────────────────────────────────────────────

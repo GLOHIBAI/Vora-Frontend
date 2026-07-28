@@ -220,12 +220,20 @@ export function useAssessmentScreen({
    */
   const lockedResponses = useRef<ResponsesMap>({});
   const isAdaptiveSubmittingRef = useRef(false);
-  const lastSubmittedStepRef = useRef("");
+  /** Steps already POSTed for this component — never clear mid-screen. */
+  const submittedAdaptiveStepsRef = useRef<Set<string>>(new Set());
   const priorStepsRef = useRef(priorSteps);
   priorStepsRef.current = priorSteps;
+  /** Sync loading flag so option buttons disable before React Query isPending flips. */
+  const [isAdaptiveLoading, setIsAdaptiveLoading] = useState(false);
+  const resetForComponentIdRef = useRef<string | null>(null);
 
-  // Reset screen-specific states when moving to a new component/screen
+  // Reset only when the assessment component/screen id changes — not when
+  // initialItems / adaptiveMcq get a new object identity from a duplicate /start.
   useEffect(() => {
+    if (resetForComponentIdRef.current === componentId) return;
+    resetForComponentIdRef.current = componentId;
+
     setItems(getInitialItems());
 
     const initialAnswers: ResponsesMap = {};
@@ -253,10 +261,14 @@ export function useAssessmentScreen({
     setAnswers(initialAnswers);
     lockedResponses.current = {};
     isAdaptiveSubmittingRef.current = false;
-    lastSubmittedStepRef.current = "";
+    submittedAdaptiveStepsRef.current = new Set();
+    setIsAdaptiveLoading(false);
     setPriorSteps(screenData.adaptiveMcq?.priorSteps ?? []);
     setIsSubmitProcessActive(false);
-  }, [componentId, initialItems, getInitialItems, screenData.adaptiveMcq]);
+    // Intentionally only componentId: identity churn on items/adaptiveMcq must not
+    // clear the in-flight adaptive step lock (that caused double shimmer).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
+  }, [componentId]);
 
   // ── Mutations ──────────────────────────────────────────────────────────────
 
@@ -383,30 +395,67 @@ export function useAssessmentScreen({
       item: AssessmentItem,
       subKey?: string,
     ) => {
-      // ── 1. Update local state immediately (zero latency for the UI) ─────────
-      setAnswers((prev) => {
-        if (subKey !== undefined) {
-          // Merge sub-key into the item's existing object answer
-          const existing =
-            typeof prev[itemId] === "object" && !Array.isArray(prev[itemId])
-              ? (prev[itemId] as Record<string, unknown>)
-              : {};
-          return { ...prev, [itemId]: { ...existing, [subKey]: value } as any };
-        }
-        return { ...prev, [itemId]: value };
-      });
-
-      // ── 2. Adaptive → per-step endpoint, no draft write ────────────────────
+      // ── Adaptive → per-step endpoint (guard BEFORE local state / network) ──
       if (
         isAdaptiveType(item.type) &&
         item.content.layout !== "multi_question"
       ) {
-        const stepKey = `${itemId}-${priorStepsRef.current.length}`;
-        if (isAdaptiveSubmittingRef.current || lastSubmittedStepRef.current === stepKey) return;
+        const stepIndex = Number(
+          item.content.stepIndex ?? priorStepsRef.current.length ?? 0,
+        );
+        const stepKey = `${itemId}:${stepIndex}`;
+
+        if (
+          isAdaptiveSubmittingRef.current ||
+          submittedAdaptiveStepsRef.current.has(stepKey) ||
+          isAdaptiveLoading
+        ) {
+          return;
+        }
+
+        // Lock this step permanently for this screen before any await.
         isAdaptiveSubmittingRef.current = true;
-        lastSubmittedStepRef.current = stepKey;
+        submittedAdaptiveStepsRef.current.add(stepKey);
+        setIsAdaptiveLoading(true);
+
+        const optionId = value as string;
+        const answeredPrior = {
+          step: priorStepsRef.current.length,
+          optionId,
+          content: { ...item.content },
+        };
+
+        // Optimistically pin answered scenario above shimmer (never disappears).
+        priorStepsRef.current = [...priorStepsRef.current, answeredPrior];
+        setPriorSteps(priorStepsRef.current);
+        setAnswers((prev) => {
+          const next = { ...prev };
+          delete next[itemId];
+          return next;
+        });
+        // Clear active step until nextItem arrives (prior + shimmer only).
+        setItems((prev) =>
+          prev.map((row) =>
+            row.id === itemId
+              ? {
+                  ...row,
+                  content: {
+                    ...row.content,
+                    scenario: undefined,
+                    stem: undefined,
+                    prompt: undefined,
+                    instruction: undefined,
+                    options: [],
+                    table: undefined,
+                    chart: undefined,
+                    complete: false,
+                  },
+                }
+              : row,
+          ),
+        );
+
         try {
-          const optionId = value as string;
           const raw = await submitAdaptive.mutateAsync({
             assessmentId,
             componentId,
@@ -415,15 +464,6 @@ export function useAssessmentScreen({
           });
           const result = normalizeAdaptiveStepResponse(raw);
           if (result.nextItem) {
-            setPriorSteps((prev) => [
-              ...prev,
-              {
-                step: prev.length,
-                optionId,
-                content: { ...item.content },
-              },
-            ]);
-
             setItems((prev) =>
               prev.map((row) =>
                 row.id === itemId
@@ -441,15 +481,6 @@ export function useAssessmentScreen({
               ),
             );
           } else if (result.complete) {
-            setPriorSteps((prev) => [
-              ...prev,
-              {
-                step: prev.length,
-                optionId,
-                content: { ...item.content },
-              },
-            ]);
-
             setItems((prev) =>
               prev.map((row) =>
                 row.id === itemId
@@ -461,29 +492,51 @@ export function useAssessmentScreen({
               ),
             );
           }
-          setAnswers((prev) => {
-            const next = { ...prev };
-            delete next[itemId];
-            return next;
-          });
           onAdaptiveStep?.(result);
         } catch (err) {
-          lastSubmittedStepRef.current = "";
-          /* error toast shown by API client */
+          // Roll back optimistic prior step and allow retry.
+          submittedAdaptiveStepsRef.current.delete(stepKey);
+          priorStepsRef.current = priorStepsRef.current.slice(0, -1);
+          setPriorSteps(priorStepsRef.current);
+          setItems((prev) =>
+            prev.map((row) =>
+              row.id === itemId
+                ? {
+                    ...row,
+                    content: { ...item.content },
+                  }
+                : row,
+            ),
+          );
+          setAnswers((prev) => ({ ...prev, [itemId]: value }));
           throw err;
         } finally {
           isAdaptiveSubmittingRef.current = false;
+          setIsAdaptiveLoading(false);
         }
         return;
       }
 
-      // ── 3. Immediate draft PATCH skipped (handled in batch on continue/save) ──
+      // ── Non-adaptive: update local state immediately ───────────────────────
+      setAnswers((prev) => {
+        if (subKey !== undefined) {
+          const existing =
+            typeof prev[itemId] === "object" && !Array.isArray(prev[itemId])
+              ? (prev[itemId] as Record<string, unknown>)
+              : {};
+          return { ...prev, [itemId]: { ...existing, [subKey]: value } as any };
+        }
+        return { ...prev, [itemId]: value };
+      });
+
+      // Immediate draft PATCH skipped (handled in batch on continue/save)
     },
     [
       assessmentId,
       componentId,
       submitAdaptive,
       onAdaptiveStep,
+      isAdaptiveLoading,
     ],
   );
 
@@ -537,7 +590,7 @@ export function useAssessmentScreen({
     isLocked,
     isSaving,
     isSubmitting,
-    isAdaptiveLoading: submitAdaptive.isPending,
+    isAdaptiveLoading: isAdaptiveLoading || submitAdaptive.isPending,
     isScreenComplete,
     hydrateDraft,
   };

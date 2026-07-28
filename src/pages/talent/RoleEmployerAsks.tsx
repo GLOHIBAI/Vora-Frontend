@@ -966,7 +966,7 @@ const RoleEmployerAsks: React.FC = () => {
               )}
             </div>
             <div className="text-[13px] text-[#182348] leading-[1.55] flex-1">
-              I consent to my submissions being used by ORA and {companyName} <strong className="font-[800]">solely to shape and assess my interviews for this role</strong>. Files are encrypted and not shared beyond this hiring loop.
+              I consent to my submissions being used by VORA and {companyName} <strong className="font-[800]">solely to shape and assess my interviews for this role</strong>. Files are encrypted and not shared beyond this hiring loop.
             </div>
           </div>
 

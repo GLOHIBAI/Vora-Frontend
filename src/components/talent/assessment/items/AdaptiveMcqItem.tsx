@@ -15,14 +15,49 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
   const priorSteps = (content.priorSteps as AdaptiveMcqPriorStep[]) ?? [];
 
   const shimmerRef = useRef<HTMLDivElement | null>(null);
+  /** Blocks click-through onto the follow-up options that replace this step. */
+  const clickLockRef = useRef(false);
+  const wasLoadingRef = useRef(false);
+  const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (isAdaptiveLoading && shimmerRef.current) {
-      setTimeout(() => {
-        shimmerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }, 100);
+    if (isAdaptiveLoading) {
+      wasLoadingRef.current = true;
+      clickLockRef.current = true;
+      if (cooldownTimerRef.current) {
+        clearTimeout(cooldownTimerRef.current);
+        cooldownTimerRef.current = null;
+      }
+      if (shimmerRef.current) {
+        setTimeout(() => {
+          shimmerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
+      }
+      return;
     }
+
+    // Only after a real load→idle transition (not initial mount).
+    if (wasLoadingRef.current) {
+      wasLoadingRef.current = false;
+      clickLockRef.current = true;
+      cooldownTimerRef.current = setTimeout(() => {
+        clickLockRef.current = false;
+        cooldownTimerRef.current = null;
+      }, 400);
+    }
+
+    return () => {
+      if (cooldownTimerRef.current) {
+        clearTimeout(cooldownTimerRef.current);
+        cooldownTimerRef.current = null;
+      }
+    };
   }, [isAdaptiveLoading]);
+
+  const handleSelect = (optionId: string) => {
+    if (disabled || isAdaptiveLoading || clickLockRef.current) return;
+    onChange(optionId);
+  };
 
   return (
     <div className="space-y-8">
@@ -37,7 +72,6 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
 
         return (
           <div key={step.step} className="space-y-4">
-            {/* Scenario Card */}
             {priorScenario && (
               <div className="bg-white border border-[#E6E6E6] rounded-2xl p-6 shadow-sm">
                 <span className="text-[10.5px] font-[800] tracking-[0.8px] text-[#808080] uppercase block mb-3">
@@ -51,7 +85,6 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
 
             <DataDisplayBlock table={stepContent.table} chart={stepContent.chart} />
 
-            {/* Prompt & Instruction */}
             {priorPrompt && (
               <div className="mt-4">
                 <h3 className="text-[15.5px] font-[800] text-[#1A1A1A] leading-snug">
@@ -65,7 +98,6 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
               </div>
             )}
 
-            {/* Options */}
             <div className="space-y-2.5 mt-3">
               {priorOptions.map((opt: any, optIdx: number) => (
                 <OptionButton
@@ -82,7 +114,7 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
         );
       })}
 
-      {/* 2. Active Step (only render if complete is not true) */}
+      {/* 2. Active Step (hidden while loading so shimmer is the only next UI) */}
       {content.complete ? null : (
         <div className="space-y-6">
           {content.layout === 'multi_question' && content.sharedContext && (
@@ -143,7 +175,7 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
                           index={optIdx}
                           label={opt.label ?? opt.text ?? ''}
                           selected={qValue === opt.id}
-                          disabled={disabled}
+                          disabled={disabled || isAdaptiveLoading}
                           onClick={() => onChange(opt.id, q.id)}
                         />
                       ))}
@@ -152,9 +184,8 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
                 );
               })}
             </div>
-          ) : (
+          ) : isAdaptiveLoading ? null : (
             <div className="space-y-4">
-              {/* Active Scenario Card */}
               {(content.scenario || content.stem) && (
                 <div className="bg-white border border-[#E6E6E6] rounded-2xl p-6 shadow-sm">
                   <span className="text-[10.5px] font-[800] tracking-[0.8px] text-[#808080] uppercase block mb-3">
@@ -168,7 +199,6 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
 
               <DataDisplayBlock table={content.table} chart={content.chart} />
 
-              {/* Active Prompt & Instruction */}
               {content.prompt && (
                 <div className="mt-4">
                   <h3 className="text-[15.5px] font-[800] text-[#1A1A1A] leading-snug">
@@ -182,7 +212,6 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
                 </div>
               )}
 
-              {/* Active Options */}
               <div className="space-y-2.5 mt-3">
                 {(content.options ?? []).map((opt: any, optIdx: number) => (
                   <OptionButton
@@ -191,7 +220,7 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
                     label={opt.label ?? opt.text ?? ''}
                     selected={value === opt.id}
                     disabled={disabled || isAdaptiveLoading}
-                    onClick={() => onChange(opt.id)}
+                    onClick={() => handleSelect(opt.id)}
                   />
                 ))}
               </div>
@@ -200,7 +229,7 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
         </div>
       )}
 
-      {/* 3. Shimmer Loading for the Next Step */}
+      {/* 3. Shimmer while the follow-up step loads — one cycle per click */}
       {isAdaptiveLoading && (
         <div ref={shimmerRef} className="space-y-4 mt-8">
           <style>{`
@@ -218,7 +247,6 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
               animation: shimmer 1.5s infinite linear;
             }
           `}</style>
-          {/* Scenario Card Shimmer */}
           <div className="bg-white border border-[#E6E6E6] rounded-2xl p-6 shadow-sm">
             <div className="h-3 shimmer-bg rounded w-1/4 mb-3"></div>
             <div className="space-y-2">
@@ -228,18 +256,16 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
             </div>
           </div>
 
-          {/* Prompt Shimmer */}
           <div className="mt-4 space-y-2">
             <div className="h-5 shimmer-bg rounded w-1/3"></div>
             <div className="h-3 shimmer-bg rounded w-1/4"></div>
           </div>
 
-          {/* Option Button Shimmers */}
           <div className="space-y-2.5 mt-3">
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="flex items-center gap-3 bg-white border border-[#E6E6E6] rounded-xl p-4"
+                className="w-full px-5 py-4 rounded-xl border border-[#E6E6E6] bg-white flex items-center gap-4"
               >
                 <div className="w-[18px] h-[18px] shimmer-bg rounded-full shrink-0"></div>
                 <div className="h-4 shimmer-bg rounded w-1/2"></div>
