@@ -220,12 +220,15 @@ export function useAssessmentScreen({
    */
   const lockedResponses = useRef<ResponsesMap>({});
   const isAdaptiveSubmittingRef = useRef(false);
+  /** Resolves when the in-flight adaptive POST finishes (so Continue can wait). */
+  const adaptiveFlightPromiseRef = useRef<Promise<void> | null>(null);
   /** Steps already POSTed for this component — never clear mid-screen. */
   const submittedAdaptiveStepsRef = useRef<Set<string>>(new Set());
   const priorStepsRef = useRef(priorSteps);
   priorStepsRef.current = priorSteps;
   /** Sync loading flag so option buttons disable before React Query isPending flips. */
   const [isAdaptiveLoading, setIsAdaptiveLoading] = useState(false);
+  const confirmInFlightRef = useRef(false);
   const resetForComponentIdRef = useRef<string | null>(null);
 
   // Reset only when the assessment component/screen id changes — not when
@@ -262,7 +265,9 @@ export function useAssessmentScreen({
     lockedResponses.current = {};
     isAdaptiveSubmittingRef.current = false;
     submittedAdaptiveStepsRef.current = new Set();
+    adaptiveFlightPromiseRef.current = null;
     setIsAdaptiveLoading(false);
+    confirmInFlightRef.current = false;
     setPriorSteps(screenData.adaptiveMcq?.priorSteps ?? []);
     setIsSubmitProcessActive(false);
     // Intentionally only componentId: identity churn on items/adaptiveMcq must not
@@ -353,7 +358,15 @@ export function useAssessmentScreen({
 
   const isScreenComplete = items.every((item) => {
     if (isAdaptiveType(item.type) && item.content.layout !== "multi_question") {
-      return item.content.complete === true;
+      if (item.content.complete === true) return true;
+      // Follow-up selected locally (still re-pickable) — enable Continue.
+      const ans = answers[item.id];
+      return (
+        priorSteps.length > 0 &&
+        ans !== undefined &&
+        ans !== null &&
+        String(ans).trim().length > 0
+      );
     }
     return isItemAnswerComplete(item, answers[item.id]);
   });
@@ -400,32 +413,38 @@ export function useAssessmentScreen({
         isAdaptiveType(item.type) &&
         item.content.layout !== "multi_question"
       ) {
-        const stepIndex = Number(
-          item.content.stepIndex ?? priorStepsRef.current.length ?? 0,
-        );
-        const stepKey = `${itemId}:${stepIndex}`;
+        // Follow-up pick: local selection only — user may re-pick until Continue.
+        // Bypass adaptive submit locks so re-picks always work.
+        if (priorStepsRef.current.length > 0) {
+          setAnswers((prev) => ({ ...prev, [itemId]: value }));
+          return;
+        }
+
+        // Key off prior-step count so follow-ups stay selectable even when the
+        // API keeps stepIndex at 0. Count is captured before the optimistic push.
+        const stepKey = `${itemId}:${priorStepsRef.current.length}`;
 
         if (
           isAdaptiveSubmittingRef.current ||
-          submittedAdaptiveStepsRef.current.has(stepKey) ||
-          isAdaptiveLoading
+          submittedAdaptiveStepsRef.current.has(stepKey)
         ) {
           return;
         }
+
+        const optionId = value as string;
 
         // Lock this step permanently for this screen before any await.
         isAdaptiveSubmittingRef.current = true;
         submittedAdaptiveStepsRef.current.add(stepKey);
         setIsAdaptiveLoading(true);
 
-        const optionId = value as string;
         const answeredPrior = {
           step: priorStepsRef.current.length,
           optionId,
           content: { ...item.content },
         };
 
-        // Optimistically pin answered scenario above shimmer (never disappears).
+        // Pin answered scenario above shimmer (never disappears).
         priorStepsRef.current = [...priorStepsRef.current, answeredPrior];
         setPriorSteps(priorStepsRef.current);
         setAnswers((prev) => {
@@ -455,6 +474,11 @@ export function useAssessmentScreen({
           ),
         );
 
+        let resolveFlight: (() => void) | null = null;
+        adaptiveFlightPromiseRef.current = new Promise<void>((resolve) => {
+          resolveFlight = resolve;
+        });
+
         try {
           const raw = await submitAdaptive.mutateAsync({
             assessmentId,
@@ -464,6 +488,7 @@ export function useAssessmentScreen({
           });
           const result = normalizeAdaptiveStepResponse(raw);
           if (result.nextItem) {
+            const nextStepIndex = priorStepsRef.current.length;
             setItems((prev) =>
               prev.map((row) =>
                 row.id === itemId
@@ -472,8 +497,8 @@ export function useAssessmentScreen({
                       content: {
                         ...row.content,
                         ...result.nextItem,
-                        stepIndex: result.stepIndex,
-                        totalSteps: result.totalSteps,
+                        stepIndex: nextStepIndex,
+                        totalSteps: result.totalSteps || row.content.totalSteps,
                         complete: result.complete,
                       },
                     }
@@ -494,7 +519,6 @@ export function useAssessmentScreen({
           }
           onAdaptiveStep?.(result);
         } catch (err) {
-          // Roll back optimistic prior step and allow retry.
           submittedAdaptiveStepsRef.current.delete(stepKey);
           priorStepsRef.current = priorStepsRef.current.slice(0, -1);
           setPriorSteps(priorStepsRef.current);
@@ -509,11 +533,19 @@ export function useAssessmentScreen({
             ),
           );
           setAnswers((prev) => ({ ...prev, [itemId]: value }));
-          throw err;
-        } finally {
           isAdaptiveSubmittingRef.current = false;
           setIsAdaptiveLoading(false);
+          resolveFlight?.();
+          adaptiveFlightPromiseRef.current = null;
+          throw err;
         }
+
+        setIsAdaptiveLoading(false);
+        resolveFlight?.();
+        adaptiveFlightPromiseRef.current = null;
+        window.setTimeout(() => {
+          isAdaptiveSubmittingRef.current = false;
+        }, 700);
         return;
       }
 
@@ -531,32 +563,141 @@ export function useAssessmentScreen({
 
       // Immediate draft PATCH skipped (handled in batch on continue/save)
     },
-    [
-      assessmentId,
-      componentId,
-      submitAdaptive,
-      onAdaptiveStep,
-      isAdaptiveLoading,
-    ],
+    [assessmentId, componentId, submitAdaptive, onAdaptiveStep],
   );
 
   const confirmScreen = useCallback(async () => {
-    if (
-      !items.every((item) => {
+    // Single-flight: lock immediately so rapid Continue clicks cannot multi-submit.
+    if (confirmInFlightRef.current || isSubmitProcessActive) return;
+    confirmInFlightRef.current = true;
+    setIsSubmitProcessActive(true);
+
+    try {
+      // If a scenario adaptive POST is still in flight, wait first.
+      if (adaptiveFlightPromiseRef.current) {
+        await adaptiveFlightPromiseRef.current;
+      }
+
+      const readyToSubmit = items.every((item) => {
         if (
           isAdaptiveType(item.type) &&
           item.content.layout !== "multi_question"
         ) {
-          return item.content.complete === true;
+          if (item.content.complete === true) return true;
+          const ans = answers[item.id];
+          return (
+            priorStepsRef.current.length > 0 &&
+            ans !== undefined &&
+            ans !== null &&
+            String(ans).trim().length > 0
+          );
         }
         return isItemAnswerComplete(item, answers[item.id]);
-      })
-    ) {
-      return;
-    }
+      });
 
-    setIsSubmitProcessActive(true);
-    try {
+      if (!readyToSubmit) {
+        confirmInFlightRef.current = false;
+        setIsSubmitProcessActive(false);
+        return;
+      }
+
+      // Flush pending follow-up selection via /adaptive before screen submit.
+      for (const item of items) {
+        if (
+          !isAdaptiveType(item.type) ||
+          item.content.layout === "multi_question" ||
+          item.content.complete === true
+        ) {
+          continue;
+        }
+
+        const optionId = answers[item.id];
+        if (
+          priorStepsRef.current.length === 0 ||
+          optionId === undefined ||
+          optionId === null ||
+          String(optionId).trim().length === 0
+        ) {
+          confirmInFlightRef.current = false;
+          setIsSubmitProcessActive(false);
+          return;
+        }
+
+        const stepKey = `${item.id}:${priorStepsRef.current.length}`;
+        if (!submittedAdaptiveStepsRef.current.has(stepKey)) {
+          submittedAdaptiveStepsRef.current.add(stepKey);
+          try {
+            const raw = await submitAdaptive.mutateAsync({
+              assessmentId,
+              componentId,
+              itemId: item.id,
+              optionId: String(optionId),
+            });
+            const result = normalizeAdaptiveStepResponse(raw);
+
+            if (result.nextItem) {
+              // Unexpected extra step — reopen follow-up and abort Continue.
+              const nextStepIndex = priorStepsRef.current.length;
+              setItems((prev) =>
+                prev.map((row) =>
+                  row.id === item.id
+                    ? {
+                        ...row,
+                        content: {
+                          ...row.content,
+                          ...result.nextItem,
+                          stepIndex: nextStepIndex,
+                          totalSteps:
+                            result.totalSteps || row.content.totalSteps,
+                          complete: false,
+                        },
+                      }
+                    : row,
+                ),
+              );
+              setAnswers((prev) => {
+                const next = { ...prev };
+                delete next[item.id];
+                return next;
+              });
+              onAdaptiveStep?.(result);
+              confirmInFlightRef.current = false;
+              setIsSubmitProcessActive(false);
+              return;
+            }
+
+            priorStepsRef.current = [
+              ...priorStepsRef.current,
+              {
+                step: priorStepsRef.current.length,
+                optionId: String(optionId),
+                content: { ...item.content },
+              },
+            ];
+            setPriorSteps(priorStepsRef.current);
+            setItems((prev) =>
+              prev.map((row) =>
+                row.id === item.id
+                  ? {
+                      ...row,
+                      content: { ...row.content, complete: true },
+                    }
+                  : row,
+              ),
+            );
+            setAnswers((prev) => {
+              const next = { ...prev };
+              delete next[item.id];
+              return next;
+            });
+            onAdaptiveStep?.(result);
+          } catch (err) {
+            submittedAdaptiveStepsRef.current.delete(stepKey);
+            throw err;
+          }
+        }
+      }
+
       const submitPayload = buildScreenSubmitResponses(items, answers);
 
       await submitScreen.mutateAsync({
@@ -567,6 +708,7 @@ export function useAssessmentScreen({
 
       await onScreenComplete();
     } catch (err) {
+      confirmInFlightRef.current = false;
       setIsSubmitProcessActive(false);
       throw err;
     }
@@ -575,8 +717,11 @@ export function useAssessmentScreen({
     componentId,
     items,
     answers,
+    submitAdaptive,
     submitScreen,
     onScreenComplete,
+    onAdaptiveStep,
+    isSubmitProcessActive,
   ]);
 
 
@@ -590,7 +735,7 @@ export function useAssessmentScreen({
     isLocked,
     isSaving,
     isSubmitting,
-    isAdaptiveLoading: isAdaptiveLoading || submitAdaptive.isPending,
+    isAdaptiveLoading,
     isScreenComplete,
     hydrateDraft,
   };

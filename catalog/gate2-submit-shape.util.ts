@@ -8,7 +8,7 @@ export type Gate2SubmitAnswer =
   | number
   | string[]
   | Record<string, string>
-  | { choice: string; reason?: string }
+  | { choice: string | string[]; reason?: string }
   | { most: string; least: string }
   | { code: string; stdout?: string }
   | { prose: string; followUp?: string };
@@ -93,7 +93,7 @@ export function formatGate2Answer(
     case 'dashboard':
     case 'chartread':
     case 'hotspot':
-    case 'highlight':
+    // highlight is multi-select — handled below
     case 'nextq':
     case 'diagnose':
     case 'visualspot':
@@ -115,6 +115,30 @@ export function formatGate2Answer(
         return choice;
       }
       return String(rawAnswer);
+    }
+
+    // Multi-line highlight: { choice: string[], reason?: string }
+    case 'highlight': {
+      if (typeof rawAnswer === 'object' && !Array.isArray(rawAnswer)) {
+        const selectedIds = Array.isArray(rawAnswer.selectedIds)
+          ? rawAnswer.selectedIds.map((id: unknown) => String(id)).filter(Boolean)
+          : Array.isArray(rawAnswer.choice)
+            ? rawAnswer.choice.map((id: unknown) => String(id)).filter(Boolean)
+            : typeof rawAnswer.choice === 'string' && rawAnswer.choice
+              ? [String(rawAnswer.choice)]
+              : [];
+        const reason = String(rawAnswer.reason ?? rawAnswer.reasoning ?? '').trim();
+        if (selectedIds.length === 0) {
+          return reason ? { choice: [], reason } : { choice: [] };
+        }
+        return reason.length > 0
+          ? { choice: selectedIds, reason }
+          : { choice: selectedIds };
+      }
+      if (Array.isArray(rawAnswer)) {
+        return { choice: rawAnswer.map((id) => String(id)) };
+      }
+      return { choice: String(rawAnswer) ? [String(rawAnswer)] : [] };
     }
 
     // A/B cards: { choice: "A"|"B", reason: "..." }

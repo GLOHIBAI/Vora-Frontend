@@ -120,7 +120,7 @@ const SignupForm: React.FC<SignupFormProps> = ({
 
       <AuthForm className="space-y-5 sm:space-y-6">
         <Input
-          label={isRoleSignup ? 'Enter your email to get started' : 'Email'}
+          label="Email"
           type="email"
           name="vora-signup-email"
           value={email}

@@ -339,6 +339,7 @@ const RoleEmployerAsks: React.FC = () => {
   const companyInitials = appliedRole?.companyInitials || 'RA';
 
   const handleSaveAndExit = () => {
+    if (isSubmitting) return;
     navigate('/dashboard');
   };
 
@@ -1006,8 +1007,9 @@ const RoleEmployerAsks: React.FC = () => {
         <div className="flex items-center gap-2.5 sm:gap-[10px] w-full sm:w-auto shrink-0">
           <button
             type="button"
+            disabled={isSubmitting}
             onClick={handleSaveAndExit}
-            className="flex-1 sm:flex-initial bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-xl px-3 sm:px-[20px] py-2.5 sm:py-[13px] text-xs sm:text-[14px] font-[700] hover:border-[#ADADAD] transition-colors cursor-pointer whitespace-nowrap text-center justify-center flex items-center shrink-0"
+            className="flex-1 sm:flex-initial bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-xl px-3 sm:px-[20px] py-2.5 sm:py-[13px] text-xs sm:text-[14px] font-[700] hover:border-[#ADADAD] transition-colors cursor-pointer whitespace-nowrap text-center justify-center flex items-center shrink-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-[#E6E6E6]"
           >
             Save and exit
           </button>

@@ -436,13 +436,13 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
     try {
       const payloadResponses = sanitizeAnswers(answers);
-      // Flush accumulated draft responses to API first
+      // Must persist draft successfully before final submit.
       if (Object.keys(payloadResponses).length > 0) {
         await saveDraftMutation.mutateAsync({
           assessmentId: activeAssessmentId,
           componentId: apiScreenData.componentId,
           responses: payloadResponses,
-        }).catch((err) => console.warn('Draft save before submit warning:', err));
+        });
       }
 
       await submitScreenMutation.mutateAsync({
@@ -537,12 +537,18 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     setIsSubmitting(true);
     try {
       const payloadResponses = sanitizeAnswers(answers);
-      if (activeAssessmentId && apiScreenData?.componentId && Object.keys(payloadResponses).length > 0) {
+      if (!activeAssessmentId || !apiScreenData?.componentId) {
+        toast.error('Assessment is not ready. Please reload and try again.');
+        return;
+      }
+
+      // Must persist current window answers before loading the next set.
+      if (Object.keys(payloadResponses).length > 0) {
         await saveDraftMutation.mutateAsync({
           assessmentId: activeAssessmentId,
           componentId: apiScreenData.componentId,
           responses: payloadResponses,
-        }).catch((err) => console.warn('Draft save on continue warning:', err));
+        });
       }
 
       const nextFrom = windowInfo.through + 1;
@@ -598,8 +604,12 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         toast.error('No more questions were returned. Please try again.');
       }
     } catch (err: any) {
-      console.error('Failed to load next window:', err);
-      toast.error('Failed to load next questions. Please try again.');
+      console.error('Failed to save draft or load next window:', err);
+      const serverMsg =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Could not save your answers. Please try again before continuing.';
+      toast.error(serverMsg);
     } finally {
       setIsSubmitting(false);
     }

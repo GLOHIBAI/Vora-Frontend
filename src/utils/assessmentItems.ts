@@ -371,16 +371,42 @@ const normalizeAdaptiveStepContent = (
   if (!raw) return undefined;
 
   const stem = raw.stem ?? raw.prompt ?? raw.scenario;
-  const options = raw.options ?? raw.choices;
+  const optionsRaw = raw.options ?? raw.choices;
+  const options = Array.isArray(optionsRaw)
+    ? optionsRaw.map((opt, index) => {
+        if (!opt || typeof opt !== "object") {
+          return { id: `opt-${index}`, label: String(opt) };
+        }
+        const row = opt as Record<string, unknown>;
+        return {
+          ...row,
+          id: String(row.id ?? `opt-${index}`),
+          label: String(row.label ?? row.text ?? ""),
+          text: typeof row.text === "string" ? row.text : undefined,
+        };
+      })
+    : undefined;
 
   return {
     ...raw,
     stem: typeof stem === "string" ? stem : undefined,
+    scenario:
+      typeof raw.scenario === "string"
+        ? raw.scenario
+        : typeof stem === "string"
+          ? stem
+          : undefined,
     prompt:
       typeof (raw.prompt ?? stem) === "string"
         ? String(raw.prompt ?? stem)
         : undefined,
-    options: Array.isArray(options) ? options : undefined,
+    scenarioLabel:
+      typeof raw.scenarioLabel === "string"
+        ? raw.scenarioLabel
+        : typeof raw.scenario_label === "string"
+          ? raw.scenario_label
+          : undefined,
+    options,
   };
 };
 

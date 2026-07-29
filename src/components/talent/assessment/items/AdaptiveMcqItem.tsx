@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import OptionButton from '../shared/OptionButton';
 import type { AssessmentItemRendererProps } from '../shared/types';
 import type { AdaptiveMcqPriorStep } from '../../../../services/queries/assessments/types';
@@ -15,67 +15,56 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
   const priorSteps = (content.priorSteps as AdaptiveMcqPriorStep[]) ?? [];
 
   const shimmerRef = useRef<HTMLDivElement | null>(null);
-  /** Blocks click-through onto the follow-up options that replace this step. */
-  const clickLockRef = useRef(false);
-  const wasLoadingRef = useRef(false);
-  const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * After shimmer ends, briefly disable follow-up options so a leftover click
+   * cannot fire a second /adaptive. Strict Mode re-runs this effect and will
+   * re-schedule the unlock — do not gate unlock on a one-shot ref.
+   */
+  const [optionsLocked, setOptionsLocked] = useState(false);
 
   useEffect(() => {
     if (isAdaptiveLoading) {
-      wasLoadingRef.current = true;
-      clickLockRef.current = true;
-      if (cooldownTimerRef.current) {
-        clearTimeout(cooldownTimerRef.current);
-        cooldownTimerRef.current = null;
-      }
-      if (shimmerRef.current) {
-        setTimeout(() => {
-          shimmerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }, 100);
-      }
-      return;
+      setOptionsLocked(true);
+      const scrollTimer = window.setTimeout(() => {
+        shimmerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 100);
+      return () => window.clearTimeout(scrollTimer);
     }
 
-    // Only after a real load→idle transition (not initial mount).
-    if (wasLoadingRef.current) {
-      wasLoadingRef.current = false;
-      clickLockRef.current = true;
-      cooldownTimerRef.current = setTimeout(() => {
-        clickLockRef.current = false;
-        cooldownTimerRef.current = null;
-      }, 400);
-    }
-
-    return () => {
-      if (cooldownTimerRef.current) {
-        clearTimeout(cooldownTimerRef.current);
-        cooldownTimerRef.current = null;
-      }
-    };
+    // Idle: unlock after a short delay (re-scheduled safely under Strict Mode).
+    const unlockTimer = window.setTimeout(() => {
+      setOptionsLocked(false);
+    }, 700);
+    return () => window.clearTimeout(unlockTimer);
   }, [isAdaptiveLoading]);
 
+  const optionsDisabled = disabled || isAdaptiveLoading || optionsLocked;
+
   const handleSelect = (optionId: string) => {
-    if (disabled || isAdaptiveLoading || clickLockRef.current) return;
+    if (optionsDisabled) return;
     onChange(optionId);
   };
 
+  const isFollowUpLabel = (label?: string, stepIdx?: number) =>
+    label === 'follow_up' || (typeof stepIdx === 'number' && stepIdx > 0);
+
   return (
     <div className="space-y-8">
-      {/* 1. Prior Steps (Answered / Read-only) */}
+      {/* 1. Prior Steps (Answered / Read-only) — stay visible while follow-up loads */}
       {priorSteps.map((step, stepIdx) => {
         const stepContent = step.content as any;
         const priorScenario = stepContent.scenario ?? stepContent.stem ?? '';
         const priorPrompt = stepContent.prompt ?? '';
         const priorInstruction = stepContent.instruction ?? '';
         const priorOptions = stepContent.options ?? [];
-        const isFollowUp = stepIdx > 0;
+        const followUp = isFollowUpLabel(stepContent.scenarioLabel, stepIdx);
 
         return (
           <div key={step.step} className="space-y-4">
             {priorScenario && (
               <div className="bg-white border border-[#E6E6E6] rounded-2xl p-6 shadow-sm">
                 <span className="text-[10.5px] font-[800] tracking-[0.8px] text-[#808080] uppercase block mb-3">
-                  {isFollowUp ? 'FOLLOW-UP SCENARIO' : 'SCENARIO'}
+                  {followUp ? 'FOLLOW-UP SCENARIO' : 'SCENARIO'}
                 </span>
                 <p className="text-[14.5px] text-[#2D2D2D] leading-[1.65] whitespace-pre-line">
                   {String(priorScenario)}
@@ -114,8 +103,8 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
         );
       })}
 
-      {/* 2. Active Step (hidden while loading so shimmer is the only next UI) */}
-      {content.complete ? null : (
+      {/* 2. Active step — hidden while loading so only prior + follow-up shimmer show */}
+      {content.complete || isAdaptiveLoading ? null : (
         <div className="space-y-6">
           {content.layout === 'multi_question' && content.sharedContext && (
             <div className="space-y-6">
@@ -175,8 +164,11 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
                           index={optIdx}
                           label={opt.label ?? opt.text ?? ''}
                           selected={qValue === opt.id}
-                          disabled={disabled || isAdaptiveLoading}
-                          onClick={() => onChange(opt.id, q.id)}
+                          disabled={optionsDisabled}
+                          onClick={() => {
+                            if (optionsDisabled) return;
+                            onChange(opt.id, q.id);
+                          }}
                         />
                       ))}
                     </div>
@@ -184,12 +176,14 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
                 );
               })}
             </div>
-          ) : isAdaptiveLoading ? null : (
-            <div className="space-y-4">
+          ) : (
+            <div className={`space-y-4 ${optionsLocked ? 'pointer-events-none' : ''}`}>
               {(content.scenario || content.stem) && (
                 <div className="bg-white border border-[#E6E6E6] rounded-2xl p-6 shadow-sm">
                   <span className="text-[10.5px] font-[800] tracking-[0.8px] text-[#808080] uppercase block mb-3">
-                    {priorSteps.length > 0 ? 'FOLLOW-UP SCENARIO' : 'SCENARIO'}
+                    {isFollowUpLabel(content.scenarioLabel) || priorSteps.length > 0
+                      ? 'FOLLOW-UP SCENARIO'
+                      : 'SCENARIO'}
                   </span>
                   <p className="text-[14.5px] text-[#2D2D2D] leading-[1.65] whitespace-pre-line">
                     {String(content.scenario ?? content.stem ?? '')}
@@ -219,7 +213,7 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
                     index={optIdx}
                     label={opt.label ?? opt.text ?? ''}
                     selected={value === opt.id}
-                    disabled={disabled || isAdaptiveLoading}
+                    disabled={optionsDisabled}
                     onClick={() => handleSelect(opt.id)}
                   />
                 ))}
@@ -229,17 +223,13 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
         </div>
       )}
 
-      {/* 3. Shimmer while the follow-up step loads — one cycle per click */}
+      {/* 3. Follow-up shimmer under the answered scenario */}
       {isAdaptiveLoading && (
-        <div ref={shimmerRef} className="space-y-4 mt-8">
+        <div ref={shimmerRef} className="space-y-4 mt-2">
           <style>{`
             @keyframes shimmer {
-              0% {
-                background-position: -200% 0;
-              }
-              100% {
-                background-position: 200% 0;
-              }
+              0% { background-position: -200% 0; }
+              100% { background-position: 200% 0; }
             }
             .shimmer-bg {
               background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
@@ -247,6 +237,9 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
               animation: shimmer 1.5s infinite linear;
             }
           `}</style>
+          <span className="text-[10.5px] font-[800] tracking-[0.8px] text-[#808080] uppercase block">
+            Follow-up scenario
+          </span>
           <div className="bg-white border border-[#E6E6E6] rounded-2xl p-6 shadow-sm">
             <div className="h-3 shimmer-bg rounded w-1/4 mb-3"></div>
             <div className="space-y-2">

@@ -28,16 +28,26 @@ assertEqual(
   'jb choice + reason object'
 );
 
-// 3. choice + optional reason (allocate, data, highlight, etc.)
+// 3. choice + optional reason (allocate, data, hotspot, etc.)
 assertEqual(
-  formatGate2Answer('highlight', { choice: 'a', reason: 'Critical point' }),
-  { choice: 'a', reason: 'Critical point' },
-  'highlight choice with reason'
+  formatGate2Answer('highlight', { selectedIds: ['a', 'd'], reason: 'Critical point' }),
+  { choice: ['a', 'd'], reason: 'Critical point' },
+  'highlight selectedIds + reason → choice array'
 );
 assertEqual(
   formatGate2Answer('highlight', { choice: 'a', reason: '' }),
+  { choice: ['a'] },
+  'highlight single choice without reason'
+);
+assertEqual(
+  formatGate2Answer('hotspot', { choice: 'a', reason: 'Critical point' }),
+  { choice: 'a', reason: 'Critical point' },
+  'hotspot choice with reason'
+);
+assertEqual(
+  formatGate2Answer('hotspot', { choice: 'a', reason: '' }),
   'a',
-  'highlight choice without reason returns bare string'
+  'hotspot choice without reason returns bare string'
 );
 
 // 4. compare (A/B cards)

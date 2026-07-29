@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useCallback, useState, useRef } from 'react';
 import VoraLogo from '../../common/VoraLogo';
 import Button from '../../common/Button';
+import FullPageSpinner from '../../common/FullPageSpinner';
 import AssessmentItemsList from './AssessmentItemsList';
 import SessionChapterRail from './SessionChapterRail';
 import SessionPebbleRail from './SessionPebbleRail';
@@ -324,6 +325,19 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
     }
     return label.replace(/·/g, '-').toUpperCase();
   }, [items, screenIndex, screenLabel, interpolate]);
+
+  // While Continue runs (may still be finishing adaptive + submit), show the same
+  // assessment loader so it feels like the next interview screen is loading.
+  if (isSubmitting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F7F7]">
+        <FullPageSpinner
+          isFullPage={false}
+          message="Loading your interview screen…"
+        />
+      </div>
+    );
+  }
 
   return (
 
