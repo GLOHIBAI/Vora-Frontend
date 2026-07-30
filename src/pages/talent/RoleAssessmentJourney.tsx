@@ -191,7 +191,7 @@ const RoleAssessmentJourney: React.FC = () => {
         readiness?.preAssessmentComplete === true;
 
       if (isPreAssessmentRequired && !isPreAssessmentComplete) {
-        navigate(`/onboarding/talent/${roleSlug}/assessment/asks`, { replace: true });
+        navigate(`/onboarding/talent/${roleSlug}/interview/asks`, { replace: true });
       }
     }
   }, [isRoleLoading, isReadinessLoading, readinessResponse, navigate, roleSlug]);
@@ -213,6 +213,16 @@ const RoleAssessmentJourney: React.FC = () => {
   const hasStartedStage1 = useMemo(() => {
     if (!readiness) return false;
     return readiness.assessmentStatus === 'IN_PROGRESS' && readiness.stage === 1;
+  }, [readiness]);
+
+  const hasStartedStage2 = useMemo(() => {
+    if (!readiness) return false;
+    return readiness.assessmentStatus === 'IN_PROGRESS' && readiness.stage === 2;
+  }, [readiness]);
+
+  const hasStartedStage3 = useMemo(() => {
+    if (!readiness) return false;
+    return readiness.assessmentStatus === 'IN_PROGRESS' && readiness.stage === 3;
   }, [readiness]);
 
   const isLocked = useMemo(() => {
@@ -271,7 +281,7 @@ const RoleAssessmentJourney: React.FC = () => {
 
   const handleStart = () => {
     localStorage.setItem('vora_stage1_started', 'true');
-    navigate(`/onboarding/talent/${roleSlug}/assessment/stage-1`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/stage-1/intro`);
   };
 
   if (isRoleLoading || isReadinessLoading) {
@@ -359,7 +369,7 @@ const RoleAssessmentJourney: React.FC = () => {
               {isLocked ? (
                 <span className="text-[#DC2626] font-[600]">You failed your previous interview. You did not meet the required threshold for this role, but you can explore other matching opportunities.</span>
               ) : isStage3Completed ? (
-                "You have completed all assessment stages! Reach Africa's hiring panel is currently reviewing your application file."
+                `You have completed all assessment stages! ${companyName}'s hiring panel is currently reviewing your application file.`
               ) : isStage2Completed ? (
                 'Your Stage 2 professional dimension scored 87/100, clearing the threshold. Stage 3 is a short asynchronous video interview about how you show up.'
               ) : isStage2Unlocked ? (
@@ -388,14 +398,18 @@ const RoleAssessmentJourney: React.FC = () => {
               <Button 
                 onClick={() => {
                   if (isStage3Unlocked && !isStage3Completed) {
-                    navigate(`/onboarding/talent/${roleSlug}/assessment/resume`);
+                    navigate(`/onboarding/talent/${roleSlug}/interview/resume`);
                   } else if (isStage2Completed) {
-                    navigate(`/onboarding/talent/${roleSlug}/assessment/stage-3`);
+                    navigate(`/onboarding/talent/${roleSlug}/interview/stage-3`);
                   } else if (isStage2Unlocked && !isStage2Completed) {
-                    navigate(`/onboarding/talent/${roleSlug}/assessment/resume`);
+                    if (hasStartedStage2) {
+                      navigate(`/onboarding/talent/${roleSlug}/interview/resume`);
+                    } else {
+                      navigate(`/onboarding/talent/${roleSlug}/interview/stage-2`);
+                    }
                   } else {
                     if (hasStartedStage1) {
-                      navigate(`/onboarding/talent/${roleSlug}/assessment/resume`);
+                      navigate(`/onboarding/talent/${roleSlug}/interview/resume`);
                     } else {
                       handleStart();
                     }
@@ -404,10 +418,16 @@ const RoleAssessmentJourney: React.FC = () => {
                 fullWidth={false}
                 className="bg-[#0047CC] text-white rounded-full p-[12px_24px] text-[14px] font-[800] hover:bg-[#344DA1] hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,71,204,0.36)] transition-all flex items-center gap-[8px] shadow-[0_4px_14px_rgba(0,71,204,0.28)]"
               >
-                {isStage2Completed 
+                {isStage3Unlocked && !isStage3Completed
+                  ? hasStartedStage3
+                    ? 'Resume Stage 3'
+                    : 'Begin Stage 3'
+                  : isStage2Completed 
                   ? 'Begin Stage 3' 
                   : isStage2Unlocked 
-                    ? 'Begin Stage 2' 
+                    ? hasStartedStage2
+                      ? 'Resume Stage 2'
+                      : 'Begin Stage 2' 
                     : hasStartedStage1 
                       ? 'Resume assessment' 
                       : 'Begin Stage 1'}
@@ -441,7 +461,7 @@ const RoleAssessmentJourney: React.FC = () => {
             <div className="flex-1 min-w-0 pt-[2px]">
               <div className="text-[10.5px] font-[800] tracking-[0.8px] uppercase mb-[4px] text-[#0047CC]">Pre stage · Required gate</div>
               <div className="text-[17px] font-[600] text-[#1A1A1A] mb-[6px] tracking-[-0.2px] leading-[1.3]">Onboarding materials</div>
-              <div className="text-[13.5px] text-[#4A4A4A] leading-[1.65] mb-[14px]">The five things Reach Africa asked you for, plus your CV and verified profile on file. Everything submitted today at 14:25.</div>
+              <div className="text-[13.5px] text-[#4A4A4A] leading-[1.65] mb-[14px]">The five things {companyName} asked you for, plus your CV and verified profile on file. Everything submitted today at 14:25.</div>
               <div className="flex flex-wrap gap-[6px] mb-[14px]">
                 {['Programme report', 'Research output', 'Written prompt', 'References', 'Portfolio links'].map((item) => (
                   <span key={item} className="text-[11px] font-[700] px-[10px] py-[4px] rounded-full border border-[#0047CC] bg-white text-[#0047CC]">{item}</span>
@@ -461,11 +481,11 @@ const RoleAssessmentJourney: React.FC = () => {
                 return;
               }
               if (gate1Completed) {
-                navigate(`/onboarding/talent/${roleSlug}/assessment/session-2/results`);
+                navigate(`/onboarding/talent/${roleSlug}/interview/session-2/results`);
                 return;
               }
               if (hasStartedStage1) {
-                navigate(`/onboarding/talent/${roleSlug}/assessment/resume`);
+                navigate(`/onboarding/talent/${roleSlug}/interview/resume`);
               } else {
                 void handleStart();
               }
@@ -543,11 +563,11 @@ const RoleAssessmentJourney: React.FC = () => {
             <div 
               onClick={() => {
                 if (isStage2Completed) {
-                  navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2/results`);
-                } else if (localStorage.getItem('vora_stage2_started') === 'true') {
-                  navigate(`/onboarding/talent/${roleSlug}/assessment/resume`);
+                  navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/results`);
+                } else if (hasStartedStage2) {
+                  navigate(`/onboarding/talent/${roleSlug}/interview/resume`);
                 } else {
-                  navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2`);
+                  navigate(`/onboarding/talent/${roleSlug}/interview/stage-2`);
                 }
               }}
               className={`bg-white border-[1.5px] rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all z-[1] ${
@@ -561,7 +581,11 @@ const RoleAssessmentJourney: React.FC = () => {
               </div>
               <div className="flex-1 min-w-0 pt-[2px]">
                 <div className="text-[10.5px] font-[800] tracking-[0.8px] uppercase mb-[4px] text-[#0047CC]">
-                  {isStage2Completed ? 'Stage 2 · Complete' : 'Starting here'}
+                  {isStage2Completed
+                    ? 'Stage 2 · Complete'
+                    : hasStartedStage2
+                      ? 'Stage 2 · In progress'
+                      : 'Starting here'}
                 </div>
                 <div className="text-[17px] font-[600] text-[#1A1A1A] mb-[6px] tracking-[-0.2px] leading-[1.3]">Your professional dimension</div>
                 <div className="text-[13.5px] text-[#4A4A4A] leading-[1.65] mb-[14px]">A focused look at the work itself, built around your CV, onboarding profile and this exact role. Four parts. Knowledge, then expertise, then reasoning, then applied simulation.</div>
@@ -586,7 +610,7 @@ const RoleAssessmentJourney: React.FC = () => {
                 </div>
               </div>
               <div className="absolute top-[22px] right-[22px] hidden sm:flex items-center gap-[6px] text-[11px] font-[800] px-[11px] py-[5px] rounded-full tracking-[0.4px] bg-white border border-[#0047CC] text-[#0047CC] transition-all duration-200 group-hover:bg-[#0047CC] group-hover:text-white group-hover:border-[#0047CC] hover:bg-[#0047CC] hover:text-white hover:border-[#0047CC] cursor-pointer">
-                {isStage2Completed ? 'Complete' : localStorage.getItem('vora_stage2_started') === 'true' ? 'Resume' : 'Start here'}
+                {isStage2Completed ? 'Complete' : hasStartedStage2 ? 'Resume' : 'Start here'}
               </div>
             </div>
           ) : (
@@ -630,7 +654,7 @@ const RoleAssessmentJourney: React.FC = () => {
             <div 
               onClick={() => {
                 if (!isStage3Completed) {
-                  navigate(`/onboarding/talent/${roleSlug}/assessment/resume`);
+                  navigate(`/onboarding/talent/${roleSlug}/interview/resume`);
                 }
               }}
               className={`bg-white border-[1.5px] rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all z-[1] ${
@@ -644,7 +668,11 @@ const RoleAssessmentJourney: React.FC = () => {
               </div>
               <div className="flex-1 min-w-0 pt-[2px]">
                 <div className="text-[10.5px] font-[800] tracking-[0.8px] uppercase mb-[4px] text-[#0047CC]">
-                  {isStage3Completed ? 'Stage 3 · Complete' : 'Starting here'}
+                  {isStage3Completed
+                    ? 'Stage 3 · Complete'
+                    : hasStartedStage3
+                      ? 'Stage 3 · In progress'
+                      : 'Starting here'}
                 </div>
                 <div className="text-[17px] font-[600] text-[#1A1A1A] mb-[6px] tracking-[-0.2px] leading-[1.3]">How you show up</div>
                 <div className="text-[13.5px] text-[#4A4A4A] leading-[1.65] mb-[14px]">A short asynchronous video interview. Five questions. Record live in your browser or upload pre recorded video, per question. Your face, your voice, your time.</div>
@@ -673,7 +701,7 @@ const RoleAssessmentJourney: React.FC = () => {
                   ? 'bg-white border-[#0047CC] text-[#0047CC]'
                   : 'bg-white border-[#0047CC] text-[#0047CC] group-hover:bg-[#0047CC] group-hover:text-white group-hover:border-[#0047CC] hover:bg-[#0047CC] hover:text-white hover:border-[#0047CC] cursor-pointer'
               }`}>
-                {isStage3Completed ? 'Complete' : 'Start here'}
+                {isStage3Completed ? 'Complete' : hasStartedStage3 ? 'Resume' : 'Start here'}
               </div>
             </div>
           ) : (
@@ -721,7 +749,7 @@ const RoleAssessmentJourney: React.FC = () => {
               <div className="flex-1 min-w-0 pt-[2px]">
                 <div className="text-[10.5px] font-[800] tracking-[0.8px] uppercase mb-[4px] text-[#0047CC]">Active evaluation</div>
                 <div className="text-[17px] font-[600] text-[#1A1A1A] mb-[6px] tracking-[-0.2px] leading-[1.3]">Final decision</div>
-                <div className="text-[13.5px] text-[#4A4A4A] leading-[1.65] mb-[14px]">Reach Africa's hiring panel reviews your complete file and makes one of three calls. Hired. Invited to a 30 minute alignment session. Or this role isn't moving forward, with a path to your next match.</div>
+                <div className="text-[13.5px] text-[#4A4A4A] leading-[1.65] mb-[14px]">{companyName}'s hiring panel reviews your complete file and makes one of three calls. Hired. Invited to a 30 minute alignment session. Or this role isn't moving forward, with a path to your next match.</div>
                 <div className="flex flex-wrap gap-[6px] mb-[14px]">
                   {['Hired', 'Alignment session', 'Onward path'].map((item) => (
                     <span key={item} className="text-[11px] font-[700] px-[10px] py-[4px] rounded-full border border-[#0047CC] bg-white text-[#0047CC]">{item}</span>
@@ -734,7 +762,7 @@ const RoleAssessmentJourney: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-[6px] text-[11.5px] font-[700] text-[#808080]">
                     <GroupIcon className="w-[13px] h-[13px]" />
-                    Reach Africa panel
+                    {companyName} panel
                   </div>
                 </div>
               </div>
@@ -750,7 +778,7 @@ const RoleAssessmentJourney: React.FC = () => {
               <div className="flex-1 min-w-0 pt-[2px]">
                 <div className="text-[10.5px] font-[800] tracking-[0.8px] uppercase mb-[4px] text-[#ADADAD]">The employer's call</div>
                 <div className="text-[17px] font-[600] text-[#1A1A1A] mb-[6px] tracking-[-0.2px] leading-[1.3]">Final decision</div>
-                <div className="text-[13.5px] text-[#4A4A4A] leading-[1.65] mb-[14px]">Reach Africa's hiring panel reviews your complete file and makes one of three calls. Hired. Invited to a 30 minute alignment session. Or this role isn't moving forward, with a path to your next match.</div>
+                <div className="text-[13.5px] text-[#4A4A4A] leading-[1.65] mb-[14px]">{companyName}'s hiring panel reviews your complete file and makes one of three calls. Hired. Invited to a 30 minute alignment session. Or this role isn't moving forward, with a path to your next match.</div>
                 <div className="flex flex-wrap gap-[6px] mb-[14px]">
                   {['Hired', 'Alignment session', 'Onward path'].map((item) => (
                     <span key={item} className="text-[11px] font-[700] px-[10px] py-[4px] rounded-full border border-[#0047CC] bg-white text-[#0047CC]">{item}</span>
@@ -763,7 +791,7 @@ const RoleAssessmentJourney: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-[6px] text-[11.5px] font-[700] text-[#808080]">
                     <GroupIcon className="w-[13px] h-[13px]" />
-                    Reach Africa panel
+                    {companyName} panel
                   </div>
                 </div>
               </div>
@@ -783,7 +811,7 @@ const RoleAssessmentJourney: React.FC = () => {
           <div className="flex flex-col gap-[10px]">
             <div className="flex gap-[11px] items-start text-[13.5px] text-[#182348] leading-[1.6]">
               <div className="w-[6px] h-[6px] rounded-full bg-[#0047CC] shrink-0 mt-[7px]" />
-              <div><strong className="font-[800]">Every question is generated for you specifically.</strong> Based on your CV, your onboarding profile, what Reach Africa asked for, and this exact role. No off the shelf questions.</div>
+              <div><strong className="font-[800]">Every question is generated for you specifically.</strong> Based on your CV, your onboarding profile, what {companyName} asked for, and this exact role. No off the shelf questions.</div>
             </div>
             <div className="flex gap-[11px] items-start text-[13.5px] text-[#182348] leading-[1.6]">
               <div className="w-[6px] h-[6px] rounded-full bg-[#0047CC] shrink-0 mt-[7px]" />

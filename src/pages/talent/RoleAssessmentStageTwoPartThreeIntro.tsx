@@ -37,7 +37,7 @@ const RoleAssessmentStageTwoPartThreeIntro: React.FC = () => {
 
   const handleBegin = () => {
     toast.success('Starting Stage 2 Part 4...');
-    navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2/part-4/simulation-1`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/part-4/simulation-1`);
   };
 
   if (!activeAssessmentId) {
@@ -50,7 +50,7 @@ const RoleAssessmentStageTwoPartThreeIntro: React.FC = () => {
           </p>
           <button
             type="button"
-            onClick={() => navigate(`/onboarding/talent/${roleSlug}/assessment/journey`)}
+            onClick={() => navigate(`/onboarding/talent/${roleSlug}/interview/journey`)}
             className="bg-[#0047CC] text-white border-none rounded-[10px] p-[12px_20px] text-[13.5px] font-[700] cursor-pointer font-sans"
           >
             Back to journey
@@ -84,7 +84,7 @@ const RoleAssessmentStageTwoPartThreeIntro: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => navigate(`/onboarding/talent/${roleSlug}/assessment/journey`)}
+              onClick={() => navigate(`/onboarding/talent/${roleSlug}/interview/journey`)}
               className="bg-white text-[#4A4A4A] border border-[#E6E6E6] rounded-[10px] p-[12px_20px] text-[13.5px] font-[700] cursor-pointer font-sans"
             >
               Back to journey
@@ -192,7 +192,7 @@ const RoleAssessmentStageTwoPartThreeIntro: React.FC = () => {
           <div className="flex gap-[9px] w-full">
             <button
               type="button"
-              onClick={() => navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2`)}
+              onClick={() => navigate(`/onboarding/talent/${roleSlug}/interview/stage-2`)}
               className="flex-1 bg-white text-[#4A4A4A] border border-[#E6E6E6] rounded-[10px] p-[12px_20px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] transition-all font-sans"
             >
               {stageOverviewLabel}

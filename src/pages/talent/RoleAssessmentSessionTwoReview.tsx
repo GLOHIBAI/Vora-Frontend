@@ -17,11 +17,11 @@ const RoleAssessmentSessionTwoReview: React.FC = () => {
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
 
   const handleBack = () => {
-    navigate(`/onboarding/talent/${roleSlug}/assessment/session-2/tradeoff`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/session-2/tradeoff`);
   };
 
   const handleSubmit = () => {
-    navigate(`/onboarding/talent/${roleSlug}/assessment/session-2/analyzing`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/session-2/analyzing`);
   };
 
   const handleSave = () => {
@@ -34,35 +34,35 @@ const RoleAssessmentSessionTwoReview: React.FC = () => {
       title: 'A judgement call',
       question: 'The maternal health outreach without a permit',
       answer: 'Staged response, started non-clinical activities while pursuing verbal clearance, with everything documented.',
-      path: `/onboarding/talent/${roleSlug}/assessment/session-2/situational`,
+      path: `/onboarding/talent/${roleSlug}/interview/session-2/situational`,
     },
     {
       num: 2,
       title: 'Ordering the options',
       question: 'The field nurse\'s social media post',
       answer: 'Call the nurse first, then the community elder, then formal documentation, then team refresher.',
-      path: `/onboarding/talent/${roleSlug}/assessment/session-2/ranking`,
+      path: `/onboarding/talent/${roleSlug}/interview/session-2/ranking`,
     },
     {
       num: 3,
       title: 'Best and worst moves',
       question: 'The donor representative asking pointed questions',
       answer: 'Most appropriate: Acknowledge the gap directly. Least appropriate: Stay quiet during the meeting.',
-      path: `/onboarding/talent/${roleSlug}/assessment/session-2/best-worst`,
+      path: `/onboarding/talent/${roleSlug}/interview/session-2/best-worst`,
     },
     {
       num: 4,
       title: 'The moves you\'d combine',
       question: 'The team member who\'s quietly burning out',
       answer: 'Private check-in, redistribute deliverables, share wellbeing resources, pair her on the next field visit.',
-      path: `/onboarding/talent/${roleSlug}/assessment/session-2/combine`,
+      path: `/onboarding/talent/${roleSlug}/interview/session-2/combine`,
     },
     {
       num: 5,
       title: 'The trade-off',
       question: 'Three tensions you\'d lean through',
       answer: 'Leaning toward pausing before deciding, balanced on community vs design, leaning toward holding the deadline.',
-      path: `/onboarding/talent/${roleSlug}/assessment/session-2/tradeoff`,
+      path: `/onboarding/talent/${roleSlug}/interview/session-2/tradeoff`,
     },
   ];
 

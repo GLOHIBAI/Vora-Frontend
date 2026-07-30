@@ -64,7 +64,7 @@ const Gate1ScreenView: React.FC = () => {
 
   useEffect(() => {
     if (!resumeState?.gate1Complete || !roleSlug) return;
-    navigate(`/onboarding/talent/${roleSlug}/assessment/gate-1/review`, { replace: true });
+    navigate(`/onboarding/talent/${roleSlug}/interview/gate-1/review`, { replace: true });
   }, [resumeState?.gate1Complete, roleSlug, navigate]);
 
   const renderStartError = () => (
@@ -83,7 +83,7 @@ const Gate1ScreenView: React.FC = () => {
           <Button
             type="button"
             variant="secondary"
-            onClick={() => navigate(`/onboarding/talent/${roleSlug}/assessment/journey`)}
+            onClick={() => navigate(`/onboarding/talent/${roleSlug}/interview/journey`)}
           >
             Back to journey
           </Button>
@@ -100,7 +100,7 @@ const Gate1ScreenView: React.FC = () => {
           <Button
             type="button"
             variant="primary"
-            onClick={() => navigate(`/onboarding/talent/${roleSlug}/assessment/journey`)}
+            onClick={() => navigate(`/onboarding/talent/${roleSlug}/interview/journey`)}
           >
             Back to journey
           </Button>
@@ -153,7 +153,7 @@ const Gate1ScreenView: React.FC = () => {
         label: `Session ${resumeState.session} · Screen ${Math.max(screenIndex + 1, 1)} of ${sessionScreens.length} · ${partsCompleted} of ${partsRequired} parts complete`,
         percent: Math.round((partsCompleted / partsRequired) * 100),
       }}
-      onSaveExit={() => navigate(`/onboarding/talent/${roleSlug}/assessment/journey`)}
+      onSaveExit={() => navigate(`/onboarding/talent/${roleSlug}/interview/journey`)}
       onScreenComplete={() => void handleScreenComplete()}
     />
   );

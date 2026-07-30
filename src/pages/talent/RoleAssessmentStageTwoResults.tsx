@@ -27,7 +27,7 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
     // Unlock Stage 3 and complete Stage 2 in localStorage
     localStorage.setItem('vora_stage2_completed', 'true');
     localStorage.setItem('vora_stage3_unlocked', 'true');
-    navigate(`/onboarding/talent/${roleSlug}/assessment/journey`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/journey`);
   };
 
   return (

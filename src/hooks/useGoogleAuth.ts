@@ -31,7 +31,7 @@ export function useGoogleAuth() {
       if (roleLink && response.data.user?.role?.toUpperCase() === 'TALENT') {
         if (targetRoute !== '/verify-email' && targetRoute !== '/select-type') {
           localStorage.setItem('active_assessment_role_slug', roleLink);
-          targetRoute = `/onboarding/talent/${roleLink}/assessment/journey`;
+          targetRoute = `/onboarding/talent/${roleLink}/interview/journey`;
         }
       }
 

@@ -45,10 +45,10 @@ export const useGate1PostSubmitNavigation = ({
 
     switch (route.type) {
       case 'review':
-        navigate(`/onboarding/talent/${roleSlug}/assessment/gate-1/review`, { replace: true });
+        navigate(`/onboarding/talent/${roleSlug}/interview/gate-1/review`, { replace: true });
         return;
       case 'session1_complete':
-        navigate(`/onboarding/talent/${roleSlug}/assessment/session-1/complete`, { replace: true });
+        navigate(`/onboarding/talent/${roleSlug}/interview/session-1/complete`, { replace: true });
         return;
       case 'reload':
       default:

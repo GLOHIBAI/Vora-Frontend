@@ -33,7 +33,7 @@ const RoleAssessmentSessionComplete: React.FC = () => {
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
 
   const handleContinue = () => {
-    navigate(`/onboarding/talent/${roleSlug}/assessment/session-2`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/session-2`);
   };
 
   const handleLater = () => {

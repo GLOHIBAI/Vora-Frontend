@@ -8,6 +8,16 @@ import { defaultToastOptions } from './config/toastOptions'
 import FullPageSpinner from './components/common/FullPageSpinner'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
 
+/** Redirect legacy /assessment/* paths to /interview/* (stage-1 intro kept distinct). */
+const AssessmentToInterviewRedirect = () => {
+  const location = useLocation();
+  let nextPath = location.pathname.replace('/assessment/', '/interview/');
+  if (/\/interview\/stage-1$/.test(nextPath)) {
+    nextPath = `${nextPath}/intro`;
+  }
+  return <Navigate to={`${nextPath}${location.search}${location.hash}`} replace />;
+};
+
 // Lazy load pages for performance
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Signup = lazy(() => import('./pages/auth/Signup'))
@@ -135,9 +145,9 @@ const App = () => {
 
   useEffect(() => {
     if (!isOnline) {
-      const isAssessmentOrInterview = 
-        location.pathname.includes('/assessment') || 
-        location.pathname.includes('/interview');
+      const isAssessmentOrInterview =
+        location.pathname.includes('/interview') ||
+        location.pathname.includes('/assessment');
 
       if (isAssessmentOrInterview) {
         // Try to trigger the 'Save & finish later' button in the page if it exists
@@ -216,66 +226,71 @@ const App = () => {
             <Route path="cv" element={<RoleCvUpload />} />
             <Route path="match" element={<RoleProfileMatchBuilding />} />
             <Route path="match/result" element={<RoleProfileMatchResult />} />
-            <Route path="assessment/asks" element={<RoleEmployerAsks />} />
-            <Route path="assessment/journey" element={<RoleAssessmentJourney />} />
-            <Route path="assessment/stage-1" element={<RoleAssessmentIntro />} />
+            <Route path="interview/asks" element={<RoleEmployerAsks />} />
+            <Route path="interview/journey" element={<RoleAssessmentJourney />} />
+            <Route path="interview/stage-1/intro" element={<RoleAssessmentIntro />} />
             <Route path="interview/stage-1" element={<RoleAssessmentGate1Active />} />
-            <Route path="assessment/gate-1/review" element={<RoleAssessmentGate1Review />} />
-            <Route path="assessment/gate-1/verdict" element={<RoleAssessmentGate1Verdict />} />
-            <Route path="assessment/session-1" element={<RoleAssessmentSessionInfo />} />
-            <Route path="assessment/session-1/psychometric" element={<RoleAssessmentSessionPsychometric />} />
-            <Route path="assessment/session-1/forced-choice" element={<RoleAssessmentSessionForcedChoice />} />
-            <Route path="assessment/session-1/psychometric-values" element={<RoleAssessmentSessionPsychometricValues />} />
-            <Route path="assessment/session-1/situational" element={<RoleAssessmentSessionSituational />} />
-            <Route path="assessment/session-1/cognitive" element={<RoleAssessmentSessionCognitive />} />
-            <Route path="assessment/session-1/reading" element={<RoleAssessmentSessionReading />} />
-            <Route path="assessment/session-1/complete" element={<RoleAssessmentSessionComplete />} />
-            <Route path="assessment/session-2" element={<RoleAssessmentSessionTwoInfo />} />
-            <Route path="assessment/session-2/situational" element={<RoleAssessmentSessionTwoSituational />} />
-            <Route path="assessment/session-2/ranking" element={<RoleAssessmentSessionTwoRanking />} />
-            <Route path="assessment/session-2/best-worst" element={<RoleAssessmentSessionTwoBestWorst />} />
-            <Route path="assessment/session-2/combine" element={<RoleAssessmentSessionTwoCombine />} />
-            <Route path="assessment/session-2/tradeoff" element={<RoleAssessmentSessionTwoTradeoff />} />
-            <Route path="assessment/session-2/review" element={<RoleAssessmentSessionTwoReview />} />
-            <Route path="assessment/session-2/analyzing" element={<RoleAssessmentSessionTwoAnalyzing />} />
-            <Route path="assessment/session-2/results" element={<RoleAssessmentSessionTwoResults />} />
-            <Route path="assessment/session-2/outcome" element={<RoleAssessmentSessionTwoOutcome />} />
-            <Route path="assessment/stage-2" element={<RoleAssessmentStageTwoIntro />} />
-            <Route path="assessment/stage-2/part-1/intro" element={<RoleAssessmentStageTwoPartOneIntro />} />
-            <Route path="assessment/stage-2/part-1/interview-1" element={<RoleAssessmentStageTwoPharmacology />} />
-            <Route path="assessment/stage-2/part-1/interview-2" element={<RoleAssessmentStageTwoBiostatistics />} />
-            <Route path="assessment/stage-2/part-1/interview-3" element={<RoleAssessmentStageTwoCompliance />} />
-            <Route path="assessment/stage-2/part-1/complete" element={<RoleAssessmentStageTwoPartOneComplete />} />
+            <Route path="interview/gate-1/review" element={<RoleAssessmentGate1Review />} />
+            <Route path="interview/gate-1/verdict" element={<RoleAssessmentGate1Verdict />} />
+            <Route path="interview/session-1" element={<RoleAssessmentSessionInfo />} />
+            <Route path="interview/session-1/psychometric" element={<RoleAssessmentSessionPsychometric />} />
+            <Route path="interview/session-1/forced-choice" element={<RoleAssessmentSessionForcedChoice />} />
+            <Route path="interview/session-1/psychometric-values" element={<RoleAssessmentSessionPsychometricValues />} />
+            <Route path="interview/session-1/situational" element={<RoleAssessmentSessionSituational />} />
+            <Route path="interview/session-1/cognitive" element={<RoleAssessmentSessionCognitive />} />
+            <Route path="interview/session-1/reading" element={<RoleAssessmentSessionReading />} />
+            <Route path="interview/session-1/complete" element={<RoleAssessmentSessionComplete />} />
+            <Route path="interview/session-2" element={<RoleAssessmentSessionTwoInfo />} />
+            <Route path="interview/session-2/situational" element={<RoleAssessmentSessionTwoSituational />} />
+            <Route path="interview/session-2/ranking" element={<RoleAssessmentSessionTwoRanking />} />
+            <Route path="interview/session-2/best-worst" element={<RoleAssessmentSessionTwoBestWorst />} />
+            <Route path="interview/session-2/combine" element={<RoleAssessmentSessionTwoCombine />} />
+            <Route path="interview/session-2/tradeoff" element={<RoleAssessmentSessionTwoTradeoff />} />
+            <Route path="interview/session-2/review" element={<RoleAssessmentSessionTwoReview />} />
+            <Route path="interview/session-2/analyzing" element={<RoleAssessmentSessionTwoAnalyzing />} />
+            <Route path="interview/session-2/results" element={<RoleAssessmentSessionTwoResults />} />
+            <Route path="interview/session-2/outcome" element={<RoleAssessmentSessionTwoOutcome />} />
+            <Route path="interview/stage-2" element={<RoleAssessmentStageTwoIntro />} />
+            <Route path="interview/stage-2/part-1/intro" element={<RoleAssessmentStageTwoPartOneIntro />} />
+            <Route path="interview/stage-2/part-1/interview-1" element={<RoleAssessmentStageTwoPharmacology />} />
+            <Route path="interview/stage-2/part-1/interview-2" element={<RoleAssessmentStageTwoBiostatistics />} />
+            <Route path="interview/stage-2/part-1/interview-3" element={<RoleAssessmentStageTwoCompliance />} />
+            <Route path="interview/stage-2/part-1/complete" element={<RoleAssessmentStageTwoPartOneComplete />} />
             
             {/* Part 2: Expertise */}
-            <Route path="assessment/stage-2/part-2/intro" element={<RoleAssessmentStageTwoPartTwoExpertiseIntro />} />
-            <Route path="assessment/stage-2/part-2/interview-1" element={<RoleAssessmentStageTwoChildMalnutrition />} />
-            <Route path="assessment/stage-2/part-2/interview-2" element={<RoleAssessmentStageTwoMalariaProtocol />} />
-            <Route path="assessment/stage-2/part-2/interview-3" element={<RoleAssessmentStageTwoColdChain />} />
-            <Route path="assessment/stage-2/part-2/complete" element={<RoleAssessmentStageTwoPartTwoExpertiseComplete />} />
+            <Route path="interview/stage-2/part-2/intro" element={<RoleAssessmentStageTwoPartTwoExpertiseIntro />} />
+            <Route path="interview/stage-2/part-2/interview-1" element={<RoleAssessmentStageTwoChildMalnutrition />} />
+            <Route path="interview/stage-2/part-2/interview-2" element={<RoleAssessmentStageTwoMalariaProtocol />} />
+            <Route path="interview/stage-2/part-2/interview-3" element={<RoleAssessmentStageTwoColdChain />} />
+            <Route path="interview/stage-2/part-2/complete" element={<RoleAssessmentStageTwoPartTwoExpertiseComplete />} />
             
             {/* Part 3: Reasoning */}
-            <Route path="assessment/stage-2/part-3/intro" element={<RoleAssessmentStageTwoPartTwoIntro />} />
-            <Route path="assessment/stage-2/part-3/interview-1" element={<RoleAssessmentStageTwoReasoning />} />
-            <Route path="assessment/stage-2/part-3/interview-2" element={<RoleAssessmentStageTwoAppraisal />} />
-            <Route path="assessment/stage-2/part-3/interview-3" element={<RoleAssessmentStageTwoInterpretation />} />
-            <Route path="assessment/stage-2/part-3/complete" element={<RoleAssessmentStageTwoPartTwoComplete />} />
+            <Route path="interview/stage-2/part-3/intro" element={<RoleAssessmentStageTwoPartTwoIntro />} />
+            <Route path="interview/stage-2/part-3/interview-1" element={<RoleAssessmentStageTwoReasoning />} />
+            <Route path="interview/stage-2/part-3/interview-2" element={<RoleAssessmentStageTwoAppraisal />} />
+            <Route path="interview/stage-2/part-3/interview-3" element={<RoleAssessmentStageTwoInterpretation />} />
+            <Route path="interview/stage-2/part-3/complete" element={<RoleAssessmentStageTwoPartTwoComplete />} />
             
             {/* Part 4: Simulation */}
-            <Route path="assessment/stage-2/part-4/intro" element={<RoleAssessmentStageTwoPartThreeIntro />} />
-            <Route path="assessment/stage-2/part-4/simulation-1" element={<RoleAssessmentStageTwoPartThreeSimulationOne />} />
-            <Route path="assessment/stage-2/part-4/simulation-2" element={<RoleAssessmentStageTwoPartThreeSimulationTwo />} />
-            <Route path="assessment/stage-2/part-4/simulation-3" element={<RoleAssessmentStageTwoPartThreeSimulationThree />} />
-            <Route path="assessment/stage-2/part-4/simulation-4" element={<RoleAssessmentStageTwoPartThreeSimulationFour />} />
+            <Route path="interview/stage-2/part-4/intro" element={<RoleAssessmentStageTwoPartThreeIntro />} />
+            <Route path="interview/stage-2/part-4/simulation-1" element={<RoleAssessmentStageTwoPartThreeSimulationOne />} />
+            <Route path="interview/stage-2/part-4/simulation-2" element={<RoleAssessmentStageTwoPartThreeSimulationTwo />} />
+            <Route path="interview/stage-2/part-4/simulation-3" element={<RoleAssessmentStageTwoPartThreeSimulationThree />} />
+            <Route path="interview/stage-2/part-4/simulation-4" element={<RoleAssessmentStageTwoPartThreeSimulationFour />} />
             
-            <Route path="assessment/stage-2/analyzing" element={<RoleAssessmentStageTwoAnalyzing />} />
-            <Route path="assessment/stage-2/results" element={<RoleAssessmentStageTwoResults />} />
-            <Route path="assessment/stage-3" element={<RoleAssessmentStageThreeIntro />} />
-            <Route path="assessment/stage-3/video" element={<RoleAssessmentStageThreeVideo />} />
-            <Route path="assessment/stage-3/complete" element={<RoleAssessmentStageThreeComplete />} />
-            <Route path="assessment/stage-4/review" element={<RoleAssessmentStageFourReview />} />
-            <Route path="assessment/stage-4/outcome" element={<RoleAssessmentStageFourOutcome />} />
-            <Route path="assessment/resume" element={<RoleAssessmentResumeGate />} />
+            <Route path="interview/stage-2/analyzing" element={<RoleAssessmentStageTwoAnalyzing />} />
+            <Route path="interview/stage-2/results" element={<RoleAssessmentStageTwoResults />} />
+            <Route path="interview/stage-3" element={<RoleAssessmentStageThreeIntro />} />
+            <Route path="interview/stage-3/video" element={<RoleAssessmentStageThreeVideo />} />
+            <Route path="interview/stage-3/complete" element={<RoleAssessmentStageThreeComplete />} />
+            <Route path="interview/stage-4/review" element={<RoleAssessmentStageFourReview />} />
+            <Route path="interview/stage-4/outcome" element={<RoleAssessmentStageFourOutcome />} />
+            <Route path="interview/resume" element={<RoleAssessmentResumeGate />} />
+            {/* Legacy /assessment/* URLs → /interview/* */}
+            <Route
+              path="assessment/*"
+              element={<AssessmentToInterviewRedirect />}
+            />
             <Route path="match/blocked" element={<RoleProfileMatchBlocked />} />
             <Route path="match/upskill" element={<RoleProfileMatchUpskill />} />
             <Route path="match/cv-unavailable" element={<RoleProfileMatchCvUnavailable />} />

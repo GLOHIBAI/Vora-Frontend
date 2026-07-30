@@ -54,7 +54,7 @@ const RoleAssessmentStageFourReview: React.FC = () => {
   }, []);
 
   const handleBackToDashboard = () => {
-    navigate(`/onboarding/talent/${roleSlug}/assessment/journey`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/journey`);
   };
 
   return (
@@ -272,7 +272,7 @@ const RoleAssessmentStageFourReview: React.FC = () => {
           </button>
           
           <button 
-            onClick={() => navigate(`/onboarding/talent/${roleSlug}/assessment/stage-4/outcome`)}
+            onClick={() => navigate(`/onboarding/talent/${roleSlug}/interview/stage-4/outcome`)}
             className="bg-[#0047CC] text-white border-none rounded-[10px] p-[13px_26px] text-[14px] font-[700] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] transition-all"
           >
             Preview outcome (demo)
@@ -334,7 +334,7 @@ const RoleAssessmentStageFourReview: React.FC = () => {
                 onClick={() => {
                   setShowDemoOutcomeModal(false);
                   toast.success('Hiring offer accepted! Proceeding to outcome page.');
-                  navigate(`/onboarding/talent/${roleSlug}/assessment/stage-4/outcome`);
+                  navigate(`/onboarding/talent/${roleSlug}/interview/stage-4/outcome`);
                 }}
                 className="bg-[#0047CC] text-white border-none rounded-[10px] py-[11px] px-6 text-[13.5px] font-[700] cursor-pointer hover:bg-[#344DA1] shadow-[0_4px_14px_rgba(0,71,204,0.2)]"
               >

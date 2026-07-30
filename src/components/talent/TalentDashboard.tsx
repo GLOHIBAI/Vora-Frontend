@@ -67,7 +67,7 @@ const TalentDashboard: React.FC = () => {
               </div>
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => navigate(`/onboarding/talent/${activeRoleSlug}/assessment/stage-4/outcome`)}
+                  onClick={() => navigate(`/onboarding/talent/${activeRoleSlug}/interview/stage-4/outcome`)}
                   className="bg-white text-[#1D871D] hover:bg-gray-100 rounded-xl px-5 py-2.5 text-[13px] font-bold transition-all shadow-md shrink-0 cursor-pointer"
                 >
                   View Offer Details
@@ -95,7 +95,7 @@ const TalentDashboard: React.FC = () => {
                   {isStage3Completed ? 'Stage 4 · Review' : isStage2Completed ? 'Stage 3 · Video interview' : isStage2Unlocked ? 'Stage 2 · Professional' : 'Stage 1 · Getting to know you'}
                 </span>
                 <button
-                  onClick={() => navigate(`/onboarding/talent/${activeRoleSlug}/assessment/journey`)}
+                  onClick={() => navigate(`/onboarding/talent/${activeRoleSlug}/interview/journey`)}
                   className="bg-white text-[#0047CC] hover:bg-gray-100 rounded-xl px-5 py-2.5 text-[13px] font-bold transition-all shadow-md shrink-0 cursor-pointer"
                 >
                   Resume Journey

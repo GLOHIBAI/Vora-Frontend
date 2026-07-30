@@ -46,17 +46,17 @@ const RoleAssessmentStageTwoPartOneIntro: React.FC = () => {
     
     // Redirect if they have already unlocked subsequent parts
     if (hasUnlockedPart4) {
-      navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2/part-4/intro`, { replace: true });
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/part-4/intro`, { replace: true });
     } else if (hasUnlockedPart3) {
-      navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2/part-3/intro`, { replace: true });
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/part-3/intro`, { replace: true });
     } else if (hasUnlockedPart2) {
-      navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2/part-2/intro`, { replace: true });
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`, { replace: true });
     }
   }, [hasUnlockedPart2, hasUnlockedPart3, hasUnlockedPart4, navigate, roleSlug]);
 
   const handleBegin = () => {
     toast.success('Starting Stage 2 Part 1...');
-    navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2/part-1/interview-1`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/part-1/interview-1`);
   };
 
   if (activeAssessmentId && (isLoading || !pillarIntroData)) {
@@ -283,7 +283,7 @@ const RoleAssessmentStageTwoPartOneIntro: React.FC = () => {
               {/* Buttons Row */}
               <div className="flex gap-[9px] w-full">
                 <button
-                  onClick={() => navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2`)}
+                  onClick={() => navigate(`/onboarding/talent/${roleSlug}/interview/stage-2`)}
                   className="flex-1 bg-white text-[#4A4A4A] border border-[#E6E6E6] rounded-[10px] p-[12px_20px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] transition-all font-sans"
                 >
                   {stageOverviewLabel}

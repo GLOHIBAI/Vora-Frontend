@@ -318,7 +318,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
       }
     }
     toast.success('Progress saved successfully.');
-    navigate(`/onboarding/talent/${roleSlug}/assessment/journey`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/journey`);
   };
 
   const formatTime = (totalSeconds: number) => {
@@ -412,7 +412,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
             </button>
             <button
               type="button"
-              onClick={() => navigate(`/onboarding/talent/${roleSlug}/assessment/journey`)}
+              onClick={() => navigate(`/onboarding/talent/${roleSlug}/interview/journey`)}
               className="bg-white text-[#4A4A4A] border border-[#E6E6E6] rounded-[10px] p-[12px_20px] text-[13.5px] font-[700] cursor-pointer font-sans"
             >
               Back to journey

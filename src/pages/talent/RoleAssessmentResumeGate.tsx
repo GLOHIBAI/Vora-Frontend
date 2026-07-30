@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import AssessmentHeader from '../../components/talent/AssessmentHeader';
 import StageRail from '../../components/talent/StageRail';
 import FullPageSpinner from '../../components/common/FullPageSpinner';
 import { useAuth } from '../../context/AuthContext';
 import { useGate1ResumePresentation } from '../../hooks/useGate1ResumePresentation';
+import { useGate2ResumePresentation } from '../../hooks/useGate2ResumePresentation';
 import { formatSecondsAsHms } from '../../utils/assessmentSession';
 import { isGate1ApiEnabled, resolveGate1AssessmentId } from '../../config/gate1Api';
 import { useGetPreAssessmentReadinessQuery } from '../../services/queries/talent';
@@ -60,10 +62,17 @@ interface StageConfig {
   resumePath: string;
   showRegenerationNotice: boolean;
   rulesList: { text: string; icon: React.FC<{ className?: string }> }[];
+  ctaLabel?: string;
 }
 
 const STAGE1_RULES = [
   { text: 'Each section has its own timed window where applicable', icon: ClockIcon },
+  { text: "Don't switch tabs. Doing so auto-submits in 3 seconds", icon: StopIcon },
+  { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon },
+];
+
+const STAGE2_RULES = [
+  { text: 'Each interview has its own timed window', icon: ClockIcon },
   { text: "Don't switch tabs. Doing so auto-submits in 3 seconds", icon: StopIcon },
   { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon },
 ];
@@ -130,85 +139,59 @@ const RoleAssessmentResumeGate: React.FC = () => {
     return 1;
   }, [readiness, isStage2Unlocked, isStage2Completed, isStage3Unlocked, isStage3Completed, gate1InProgress, gate1View]);
 
+  const {
+    viewModel: gate2View,
+    resumeState: gate2Resume,
+    isLoading: gate2Loading,
+    locked: gate2Locked,
+  } = useGate2ResumePresentation(roleSlug, currentStage === 2);
+
   useEffect(() => {
     if (currentStage === 1 && !assessmentId && isGate1ApiEnabled() && !gate1Loading) {
-      navigate(`/onboarding/talent/${roleSlug}/assessment/stage-1`, { replace: true });
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-1/intro`, { replace: true });
     }
   }, [currentStage, assessmentId, roleSlug, navigate, gate1Loading]);
 
-  const staticConfigs: Record<number, StageConfig> = useMemo(() => {
-    const isP4Unlocked = localStorage.getItem('vora_stage2_part4_unlocked') === 'true';
-    const isP3Unlocked = localStorage.getItem('vora_stage2_part3_unlocked') === 'true';
-    const isP2Unlocked = localStorage.getItem('vora_stage2_part2_unlocked') === 'true';
-
-    let crumbs = ['Stage 2', 'Part 1 · Knowledge', 'Interview 1 of 3'];
-    let completedValue = '0 / 4';
-    let completedSub = 'parts in Stage 2';
-    let resumePath = `/onboarding/talent/${roleSlug}/assessment/stage-2/part-1/interview-1`;
-
-    if (isP4Unlocked) {
-      crumbs = ['Stage 2', 'Part 4 · Simulation', 'Intro'];
-      completedValue = '3 / 4';
-      resumePath = `/onboarding/talent/${roleSlug}/assessment/stage-2/part-4/intro`;
-    } else if (isP3Unlocked) {
-      crumbs = ['Stage 2', 'Part 3 · Reasoning', 'Intro'];
-      completedValue = '2 / 4';
-      resumePath = `/onboarding/talent/${roleSlug}/assessment/stage-2/part-3/intro`;
-    } else if (isP2Unlocked) {
-      crumbs = ['Stage 2', 'Part 2 · Expertise', 'Intro'];
-      completedValue = '1 / 4';
-      resumePath = `/onboarding/talent/${roleSlug}/assessment/stage-2/part-2/intro`;
+  useEffect(() => {
+    if (currentStage !== 2 || gate2Loading || !gate2Resume) return;
+    if (gate2Resume.nextStep === 'GATE2_COMPLETE' || gate2Resume.gate2Complete) {
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/results`, { replace: true });
     }
+  }, [currentStage, gate2Loading, gate2Resume, navigate, roleSlug]);
 
-    return {
-      2: {
-        activeStepNum: 2,
-        welcomeText: 'You paused mid-way through Stage 2. Your timer kept running, but everything else is exactly where you left it.',
-        pausedTimeText: 'Paused recently',
-        positionTitle: 'Professional dimension',
-        positionDesc: "You'd worked through some of the questions when you tapped Save and finish later.",
-        crumbs,
-        deadlineLabel: 'Stage 2 deadline',
-        deadlineRemainingSeconds: null,
-        deadlineTotalFormatted: '72:00:00',
-        interviewTimerLabel: 'Interview timer',
-        interviewTimerValue: '10:00',
-        completedLabel: 'Completed so far',
-        completedValue,
-        completedSub,
-        resumePath,
-        showRegenerationNotice: true,
-        rulesList: [
-          { text: 'Each interview has its own 10 to 12 minute timer', icon: ClockIcon },
-          { text: "Don't switch tabs. Doing so auto-submits in 3 seconds", icon: StopIcon },
-          { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon },
-        ],
-      },
-      3: {
-        activeStepNum: 3,
-        welcomeText: 'You paused mid-way through Stage 3. Your timer kept running, but everything else is exactly where you left it.',
-        pausedTimeText: 'Paused recently',
-        positionTitle: 'Video Interview responses',
-        positionDesc: "You'd submitted some video answers when you tapped Save and finish later.",
-        crumbs: ['Stage 3', 'How you show up', 'Video responses'],
-        deadlineLabel: 'Stage 3 deadline',
-        deadlineRemainingSeconds: null,
-        deadlineTotalFormatted: '48:00:00',
-        interviewTimerLabel: 'Response timer',
-        interviewTimerValue: '3:00',
-        completedLabel: 'Completed so far',
-        completedValue: '0 / 5',
-        completedSub: 'questions recorded',
-        resumePath: `/onboarding/talent/${roleSlug}/assessment/stage-3/video`,
-        showRegenerationNotice: true,
-        rulesList: [
-          { text: 'Each response has a 30s think time and 3m record limit', icon: ClockIcon },
-          { text: "Don't switch tabs. Doing so auto-submits in 3 seconds", icon: StopIcon },
-          { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon },
-        ],
-      },
-    };
-  }, [roleSlug]);
+  useEffect(() => {
+    if (currentStage === 2 && gate2Locked) {
+      toast.error('Stage 2 is still locked. Finish Stage 1 first.');
+      navigate(`/onboarding/talent/${roleSlug}/interview/journey`, { replace: true });
+    }
+  }, [currentStage, gate2Locked, navigate, roleSlug]);
+
+  const stage3Config: StageConfig = useMemo(
+    () => ({
+      activeStepNum: 3,
+      welcomeText: 'You paused mid-way through Stage 3. Your timer kept running, but everything else is exactly where you left it.',
+      pausedTimeText: 'Paused recently',
+      positionTitle: 'Video Interview responses',
+      positionDesc: "You'd submitted some video answers when you tapped Save and finish later.",
+      crumbs: ['Stage 3', 'How you show up', 'Video responses'],
+      deadlineLabel: 'Stage 3 deadline',
+      deadlineRemainingSeconds: null,
+      deadlineTotalFormatted: '48:00:00',
+      interviewTimerLabel: 'Response timer',
+      interviewTimerValue: '3:00',
+      completedLabel: 'Completed so far',
+      completedValue: '0 / 5',
+      completedSub: 'questions recorded',
+      resumePath: `/onboarding/talent/${roleSlug}/interview/stage-3/video`,
+      showRegenerationNotice: true,
+      rulesList: [
+        { text: 'Each response has a 30s think time and 3m record limit', icon: ClockIcon },
+        { text: "Don't switch tabs. Doing so auto-submits in 3 seconds", icon: StopIcon },
+        { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon },
+      ],
+    }),
+    [roleSlug],
+  );
 
   const config: StageConfig = useMemo(() => {
     if (currentStage === 1 && gate1View) {
@@ -251,14 +234,63 @@ const RoleAssessmentResumeGate: React.FC = () => {
         completedSub: 'screens in Stage 1',
         resumePath: isGate1ApiEnabled()
           ? `/onboarding/talent/${roleSlug}/interview/stage-1`
-          : `/onboarding/talent/${roleSlug}/assessment/session-1/situational`,
+          : `/onboarding/talent/${roleSlug}/interview/session-1/situational`,
         showRegenerationNotice: false,
         rulesList: STAGE1_RULES,
       };
     }
 
-    return staticConfigs[currentStage] ?? staticConfigs[2];
-  }, [currentStage, gate1View, roleSlug, staticConfigs]);
+    if (currentStage === 2 && gate2View) {
+      const ctaLabel =
+        gate2View.nextStep === 'PILLAR_INTRO' || gate2View.nextStep === 'START_PILLAR'
+          ? 'Continue'
+          : 'Resume interview';
+      return {
+        activeStepNum: 2,
+        welcomeText: gate2View.welcomeText,
+        pausedTimeText: gate2View.pausedTimeText,
+        positionTitle: gate2View.positionTitle,
+        positionDesc: gate2View.positionDesc,
+        crumbs: gate2View.crumbs,
+        deadlineLabel: gate2View.deadlineLabel,
+        deadlineRemainingSeconds: gate2View.deadlineRemainingSeconds,
+        deadlineTotalFormatted: gate2View.deadlineTotalFormatted,
+        interviewTimerLabel: gate2View.interviewTimerLabel,
+        interviewTimerValue: gate2View.interviewTimerValue,
+        completedLabel: gate2View.completedLabel,
+        completedValue: gate2View.completedValue,
+        completedSub: gate2View.completedSub,
+        resumePath: gate2View.resumePath,
+        showRegenerationNotice: gate2View.showRegenerationNotice,
+        rulesList: STAGE2_RULES,
+        ctaLabel,
+      };
+    }
+
+    if (currentStage === 2) {
+      return {
+        activeStepNum: 2,
+        welcomeText: 'Welcome back to Stage 2. Your progress is saved.',
+        pausedTimeText: 'Paused recently',
+        positionTitle: 'Professional dimension',
+        positionDesc: 'Resume to continue Stage 2.',
+        crumbs: ['Stage 2', 'Professional dimension'],
+        deadlineLabel: 'Stage 2 deadline',
+        deadlineRemainingSeconds: null,
+        deadlineTotalFormatted: '72:00:00',
+        interviewTimerLabel: 'Interview timer',
+        interviewTimerValue: '—',
+        completedLabel: 'Completed so far',
+        completedValue: '—',
+        completedSub: 'parts in Stage 2',
+        resumePath: `/onboarding/talent/${roleSlug}/interview/stage-2`,
+        showRegenerationNotice: false,
+        rulesList: STAGE2_RULES,
+      };
+    }
+
+    return stage3Config;
+  }, [currentStage, gate1View, gate2View, roleSlug, stage3Config]);
 
   const [timeLeft, setTimeLeft] = useState<number | null>(config.deadlineRemainingSeconds);
 
@@ -279,10 +311,22 @@ const RoleAssessmentResumeGate: React.FC = () => {
   };
 
   const handleResume = () => {
-    navigate(config.resumePath);
+    // Resume-state is read-only. Destination pages call POST .../gates/2/start.
+    navigate(config.resumePath, {
+      state:
+        currentStage === 2 && gate2Resume
+          ? {
+              gate2Resume,
+              fromResumeGate: true,
+            }
+          : undefined,
+    });
   };
 
-  const isPageLoading = (currentStage === 1 && gate1Loading && !gate1View) || isReadinessLoading;
+  const isPageLoading =
+    isReadinessLoading ||
+    (currentStage === 1 && gate1Loading && !gate1View) ||
+    (currentStage === 2 && gate2Loading && !gate2View && !gate2Locked);
 
   if (isPageLoading) {
     return (
@@ -379,7 +423,9 @@ const RoleAssessmentResumeGate: React.FC = () => {
                 <div className="text-[11px] text-[#4A4A4A] font-[600] mt-[2px]">
                   {timeLeft != null
                     ? `remaining out of ${config.deadlineTotalFormatted}`
-                    : '48-hour assessment window'}
+                    : currentStage === 2
+                      ? 'Stage 2 assessment window'
+                      : '48-hour assessment window'}
                 </div>
               </div>
 
@@ -411,14 +457,14 @@ const RoleAssessmentResumeGate: React.FC = () => {
             </div>
 
             {config.showRegenerationNotice ? (
-              <div className="bg-gradient-to-b from-[#F0F4FF] to-white border border-[#387DFF]/30 rounded-[12px] p-[16px_18px] mb-[24px] flex gap-[12px] items-start animate-pulse">
+              <div className="bg-gradient-to-b from-[#F0F4FF] to-white border border-[#387DFF]/30 rounded-[12px] p-[16px_18px] mb-[24px] flex gap-[12px] items-start">
                 <InfoIcon className="w-[22px] h-[22px] text-[#0047CC] shrink-0 mt-[1px]" />
                 <div>
                   <div className="text-[14px] font-[800] text-[#0047CC] mb-[5px]">
-                    Your questions have been regenerated
+                    Your questions may be regenerated
                   </div>
                   <div className="text-[13px] text-[#182348] leading-[1.6]">
-                    Each time you pause and resume, the system generates a <strong>fresh set of questions</strong> on the same competency. This means you can&apos;t use the break to look things up. Same difficulty, same depth, different questions. <strong>It&apos;s by design.</strong>
+                    Each time you pause and resume, the system can generate a <strong>fresh set of questions</strong> on the same competency. Same difficulty, same depth, different questions. <strong>It&apos;s by design.</strong>
                   </div>
                 </div>
               </div>
@@ -453,7 +499,7 @@ const RoleAssessmentResumeGate: React.FC = () => {
                 onClick={handleResume}
                 className="bg-[#0047CC] hover:bg-[#344DA1] text-white border-none rounded-xl p-[14px_24px] text-[14px] font-[700] cursor-pointer flex items-center justify-center gap-[8px] transition-all shadow-[0_4px_14px_rgba(0,71,204,0.28)] w-full sm:w-auto hover:translate-y-[-1px] hover:shadow-[0_6px_18px_rgba(0,71,204,0.36)]"
               >
-                Resume interview
+                {config.ctaLabel || 'Resume interview'}
               </button>
             </div>
           </div>

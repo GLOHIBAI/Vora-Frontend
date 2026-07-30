@@ -45,7 +45,7 @@ const RoleAssessmentStageFourOutcome: React.FC = () => {
   const companyInitials = appliedRole?.companyInitials || 'RA';
 
   const handleBackToDashboard = () => {
-    navigate(`/onboarding/talent/${roleSlug}/assessment/journey`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/journey`);
   };
 
   const handleAcceptOffer = () => {

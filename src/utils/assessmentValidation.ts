@@ -236,11 +236,18 @@ export const isItemAnswerComplete = (item: AssessmentItem, value: AnswerValue | 
     return reasonMeetsRequirement(item, prose, typeStr, true);
   }
 
-  // 9. Highlight — needs at least one selection + reason min words
+  // 9. Highlight — single choice + reason min words
   if (typeStr === 'highlight') {
+    if (typeof value === 'string') return value.trim().length > 0;
     if (!isRecord(value)) return false;
-    const selectedIds = Array.isArray((value as any).selectedIds) ? (value as any).selectedIds : [];
-    if (selectedIds.length === 0) return false;
+    const choiceVal = String(
+      (typeof (value as any).choice === 'string' && (value as any).choice) ||
+        (value as any).optionId ||
+        (Array.isArray((value as any).selectedIds) && (value as any).selectedIds[0]) ||
+        (Array.isArray((value as any).choice) && (value as any).choice[0]) ||
+        '',
+    ).trim();
+    if (!choiceVal) return false;
     return reasonMeetsRequirement(item, value, typeStr, true);
   }
 

@@ -1,11 +1,24 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import VoraLogo from '../../components/common/VoraLogo';
 import Tag from '../../components/common/Tag';
 import StageRail from '../../components/talent/StageRail';
 import { useReviewSummaryQuery, useSubmitGateMutation, useStartAssessmentScreenMutation } from '../../services/queries/assessments';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
 import { parseReviewSummaryEntries, unwrapAssessmentData } from '../../utils/assessmentSession';
+
+const GATE1_SUBMIT_MAX_ATTEMPTS = 20;
+const GATE1_SUBMIT_RETRY_MS = 2500;
+
+const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+
+const isScoringInProgressError = (err: unknown): boolean => {
+  const e = err as { status?: number; message?: string } | null;
+  if (e?.status === 409) return true;
+  const msg = (e?.message || '').toLowerCase();
+  return msg.includes('still being scored');
+};
 
 const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -56,20 +69,50 @@ const RoleAssessmentGate1Review: React.FC = () => {
 
   const submitGate = useSubmitGateMutation();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isWaitingForScore, setIsWaitingForScore] = useState(false);
 
   const handleBack = () => {
     navigate(-1);
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting || !assessmentId) return;
     setIsSubmitting(true);
+    setIsWaitingForScore(false);
+
     try {
-      await submitGate.mutateAsync({ assessmentId, gate: 1 });
-      navigate(`/onboarding/talent/${roleSlug}/assessment/gate-1/verdict`);
+      for (let attempt = 1; attempt <= GATE1_SUBMIT_MAX_ATTEMPTS; attempt++) {
+        try {
+          await submitGate.mutateAsync({
+            assessmentId,
+            gate: 1,
+            suppressErrorToast: true,
+          });
+          navigate(`/onboarding/talent/${roleSlug}/interview/gate-1/verdict`);
+          return;
+        } catch (err) {
+          const canRetry =
+            isScoringInProgressError(err) && attempt < GATE1_SUBMIT_MAX_ATTEMPTS;
+          if (!canRetry) {
+            throw err;
+          }
+          setIsWaitingForScore(true);
+          await sleep(GATE1_SUBMIT_RETRY_MS);
+        }
+      }
     } catch (err) {
       console.error(err);
+      const message =
+        (err as { message?: string } | null)?.message ||
+        'Failed to submit Stage 1. Please try again.';
+      toast.error(
+        isScoringInProgressError(err)
+          ? 'Still scoring your answers. Please try again in a moment.'
+          : message,
+      );
     } finally {
       setIsSubmitting(false);
+      setIsWaitingForScore(false);
     }
   };
 
@@ -96,6 +139,12 @@ const RoleAssessmentGate1Review: React.FC = () => {
     }
     return { prefix: '', rest: summary };
   };
+
+  const submitLabel = isWaitingForScore
+    ? 'Scoring your answers…'
+    : isSubmitting
+      ? 'Submitting…'
+      : 'Submit Stage 1';
 
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col relative">
@@ -170,6 +219,21 @@ const RoleAssessmentGate1Review: React.FC = () => {
               </div>
             )}
 
+            {isWaitingForScore && (
+              <div className="bg-[#EBF6FF] border-[1.5px] border-[#387DFF]/50 rounded-[14px] p-[16px_18px] flex gap-[12px] items-start mb-[22px]">
+                <svg className="animate-spin h-[22px] w-[22px] text-[#0047CC] shrink-0 mt-[1px]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <div>
+                  <div className="text-[14px] font-[800] text-[#0047CC] mb-[3px]">Scoring in progress</div>
+                  <div className="text-[13px] text-[#182348] opacity-85 leading-[1.5]">
+                    One or more Stage 1 screens are still being scored. We&apos;ll submit automatically as soon as they&apos;re ready.
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Summary Card List */}
             <div className="bg-white border-[1.5px] border-[#E6E6E6] rounded-[16px] overflow-hidden mb-[18px]">
               {sjtEntries.length === 0 ? (
@@ -230,10 +294,10 @@ const RoleAssessmentGate1Review: React.FC = () => {
           <button
             type="button"
             disabled={isLoading || isSubmitting || !reviewData.canSubmit}
-            onClick={handleSubmit}
+            onClick={() => void handleSubmit()}
             className="bg-[#0047CC] text-white border-none rounded-xl p-[12px_24px] text-[14px] font-[700] cursor-pointer inline-flex items-center justify-center gap-2.5 transition-all shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] disabled:bg-[#E6E6E6] disabled:text-white disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none w-full sm:w-auto"
           >
-            {isSubmitting ? 'Submitting…' : 'Submit Stage 1'}
+            {submitLabel}
           </button>
         </div>
       </footer>

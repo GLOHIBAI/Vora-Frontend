@@ -735,3 +735,69 @@ export interface Gate2PillarIntroResponse {
   };
 }
 
+/** Gate 2 resume-state nextStep — source of truth for leave-off / resume routing. */
+export type Gate2ResumeNextStep =
+  | "PILLAR_INTRO"
+  | "START_PILLAR"
+  | "RESUME_PILLAR"
+  | "GATE2_COMPLETE";
+
+export interface Gate2ResumeNextCall {
+  method: string;
+  path: string;
+  body?: Record<string, unknown>;
+}
+
+export interface Gate2ResumeNextCalls {
+  pillarIntro?: Gate2ResumeNextCall;
+  start?: Gate2ResumeNextCall;
+  items?: Gate2ResumeNextCall;
+  draft?: Gate2ResumeNextCall;
+}
+
+/**
+ * Response from GET /assessments/:assessmentId/gates/2/resume-state.
+ * Branch UI and Resume CTA on `nextStep` only — do not invent pillar order client-side.
+ */
+export interface Gate2ResumeState {
+  schemaVersion?: number;
+  assessmentId?: string;
+  gate?: 2 | number;
+  gateName?: string;
+  nextPillar: Gate2PillarKey | string | null;
+  pillarLabel?: string | null;
+  part?: number | null;
+  partLabel?: string | null;
+  pillarIntroTitle?: string | null;
+  screenTitle?: string | null;
+  completedPillars: Array<Gate2PillarKey | string>;
+  pillars: Array<Gate2PillarKey | string>;
+  gate2Complete: boolean;
+  nextStep: Gate2ResumeNextStep;
+  componentId: string | null;
+  pillar: Gate2PillarKey | string | null;
+  items: AssessmentItem[];
+  responses: ResponsesMap;
+  progress?: {
+    current?: number;
+    total?: number;
+    answered?: number;
+  } | null;
+  window?: GateWindowInfo | null;
+  interview?: {
+    index?: number;
+    total?: number;
+  } | null;
+  timers?: {
+    gateLimitSecs?: number;
+    interviewLimitSecs?: number;
+  } | null;
+  inProgress?: {
+    pillar?: Gate2PillarKey | string;
+    componentId?: string;
+    part?: number;
+  } | null;
+  nextCalls: Gate2ResumeNextCalls | null;
+  pausedAt?: string;
+}
+

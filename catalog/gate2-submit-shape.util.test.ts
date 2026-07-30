@@ -31,13 +31,18 @@ assertEqual(
 // 3. choice + optional reason (allocate, data, hotspot, etc.)
 assertEqual(
   formatGate2Answer('highlight', { selectedIds: ['a', 'd'], reason: 'Critical point' }),
-  { choice: ['a', 'd'], reason: 'Critical point' },
-  'highlight selectedIds + reason → choice array'
+  { choice: 'd', reason: 'Critical point' },
+  'highlight selectedIds + reason → single choice string'
 );
 assertEqual(
   formatGate2Answer('highlight', { choice: 'a', reason: '' }),
-  { choice: ['a'] },
+  'a',
   'highlight single choice without reason'
+);
+assertEqual(
+  formatGate2Answer('highlight', { choice: 'b', reason: 'Bad line' }),
+  { choice: 'b', reason: 'Bad line' },
+  'highlight choice + reason object'
 );
 assertEqual(
   formatGate2Answer('hotspot', { choice: 'a', reason: 'Critical point' }),

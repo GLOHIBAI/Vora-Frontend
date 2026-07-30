@@ -135,7 +135,7 @@ const RoleAssessmentSessionCognitive: React.FC = () => {
   };
 
   const handleContinueNextPart = () => {
-    navigate(`/onboarding/talent/${roleSlug}/assessment/session-1/reading`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/session-1/reading`);
   };
 
   const handleSave = () => {

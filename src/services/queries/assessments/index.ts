@@ -435,9 +435,12 @@ export const useSubmitGateMutation = () => {
     mutationFn: ({
       assessmentId,
       gate = 1,
+      suppressErrorToast = false,
     }: {
       assessmentId: string;
       gate?: number;
+      /** When true, caller handles toasts (e.g. 409 scoring retry). */
+      suppressErrorToast?: boolean;
     }) => {
       if (isGate1MockSession(assessmentId)) {
         return Promise.resolve({
@@ -464,6 +467,7 @@ export const useSubmitGateMutation = () => {
       return apiClient.post<any>({
         url: `/assessments/${assessmentId}/gates/${gate}/submit`,
         auth: true,
+        suppressErrorToast,
       });
     },
     onSuccess: (_data, { assessmentId, gate = 1 }) => {

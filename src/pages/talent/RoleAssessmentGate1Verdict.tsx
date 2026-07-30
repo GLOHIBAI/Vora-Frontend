@@ -60,11 +60,11 @@ const RoleAssessmentGate1Verdict: React.FC = () => {
 
     if (isPassed) {
       localStorage.setItem('vora_stage2_unlocked', 'true');
-      navigate(`/onboarding/talent/${roleSlug}/assessment/session-2/results`, { replace: true });
+      navigate(`/onboarding/talent/${roleSlug}/interview/session-2/results`, { replace: true });
       return;
     }
 
-    navigate(`/onboarding/talent/${roleSlug}/assessment/session-2/outcome`, { replace: true });
+    navigate(`/onboarding/talent/${roleSlug}/interview/session-2/outcome`, { replace: true });
   }, [verdict, roleSlug, navigate]);
 
   const isGeneratingOrPending = !verdict || verdict.status === 'generating' || verdict.verdict === 'pending';

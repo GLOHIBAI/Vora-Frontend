@@ -11,10 +11,10 @@ const MatchResultAssessmentCTA: React.FC = () => {
 
   const handleAssessmentClick = () => {
     if (roleSlug) {
-      navigate(`/onboarding/talent/${roleSlug}/assessment/asks`, { state: location.state });
+      navigate(`/onboarding/talent/${roleSlug}/interview/asks`, { state: location.state });
     } else {
       // Fallback just in case
-      navigate('/onboarding/talent/assessment/asks', { state: location.state });
+      navigate('/onboarding/talent/interview/asks', { state: location.state });
     }
   };
 

@@ -285,7 +285,7 @@ const RoleEmployerAsks: React.FC = () => {
   useEffect(() => {
     if (!isRoleLoading && !isReadinessLoading && readiness) {
       if (!isPreAssessmentRequired || isPreAssessmentComplete) {
-        navigate(`/onboarding/talent/${roleSlug}/assessment/journey`, { replace: true });
+        navigate(`/onboarding/talent/${roleSlug}/interview/journey`, { replace: true });
       }
     }
   }, [isRoleLoading, isReadinessLoading, readiness, isPreAssessmentRequired, isPreAssessmentComplete, navigate, roleSlug]);
@@ -386,7 +386,7 @@ const RoleEmployerAsks: React.FC = () => {
         }
       });
       toast.success("Pre-assessment finalized successfully!");
-      navigate(`/onboarding/talent/${roleSlug}/assessment/journey`);
+      navigate(`/onboarding/talent/${roleSlug}/interview/journey`);
     } catch (err: any) {
       toast.error(err?.message || "Failed to finalize pre-assessment");
       setIsSubmitting(false);

@@ -42,7 +42,7 @@ export interface MockAssessmentScreenViewProps {
   chrome: MockAssessmentScreenChrome;
   intro: MockAssessmentScreenIntro;
   items: AssessmentItem[];
-  /** Path after /onboarding/talent/:roleSlug/assessment/ */
+  /** Path after /onboarding/talent/:roleSlug/interview/ */
   nextPath: string;
   footerHint?: string;
   /** Optional reading passage or other content above items */
@@ -73,7 +73,7 @@ const MockAssessmentScreenView: React.FC<MockAssessmentScreenViewProps> = ({
       onContinue();
       return;
     }
-    navigate(`/onboarding/talent/${roleSlug}/assessment/${nextPath}`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/${nextPath}`);
   };
 
   const {

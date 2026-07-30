@@ -21,11 +21,11 @@ const RoleAssessmentStageTwoPartOneComplete: React.FC = () => {
     (location.state as { firstName?: string } | null)?.firstName || user?.firstName || 'there';
 
   const handleBeginPart2 = () => {
-    navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2/part-2/intro`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`);
   };
 
   const handleContinueLater = () => {
-    navigate(`/onboarding/talent/${roleSlug}/assessment/journey`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/journey`);
   };
 
   return (

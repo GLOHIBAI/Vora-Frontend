@@ -16,11 +16,11 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
 
   const handleBegin = () => {
-    navigate(`/onboarding/talent/${roleSlug}/assessment/stage-3/video`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/stage-3/video`);
   };
 
   const handleNotNow = () => {
-    navigate(`/onboarding/talent/${roleSlug}/assessment/journey`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/journey`);
   };
 
   return (

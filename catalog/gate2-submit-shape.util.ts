@@ -93,7 +93,6 @@ export function formatGate2Answer(
     case 'dashboard':
     case 'chartread':
     case 'hotspot':
-    // highlight is multi-select — handled below
     case 'nextq':
     case 'diagnose':
     case 'visualspot':
@@ -117,28 +116,33 @@ export function formatGate2Answer(
       return String(rawAnswer);
     }
 
-    // Multi-line highlight: { choice: string[], reason?: string }
+    // highlight: option id string OR { choice: "<options[].id>", reason?: "..." }
     case 'highlight': {
       if (typeof rawAnswer === 'object' && !Array.isArray(rawAnswer)) {
-        const selectedIds = Array.isArray(rawAnswer.selectedIds)
+        const fromSelected = Array.isArray(rawAnswer.selectedIds)
           ? rawAnswer.selectedIds.map((id: unknown) => String(id)).filter(Boolean)
-          : Array.isArray(rawAnswer.choice)
-            ? rawAnswer.choice.map((id: unknown) => String(id)).filter(Boolean)
-            : typeof rawAnswer.choice === 'string' && rawAnswer.choice
-              ? [String(rawAnswer.choice)]
-              : [];
+          : [];
+        const fromChoiceArr = Array.isArray(rawAnswer.choice)
+          ? rawAnswer.choice.map((id: unknown) => String(id)).filter(Boolean)
+          : [];
+        const choice = String(
+          (typeof rawAnswer.choice === 'string' && rawAnswer.choice) ||
+            rawAnswer.optionId ||
+            fromSelected[fromSelected.length - 1] ||
+            fromChoiceArr[fromChoiceArr.length - 1] ||
+            '',
+        ).trim();
         const reason = String(rawAnswer.reason ?? rawAnswer.reasoning ?? '').trim();
-        if (selectedIds.length === 0) {
-          return reason ? { choice: [], reason } : { choice: [] };
+        if (!choice) {
+          return reason ? { choice: '', reason } : '';
         }
-        return reason.length > 0
-          ? { choice: selectedIds, reason }
-          : { choice: selectedIds };
+        return reason.length > 0 ? { choice, reason } : choice;
       }
       if (Array.isArray(rawAnswer)) {
-        return { choice: rawAnswer.map((id) => String(id)) };
+        const choice = String(rawAnswer[rawAnswer.length - 1] ?? '').trim();
+        return choice || '';
       }
-      return { choice: String(rawAnswer) ? [String(rawAnswer)] : [] };
+      return String(rawAnswer || '').trim();
     }
 
     // A/B cards: { choice: "A"|"B", reason: "..." }

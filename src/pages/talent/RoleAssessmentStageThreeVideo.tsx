@@ -468,7 +468,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
       localStorage.setItem('vora_stage4_unlocked', 'true');
       setIsCompiling(false);
       toast.success('Stage 3 video assessment completed!');
-      navigate(`/onboarding/talent/${roleSlug}/assessment/stage-3/complete`);
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-3/complete`);
     }, 5500);
   };
 
@@ -476,7 +476,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
     setShowSaveModal(false);
     stopCamera();
     toast.success('Interview progress successfully auto-saved.');
-    navigate(`/onboarding/talent/${roleSlug}/assessment/journey`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/journey`);
   };
 
   const formatTimer = (seconds: number) => {

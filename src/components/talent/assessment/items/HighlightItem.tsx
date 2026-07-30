@@ -24,19 +24,31 @@ const HighlightItem: React.FC<AssessmentItemRendererProps> = ({
 
   const selectedAnswer =
     typeof value === 'object' && value !== null && !Array.isArray(value)
-      ? (value as { selectedIds?: string[]; reasoning?: string; reason?: string })
-      : { selectedIds: [] };
+      ? (value as {
+          selectedIds?: string[];
+          choice?: string | string[];
+          optionId?: string;
+          reasoning?: string;
+          reason?: string;
+        })
+      : typeof value === 'string'
+        ? { choice: value }
+        : {};
 
-  const selectedIds = selectedAnswer.selectedIds || [];
+  const selectedId = String(
+    (typeof selectedAnswer.choice === 'string' && selectedAnswer.choice) ||
+      selectedAnswer.optionId ||
+      (Array.isArray(selectedAnswer.selectedIds) && selectedAnswer.selectedIds[0]) ||
+      (Array.isArray(selectedAnswer.choice) && selectedAnswer.choice[0]) ||
+      '',
+  );
+
   const reasoningText = String(selectedAnswer.reasoning ?? selectedAnswer.reason ?? '');
 
-  const toggleHighlight = (optionId: string) => {
-    const nextSelected = selectedIds.includes(optionId)
-      ? selectedIds.filter((id) => id !== optionId)
-      : [...selectedIds, optionId];
-
+  const selectHighlight = (optionId: string) => {
     onChange({
-      selectedIds: nextSelected,
+      choice: optionId,
+      selectedIds: [optionId],
       reason: reasoningText,
       reasoning: reasoningText,
     });
@@ -44,7 +56,8 @@ const HighlightItem: React.FC<AssessmentItemRendererProps> = ({
 
   const handleReasoning = (reasoning: string) => {
     onChange({
-      selectedIds,
+      choice: selectedId,
+      selectedIds: selectedId ? [selectedId] : [],
       reason: reasoning,
       reasoning,
     });
@@ -60,18 +73,18 @@ const HighlightItem: React.FC<AssessmentItemRendererProps> = ({
 
       <div className="mb-5 bg-white border border-[#E6E6E6] rounded-[14px] p-5 shadow-sm space-y-2">
         <div className="text-[11px] font-[800] text-[#0047CC] uppercase tracking-wider mb-2">
-          Tap parts to highlight/select
+          Tap the line containing the issue
         </div>
         <div className="flex flex-wrap gap-2 leading-relaxed">
           {options.map((opt) => {
-            const isHighlighted = selectedIds.includes(opt.id);
+            const isHighlighted = selectedId === opt.id;
 
             return (
               <button
                 key={opt.id}
                 type="button"
                 disabled={disabled}
-                onClick={() => toggleHighlight(opt.id)}
+                onClick={() => selectHighlight(opt.id)}
                 className={`p-2 px-3 rounded-xl text-[13.5px] font-medium transition-all cursor-pointer ${
                   isHighlighted
                     ? 'bg-[#EBF6FF] border-2 border-[#0047CC] text-[#0047CC] font-bold shadow-sm'

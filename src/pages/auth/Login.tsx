@@ -88,7 +88,7 @@ const Login: React.FC = () => {
         if (slug && user.role?.toUpperCase() === 'TALENT') {
           localStorage.setItem('active_assessment_role_slug', slug);
           if (targetRoute !== '/verify-email' && targetRoute !== '/select-type') {
-            targetRoute = `/onboarding/talent/${slug}/assessment/journey`;
+            targetRoute = `/onboarding/talent/${slug}/interview/journey`;
           }
         }
 

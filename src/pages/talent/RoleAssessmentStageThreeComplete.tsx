@@ -17,7 +17,7 @@ const RoleAssessmentStageThreeComplete: React.FC = () => {
   const firstName = user?.firstName || 'there';
 
   const handleSeeProgress = () => {
-    navigate(`/onboarding/talent/${roleSlug}/assessment/stage-4/review`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/stage-4/review`);
   };
 
   const handleBackToDashboard = () => {

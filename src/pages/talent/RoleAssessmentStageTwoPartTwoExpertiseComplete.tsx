@@ -25,11 +25,11 @@ const RoleAssessmentStageTwoPartTwoExpertiseComplete: React.FC = () => {
   }, []);
 
   const handleBeginPart3 = () => {
-    navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2/part-3/intro`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/part-3/intro`);
   };
 
   const handleContinueLater = () => {
-    navigate(`/onboarding/talent/${roleSlug}/assessment/journey`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/journey`);
   };
 
   return (

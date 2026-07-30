@@ -145,7 +145,6 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     current: 1,
     answered: 0,
   });
-  const [isFetchingWindow, setIsFetchingWindow] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // API dynamic question flow integrations
@@ -276,44 +275,6 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     });
   }, [draftData, setAnswers]);
 
-  const fetchedRangesRef = useRef<Set<string>>(new Set());
-  const prefetchedItemsMapRef = useRef<Map<string, { items: AssessmentItem[]; window?: GateWindowInfo; progress?: any }>>(new Map());
-
-  // Prefetch next window of items near end of active window (e.g. Q3 of 4)
-  const prefetchNextWindowIfNeeded = async (updatedAnsweredCount: number) => {
-    if (!activeAssessmentId || !windowInfo.hasMore || isFetchingWindow) return;
-
-    const nextFrom = windowInfo.through + 1;
-    const nextThrough = windowInfo.through + 4;
-    const rangeKey = `${nextFrom}-${nextThrough}`;
-
-    if (fetchedRangesRef.current.has(rangeKey)) return;
-
-    if (updatedAnsweredCount >= windowInfo.through - 1) {
-      fetchedRangesRef.current.add(rangeKey);
-      setIsFetchingWindow(true);
-      try {
-        const res = await fetchGate2PillarItems(activeAssessmentId, pillar, {
-          from: nextFrom,
-          through: nextThrough,
-        });
-        const payload = applyGate2ScreenPayload(res);
-        if (payload) {
-          prefetchedItemsMapRef.current.set(rangeKey, {
-            items: payload.items,
-            window: payload.window,
-            progress: payload.progress,
-          });
-        }
-      } catch (err) {
-        console.error('Failed to prefetch next item window:', err);
-        fetchedRangesRef.current.delete(rangeKey);
-      } finally {
-        setIsFetchingWindow(false);
-      }
-    }
-  };
-
   // Modals state
   const [showSaveModal, setShowSaveModal] = useState<boolean>(false);
   const [showCheatModal, setShowCheatModal] = useState<boolean>(false);
@@ -351,11 +312,14 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           try {
             // 1. Flush draft answers for current window
             if (activeAssessmentId && apiScreenData?.componentId && Object.keys(answers).length > 0) {
-              await saveDraftMutation.mutateAsync({
-                assessmentId: activeAssessmentId,
-                componentId: apiScreenData.componentId,
-                responses: answers,
-              }).catch(() => {});
+              const draftPayload = sanitizeAnswers(answers);
+              if (Object.keys(draftPayload).length > 0) {
+                await saveDraftMutation.mutateAsync({
+                  assessmentId: activeAssessmentId,
+                  componentId: apiScreenData.componentId,
+                  responses: draftPayload,
+                }).catch(() => {});
+              }
             }
 
             // 2. Fetch start / items window to regenerate unanswered questions
@@ -401,7 +365,6 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     setPillarProgress((prev) =>
       prev.answered === totalAnswered ? prev : { ...prev, answered: totalAnswered },
     );
-    void prefetchNextWindowIfNeeded(totalAnswered);
   }, [answers, activeDisplayedItems, apiScreenData, windowInfo.from]);
 
   const allFetchedItemsRef = useRef<Map<string, any>>(new Map());
@@ -412,12 +375,25 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     });
   }, [activeDisplayedItems]);
 
-  const sanitizeAnswers = (rawAnswers: Record<string, any>) => {
-    const allItems = Array.from(allFetchedItemsRef.current.values()).concat(
+  const sanitizeAnswers = (rawAnswers: Record<string, any>, itemsForTypes?: AssessmentItem[]) => {
+    const allItems = (itemsForTypes ?? []).concat(
+      Array.from(allFetchedItemsRef.current.values()),
       apiScreenData?.items ?? [],
-      activeDisplayedItems ?? []
+      activeDisplayedItems ?? [],
     );
+    // Prefer the first occurrence (window items) for type resolution.
     return formatGate2ResponsesPayload(rawAnswers, allItems);
+  };
+
+  const buildCurrentWindowDraftPayload = () => {
+    const windowAnswers: Record<string, any> = {};
+    for (const item of activeDisplayedItems) {
+      const val = answers[item.id];
+      if (val !== undefined && val !== null && val !== '') {
+        windowAnswers[item.id] = val;
+      }
+    }
+    return sanitizeAnswers(windowAnswers, activeDisplayedItems);
   };
 
   const handleSubmit = async (reason?: string) => {
@@ -436,14 +412,18 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
     try {
       const payloadResponses = sanitizeAnswers(answers);
-      // Must persist draft successfully before final submit.
-      if (Object.keys(payloadResponses).length > 0) {
-        await saveDraftMutation.mutateAsync({
-          assessmentId: activeAssessmentId,
-          componentId: apiScreenData.componentId,
-          responses: payloadResponses,
-        });
+      if (!apiScreenData.componentId || Object.keys(payloadResponses).length === 0) {
+        toast.error('Please complete your answers before submitting.');
+        setIsSubmitting(false);
+        return;
       }
+
+      // Hard gate: draft must succeed before final submit.
+      await saveDraftMutation.mutateAsync({
+        assessmentId: activeAssessmentId,
+        componentId: apiScreenData.componentId,
+        responses: payloadResponses,
+      });
 
       await submitScreenMutation.mutateAsync({
         assessmentId: activeAssessmentId,
@@ -454,7 +434,10 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);
     } catch (err: any) {
       console.error('Failed to submit Stage 2 screen to API:', err);
-      const serverMsg = err?.response?.data?.message || err?.message || 'Failed to submit. Please try again.';
+      const serverMsg =
+        getApiErrorMessage(err) ||
+        err?.message ||
+        'Failed to submit. Please try again.';
       toast.error(serverMsg);
       setIsSubmitting(false);
     }
@@ -482,7 +465,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       }
     }
     toast.success('Progress saved successfully.');
-    navigate(`/onboarding/talent/${roleSlug}/assessment/journey`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/journey`);
   };
 
   const formatTime = (totalSeconds: number) => {
@@ -536,44 +519,35 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const payloadResponses = sanitizeAnswers(answers);
       if (!activeAssessmentId || !apiScreenData?.componentId) {
         toast.error('Assessment is not ready. Please reload and try again.');
         return;
       }
 
-      // Must persist current window answers before loading the next set.
-      if (Object.keys(payloadResponses).length > 0) {
-        await saveDraftMutation.mutateAsync({
-          assessmentId: activeAssessmentId,
-          componentId: apiScreenData.componentId,
-          responses: payloadResponses,
-        });
+      const payloadResponses = buildCurrentWindowDraftPayload();
+      if (Object.keys(payloadResponses).length === 0) {
+        toast.error('Please answer the questions on this page before continuing.');
+        return;
       }
+
+      // Hard gate: never show the next window unless this draft save succeeds.
+      await saveDraftMutation.mutateAsync({
+        assessmentId: activeAssessmentId,
+        componentId: apiScreenData.componentId,
+        responses: payloadResponses,
+      });
 
       const nextFrom = windowInfo.through + 1;
       const nextThrough = windowInfo.through + 4;
-      const rangeKey = `${nextFrom}-${nextThrough}`;
 
-      let nextItems: AssessmentItem[] = [];
-      let nextWindow: GateWindowInfo | undefined;
-      let nextProgress: any;
-
-      if (prefetchedItemsMapRef.current.has(rangeKey)) {
-        const prefetched = prefetchedItemsMapRef.current.get(rangeKey)!;
-        nextItems = prefetched.items;
-        nextWindow = prefetched.window;
-        nextProgress = prefetched.progress;
-      } else {
-        const res = await fetchGate2PillarItems(activeAssessmentId || '', pillar, {
-          from: nextFrom,
-          through: nextThrough,
-        });
-        const payload = applyGate2ScreenPayload(res);
-        nextItems = payload?.items || [];
-        nextWindow = payload?.window;
-        nextProgress = payload?.progress;
-      }
+      const res = await fetchGate2PillarItems(activeAssessmentId, pillar, {
+        from: nextFrom,
+        through: nextThrough,
+      });
+      const payload = applyGate2ScreenPayload(res);
+      const nextItems = payload?.items || [];
+      const nextWindow = payload?.window;
+      const nextProgress = payload?.progress;
 
       if (nextItems.length > 0) {
         setShowContinueValidation(false);
@@ -587,7 +561,9 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           setWindowInfo({
             from: nextFrom,
             through: windowInfo.through + itemsLen,
-            hasMore: nextProgress?.total ? windowInfo.through + itemsLen < nextProgress.total : false,
+            hasMore: nextProgress?.total
+              ? windowInfo.through + itemsLen < nextProgress.total
+              : false,
           });
         }
 
@@ -606,7 +582,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     } catch (err: any) {
       console.error('Failed to save draft or load next window:', err);
       const serverMsg =
-        err?.response?.data?.message ||
+        getApiErrorMessage(err) ||
         err?.message ||
         'Could not save your answers. Please try again before continuing.';
       toast.error(serverMsg);
@@ -675,7 +651,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           <div className="flex gap-2 justify-center flex-wrap">
             <button
               type="button"
-              onClick={() => navigate(`/onboarding/talent/${roleSlug}/assessment/journey`)}
+              onClick={() => navigate(`/onboarding/talent/${roleSlug}/interview/journey`)}
               className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] px-4 py-2.5 text-[13.5px] font-[700]"
             >
               Back to journey

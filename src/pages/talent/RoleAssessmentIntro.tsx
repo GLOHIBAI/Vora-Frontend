@@ -74,17 +74,17 @@ const RoleAssessmentIntro: React.FC = () => {
         readiness?.preAssessmentComplete === true;
 
       if (isPreAssessmentRequired && !isPreAssessmentComplete) {
-        navigate(`/onboarding/talent/${roleSlug}/assessment/asks`, { replace: true });
+        navigate(`/onboarding/talent/${roleSlug}/interview/asks`, { replace: true });
       }
     }
   }, [isRoleLoading, isReadinessLoading, readinessResponse, navigate, roleSlug, readiness]);
 
   const handleBack = () => {
-    navigate(`/onboarding/talent/${roleSlug}/assessment/journey`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/journey`);
   };
 
   const handleStart = () => {
-    navigate(`/onboarding/talent/${roleSlug}/assessment/session-1`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/session-1`);
   };
 
   if (isRoleLoading || isReadinessLoading) {

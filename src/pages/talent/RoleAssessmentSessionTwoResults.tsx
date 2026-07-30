@@ -78,7 +78,7 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
 
   const handleNextStage = () => {
     localStorage.setItem('vora_stage2_unlocked', 'true');
-    navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/stage-2`);
   };
 
   const handleLater = () => {

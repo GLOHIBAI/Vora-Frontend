@@ -21,7 +21,7 @@ const RoleAssessmentStageTwoAnalyzing: React.FC = () => {
 
     // Redirect to results at 6.5s
     const t3 = setTimeout(() => {
-      navigate(`/onboarding/talent/${roleSlug}/assessment/stage-2/results`);
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/results`);
     }, 6500);
 
     return () => {

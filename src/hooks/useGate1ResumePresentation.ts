@@ -138,7 +138,7 @@ const buildViewModel = (
     showRegenerationNotice: hasInProgress,
     resumePath: isGate1ApiEnabled()
       ? `/onboarding/talent/${roleSlug}/interview/stage-1`
-      : `/onboarding/talent/${roleSlug}/assessment/session-1/situational`,
+      : `/onboarding/talent/${roleSlug}/interview/session-1/situational`,
   };
 };
 

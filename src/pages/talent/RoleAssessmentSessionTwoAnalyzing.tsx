@@ -29,7 +29,7 @@ const RoleAssessmentSessionTwoAnalyzing: React.FC = () => {
 
     // Redirect to results at 16s
     const t4 = setTimeout(() => {
-      navigate(`/onboarding/talent/${roleSlug}/assessment/session-2/results`);
+      navigate(`/onboarding/talent/${roleSlug}/interview/session-2/results`);
     }, 16000);
 
     return () => {
