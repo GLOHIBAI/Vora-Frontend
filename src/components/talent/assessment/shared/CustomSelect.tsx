@@ -19,7 +19,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   options,
   value,
   onChange,
-  placeholder = 'Choose option',
+  placeholder = 'Choose an option',
   disabled = false,
   className = '',
   size = 'md',
@@ -42,7 +42,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   const isSmall = size === 'sm';
 
   return (
-    <div ref={containerRef} className={`relative inline-block ${isSmall ? 'min-w-[150px]' : 'w-full'} ${className}`}>
+    <div ref={containerRef} className={`relative inline-block ${isSmall ? 'min-w-[160px]' : 'w-full'} ${isOpen ? 'z-[100]' : 'z-10'} ${className}`}>
       {/* Trigger Button */}
       <button
         type="button"
@@ -50,17 +50,17 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         onClick={() => !disabled && setIsOpen((prev) => !prev)}
         className={`w-full flex items-center justify-between transition-all cursor-pointer outline-none shadow-sm ${
           isSmall
-            ? 'px-3 py-1.5 text-[13px] font-semibold rounded-lg gap-2 min-h-[34px]'
+            ? 'px-3 py-2 text-[13px] font-semibold rounded-lg gap-2 min-h-[36px]'
             : 'px-4 py-3 text-[13.5px] font-medium rounded-[14px] gap-3'
         } ${
           isOpen
-            ? 'border-[#0047CC] ring-2 ring-[#0047CC]/15 shadow-[0_2px_12px_rgba(0,71,204,0.12)] border'
+            ? 'border-[#0047CC] ring-2 ring-[#0047CC]/15 shadow-[0_2px_12px_rgba(0,71,204,0.12)] border bg-white text-[#0047CC]'
             : selectedOption
             ? 'border-[#0047CC]/60 bg-[#EBF6FF] text-[#0047CC] font-bold border'
-            : 'border-[#CBD5E1] text-[#64748B] hover:border-[#0047CC]/50 hover:bg-[#F8FAFC] border'
+            : 'border-[#CBD5E1] bg-white text-[#64748B] hover:border-[#0047CC]/50 hover:bg-[#F8FAFC] border'
         } disabled:opacity-60 disabled:cursor-not-allowed`}
       >
-        <span className="truncate">
+        <span className="truncate text-left">
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <svg
@@ -80,7 +80,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
 
       {/* Floating Options Dropdown Menu */}
       {isOpen && (
-        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-[260px] overflow-y-auto bg-white border border-[#E2E8F0] rounded-[14px] shadow-[0_10px_30px_rgba(0,0,0,0.12)] py-1.5 animate-[fadeUp_0.15s_ease_both]">
+        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-[100] max-h-[260px] overflow-y-auto custom-scrollbar bg-white border border-[#E2E8F0] rounded-[14px] shadow-[0_12px_32px_rgba(0,0,0,0.18)] py-1.5 animate-[fadeUp_0.15s_ease_both]">
           {/* Placeholder clear item */}
           <div
             onClick={() => {
@@ -109,7 +109,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                     : 'text-[#1E293B] font-medium hover:bg-[#F8FAFC]'
                 }`}
               >
-                <span className="truncate leading-normal">{opt.label}</span>
+                <span className="truncate leading-normal text-left">{opt.label}</span>
                 {isSelected && (
                   <svg className="w-4 h-4 text-[#0047CC] shrink-0 ml-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <polyline points="20 6 9 17 4 12" />

@@ -147,7 +147,7 @@ const ClozeItem: React.FC<AssessmentItemRendererProps> = ({
           disabled={disabled}
           value={currentValue}
           onChange={(val) => handleSelectBlank(blank.id, val)}
-          placeholder={`Choose gap…`}
+          placeholder="Choose a gap"
           options={selectOptions}
           className={looksLikeCode ? 'w-full min-w-[220px] max-w-full' : undefined}
         />

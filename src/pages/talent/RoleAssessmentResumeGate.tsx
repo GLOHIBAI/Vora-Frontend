@@ -54,6 +54,7 @@ interface StageConfig {
   deadlineLabel: string;
   deadlineRemainingSeconds: number | null;
   deadlineTotalFormatted: string;
+  deadlineHint?: string;
   interviewTimerLabel: string;
   interviewTimerValue: string;
   completedLabel: string;
@@ -255,6 +256,7 @@ const RoleAssessmentResumeGate: React.FC = () => {
         deadlineLabel: gate2View.deadlineLabel,
         deadlineRemainingSeconds: gate2View.deadlineRemainingSeconds,
         deadlineTotalFormatted: gate2View.deadlineTotalFormatted,
+        deadlineHint: gate2View.deadlineHint,
         interviewTimerLabel: gate2View.interviewTimerLabel,
         interviewTimerValue: gate2View.interviewTimerValue,
         completedLabel: gate2View.completedLabel,
@@ -268,25 +270,8 @@ const RoleAssessmentResumeGate: React.FC = () => {
     }
 
     if (currentStage === 2) {
-      return {
-        activeStepNum: 2,
-        welcomeText: 'Welcome back to Stage 2. Your progress is saved.',
-        pausedTimeText: 'Paused recently',
-        positionTitle: 'Professional dimension',
-        positionDesc: 'Resume to continue Stage 2.',
-        crumbs: ['Stage 2', 'Professional dimension'],
-        deadlineLabel: 'Stage 2 deadline',
-        deadlineRemainingSeconds: null,
-        deadlineTotalFormatted: '72:00:00',
-        interviewTimerLabel: 'Interview timer',
-        interviewTimerValue: '—',
-        completedLabel: 'Completed so far',
-        completedValue: '—',
-        completedSub: 'parts in Stage 2',
-        resumePath: `/onboarding/talent/${roleSlug}/interview/stage-2`,
-        showRegenerationNotice: false,
-        rulesList: STAGE2_RULES,
-      };
+      // No static Stage 2 leave-off — wait for gates/2/resume-state.
+      return stage3Config;
     }
 
     return stage3Config;
@@ -326,12 +311,20 @@ const RoleAssessmentResumeGate: React.FC = () => {
   const isPageLoading =
     isReadinessLoading ||
     (currentStage === 1 && gate1Loading && !gate1View) ||
-    (currentStage === 2 && gate2Loading && !gate2View && !gate2Locked);
+    (currentStage === 2 && (gate2Loading || (!gate2View && !gate2Locked)));
 
   if (isPageLoading) {
     return (
       <div className="min-h-screen bg-[#F7F7F7] flex items-center justify-center">
         <FullPageSpinner isFullPage={false} message="Loading your saved progress…" />
+      </div>
+    );
+  }
+
+  if (currentStage === 2 && !gate2View) {
+    return (
+      <div className="min-h-screen bg-[#F7F7F7] flex items-center justify-center">
+        <FullPageSpinner isFullPage={false} message="Could not load Stage 2 resume state…" />
       </div>
     );
   }
@@ -392,9 +385,13 @@ const RoleAssessmentResumeGate: React.FC = () => {
               <div className="text-[17px] font-[900] text-[#182348] tracking-[-0.2px] mb-[3px]">
                 {config.positionTitle}
               </div>
-              <div className="text-[13px] text-[#4A4A4A] leading-[1.55] mb-[12px]">
-                {config.positionDesc}
-              </div>
+              {config.positionDesc ? (
+                <div className="text-[13px] text-[#4A4A4A] leading-[1.55] mb-[12px]">
+                  {config.positionDesc}
+                </div>
+              ) : (
+                <div className="mb-[12px]" />
+              )}
 
               <div className="flex items-center gap-[6px] flex-wrap font-[700] text-[12px] text-[#808080]">
                 {config.crumbs.map((crumb, idx) => (
@@ -423,9 +420,8 @@ const RoleAssessmentResumeGate: React.FC = () => {
                 <div className="text-[11px] text-[#4A4A4A] font-[600] mt-[2px]">
                   {timeLeft != null
                     ? `remaining out of ${config.deadlineTotalFormatted}`
-                    : currentStage === 2
-                      ? 'Stage 2 assessment window'
-                      : '48-hour assessment window'}
+                    : config.deadlineHint ||
+                      (currentStage === 1 ? '48-hour assessment window' : '')}
                 </div>
               </div>
 

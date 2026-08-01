@@ -707,9 +707,26 @@ export function useAssessmentScreen({
       });
 
       await onScreenComplete();
-    } catch (err) {
+    } catch (err: any) {
       confirmInFlightRef.current = false;
       setIsSubmitProcessActive(false);
+
+      const errMessage = String(err?.message || err?.data?.message || '');
+      if (errMessage.toLowerCase().includes('locked') || errMessage.toLowerCase().includes('cannot be changed')) {
+        // Extract itemId from error message if available (e.g., "Invalid response for item <itemId>:...")
+        const match = errMessage.match(/item\s+([a-zA-Z0-9_-]+):/);
+        if (match && match[1]) {
+          const lockedItemId = match[1];
+          lockedResponses.current[lockedItemId] = answers[lockedItemId] ?? true;
+        } else {
+          // Lock current items on screen
+          items.forEach((it) => {
+            if (answers[it.id] !== undefined) {
+              lockedResponses.current[it.id] = answers[it.id];
+            }
+          });
+        }
+      }
       throw err;
     }
   }, [

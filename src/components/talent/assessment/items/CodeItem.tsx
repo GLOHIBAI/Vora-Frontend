@@ -29,8 +29,6 @@ const CodeItem: React.FC<AssessmentItemRendererProps> = ({
   const handleTextChange = (text: string) => {
     onChange({
       code: text,
-      reason: text,
-      reasoning: text,
       stdout: 'ok',
     });
   };

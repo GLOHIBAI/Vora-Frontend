@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import VoraLogo from '../../components/common/VoraLogo';
 import Button from '../../components/common/Button';
 import { useAuth } from '../../context/AuthContext';
 import StageRail from '../../components/talent/StageRail';
 import { useGateVerdictQuery } from '../../services/queries/assessments';
+import { useGetPreAssessmentReadinessQuery } from '../../services/queries/talent';
+import { readStoredRolePostingId } from '../../utils/rolePostingId';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
 import { unwrapAssessmentData } from '../../utils/assessmentSession';
 import type { GateVerdictResponse } from '../../services/queries/assessments/types';
@@ -66,6 +68,38 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
   const { user } = useAuth();
   const firstName = user?.firstName || 'there';
 
+  const rolePostingId = useMemo(() => {
+    return readStoredRolePostingId(roleSlug || '');
+  }, [roleSlug]);
+
+  const { data: readinessResponse } = useGetPreAssessmentReadinessQuery(roleSlug || '', rolePostingId);
+  const readiness = readinessResponse?.data?.data || readinessResponse?.data || readinessResponse;
+
+  const isLocked = useMemo(() => {
+    if (!readiness) return false;
+
+    const isExplicitlyLocked =
+      readiness.assessmentStatus === 'LOCKED' ||
+      readiness.assessmentStatus === 'FAILED' ||
+      readiness.nextStep === 'FAILED' ||
+      readiness.flowPhase === 'FAILED' ||
+      readiness.checks?.flowPhase === 'FAILED' ||
+      readiness.isLocked === true ||
+      readiness.checks?.assessmentLocked === true;
+
+    if (isExplicitlyLocked) return true;
+
+    const isExplicitlyUnlocked =
+      readiness.assessmentStatus === 'IN_PROGRESS' ||
+      readiness.nextStep === 'STAGE_2_ASSESSMENT' ||
+      readiness.flowPhase === 'ASSESSMENT' ||
+      (typeof readiness.stage === 'number' && readiness.stage >= 2);
+
+    if (isExplicitlyUnlocked) return false;
+
+    return readiness.checks?.canBeginAssessment === false;
+  }, [readiness]);
+
   const assessmentId = resolveGate1AssessmentId() ?? '';
   const { data: verdictRaw, isLoading: isVerdictLoading } = useGateVerdictQuery(assessmentId, 1, {
     enabled: !!assessmentId,
@@ -77,6 +111,7 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
   }
 
   const handleNextStage = () => {
+    if (isLocked) return;
     localStorage.setItem('vora_stage2_unlocked', 'true');
     navigate(`/onboarding/talent/${roleSlug}/interview/stage-2`);
   };
@@ -386,41 +421,54 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
           </div>
         </div>
 
-        {/* Gate Card (Stage 2 Unlock) */}
+        {/* Gate Card (Stage 2 Unlock/Locked) */}
         <div className="bg-gradient-to-br from-[#EBF6FF] to-[#F8FBFF] border-[1.5px] border-[#EBF6FF] rounded-[18px] p-[26px_28px] text-center mb-[18px] relative overflow-hidden">
           <div className="absolute top-[-40px] right-[-40px] w-[140px] h-[140px] rounded-full bg-[#0047CC]/5" />
-          <div className="text-[11px] font-[800] tracking-[1px] uppercase text-[#0047CC] mb-[8px] relative z-10">
-            Stage {verdict?.nextStage?.gate ?? 2} is now open
+          <div className={`text-[11px] font-[800] tracking-[1px] uppercase mb-[8px] relative z-10 ${isLocked ? 'text-[#DC2626]' : 'text-[#0047CC]'}`}>
+            {isLocked ? `Stage ${verdict?.nextStage?.gate ?? 2} is Locked` : `Stage ${verdict?.nextStage?.gate ?? 2} is now open`}
           </div>
           <h3 className="text-[20px] font-[900] text-[#182348] tracking-[-0.3px] mb-[8px] leading-[1.3] relative z-10">
-            Ready to show us your {verdict?.nextStage?.label?.toLowerCase() || 'professional'} side?
+            {isLocked ? "Assessment locked or failed" : `Ready to show us your ${verdict?.nextStage?.label?.toLowerCase() || 'professional'} side?`}
           </h3>
           <p className="text-[14px] text-[#4A4A4A] leading-[1.6] mb-[20px] max-w-[520px] mx-auto relative z-10">
-            The next stage goes into the specific work itself. It&apos;s longer and the questions are tied directly to what a {verdict?.role?.roleTitle || 'Senior Health Programme Officer'} at {verdict?.role?.employerName || 'Reach Africa'} actually does day to day. You have {verdict?.nextStage?.windowHours ?? 72} hours from now to complete it.
+            {isLocked ? (
+              <span className="text-[#DC2626] font-[600]">
+                Your assessment status for this role is closed or failed. Progression to Stage 2 is disabled.
+              </span>
+            ) : (
+              `The next stage goes into the specific work itself. It's longer and the questions are tied directly to what a ${verdict?.role?.roleTitle || readiness?.roleTitle || 'team member'} at ${verdict?.role?.employerName || readiness?.employerName || 'this company'} actually does day to day. You have ${verdict?.nextStage?.windowHours ?? 72} hours from now to complete it.`
+            )}
           </p>
 
-          <div className="flex justify-center gap-[18px] flex-wrap font-[600] text-[12px] text-[#808080] mb-[20px] relative z-10">
-            <div className="flex items-center gap-[6px]">
-              <ClockIcon className="w-[14px] h-[14px] text-[#0047CC]" />
-              Estimated {verdict?.nextStage?.estimatedMinutesMin ?? 75} to {verdict?.nextStage?.estimatedMinutesMax ?? 110} minutes
+          {!isLocked && (
+            <div className="flex justify-center gap-[18px] flex-wrap font-[600] text-[12px] text-[#808080] mb-[20px] relative z-10">
+              <div className="flex items-center gap-[6px]">
+                <ClockIcon className="w-[14px] h-[14px] text-[#0047CC]" />
+                Estimated {verdict?.nextStage?.estimatedMinutesMin ?? 75} to {verdict?.nextStage?.estimatedMinutesMax ?? 110} minutes
+              </div>
+              <div className="flex items-center gap-[6px]">
+                <MenuIcon className="w-[14px] h-[14px] text-[#0047CC]" />
+                Broken into {verdict?.nextStage?.partsCount ?? 3} parts
+              </div>
+              <div className="flex items-center gap-[6px]">
+                <DocumentCheckIcon className="w-[14px] h-[14px] text-[#0047CC]" />
+                Resumable any time
+              </div>
             </div>
-            <div className="flex items-center gap-[6px]">
-              <MenuIcon className="w-[14px] h-[14px] text-[#0047CC]" />
-              Broken into {verdict?.nextStage?.partsCount ?? 3} parts
-            </div>
-            <div className="flex items-center gap-[6px]">
-              <DocumentCheckIcon className="w-[14px] h-[14px] text-[#0047CC]" />
-              Resumable any time
-            </div>
-          </div>
+          )}
 
           <div className="flex justify-center relative z-10">
             <Button
               onClick={handleNextStage}
-              className="text-white bg-[#0047CC] shadow-[0_4px_14px_rgba(0,71,204,0.32)] hover:bg-[#344DA1] w-full sm:w-auto font-[800]"
+              disabled={isLocked}
+              className={
+                isLocked
+                  ? "text-[#ADADAD] bg-[#E6E6E6] cursor-not-allowed w-full sm:w-auto font-[800] border-none"
+                  : "text-white bg-[#0047CC] shadow-[0_4px_14px_rgba(0,71,204,0.32)] hover:bg-[#344DA1] w-full sm:w-auto font-[800]"
+              }
               pill={false}
             >
-              Continue to Stage {verdict?.nextStage?.gate ?? 2}
+              {isLocked ? `Stage ${verdict?.nextStage?.gate ?? 2} Locked` : `Continue to Stage ${verdict?.nextStage?.gate ?? 2}`}
             </Button>
           </div>
 
@@ -429,7 +477,7 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
               onClick={handleLater}
               className="bg-transparent border-none text-[#808080] text-[13px] font-[600] cursor-pointer p-[10px] mt-[10px] hover:text-[#1A1A1A] transition-colors"
             >
-              I&apos;ll come back later
+              {isLocked ? "Return to dashboard" : "I'll come back later"}
             </button>
           </div>
         </div>

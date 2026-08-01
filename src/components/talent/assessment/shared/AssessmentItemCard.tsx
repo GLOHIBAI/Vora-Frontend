@@ -1,3 +1,6 @@
+import React from 'react';
+import FormattedPromptText from './FormattedPromptText';
+
 interface AssessmentItemCardProps {
   label?: string;
   title?: string;
@@ -16,7 +19,9 @@ const AssessmentItemCard: React.FC<AssessmentItemCardProps> = ({
       <p className="text-sm font-semibold text-[#ADADAD] uppercase mb-2">{label}</p>
     ) : null}
     {title ? (
-      <p className="text-base font-semibold text-[#1A1A1A] mb-4 leading-relaxed">{title}</p>
+      <div className="text-base font-semibold text-[#1A1A1A] mb-4 leading-relaxed">
+        <FormattedPromptText text={title} />
+      </div>
     ) : null}
     {children}
   </div>

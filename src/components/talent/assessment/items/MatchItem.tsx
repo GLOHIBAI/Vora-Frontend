@@ -5,6 +5,8 @@ import type { AssessmentItemRendererProps } from '../shared/types';
 import ReasonTextarea from '../shared/ReasonTextarea';
 import { getReasonMinWords } from '../shared/reasonMinWords';
 
+import FormattedPromptText from '../shared/FormattedPromptText';
+
 interface MatchSideItem {
   id: string;
   text: string;
@@ -66,7 +68,7 @@ const MatchItem: React.FC<AssessmentItemRendererProps> = ({
     <AssessmentItemCard title={String(prompt)}>
       {Boolean(content.scenario) && (
         <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] p-4 mb-4 text-[14px] text-[#334155] leading-relaxed font-medium">
-          {String(content.scenario)}
+          <FormattedPromptText text={String(content.scenario)} />
         </div>
       )}
 
@@ -78,7 +80,7 @@ const MatchItem: React.FC<AssessmentItemRendererProps> = ({
           return (
             <div
               key={leftId}
-              className="bg-white border border-[#E6E6E6] rounded-[14px] p-4 shadow-sm space-y-2.5"
+              className="bg-white border border-[#E6E6E6] rounded-[14px] p-4 shadow-sm space-y-2.5 relative"
             >
               <div className="text-[13.5px] font-bold text-[#0047CC]">
                 {String(lItem.text || (lItem as any).label || '')}
@@ -88,7 +90,7 @@ const MatchItem: React.FC<AssessmentItemRendererProps> = ({
                 disabled={disabled}
                 value={currentChoice}
                 onChange={(val) => handleMatch(leftId, val)}
-                placeholder="Choose option"
+                placeholder="Choose an option"
                 options={formattedOptions}
               />
             </div>

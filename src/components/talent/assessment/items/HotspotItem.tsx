@@ -31,21 +31,19 @@ const HotspotItem: React.FC<AssessmentItemRendererProps> = ({
   const reasoningText = String(selectedAnswer.reasoning ?? selectedAnswer.reason ?? '');
 
   const handleSelectLine = (optionId: string) => {
-    onChange({
-      choice: optionId,
-      optionId,
-      reason: reasoningText,
-      reasoning: reasoningText,
-    });
+    if (reasoningText) {
+      onChange({ choice: optionId, reason: reasoningText });
+    } else {
+      onChange({ choice: optionId });
+    }
   };
 
   const handleReasoning = (reasoning: string) => {
-    onChange({
-      choice: selectedOptionId,
-      optionId: selectedOptionId,
-      reason: reasoning,
-      reasoning,
-    });
+    if (selectedOptionId) {
+      onChange({ choice: selectedOptionId, reason: reasoning });
+    } else {
+      onChange({ choice: '', reason: reasoning });
+    }
   };
 
   return (

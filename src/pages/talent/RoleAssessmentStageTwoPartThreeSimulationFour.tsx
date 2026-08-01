@@ -4,7 +4,7 @@ import RoleAssessmentStageTwoSimulationBase from '../../components/talent/RoleAs
 const RoleAssessmentStageTwoPartThreeSimulationFour: React.FC = () => (
   <RoleAssessmentStageTwoSimulationBase
     simulationNumber={4}
-    nextPath="assessment/stage-2/analyzing"
+    nextPath="interview/stage-2/review"
   />
 );
 

@@ -12,6 +12,16 @@ export type {
 } from './MockAssessmentScreenView';
 export { default as SessionChapterRail } from './SessionChapterRail';
 export { default as SessionPebbleRail } from './SessionPebbleRail';
+export { default as AssessmentReviewShell } from './AssessmentReviewShell';
+export type {
+  AssessmentReviewShellProps,
+  AssessmentReviewListItem,
+} from './AssessmentReviewShell';
+export { default as AssessmentAnalyzingView } from './AssessmentAnalyzingView';
+export type {
+  AssessmentAnalyzingViewProps,
+  AssessmentAnalyzingStepSchedule,
+} from './AssessmentAnalyzingView';
 export {
   buildGate1StartBody,
   resolveGate1PostSubmitRoute,

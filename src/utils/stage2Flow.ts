@@ -31,8 +31,9 @@ export const resolveGate2PillarKey = (
 export const gate2PillarIntroPath = (
   roleSlug: string,
   pillar: Gate2PillarKey | string | null | undefined,
-): string => {
-  const key = resolveGate2PillarKey(pillar) ?? "knowledge";
+): string | null => {
+  const key = resolveGate2PillarKey(pillar);
+  if (!key) return null;
   const part =
     key === "expertise"
       ? 2
@@ -48,8 +49,9 @@ export const gate2PillarIntroPath = (
 export const gate2PillarStartPath = (
   roleSlug: string,
   pillar: Gate2PillarKey | string | null | undefined,
-): string => {
-  const key = resolveGate2PillarKey(pillar) ?? "knowledge";
+): string | null => {
+  const key = resolveGate2PillarKey(pillar);
+  if (!key) return null;
   if (key === "expertise") {
     return `/onboarding/talent/${roleSlug}/interview/stage-2/part-2/interview-1`;
   }
@@ -76,17 +78,18 @@ export const resolveGate2ResumeNavigatePath = (
 
   const pillar = resume.nextPillar ?? resume.pillar;
 
-  if (resume.nextStep === "PILLAR_INTRO") {
-    return gate2PillarIntroPath(roleSlug, pillar);
-  }
-
-  if (resume.nextStep === "START_PILLAR") {
-    // Component exists but not mid-answer — intro is optional; land on intro then Begin → interview.
-    return gate2PillarIntroPath(roleSlug, pillar);
+  if (resume.nextStep === "PILLAR_INTRO" || resume.nextStep === "START_PILLAR") {
+    return (
+      gate2PillarIntroPath(roleSlug, pillar) ||
+      `/onboarding/talent/${roleSlug}/interview/stage-2`
+    );
   }
 
   // RESUME_PILLAR — go straight into answering; page POSTs start for regen/continue.
-  return gate2PillarStartPath(roleSlug, pillar);
+  return (
+    gate2PillarStartPath(roleSlug, pillar) ||
+    `/onboarding/talent/${roleSlug}/interview/stage-2`
+  );
 };
 
 export const parseGate2ResumeState = (
@@ -260,6 +263,7 @@ export interface Gate2ResumeViewModel {
   deadlineLabel: string;
   deadlineRemainingSeconds: number | null;
   deadlineTotalFormatted: string;
+  deadlineHint: string;
   interviewTimerLabel: string;
   interviewTimerValue: string;
   completedLabel: string;
@@ -271,37 +275,69 @@ export interface Gate2ResumeViewModel {
   leaveOffReady: boolean;
 }
 
+const firstItemCopy = (resume: Gate2ResumeState) => {
+  const item = resume.items?.[0] as
+    | (AssessmentItem & {
+        subtitle?: string;
+        screenSubtitle?: string;
+        screenTitle?: string;
+        timerSecs?: number;
+        content?: Record<string, unknown>;
+      })
+    | undefined;
+  if (!item) return { title: "", subtitle: "", timerSecs: undefined as number | undefined };
+  const content = item.content ?? {};
+  return {
+    title: String(
+      item.screenTitle || item.title || content.briefTitle || "",
+    ),
+    subtitle: String(
+      item.subtitle ||
+        item.screenSubtitle ||
+        content.briefBody ||
+        content.whyThisMatters ||
+        "",
+    ),
+    timerSecs:
+      typeof item.timerSecs === "number" && item.timerSecs > 0
+        ? item.timerSecs
+        : undefined,
+  };
+};
+
 export const buildGate2ResumeViewModel = (
   resume: Gate2ResumeState,
   roleSlug: string,
 ): Gate2ResumeViewModel => {
-  const partLabel =
-    resume.partLabel ||
-    (resume.part != null && resume.pillarLabel
-      ? `Part ${resume.part} · ${resume.pillarLabel}`
-      : resume.pillarLabel || "Professional dimension");
+  const partLabel = String(resume.partLabel || "").trim();
+  const pillarLabel = String(resume.pillarLabel || "").trim();
+  const itemCopy = firstItemCopy(resume);
 
   const interviewIndex = resume.interview?.index;
   const interviewTotal = resume.interview?.total;
   const interviewCrumb =
     interviewIndex != null && interviewTotal != null
       ? `Interview ${interviewIndex} of ${interviewTotal}`
-      : null;
+      : "";
 
   const completedCount = resume.completedPillars.length;
-  const totalParts = resume.pillars.length || 4;
+  const totalParts = resume.pillars.length;
 
-  const gateSecs = resume.timers?.gateLimitSecs ?? 72 * 3600;
-  const interviewSecs = resume.timers?.interviewLimitSecs ?? 720;
+  const gateSecs =
+    resume.timers?.gateLimitSecs != null && resume.timers.gateLimitSecs > 0
+      ? resume.timers.gateLimitSecs
+      : null;
+  const interviewSecs =
+    (resume.timers?.interviewLimitSecs != null &&
+    resume.timers.interviewLimitSecs > 0
+      ? resume.timers.interviewLimitSecs
+      : null) ?? itemCopy.timerSecs ?? null;
 
   const answered = resume.progress?.answered ?? 0;
   const hasDrafts = Object.keys(resume.responses || {}).length > 0;
-  const hasItems = (resume.items?.length ?? 0) > 0;
 
-  let welcomeText =
-    "Welcome back to Stage 2. Pick up on your next part whenever you are ready.";
-  let positionDesc =
-    "Your Stage 2 progress is saved. Resume to continue the professional dimension.";
+  let welcomeText = "";
+  let positionDesc = "";
   let showRegenerationNotice = false;
 
   if (resume.nextStep === "GATE2_COMPLETE") {
@@ -311,32 +347,44 @@ export const buildGate2ResumeViewModel = (
   } else if (resume.nextStep === "RESUME_PILLAR") {
     welcomeText =
       "You paused mid-way through Stage 2. Your timer kept running, but everything else is exactly where you left it.";
-    positionDesc = hasDrafts
-      ? `You'd answered ${answered} question${answered === 1 ? "" : "s"} in this window when you tapped Save and finish later.`
-      : hasItems
-        ? "You were mid-way through this part. Resume to continue — questions may regenerate."
-        : "This part is warming up. Resume to load your next questions.";
+    if (hasDrafts) {
+      positionDesc = `You'd answered ${answered} question${answered === 1 ? "" : "s"} in this window when you tapped Save and finish later.`;
+    } else {
+      positionDesc =
+        itemCopy.subtitle || String(resume.pillarIntroTitle || "");
+    }
     showRegenerationNotice = true;
   } else if (resume.nextStep === "START_PILLAR") {
-    welcomeText = `You're ready for ${partLabel}. Resume to begin this part.`;
-    positionDesc = "This part has a component ready. Starting opens your first question set.";
+    welcomeText = partLabel
+      ? `You're ready for ${partLabel}. Resume to begin this part.`
+      : String(resume.pillarIntroTitle || "");
+    positionDesc =
+      itemCopy.subtitle || String(resume.pillarIntroTitle || "");
   } else {
     // PILLAR_INTRO
-    welcomeText = `Next up: ${partLabel}. You haven't started this part yet.`;
-    positionDesc =
-      resume.pillarIntroTitle ||
-      "Open the part intro, then begin when you're ready.";
+    welcomeText = partLabel
+      ? `Next up: ${partLabel}. You haven't started this part yet.`
+      : String(resume.pillarIntroTitle || "");
+    positionDesc = String(resume.pillarIntroTitle || itemCopy.subtitle || "");
   }
 
   const positionTitle =
-    resume.screenTitle ||
-    resume.pillarIntroTitle ||
-    resume.pillarLabel ||
-    "Professional dimension";
+    String(resume.screenTitle || "").trim() ||
+    itemCopy.title ||
+    String(resume.pillarIntroTitle || "").trim() ||
+    pillarLabel ||
+    partLabel;
 
-  const crumbs = ["Stage 2", partLabel, interviewCrumb].filter(
-    Boolean,
-  ) as string[];
+  const crumbs = ["Stage 2", partLabel || pillarLabel, interviewCrumb].filter(
+    (c) => Boolean(c && String(c).trim()),
+  );
+
+  const deadlineTotalFormatted =
+    gateSecs != null ? formatSecondsAsHms(gateSecs) : "—";
+  const deadlineHint =
+    gateSecs != null
+      ? `${Math.round(gateSecs / 3600)}-hour assessment window`
+      : "";
 
   return {
     welcomeText,
@@ -346,11 +394,13 @@ export const buildGate2ResumeViewModel = (
     crumbs,
     deadlineLabel: "Stage 2 deadline",
     deadlineRemainingSeconds: null,
-    deadlineTotalFormatted: formatSecondsAsHms(gateSecs),
+    deadlineTotalFormatted,
+    deadlineHint,
     interviewTimerLabel: "Interview timer",
-    interviewTimerValue: formatSecondsAsHms(interviewSecs),
+    interviewTimerValue:
+      interviewSecs != null ? formatSecondsAsHms(interviewSecs) : "—",
     completedLabel: "Completed so far",
-    completedValue: `${completedCount} / ${totalParts}`,
+    completedValue: totalParts > 0 ? `${completedCount} / ${totalParts}` : "—",
     completedSub: "parts in Stage 2",
     resumePath: resolveGate2ResumeNavigatePath(roleSlug, resume),
     showRegenerationNotice,

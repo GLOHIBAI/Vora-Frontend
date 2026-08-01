@@ -208,7 +208,7 @@ const RoleAssessmentJourney: React.FC = () => {
   const companyName = appliedRole?.companyName || 'the employer';
   const roleTitle = appliedRole?.roleTitle || 'the role';
 
-  const readiness = readinessResponse?.data || readinessResponse;
+  const readiness = readinessResponse?.data?.data || readinessResponse?.data || readinessResponse;
 
   const hasStartedStage1 = useMemo(() => {
     if (!readiness) return false;
@@ -226,44 +226,100 @@ const RoleAssessmentJourney: React.FC = () => {
   }, [readiness]);
 
   const isLocked = useMemo(() => {
-    return (
-      readiness?.assessmentStatus === 'LOCKED' ||
-      readiness?.assessmentStatus === 'FAILED' ||
-      readiness?.isLocked === true
-    );
+    if (!readiness) return false;
+
+    const isExplicitlyLocked =
+      readiness.assessmentStatus === 'LOCKED' ||
+      readiness.assessmentStatus === 'FAILED' ||
+      readiness.nextStep === 'FAILED' ||
+      readiness.flowPhase === 'FAILED' ||
+      readiness.checks?.flowPhase === 'FAILED' ||
+      readiness.isLocked === true ||
+      readiness.checks?.assessmentLocked === true;
+
+    if (isExplicitlyLocked) return true;
+
+    const isExplicitlyUnlocked =
+      readiness.assessmentStatus === 'IN_PROGRESS' ||
+      readiness.nextStep === 'STAGE_2_ASSESSMENT' ||
+      readiness.flowPhase === 'ASSESSMENT' ||
+      (typeof readiness.stage === 'number' && readiness.stage >= 2);
+
+    if (isExplicitlyUnlocked) return false;
+
+    return readiness.checks?.canBeginAssessment === false;
   }, [readiness]);
 
   const gate1Tags = ['Personality', 'Values', 'Cognitive', 'Situational judgement'];
   const gate1EstimatedMinutes = '25 to 40 minutes';
-  
+
+  const failedStage = useMemo(() => {
+    if (!isLocked || !readiness) return null;
+    return readiness.failedStage || readiness.stage || 1;
+  }, [isLocked, readiness]);
+
+  const isStage1Failed = useMemo(() => {
+    return isLocked && failedStage === 1;
+  }, [isLocked, failedStage]);
+
+  const isStage2Failed = useMemo(() => {
+    return isLocked && failedStage === 2;
+  }, [isLocked, failedStage]);
+
+  const isStage3Failed = useMemo(() => {
+    return isLocked && failedStage === 3;
+  }, [isLocked, failedStage]);
+
   const gate1Completed = useMemo(() => {
     if (!readiness) return false;
+    if (isLocked) return failedStage ? failedStage > 1 : false;
     return readiness.stage > 1 || readiness.assessmentStatus === 'COMPLETED';
-  }, [readiness]);
+  }, [readiness, isLocked, failedStage]);
 
   const isStage2Unlocked = useMemo(() => {
-    if (!readiness) return false;
+    if (!readiness || isLocked) return false;
     return readiness.stage >= 2 || readiness.assessmentStatus === 'COMPLETED';
-  }, [readiness]);
+  }, [readiness, isLocked]);
 
   const isStage2Completed = useMemo(() => {
     if (!readiness) return false;
+    if (isLocked) return failedStage ? failedStage > 2 : false;
     return readiness.stage > 2 || readiness.assessmentStatus === 'COMPLETED';
-  }, [readiness]);
+  }, [readiness, isLocked, failedStage]);
 
   const isStage3Unlocked = useMemo(() => {
-    if (!readiness) return false;
+    if (!readiness || isLocked) return false;
     return readiness.stage >= 3 || readiness.assessmentStatus === 'COMPLETED';
-  }, [readiness]);
+  }, [readiness, isLocked]);
 
   const isStage3Completed = useMemo(() => {
     if (!readiness) return false;
+    if (isLocked) return failedStage ? failedStage > 3 : false;
     return readiness.stage > 3 || readiness.assessmentStatus === 'COMPLETED';
-  }, [readiness]);
+  }, [readiness, isLocked, failedStage]);
 
   const isStage4Unlocked = useMemo(() => {
-    if (!readiness) return false;
+    if (!readiness || isLocked) return false;
     return readiness.assessmentStatus === 'COMPLETED' || readiness.nextStep === 'COMPLETED';
+  }, [readiness, isLocked]);
+
+  const onboardingItems = useMemo(() => {
+    if (!readiness?.items || !Array.isArray(readiness.items)) return [];
+    return readiness.items
+      .map((it: any) => it.label || it.headline || it.id)
+      .filter(Boolean);
+  }, [readiness]);
+
+  const submissionTimeText = useMemo(() => {
+    if (!readiness?.items || !Array.isArray(readiness.items)) return '';
+    const submittedItem = readiness.items.find((it: any) => it.uploadedAt);
+    if (!submittedItem?.uploadedAt) return '';
+    try {
+      const d = new Date(submittedItem.uploadedAt);
+      return ` Submitted on ${d.toLocaleDateString()} at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`;
+    } catch {
+      return '';
+    }
   }, [readiness]);
 
   const timelineBg = useMemo(() => {
@@ -349,34 +405,38 @@ const RoleAssessmentJourney: React.FC = () => {
             <DocumentCheckIcon className="w-[24px] h-[24px]" />
           </div>
           <div className="flex-1 min-w-[240px]">
-            <div className="text-[11px] font-[800] tracking-[0.7px] text-[#0047CC] uppercase mb-[5px]">
-              {isStage3Completed
-                ? 'Stage 3 completed · Final decision pending'
-                : isStage2Completed 
-                  ? 'Stage 2 completed · Stage 3 unlocked' 
-                  : isStage2Unlocked 
-                    ? 'Stage 1 completed · Stage 2 unlocked' 
-                    : 'Onboarding submitted · Stage 1 unlocked'}
+            <div className={`text-[11px] font-[800] tracking-[0.7px] uppercase mb-[5px] ${isLocked ? 'text-[#DC2626]' : 'text-[#0047CC]'}`}>
+              {isLocked
+                ? 'Interview Failed · Journey Locked'
+                : isStage3Completed
+                  ? 'Stage 3 completed · Final decision pending'
+                  : isStage2Completed 
+                    ? 'Stage 2 completed · Stage 3 unlocked' 
+                    : isStage2Unlocked 
+                      ? 'Stage 1 completed · Stage 2 unlocked' 
+                      : 'Onboarding submitted · Stage 1 unlocked'}
             </div>
             <div className="text-[18px] font-[600] text-[#1A1A1A] mb-[5px] tracking-[-0.2px] leading-[1.3]">
-              {isStage3Completed
-                ? `You're all set, ${firstName}`
-                : isStage2Completed 
-                  ? `Stage 3 is unlocked, ${firstName}` 
-                  : `Ready when you are, ${firstName}`}
+              {isLocked
+                ? 'Interview Status: Failed'
+                : isStage3Completed
+                  ? `You're all set, ${firstName}`
+                  : isStage2Completed 
+                    ? `Stage 3 is unlocked, ${firstName}` 
+                    : `Ready when you are, ${firstName}`}
             </div>
             <div className="text-[13.5px] text-[#808080] leading-[1.55]">
-              {isLocked ? (
+              {/* {isLocked ? (
                 <span className="text-[#DC2626] font-[600]">You failed your previous interview. You did not meet the required threshold for this role, but you can explore other matching opportunities.</span>
               ) : isStage3Completed ? (
-                `You have completed all assessment stages! ${companyName}'s hiring panel is currently reviewing your application file.`
+                `You have completed all interview stages! ${companyName}'s hiring panel is currently reviewing your application file.`
               ) : isStage2Completed ? (
                 'Your Stage 2 professional dimension scored 87/100, clearing the threshold. Stage 3 is a short asynchronous video interview about how you show up.'
               ) : isStage2Unlocked ? (
                 `${companyName}'s hiring panel has your full file. Stage 2 takes about 60 to 100 minutes, split across three parts. You can pause between them. Your progress saves automatically.`
               ) : (
                 `${companyName}'s hiring panel has your full file. Stage 1 takes about 35 minutes and is a single sitting. Your progress saves automatically.`
-              )}
+              )} */}
             </div>
           </div>
           <div className="ml-auto flex items-end">
@@ -429,7 +489,7 @@ const RoleAssessmentJourney: React.FC = () => {
                       ? 'Resume Stage 2'
                       : 'Begin Stage 2' 
                     : hasStartedStage1 
-                      ? 'Resume assessment' 
+                      ? 'Resume interview' 
                       : 'Begin Stage 1'}
               </Button>
             )}
@@ -443,7 +503,7 @@ const RoleAssessmentJourney: React.FC = () => {
             <p className="text-[13.5px] text-[#808080] leading-[1.55]">Each stage builds on the last. Pass one and the next unlocks automatically.</p>
           </div>
           <div className="text-[12px] text-[#808080] font-[700] flex items-center gap-[6px]">
-            {isStage3Unlocked ? '3 of 4 unlocked' : isStage2Unlocked ? '2 of 4 unlocked' : '1 of 4 unlocked'}
+            {isLocked ? 'Locked (Interview Failed)' : isStage3Unlocked ? '3 of 4 unlocked' : isStage2Unlocked ? '2 of 4 unlocked' : '1 of 4 unlocked'}
           </div>
         </div>
 
@@ -461,12 +521,16 @@ const RoleAssessmentJourney: React.FC = () => {
             <div className="flex-1 min-w-0 pt-[2px]">
               <div className="text-[10.5px] font-[800] tracking-[0.8px] uppercase mb-[4px] text-[#0047CC]">Pre stage · Required gate</div>
               <div className="text-[17px] font-[600] text-[#1A1A1A] mb-[6px] tracking-[-0.2px] leading-[1.3]">Onboarding materials</div>
-              <div className="text-[13.5px] text-[#4A4A4A] leading-[1.65] mb-[14px]">The five things {companyName} asked you for, plus your CV and verified profile on file. Everything submitted today at 14:25.</div>
-              <div className="flex flex-wrap gap-[6px] mb-[14px]">
-                {['Programme report', 'Research output', 'Written prompt', 'References', 'Portfolio links'].map((item) => (
-                  <span key={item} className="text-[11px] font-[700] px-[10px] py-[4px] rounded-full border border-[#0047CC] bg-white text-[#0047CC]">{item}</span>
-                ))}
+              <div className="text-[13.5px] text-[#4A4A4A] leading-[1.65] mb-[14px]">
+                The {onboardingItems.length || readiness?.checklistCounts?.totalRequired || 'required'} materials {companyName} asked you for, plus your CV and verified profile on file.{submissionTimeText}
               </div>
+              {onboardingItems.length > 0 && (
+                <div className="flex flex-wrap gap-[6px] mb-[14px]">
+                  {onboardingItems.map((item: string) => (
+                    <span key={item} className="text-[11px] font-[700] px-[10px] py-[4px] rounded-full border border-[#0047CC] bg-white text-[#0047CC]">{item}</span>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="absolute top-[22px] right-[22px] hidden sm:flex items-center gap-[6px] text-[11px] font-[800] px-[11px] py-[5px] rounded-full tracking-[0.4px] bg-white border border-[#0047CC] text-[#0047CC]">
               Complete
@@ -476,12 +540,12 @@ const RoleAssessmentJourney: React.FC = () => {
           {/* Stage 1 (active/complete) */}
           <div 
             onClick={() => {
-              if (isLocked) {
-                navigate('/dashboard');
-                return;
-              }
               if (gate1Completed) {
                 navigate(`/onboarding/talent/${roleSlug}/interview/session-2/results`);
+                return;
+              }
+              if (isStage1Failed) {
+                navigate('/dashboard');
                 return;
               }
               if (hasStartedStage1) {
@@ -492,7 +556,7 @@ const RoleAssessmentJourney: React.FC = () => {
             }}
             className={gate1Completed 
               ? "bg-white border-[1.5px] border-[#0047CC]/20 rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all z-[1] cursor-pointer group hover:border-[#0047CC] hover:shadow-[0_8px_24px_rgba(0,71,204,0.05)]"
-              : isLocked
+              : isStage1Failed
                 ? "bg-white border-[1.5px] border-[#DC2626] rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative opacity-60 z-[1] cursor-pointer group hover:opacity-90 transition-all"
                 : "bg-gradient-to-b from-[#FAFCFF] to-white border-[1.5px] border-[#0047CC] rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all shadow-[0_8px_24px_rgba(0,71,204,0.1)] z-[1] cursor-pointer group"
             }
@@ -500,17 +564,17 @@ const RoleAssessmentJourney: React.FC = () => {
             <div className={`w-[54px] h-[54px] rounded-[14px] flex items-center justify-center shrink-0 relative z-[2] ${
               gate1Completed 
                 ? 'bg-gradient-to-br from-[#0047CC] to-[#387DFF] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)]' 
-                : isLocked 
+                : isStage1Failed 
                   ? 'text-[17px] font-[900] bg-white border-[1.5px] border-[#DC2626]/30 text-[#DC2626] shadow-[0_4px_14px_rgba(220,38,38,0.05)]' 
                   : 'text-[17px] font-[900] bg-gradient-to-br from-[#0047CC] to-[#387DFF] border-[1.5px] border-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.3)]'
             }`}>
               {gate1Completed ? <DocumentCheckIcon className="w-[22px] h-[22px] stroke-[3]" /> : '01'}
             </div>
             <div className="flex-1 min-w-0 pt-[2px]">
-              <div className={`text-[10.5px] font-[800] tracking-[0.8px] uppercase mb-[4px] ${isLocked ? 'text-[#DC2626]' : 'text-[#0047CC]'}`}>
+              <div className={`text-[10.5px] font-[800] tracking-[0.8px] uppercase mb-[4px] ${isStage1Failed ? 'text-[#DC2626]' : 'text-[#0047CC]'}`}>
                 {gate1Completed
                   ? 'Stage 1 · Complete'
-                  : isLocked
+                  : isStage1Failed
                     ? 'Stage 1 · Failed'
                     : hasStartedStage1
                       ? 'Stage 1 · In progress'
@@ -523,7 +587,7 @@ const RoleAssessmentJourney: React.FC = () => {
                   <span 
                     key={item} 
                     className={`text-[11px] font-[700] px-[10px] py-[4px] rounded-full border bg-white ${
-                      isLocked 
+                      isStage1Failed 
                         ? 'border-[#E6E6E6] text-[#808080]' 
                         : 'border-[#0047CC] text-[#0047CC]'
                     }`}
@@ -550,16 +614,52 @@ const RoleAssessmentJourney: React.FC = () => {
             <div className={`absolute top-[22px] right-[22px] hidden sm:flex items-center gap-[6px] text-[11px] font-[800] px-[11px] py-[5px] rounded-full tracking-[0.4px] border transition-all duration-200 ${
               gate1Completed
                 ? 'bg-white border-[#0047CC] text-[#0047CC] group-hover:bg-[#0047CC] group-hover:text-white cursor-pointer'
-                : isLocked
+                : isStage1Failed
                   ? 'bg-[#DC2626] text-white border-transparent cursor-pointer'
                   : 'bg-white border-[#0047CC] text-[#0047CC] group-hover:bg-[#0047CC] group-hover:text-white group-hover:border-[#0047CC] cursor-pointer'
             }`}>
-              {gate1Completed ? 'View results' : isLocked ? 'Failed' : hasStartedStage1 ? 'Resume' : 'Start here'}
+              {gate1Completed ? 'View results' : isStage1Failed ? 'Failed' : hasStartedStage1 ? 'Resume' : 'Start here'}
             </div>
           </div>
 
-          {/* Stage 2 (locked/active) */}
-          {isStage2Unlocked ? (
+          {/* Stage 2 (locked/active/failed) */}
+          {isStage2Failed ? (
+            <div 
+              onClick={() => navigate('/dashboard')}
+              className="bg-white border-[1.5px] border-[#DC2626] rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative opacity-90 z-[1] cursor-pointer group hover:opacity-100 transition-all"
+            >
+              <div className="w-[54px] h-[54px] rounded-[14px] flex items-center justify-center shrink-0 relative z-[2] text-[17px] font-[900] bg-white border-[1.5px] border-[#DC2626]/30 text-[#DC2626] shadow-[0_4px_14px_rgba(220,38,38,0.05)]">
+                02
+              </div>
+              <div className="flex-1 min-w-0 pt-[2px]">
+                <div className="text-[10.5px] font-[800] tracking-[0.8px] uppercase mb-[4px] text-[#DC2626]">Stage 2 · Failed</div>
+                <div className="text-[17px] font-[600] text-[#1A1A1A] mb-[6px] tracking-[-0.2px] leading-[1.3]">Your professional dimension</div>
+                <div className="text-[13.5px] text-[#4A4A4A] leading-[1.65] mb-[14px]">A focused look at the work itself, built around your CV, onboarding profile and this exact role. Four parts. Knowledge, then expertise, then reasoning, then applied simulation.</div>
+                <div className="flex flex-wrap gap-[6px] mb-[14px]">
+                  {['Part 1 · Knowledge', 'Part 2 · Expertise', 'Part 3 · Reasoning', 'Part 4 · Simulation'].map((item) => (
+                    <span key={item} className="text-[11px] font-[700] px-[10px] py-[4px] rounded-full border border-[#E6E6E6] text-[#808080] bg-white">{item}</span>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-[14px]">
+                  <div className="flex items-center gap-[6px] text-[11.5px] font-[700] text-[#808080]">
+                    <ClockPlayIcon className="w-[13px] h-[13px]" />
+                    60 to 100 minutes
+                  </div>
+                  <div className="flex items-center gap-[6px] text-[11.5px] font-[700] text-[#808080]">
+                    <WindowIcon className="w-[13px] h-[13px]" />
+                    72 hour window
+                  </div>
+                  <div className="flex items-center gap-[6px] text-[11.5px] font-[700] text-[#808080]">
+                    <ThresholdIcon className="w-[13px] h-[13px] text-[#808080]" />
+                    80% to advance
+                  </div>
+                </div>
+              </div>
+              <div className="absolute top-[22px] right-[22px] hidden sm:flex items-center gap-[6px] text-[11px] font-[800] px-[11px] py-[5px] rounded-full tracking-[0.4px] bg-[#DC2626] text-white border-transparent cursor-pointer">
+                Failed
+              </div>
+            </div>
+          ) : isStage2Unlocked ? (
             <div 
               onClick={() => {
                 if (isStage2Completed) {

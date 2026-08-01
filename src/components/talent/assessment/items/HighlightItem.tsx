@@ -46,21 +46,19 @@ const HighlightItem: React.FC<AssessmentItemRendererProps> = ({
   const reasoningText = String(selectedAnswer.reasoning ?? selectedAnswer.reason ?? '');
 
   const selectHighlight = (optionId: string) => {
-    onChange({
-      choice: optionId,
-      selectedIds: [optionId],
-      reason: reasoningText,
-      reasoning: reasoningText,
-    });
+    if (reasoningText) {
+      onChange({ choice: optionId, reason: reasoningText });
+    } else {
+      onChange({ choice: optionId });
+    }
   };
 
   const handleReasoning = (reasoning: string) => {
-    onChange({
-      choice: selectedId,
-      selectedIds: selectedId ? [selectedId] : [],
-      reason: reasoning,
-      reasoning,
-    });
+    if (selectedId) {
+      onChange({ choice: selectedId, reason: reasoning });
+    } else {
+      onChange({ choice: '', reason: reasoning });
+    }
   };
 
   return (

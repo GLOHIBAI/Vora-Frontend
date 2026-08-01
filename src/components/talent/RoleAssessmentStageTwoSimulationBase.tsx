@@ -289,7 +289,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
       });
       toast.success(
         simulationNumber >= totalSimulations
-          ? 'Stage 2 completed successfully!'
+          ? 'Saved. Review your Stage 2 responses next.'
           : 'Simulation submitted successfully!',
       );
       navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);

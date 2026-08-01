@@ -6,6 +6,8 @@ import { DataDisplayBlock } from '../shared/DataDisplayBlock';
 import ReasonTextarea from '../shared/ReasonTextarea';
 import { getReasonMinWords } from '../shared/reasonMinWords';
 
+import FormattedPromptText from '../shared/FormattedPromptText';
+
 const SingleSelectItem: React.FC<AssessmentItemRendererProps> = ({
   item,
   value,
@@ -74,7 +76,7 @@ const SingleSelectItem: React.FC<AssessmentItemRendererProps> = ({
     <AssessmentItemCard title={String(prompt)}>
       {content.scenario ? (
         <div className="bg-white border border-[#E6E6E6] rounded-[14px] p-4 mb-4 text-sm text-[#1A1A1A] leading-relaxed">
-          {String(content.scenario)}
+          <FormattedPromptText text={String(content.scenario)} />
         </div>
       ) : null}
       {content.subPrompt ? (
