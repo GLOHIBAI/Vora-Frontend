@@ -53,7 +53,7 @@ const CatItem: React.FC<AssessmentItemRendererProps> = ({
   const reasonText = String(selectedAssignments.reason ?? selectedAssignments.reasoning ?? '');
 
   return (
-    <AssessmentItemCard title={String(prompt)}>
+    <AssessmentItemCard item={item} title={String(prompt)}>
       {Boolean(content.scenario) && (
         <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] p-4 mb-4 text-[14px] text-[#334155] leading-relaxed font-medium">
           {String(content.scenario)}

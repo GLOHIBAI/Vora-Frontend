@@ -186,7 +186,7 @@ const ClozeItem: React.FC<AssessmentItemRendererProps> = ({
   const unresolvedBlanks = blanks.filter((b) => unresolvedIds.includes(b.id));
 
   return (
-    <AssessmentItemCard title={prompt}>
+    <AssessmentItemCard item={item} title={prompt}>
       {Boolean(content.scenario) && String(content.scenario) !== prompt ? (
         <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] p-4 mb-4 text-[14px] text-[#334155] leading-relaxed font-medium">
           {String(content.scenario)}

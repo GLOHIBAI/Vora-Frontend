@@ -46,6 +46,43 @@ const parseValue = (val: string | number): number => {
   return isNaN(num) ? 0 : num;
 };
 
+const getChartItemLabel = (item: any): string => {
+  if (!item || typeof item !== 'object') return String(item ?? '');
+  return (
+    item.label ??
+    item.region ??
+    item.name ??
+    item.category ??
+    item.title ??
+    item.x ??
+    item.key ??
+    ''
+  );
+};
+
+const getChartItemValue = (item: any): number => {
+  if (!item || typeof item !== 'object') return 0;
+  const raw =
+    item.performance ??
+    item.value ??
+    item.cost ??
+    item.amount ??
+    item.y ??
+    item.val ??
+    0;
+  return parseValue(raw);
+};
+
+const formatChartDisplayValue = (item: any): string => {
+  if (!item || typeof item !== 'object') return '';
+  if (item.performance !== undefined) return `${item.performance}%`;
+  if (item.value !== undefined) return String(item.value);
+  if (item.cost !== undefined) return `₦${item.cost.toLocaleString()}`;
+  if (item.amount !== undefined) return String(item.amount);
+  const raw = item.y ?? item.val ?? 0;
+  return String(raw);
+};
+
 export const DataDisplayBlock: React.FC<DataDisplayBlockProps> = ({ table, chart, dataset }) => {
   const chartData = React.useMemo(() => {
     if (!chart) return null;
@@ -66,7 +103,7 @@ export const DataDisplayBlock: React.FC<DataDisplayBlockProps> = ({ table, chart
 
   const maxVal = React.useMemo(() => {
     if (!chartData || chartData.length === 0) return 1;
-    return Math.max(...chartData.map((d) => parseValue(d.value)), 1);
+    return Math.max(...chartData.map((d) => getChartItemValue(d)), 1);
   }, [chartData]);
 
   if (!table && !chartData && (!dataset || !dataset.tables || dataset.tables.length === 0)) return null;
@@ -183,19 +220,21 @@ export const DataDisplayBlock: React.FC<DataDisplayBlockProps> = ({ table, chart
           </div>
           <div className="flex items-end gap-3.5 p-3.5 border-b border-[#E6E6E6] relative h-[220px] justify-between">
             {chartData.map((d, idx) => {
-              const val = parseValue(d.value);
+              const val = getChartItemValue(d);
+              const label = getChartItemLabel(d);
+              const displayVal = formatChartDisplayValue(d);
               const heightPercent = maxVal > 0 ? (val / maxVal) * 90 : 0; // scale to max 90%
               return (
                 <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
                   <div className="text-[11px] font-[800] text-[#4A4A4A] mb-1 tabular-nums">
-                    {String(d.value)}
+                    {displayVal}
                   </div>
                   <div
                     className="w-full bg-gradient-to-b from-[#387DFF] to-[#0047CC] rounded-[8px_8px_0_0] transition-all duration-300"
                     style={{ height: `${heightPercent}%` }}
                   />
                   <div className="text-[11.5px] text-[#808080] font-[700] mt-1.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-full text-center">
-                    {d.label}
+                    {label}
                   </div>
                 </div>
               );

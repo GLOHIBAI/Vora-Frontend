@@ -25,7 +25,7 @@ const MultiSelectItem: React.FC<AssessmentItemRendererProps> = ({
   };
 
   return (
-    <AssessmentItemCard title={prompt ? String(prompt) : undefined}>
+    <AssessmentItemCard item={item} title={prompt ? String(prompt) : undefined}>
       <p className="text-xs text-[#808080] mb-3">
         Select {minSelect === maxSelect ? minSelect : `${minSelect}–${maxSelect}`} option
         {maxSelect === 1 ? '' : 's'}.

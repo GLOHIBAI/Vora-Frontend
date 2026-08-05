@@ -70,11 +70,16 @@ export function formatGate2Answer(
   switch (normalizedType) {
     // Single best: bare string optionId
     case 'sb':
-    case 'sjt_single_best': {
-      if (typeof rawAnswer === 'object' && !Array.isArray(rawAnswer)) {
+    case 'sjt_single_best':
+    case 'mcq':
+    case 'single_choice':
+    case 'single':
+    case 'single_select':
+    case 'choice': {
+      if (typeof rawAnswer === 'object' && rawAnswer !== null && !Array.isArray(rawAnswer)) {
         return String(rawAnswer.choice ?? rawAnswer.optionId ?? rawAnswer.selectedOption ?? rawAnswer.selected ?? '');
       }
-      return String(rawAnswer);
+      return String(rawAnswer ?? '');
     }
 
     // Single best + reason

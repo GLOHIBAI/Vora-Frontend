@@ -36,7 +36,7 @@ const SjtMostLeastItem: React.FC<AssessmentItemRendererProps> = ({
   };
 
   return (
-    <AssessmentItemCard title={prompt ? String(prompt) : undefined}>
+    <AssessmentItemCard item={item} title={prompt ? String(prompt) : undefined}>
       <div className="space-y-3">
         {options.map((opt, idx) => {
           const text = opt.label || opt.text || opt.description || (opt as any).statement || (opt as any).content || (opt as any).value || (opt as any).prompt || '';

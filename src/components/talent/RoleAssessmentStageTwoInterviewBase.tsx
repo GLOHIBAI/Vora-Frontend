@@ -24,7 +24,7 @@ import type {
   AssessmentItem,
   GateWindowInfo,
 } from '../../services/queries/assessments/types';
-import { formatGate2ResponsesPayload } from '../../catalog/gate2-submit-shape.util';
+import { formatGate2ResponsesPayload, validateMinWords } from '../../catalog/gate2-submit-shape.util';
 import { getApiErrorMessage } from '../../services/api';
 import { StageTwoValidationProvider } from './assessment/shared/StageTwoValidationContext';
 
@@ -93,6 +93,34 @@ export interface Option {
   letter: string;
   text: string;
 }
+
+const fetchGate2PillarItemsWithRetry = async (
+  assessmentId: string,
+  pillar: string,
+  params?: { from?: number; through?: number },
+  maxRetries = 6,
+): Promise<any> => {
+  let attempts = 0;
+  while (attempts < maxRetries) {
+    try {
+      return await fetchGate2PillarItems(assessmentId, pillar, params);
+    } catch (err: any) {
+      const msg = getApiErrorMessage(err, '');
+      if (
+        msg.toLowerCase().includes('still being prepared') ||
+        msg.toLowerCase().includes('preparing') ||
+        msg.toLowerCase().includes('try again')
+      ) {
+        attempts++;
+        if (attempts >= maxRetries) throw err;
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      } else {
+        throw err;
+      }
+    }
+  }
+  return fetchGate2PillarItems(assessmentId, pillar, params);
+};
 
 export interface Question {
   id: string;
@@ -193,48 +221,61 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     setApiLoading(true);
     setApiError(null);
 
-    startScreenMutation.mutate(
-      {
-        assessmentId: activeAssessmentId,
-        body: { pillar },
-      },
-      {
-        onSuccess: (res: any) => {
-          if (cancelled) return;
-          const payload = applyGate2ScreenPayload(res);
-          if (payload) {
-            const { data, items, window, progress } = payload;
-            setApiScreenData(data);
-            setActiveItems(items);
-            if (window) {
-              setWindowInfo(window);
-            } else {
-              setWindowInfo({ from: 1, through: items.length, hasMore: false });
-            }
-            const total = progress?.total || items.length;
-            const current = progress?.current || 1;
-            const answered = progress?.answered || 0;
-            setPillarProgress({ total, current, answered });
-
-            if (data.questionsRegenerated) {
-              toast('Fresh questions generated for remaining unanswered items.', { icon: '🔄' });
-            }
-            setApiLoading(false);
-            return;
+    const loadPillarScreen = async () => {
+      try {
+        let res: any;
+        try {
+          res = await startScreenMutation.mutateAsync({
+            assessmentId: activeAssessmentId,
+            body: { pillar },
+          });
+        } catch (startErr: any) {
+          const msg = getApiErrorMessage(startErr, '');
+          if (
+            msg.toLowerCase().includes('already been started') ||
+            msg.toLowerCase().includes('already started')
+          ) {
+            res = await fetchGate2PillarItemsWithRetry(activeAssessmentId, pillar);
+          } else {
+            throw startErr;
           }
+        }
 
-          setApiError('No questions were returned for this part. Please try again.');
+        if (cancelled) return;
+        const payload = applyGate2ScreenPayload(res);
+        if (payload) {
+          const { data, items, window, progress } = payload;
+          setApiScreenData(data);
+          setActiveItems(items);
+          if (window) {
+            setWindowInfo(window);
+          } else {
+            setWindowInfo({ from: 1, through: items.length, hasMore: false });
+          }
+          const total = progress?.total || items.length;
+          const current = progress?.current || 1;
+          const answered = progress?.answered || 0;
+          setPillarProgress({ total, current, answered });
+
+          if (data?.questionsRegenerated) {
+            toast('Fresh questions generated for remaining unanswered items.', { icon: '🔄' });
+          }
           setApiLoading(false);
-        },
-        onError: (err) => {
-          if (cancelled) return;
-          startedPillarRef.current = null;
-          console.error('Failed to start Stage 2 screen from API:', err);
-          setApiError(getApiErrorMessage(err, 'Could not start this interview. Please try again.'));
-          setApiLoading(false);
-        },
+          return;
+        }
+
+        setApiError('No questions were returned for this part. Please try again.');
+        setApiLoading(false);
+      } catch (err: any) {
+        if (cancelled) return;
+        startedPillarRef.current = null;
+        console.error('Failed to load Stage 2 screen from API:', err);
+        setApiError(getApiErrorMessage(err, 'Could not start this interview. Please try again.'));
+        setApiLoading(false);
       }
-    );
+    };
+
+    loadPillarScreen();
 
     return () => {
       cancelled = true;
@@ -252,6 +293,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   );
 
   const draftHydratedRef = useRef(false);
+  const lockedResponsesRef = useRef<Record<string, any>>({});
 
   useEffect(() => {
     draftHydratedRef.current = false;
@@ -263,6 +305,10 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     if (!responses || typeof responses !== 'object') return;
 
     draftHydratedRef.current = true;
+    for (const [key, val] of Object.entries(responses)) {
+      lockedResponsesRef.current[key] = val ?? true;
+    }
+
     setAnswers((prev: any) => {
       const merged = { ...responses };
       // Prefer in-progress local answers over empty/partial draft values
@@ -312,13 +358,9 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           try {
             // 1. Flush draft answers for current window
             if (activeAssessmentId && apiScreenData?.componentId && Object.keys(answers).length > 0) {
-              const draftPayload = sanitizeAnswers(answers);
+              const draftPayload = buildUnlockedDraftPayload(answers);
               if (Object.keys(draftPayload).length > 0) {
-                await saveDraftMutation.mutateAsync({
-                  assessmentId: activeAssessmentId,
-                  componentId: apiScreenData.componentId,
-                  responses: draftPayload,
-                }).catch(() => {});
+                await safeSaveDraft(draftPayload).catch(() => {});
               }
             }
 
@@ -385,6 +427,61 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     return formatGate2ResponsesPayload(rawAnswers, allItems);
   };
 
+  const validateWindowMinWords = (targetItems: AssessmentItem[], currentAnswers: Record<string, any>): boolean => {
+    for (const item of targetItems) {
+      const minWords = item?.content?.minWords;
+      if (minWords && minWords > 0) {
+        const val = currentAnswers[item.id];
+        const reason = typeof val === 'object' && val !== null ? (val.reason ?? val.prose ?? val.reasoning ?? '') : String(val ?? '');
+        if (!validateMinWords(reason, minWords)) {
+          toast.error(`Please provide at least ${minWords} words for your explanation.`);
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
+  const buildUnlockedDraftPayload = (rawAnswers: Record<string, any>, itemsForTypes?: AssessmentItem[]) => {
+    const unlocked: Record<string, any> = {};
+    for (const [itemId, val] of Object.entries(rawAnswers)) {
+      if (val !== undefined && val !== null && val !== '' && lockedResponsesRef.current[itemId] === undefined) {
+        unlocked[itemId] = val;
+      }
+    }
+    return sanitizeAnswers(unlocked, itemsForTypes);
+  };
+
+  const safeSaveDraft = async (unlockedPayload: Record<string, any>) => {
+    if (!apiScreenData?.componentId || !activeAssessmentId) return;
+    if (Object.keys(unlockedPayload).length === 0) return; // All answers on page already saved/locked on server
+
+    try {
+      await saveDraftMutation.mutateAsync({
+        assessmentId: activeAssessmentId,
+        componentId: apiScreenData.componentId,
+        responses: unlockedPayload,
+      });
+      for (const [key, val] of Object.entries(unlockedPayload)) {
+        lockedResponsesRef.current[key] = val;
+      }
+    } catch (err: any) {
+      const errMessage = String(err?.message || err?.data?.message || err?.response?.data?.message || '');
+      if (errMessage.toLowerCase().includes('locked') || errMessage.toLowerCase().includes('cannot be changed')) {
+        const match = errMessage.match(/item\s+([a-zA-Z0-9_-]+):/);
+        if (match && match[1]) {
+          lockedResponsesRef.current[match[1]] = true;
+        } else {
+          Object.keys(unlockedPayload).forEach((k) => {
+            lockedResponsesRef.current[k] = true;
+          });
+        }
+        return;
+      }
+      throw err;
+    }
+  };
+
   const buildCurrentWindowDraftPayload = () => {
     const windowAnswers: Record<string, any> = {};
     for (const item of activeDisplayedItems) {
@@ -393,7 +490,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         windowAnswers[item.id] = val;
       }
     }
-    return sanitizeAnswers(windowAnswers, activeDisplayedItems);
+    return buildUnlockedDraftPayload(windowAnswers, activeDisplayedItems);
   };
 
   const handleSubmit = async (reason?: string) => {
@@ -418,17 +515,14 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         return;
       }
 
-      // Hard gate: draft must succeed before final submit.
-      await saveDraftMutation.mutateAsync({
-        assessmentId: activeAssessmentId,
-        componentId: apiScreenData.componentId,
-        responses: payloadResponses,
-      });
+      // Hard gate: draft of unlocked answers must succeed before final submit.
+      const unlockedDraft = buildUnlockedDraftPayload(answers);
+      await safeSaveDraft(unlockedDraft);
 
       await submitScreenMutation.mutateAsync({
         assessmentId: activeAssessmentId,
         componentId: apiScreenData.componentId,
-        responses: payloadResponses,
+        responses: unlockedDraft,
       });
       toast.success('Interview submitted successfully!');
       navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);
@@ -450,12 +544,8 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
     if (activeAssessmentId && apiScreenData?.componentId && Object.keys(answers).length > 0) {
       try {
-        const payloadResponses = sanitizeAnswers(answers);
-        await saveDraftMutation.mutateAsync({
-          assessmentId: activeAssessmentId,
-          componentId: apiScreenData.componentId,
-          responses: payloadResponses,
-        });
+        const unlockedDraft = buildUnlockedDraftPayload(answers);
+        await safeSaveDraft(unlockedDraft);
       } catch (err: any) {
         console.error('Failed to save draft on exit:', err);
         const serverMsg = err?.response?.data?.message || err?.message || 'Failed to save draft.';
@@ -524,23 +614,30 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         return;
       }
 
-      const payloadResponses = buildCurrentWindowDraftPayload();
-      if (Object.keys(payloadResponses).length === 0) {
+      const hasAnsweredCurrentWindow = activeDisplayedItems.every((item) => {
+        const val = answers[item.id];
+        return val !== undefined && val !== null && val !== '';
+      });
+
+      if (!hasAnsweredCurrentWindow) {
         toast.error('Please answer the questions on this page before continuing.');
         return;
       }
 
-      // Hard gate: never show the next window unless this draft save succeeds.
-      await saveDraftMutation.mutateAsync({
-        assessmentId: activeAssessmentId,
-        componentId: apiScreenData.componentId,
-        responses: payloadResponses,
-      });
+      if (!validateWindowMinWords(activeDisplayedItems, answers)) {
+        return;
+      }
+
+      const payloadResponses = buildCurrentWindowDraftPayload();
+
+      // Hard gate: never show the next window unless draft save of unlocked answers succeeds.
+      await safeSaveDraft(payloadResponses);
 
       const nextFrom = windowInfo.through + 1;
       const nextThrough = windowInfo.through + 4;
 
-      const res = await fetchGate2PillarItems(activeAssessmentId, pillar, {
+      setApiLoading(true);
+      const res = await fetchGate2PillarItemsWithRetry(activeAssessmentId, pillar, {
         from: nextFrom,
         through: nextThrough,
       });
@@ -587,6 +684,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         'Could not save your answers. Please try again before continuing.';
       toast.error(serverMsg);
     } finally {
+      setApiLoading(false);
       setIsSubmitting(false);
     }
   };
@@ -637,7 +735,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   ]);
 
   if (apiLoading) {
-    return <FullPageSpinner message="Loading interview screen..." />;
+    return <FullPageSpinner message="Preparing your personalized questions..." />;
   }
 
   if (apiError || !apiScreenData) {

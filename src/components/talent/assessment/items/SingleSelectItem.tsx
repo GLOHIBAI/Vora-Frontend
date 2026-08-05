@@ -73,7 +73,7 @@ const SingleSelectItem: React.FC<AssessmentItemRendererProps> = ({
   };
 
   return (
-    <AssessmentItemCard title={String(prompt)}>
+    <AssessmentItemCard item={item} title={String(prompt)}>
       {content.scenario ? (
         <div className="bg-white border border-[#E6E6E6] rounded-[14px] p-4 mb-4 text-sm text-[#1A1A1A] leading-relaxed">
           <FormattedPromptText text={String(content.scenario)} />

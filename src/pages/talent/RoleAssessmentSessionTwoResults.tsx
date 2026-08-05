@@ -363,7 +363,7 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
         </div>
 
         <h2 className="text-[20px] font-[900] text-[#1A1A1A] tracking-[-0.3px] mb-[6px]">
-          Three strengths that stood out
+          Four strengths that stood out
         </h2>
         <p className="text-[13.5px] text-[#808080] leading-[1.55] mb-[18px]">
           These came through repeatedly across your responses.

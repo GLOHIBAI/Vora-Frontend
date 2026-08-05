@@ -22,7 +22,7 @@ const ProbeItem: React.FC<AssessmentItemRendererProps> = ({
       : String((value as any)?.prose ?? (value as any)?.reason ?? (value as any)?.reasoning ?? '');
 
   return (
-    <AssessmentItemCard title={String(prompt)}>
+    <AssessmentItemCard item={item} title={String(prompt)}>
       {content.scenario && (
         <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] p-4 mb-4 text-[14px] text-[#334155] leading-relaxed font-medium">
           {String(content.scenario)}

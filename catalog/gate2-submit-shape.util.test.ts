@@ -20,6 +20,8 @@ console.log('=== Running Gate 2 Submit Shapes Utility Tests ===\n');
 // 1. sb (single best) -> bare string
 assertEqual(formatGate2Answer('sb', 'b'), 'b', 'sb with bare string optionId');
 assertEqual(formatGate2Answer('sb', { choice: 'b' }), 'b', 'sb with choice object');
+assertEqual(formatGate2Answer('mcq', { choice: 'a', reason: 'transient reason' }), 'a', 'mcq with choice object normalized to bare string');
+assertEqual(formatGate2Answer('single_choice', { choice: 'c' }), 'c', 'single_choice with choice object normalized to bare string');
 
 // 2. jb (single best + reason)
 assertEqual(
