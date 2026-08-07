@@ -233,6 +233,12 @@ export const parseGate2ResumeState = (
     gate2Complete: Boolean(
       unwrapped.gate2Complete ?? unwrapped.gate2_complete ?? false,
     ),
+    contentReady:
+      unwrapped.contentReady != null
+        ? Boolean(unwrapped.contentReady)
+        : unwrapped.content_ready != null
+          ? Boolean(unwrapped.content_ready)
+          : true,
     nextStep,
     componentId:
       unwrapped.componentId != null

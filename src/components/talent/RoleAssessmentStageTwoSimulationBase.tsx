@@ -16,6 +16,7 @@ import { getActiveAssessmentId } from '../../utils/assessmentSession';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
 import { getApiErrorMessage } from '../../services/api';
 import { getReasonMinWords } from '../../utils/reasonMinWords';
+import { gate2PillarStartPath, gate2PillarIntroPath } from '../../utils/stage2Flow';
 import type {
   AssessmentGateStartResponse,
   AssessmentItem,
@@ -123,6 +124,20 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
             body: { pillar: 'simulation' },
           }),
         );
+
+        if ((screen as any)?.pillarCompleted) {
+          const nextPill = (screen as any).nextPillar;
+          if (nextPill) {
+            const nextPath = gate2PillarStartPath(roleSlug, nextPill) || gate2PillarIntroPath(roleSlug, nextPill);
+            if (nextPath) {
+              navigate(nextPath, { replace: true });
+              return;
+            }
+          } else if ((screen as any).nextStep === 'GATE2_COMPLETE') {
+            navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/results`, { replace: true });
+            return;
+          }
+        }
 
         // If this simulation isn't in the start window, fetch by sequence index.
         let item = screen?.items?.[simulationNumber - 1] ?? null;

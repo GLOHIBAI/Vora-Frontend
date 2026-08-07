@@ -19,6 +19,15 @@ export interface UseProfileMatchProgressOptions {
   matchReady?: boolean;
 }
 
+const STEP_HEADLINES: Record<number, string> = {
+  0: "Reading and parsing your CV…",
+  1: "Reading and parsing your CV…",
+  2: "Checking work eligibility against this role…",
+  3: "Matching your profile against eligible roles…",
+  4: "Calculating Career Readiness Score…",
+  5: "Scanning all live roles for additional matches…",
+};
+
 export const useProfileMatchProgress = ({
   cvReadyForMatch = false,
   cvParseFailed = false,
@@ -27,12 +36,12 @@ export const useProfileMatchProgress = ({
   const [statuses, setStatuses] = useState<ProfileMatchStepStatus[]>(
     buildInitialProfileMatchStatuses,
   );
-  const [headline, setHeadline] = useState("Reading and parsing your CV…");
+  const [headline, setHeadline] = useState("Checking work eligibility against this role…");
   const [progress, setProgress] = useState(40);
 
   const matchPhaseStarted = cvReadyForMatch || matchReady;
 
-  // Creep progress: cap at 80% until CV ready, then up to 100% while match poll runs.
+  // Creep progress bar: cap at 80% until CV ready, then up to 97% while match poll runs.
   useEffect(() => {
     if (cvParseFailed) return;
 
@@ -52,7 +61,7 @@ export const useProfileMatchProgress = ({
     return () => clearInterval(intervalId);
   }, [cvParseFailed, matchPhaseStarted]);
 
-  // Jump to 100 when match result is ready.
+  // When match result is ready from backend, finish bar and mark all steps done.
   useEffect(() => {
     if (matchReady) {
       setProgress(MATCH_PROGRESS_CAP);
@@ -61,70 +70,54 @@ export const useProfileMatchProgress = ({
     }
   }, [matchReady]);
 
-  // Advance checklist steps during CV parse (pause last steps until cvReadyForMatch).
+  // Advance checklist steps strictly in order (1 -> 2 -> 3 -> 4 -> 5 -> 6).
   useEffect(() => {
     if (cvParseFailed || matchReady) return;
 
-    let stepIndex = 2;
     let timeoutId: ReturnType<typeof setTimeout>;
-    const stepCount = buildInitialProfileMatchStatuses().length;
-    const cvPhaseLastStep = 4; // index 4 = 5th step stop before final step until match phase
 
-    const advance = () => {
-      if (cvParseFailed) return;
-
-      if (!matchPhaseStarted && stepIndex >= cvPhaseLastStep) {
-        setHeadline("Finishing CV analysis…");
-        return;
-      }
+    const advanceStep = () => {
+      if (cvParseFailed || matchReady) return;
 
       setStatuses((prev) => {
-        const next = [...prev];
-        next[stepIndex] = "done";
-        if (stepIndex + 1 < next.length) {
-          next[stepIndex + 1] = "running";
+        const runningIndex = prev.findIndex((status) => status === "running");
+
+        // If no step is running currently, don't do anything
+        if (runningIndex === -1) return prev;
+
+        // If step 4 (score) is running and CV match phase hasn't unlocked yet, pause before step 5 (scanning)
+        if (runningIndex === 4 && !matchPhaseStarted) {
+          setHeadline("Finishing CV analysis…");
+          return prev;
         }
+
+        const next = [...prev];
+        next[runningIndex] = "done";
+
+        const nextIndex = runningIndex + 1;
+        if (nextIndex < next.length) {
+          next[nextIndex] = "running";
+          setHeadline(STEP_HEADLINES[nextIndex] || "Processing…");
+          timeoutId = setTimeout(advanceStep, STEP_ADVANCE_MS);
+        }
+
         return next;
       });
-
-      if (stepIndex === 2)
-        setHeadline("Scanning all live roles for additional matches…");
-      if (stepIndex === 3)
-        setHeadline("Calculating Career Readiness Score…");
-
-      stepIndex += 1;
-
-      if (!matchPhaseStarted && stepIndex >= cvPhaseLastStep) {
-        return;
-      }
-
-      if (stepIndex >= stepCount) {
-        setHeadline("Calculating your match score…");
-        return;
-      }
-
-      timeoutId = setTimeout(advance, STEP_ADVANCE_MS);
     };
 
-    timeoutId = setTimeout(advance, INITIAL_DELAY_MS);
+    timeoutId = setTimeout(advanceStep, INITIAL_DELAY_MS);
     return () => clearTimeout(timeoutId);
   }, [cvParseFailed, matchPhaseStarted, matchReady]);
 
-  // When CV parse completes, unlock match-phase steps and headline.
-  const matchPhaseStartedRef = useRef(false);
+  // If cvReadyForMatch becomes true while paused at step 4 (score), trigger advanceStep immediately
+  const cvReadyTriggeredRef = useRef(false);
   useEffect(() => {
-    if (!cvReadyForMatch || matchPhaseStartedRef.current || cvParseFailed)
+    if (!cvReadyForMatch || cvReadyTriggeredRef.current || cvParseFailed || matchReady)
       return;
-    matchPhaseStartedRef.current = true;
+
+    cvReadyTriggeredRef.current = true;
     setProgress((prev) => Math.max(prev, CV_PARSE_PROGRESS_CAP));
-    setHeadline("Matching your profile against eligible roles…");
-    setStatuses((prev) => {
-      const next = [...prev];
-      next[4] = "done";
-      if (next[5] !== "done") next[5] = "running";
-      return next;
-    });
-  }, [cvReadyForMatch, cvParseFailed]);
+  }, [cvReadyForMatch, cvParseFailed, matchReady]);
 
   useEffect(() => {
     if (cvParseFailed) {

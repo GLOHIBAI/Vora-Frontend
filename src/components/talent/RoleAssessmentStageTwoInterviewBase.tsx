@@ -19,13 +19,14 @@ import { resolveGate1AssessmentId } from '../../config/gate1Api';
 import { isItemAnswerComplete } from '../../utils/assessmentValidation';
 import { normalizeAssessmentItems } from '../../utils/assessmentItems';
 import { unwrapAssessmentData } from '../../utils/assessmentSession';
+import { gate2PillarStartPath, gate2PillarIntroPath } from '../../utils/stage2Flow';
 import type {
   AssessmentGateStartResponse,
   AssessmentItem,
   GateWindowInfo,
 } from '../../services/queries/assessments/types';
 import { formatGate2ResponsesPayload, validateMinWords } from '../../catalog/gate2-submit-shape.util';
-import { getApiErrorMessage } from '../../services/api';
+import { getApiErrorMessage, apiClient } from '../../services/api';
 import { StageTwoValidationProvider } from './assessment/shared/StageTwoValidationContext';
 
 const applyGate2ScreenPayload = (raw: unknown) => {
@@ -94,32 +95,38 @@ export interface Option {
   text: string;
 }
 
-const fetchGate2PillarItemsWithRetry = async (
+
+const pollResumeStateUntilReady = async (
   assessmentId: string,
   pillar: string,
-  params?: { from?: number; through?: number },
-  maxRetries = 6,
+  maxAttempts = 15,
+  intervalMs = 2500,
 ): Promise<any> => {
-  let attempts = 0;
-  while (attempts < maxRetries) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
     try {
-      return await fetchGate2PillarItems(assessmentId, pillar, params);
-    } catch (err: any) {
-      const msg = getApiErrorMessage(err, '');
-      if (
-        msg.toLowerCase().includes('still being prepared') ||
-        msg.toLowerCase().includes('preparing') ||
-        msg.toLowerCase().includes('try again')
-      ) {
-        attempts++;
-        if (attempts >= maxRetries) throw err;
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-      } else {
-        throw err;
+      const resumeRaw = await apiClient.get<Record<string, any>>({
+        url: `/assessments/${assessmentId}/gates/2/resume-state`,
+        auth: true,
+        suppressErrorToast: true,
+      });
+      const data = unwrapAssessmentData<Record<string, any>>(resumeRaw) ?? (resumeRaw as Record<string, any>);
+      if (data?.contentReady === true || (Array.isArray(data?.items) && data.items.length > 0)) {
+        return await apiClient.post({
+          url: `/assessments/${assessmentId}/gates/2/start`,
+          body: { pillar },
+          auth: true,
+        });
       }
+    } catch {
+      // Continue polling
     }
   }
-  return fetchGate2PillarItems(assessmentId, pillar, params);
+  return apiClient.post({
+    url: `/assessments/${assessmentId}/gates/2/start`,
+    body: { pillar },
+    auth: true,
+  });
 };
 
 export interface Question {
@@ -232,16 +239,33 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         } catch (startErr: any) {
           const msg = getApiErrorMessage(startErr, '');
           if (
-            msg.toLowerCase().includes('already been started') ||
-            msg.toLowerCase().includes('already started')
+            msg.toLowerCase().includes('still being prepared') ||
+            msg.toLowerCase().includes('preparing') ||
+            msg.toLowerCase().includes('try again')
           ) {
-            res = await fetchGate2PillarItemsWithRetry(activeAssessmentId, pillar);
+            res = await pollResumeStateUntilReady(activeAssessmentId, pillar);
           } else {
             throw startErr;
           }
         }
 
         if (cancelled) return;
+
+        const rawData = unwrapAssessmentData<Record<string, any>>(res) ?? (res as Record<string, any>);
+        if (rawData?.pillarCompleted) {
+          const nextPill = rawData.nextPillar;
+          if (nextPill) {
+            const nextPath = gate2PillarStartPath(roleSlug, nextPill) || gate2PillarIntroPath(roleSlug, nextPill);
+            if (nextPath) {
+              navigate(nextPath, { replace: true });
+              return;
+            }
+          } else if (rawData.nextStep === 'GATE2_COMPLETE') {
+            navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/results`, { replace: true });
+            return;
+          }
+        }
+
         const payload = applyGate2ScreenPayload(res);
         if (payload) {
           const { data, items, window, progress } = payload;
@@ -454,15 +478,24 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
   const safeSaveDraft = async (unlockedPayload: Record<string, any>) => {
     if (!apiScreenData?.componentId || !activeAssessmentId) return;
-    if (Object.keys(unlockedPayload).length === 0) return; // All answers on page already saved/locked on server
+
+    // Strictly filter out any items already marked as locked in lockedResponsesRef
+    const strictlyUnlocked: Record<string, any> = {};
+    for (const [key, val] of Object.entries(unlockedPayload)) {
+      if (lockedResponsesRef.current[key] === undefined && val !== undefined && val !== null && val !== '') {
+        strictlyUnlocked[key] = val;
+      }
+    }
+
+    if (Object.keys(strictlyUnlocked).length === 0) return; // All answers on page already saved/locked on server
 
     try {
       await saveDraftMutation.mutateAsync({
         assessmentId: activeAssessmentId,
         componentId: apiScreenData.componentId,
-        responses: unlockedPayload,
+        responses: strictlyUnlocked,
       });
-      for (const [key, val] of Object.entries(unlockedPayload)) {
+      for (const [key, val] of Object.entries(strictlyUnlocked)) {
         lockedResponsesRef.current[key] = val;
       }
     } catch (err: any) {
@@ -637,7 +670,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       const nextThrough = windowInfo.through + 4;
 
       setApiLoading(true);
-      const res = await fetchGate2PillarItemsWithRetry(activeAssessmentId, pillar, {
+      const res = await fetchGate2PillarItems(activeAssessmentId, pillar, {
         from: nextFrom,
         through: nextThrough,
       });

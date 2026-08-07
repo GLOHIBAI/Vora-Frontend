@@ -773,6 +773,7 @@ export interface Gate2ResumeState {
   completedPillars: Array<Gate2PillarKey | string>;
   pillars: Array<Gate2PillarKey | string>;
   gate2Complete: boolean;
+  contentReady?: boolean;
   nextStep: Gate2ResumeNextStep;
   componentId: string | null;
   pillar: Gate2PillarKey | string | null;

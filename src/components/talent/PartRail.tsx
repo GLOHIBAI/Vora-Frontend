@@ -35,7 +35,6 @@ const PartRail: React.FC<PartRailProps> = ({ activePart }) => {
               }`}
             />
             {p.label}
-            {isDone && ' ✓'}
           </div>
         );
       })}
