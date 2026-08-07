@@ -474,7 +474,7 @@ export function useAssessmentScreen({
           ),
         );
 
-        let resolveFlight: (() => void) | null = null;
+        let resolveFlight: () => void = () => {};
         adaptiveFlightPromiseRef.current = new Promise<void>((resolve) => {
           resolveFlight = resolve;
         });

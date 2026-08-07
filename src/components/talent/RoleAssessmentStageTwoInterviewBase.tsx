@@ -453,8 +453,9 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
   const validateWindowMinWords = (targetItems: AssessmentItem[], currentAnswers: Record<string, any>): boolean => {
     for (const item of targetItems) {
-      const minWords = item?.content?.minWords;
-      if (minWords && minWords > 0) {
+      const rawMinWords = (item?.content as any)?.minWords;
+      const minWords = typeof rawMinWords === 'number' ? rawMinWords : Number(rawMinWords) || 0;
+      if (minWords > 0) {
         const val = currentAnswers[item.id];
         const reason = typeof val === 'object' && val !== null ? (val.reason ?? val.prose ?? val.reasoning ?? '') : String(val ?? '');
         if (!validateMinWords(reason, minWords)) {
