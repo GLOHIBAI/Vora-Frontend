@@ -1,17 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import VoraLogo from '../../components/common/VoraLogo';
 import { useAuth } from '../../context/AuthContext';
 import StageRail from '../../components/talent/StageRail';
+import { useStartAssessmentScreenMutation } from '../../services/queries/assessments';
+import { resolveGate1AssessmentId } from '../../config/gate1Api';
+import { getActiveAssessmentId } from '../../utils/assessmentSession';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
     <polyline points="20 6 9 17 4 12"/>
   </svg>
 );
 
 const FolderIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
     <polyline points="14 2 14 8 20 8"/>
   </svg>
@@ -22,12 +25,27 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
   const { user } = useAuth();
   const firstName = user?.firstName || 'Adaeze';
+  const assessmentId = resolveGate1AssessmentId() || getActiveAssessmentId() || '';
+  const startGate3 = useStartAssessmentScreenMutation(3);
+  const [isStartingGate3, setIsStartingGate3] = useState(false);
 
-  const handleOpenStageThree = () => {
-    // Unlock Stage 3 and complete Stage 2 in localStorage
-    localStorage.setItem('vora_stage2_completed', 'true');
-    localStorage.setItem('vora_stage3_unlocked', 'true');
-    navigate(`/onboarding/talent/${roleSlug}/interview/journey`);
+  const handleOpenStageThree = async () => {
+    setIsStartingGate3(true);
+    try {
+      if (assessmentId) {
+        await startGate3.mutateAsync({
+          assessmentId,
+          body: {},
+        });
+      }
+    } catch (err) {
+      console.error('Failed to start Gate 3 session:', err);
+    } finally {
+      localStorage.setItem('vora_stage2_completed', 'true');
+      localStorage.setItem('vora_stage3_unlocked', 'true');
+      setIsStartingGate3(false);
+      navigate(`/onboarding/talent/${roleSlug}/interview/journey`);
+    }
   };
 
   return (

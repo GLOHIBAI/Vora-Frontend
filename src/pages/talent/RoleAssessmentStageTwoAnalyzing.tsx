@@ -1,9 +1,19 @@
-import React, { useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useEffect, useMemo } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import AssessmentAnalyzingView from '../../components/talent/assessment/AssessmentAnalyzingView';
+import { useAssessmentGatesProgressQuery } from '../../services/queries/assessments';
+import { resolveGate1AssessmentId } from '../../config/gate1Api';
+import { getActiveAssessmentId, parseGateProgressEntries } from '../../utils/assessmentSession';
 
 const RoleAssessmentStageTwoAnalyzing: React.FC = () => {
+  const navigate = useNavigate();
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
+  const assessmentId = resolveGate1AssessmentId() || getActiveAssessmentId() || '';
+
+  const { data: progressRaw } = useAssessmentGatesProgressQuery(assessmentId, {
+    enabled: !!assessmentId,
+    refetchInterval: 2000,
+  });
 
   const schedule = useMemo(
     () => [
@@ -12,6 +22,19 @@ const RoleAssessmentStageTwoAnalyzing: React.FC = () => {
     ],
     [],
   );
+
+  useEffect(() => {
+    if (!progressRaw) return;
+    const entries = parseGateProgressEntries(progressRaw);
+    const gate2 = entries.find((e) => String(e.gate) === '2');
+
+    if (gate2?.status === 'passed' || gate2?.status === 'completed') {
+      localStorage.setItem('vora_stage2_completed', 'true');
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/results`, { replace: true });
+    } else if (gate2?.status === 'failed') {
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/outcome`, { replace: true });
+    }
+  }, [progressRaw, roleSlug, navigate]);
 
   return (
     <AssessmentAnalyzingView
@@ -27,7 +50,7 @@ const RoleAssessmentStageTwoAnalyzing: React.FC = () => {
       ]}
       initialStepIndex={2}
       schedule={schedule}
-      redirectAtMs={6500}
+      redirectAtMs={10000}
       redirectPath="interview/stage-2/results"
       footerNote="This usually takes 30 to 60 seconds"
       headerMeta="Stage 2 review in progress"

@@ -297,11 +297,19 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
 
     setIsSubmitting(true);
     try {
-      await submitScreenMutation.mutateAsync({
+      const submitRes = await submitScreenMutation.mutateAsync({
         assessmentId: activeAssessmentId,
         componentId: apiScreenData.componentId,
-        responses: { [itemKey]: { prose, html: htmlContent } },
+        responses: { [itemKey]: { prose } },
       });
+
+      const resData = (submitRes as any)?.data || submitRes;
+      if (resData?.nextStep === 'GATE2_COMPLETE' || resData?.pillarCompleted) {
+        toast.success('Simulation complete. Reviewing Stage 2 results...');
+        navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`);
+        return;
+      }
+
       toast.success(
         simulationNumber >= totalSimulations
           ? 'Saved. Review your Stage 2 responses next.'
@@ -317,7 +325,6 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
 
   const confirmSaveAndExit = async () => {
     setSavedForLater(true);
-    const htmlContent = editorRef.current?.innerHTML || '';
     const prose = editorRef.current?.innerText?.trim() || '';
     const itemKey = activeItem?.id;
 
@@ -326,7 +333,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
         await saveDraftMutation.mutateAsync({
           assessmentId: activeAssessmentId,
           componentId: apiScreenData.componentId,
-          responses: { [itemKey]: { prose, html: htmlContent } },
+          responses: { [itemKey]: { prose } },
         });
       } catch (err) {
         console.error('Failed to save simulation draft on exit:', err);
