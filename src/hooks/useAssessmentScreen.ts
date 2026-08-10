@@ -229,6 +229,7 @@ export function useAssessmentScreen({
   /** Sync loading flag so option buttons disable before React Query isPending flips. */
   const [isAdaptiveLoading, setIsAdaptiveLoading] = useState(false);
   const confirmInFlightRef = useRef(false);
+  const inFlightDraftPromiseRef = useRef<Promise<void> | null>(null);
   const resetForComponentIdRef = useRef<string | null>(null);
 
   // Reset only when the assessment component/screen id changes — not when
@@ -316,6 +317,8 @@ export function useAssessmentScreen({
   }, []);
 
   const saveCurrentDraft = useCallback(async () => {
+    if (confirmInFlightRef.current || isSubmitProcessActive) return;
+
     const unsavedBatch: ResponsesMap = {};
     items.forEach((item) => {
       if (isAdaptiveType(item.type) && item.content.layout !== "multi_question") return;
@@ -343,14 +346,40 @@ export function useAssessmentScreen({
     });
 
     if (Object.keys(unsavedBatch).length > 0) {
-      const resp = await saveDraft.mutateAsync({
-        assessmentId,
-        componentId,
-        responses: unsavedBatch,
-      });
-      applyServerResponse(normalizeSaveResponse(resp));
+      const draftPromise = (async () => {
+        try {
+          const resp = await saveDraft.mutateAsync({
+            assessmentId,
+            componentId,
+            responses: unsavedBatch,
+          });
+          applyServerResponse(normalizeSaveResponse(resp));
+        } catch (err: any) {
+          const errMessage = String(err?.message || err?.data?.message || err?.response?.data?.message || '');
+          const lowerMsg = errMessage.toLowerCase();
+          if (
+            lowerMsg.includes('locked') ||
+            lowerMsg.includes('cannot be changed') ||
+            lowerMsg.includes('already been submitted') ||
+            lowerMsg.includes('already submitted')
+          ) {
+            lockedResponses.current = mergeResponseMaps(lockedResponses.current, unsavedBatch);
+            return;
+          }
+          throw err;
+        }
+      })();
+
+      inFlightDraftPromiseRef.current = draftPromise;
+      try {
+        await draftPromise;
+      } finally {
+        if (inFlightDraftPromiseRef.current === draftPromise) {
+          inFlightDraftPromiseRef.current = null;
+        }
+      }
     }
-  }, [assessmentId, componentId, items, answers, saveDraft, applyServerResponse]);
+  }, [assessmentId, componentId, items, answers, saveDraft, applyServerResponse, isSubmitProcessActive]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -573,7 +602,10 @@ export function useAssessmentScreen({
     setIsSubmitProcessActive(true);
 
     try {
-      // If a scenario adaptive POST is still in flight, wait first.
+      // If a draft save or adaptive POST is still in flight, wait first.
+      if (inFlightDraftPromiseRef.current) {
+        await inFlightDraftPromiseRef.current.catch(() => {});
+      }
       if (adaptiveFlightPromiseRef.current) {
         await adaptiveFlightPromiseRef.current;
       }

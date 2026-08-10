@@ -41,9 +41,7 @@ const StageRail: React.FC<StageRailProps> = ({
               <div
                 className={`w-[24px] h-[2px] rounded-[2px] shrink-0 ${
                   steps[idx - 1].num < activeStage 
-                    ? greenDone 
-                      ? 'bg-[#2CA62C]' 
-                      : 'bg-[#0047CC]' 
+                    ? 'bg-[#0047CC]' 
                     : 'bg-[#E6E6E6]'
                 }`}
               />
@@ -51,9 +49,7 @@ const StageRail: React.FC<StageRailProps> = ({
             
             <div className="flex items-center gap-[6px] shrink-0">
               {isDone ? (
-                <div className={`w-[20px] h-[20px] rounded-full flex items-center justify-center text-white shrink-0 ${
-                  greenDone ? 'bg-[#2CA62C]' : 'bg-[#0047CC]'
-                }`}>
+                <div className="w-[20px] h-[20px] rounded-full flex items-center justify-center text-white shrink-0 bg-[#0047CC]">
                   <DocumentCheckIcon className="w-[10px] h-[10px]" />
                 </div>
               ) : isActive ? (

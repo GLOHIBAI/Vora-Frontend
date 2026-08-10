@@ -1,18 +1,25 @@
 import React, { useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AssessmentAnalyzingView from '../../components/talent/assessment/AssessmentAnalyzingView';
-import { useAssessmentGatesProgressQuery } from '../../services/queries/assessments';
+import { useAssessmentGatesProgressQuery, useGateVerdictQuery } from '../../services/queries/assessments';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
-import { getActiveAssessmentId, parseGateProgressEntries } from '../../utils/assessmentSession';
+import { getActiveAssessmentId, parseGateProgressEntries, unwrapAssessmentData } from '../../utils/assessmentSession';
+import type { GateVerdictResponse } from '../../services/queries/assessments/types';
 
 const RoleAssessmentStageTwoAnalyzing: React.FC = () => {
   const navigate = useNavigate();
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
   const assessmentId = resolveGate1AssessmentId() || getActiveAssessmentId() || '';
 
+  const { data: verdictRaw } = useGateVerdictQuery(assessmentId, 2, {
+    enabled: !!assessmentId,
+    refetchInterval: 2500,
+  });
+  const verdict = unwrapAssessmentData<GateVerdictResponse>(verdictRaw);
+
   const { data: progressRaw } = useAssessmentGatesProgressQuery(assessmentId, {
     enabled: !!assessmentId,
-    refetchInterval: 2000,
+    refetchInterval: 2500,
   });
 
   const schedule = useMemo(
@@ -24,6 +31,26 @@ const RoleAssessmentStageTwoAnalyzing: React.FC = () => {
   );
 
   useEffect(() => {
+    // 1. Primary check: check dynamic gate 2 verdict status from server
+    if (verdict) {
+      if (verdict.status === 'generating') {
+        return; // Keep showing analyzing/generating screen
+      }
+      const isPassed = verdict.passed === true || verdict.verdict === 'pass' || verdict.verdict === 'qualified' || verdict.outcome === 'passed';
+      const isFailed = verdict.passed === false || verdict.verdict === 'fail' || verdict.verdict === 'not_yet' || verdict.outcome === 'failed' || verdict.roleLocked === true;
+
+      if (isPassed) {
+        localStorage.setItem('vora_stage2_completed', 'true');
+        navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/results`, { replace: true });
+        return;
+      }
+      if (isFailed) {
+        navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/outcome`, { replace: true });
+        return;
+      }
+    }
+
+    // 2. Fallback check: check gate progress rollup entries
     if (!progressRaw) return;
     const entries = parseGateProgressEntries(progressRaw);
     const gate2 = entries.find((e) => String(e.gate) === '2');
@@ -34,7 +61,7 @@ const RoleAssessmentStageTwoAnalyzing: React.FC = () => {
     } else if (gate2?.status === 'failed') {
       navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/outcome`, { replace: true });
     }
-  }, [progressRaw, roleSlug, navigate]);
+  }, [verdict, progressRaw, roleSlug, navigate]);
 
   return (
     <AssessmentAnalyzingView

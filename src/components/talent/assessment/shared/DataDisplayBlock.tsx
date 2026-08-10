@@ -48,20 +48,26 @@ const parseValue = (val: string | number): number => {
 
 const getChartItemLabel = (item: any): string => {
   if (!item || typeof item !== 'object') return String(item ?? '');
-  return (
+  const label =
     item.label ??
     item.region ??
     item.name ??
     item.category ??
     item.title ??
-    item.x ??
+    (item.x !== undefined ? `Year ${item.x}` : undefined) ??
     item.key ??
-    ''
-  );
+    '';
+  return String(label);
 };
 
 const getChartItemValue = (item: any): number => {
   if (!item || typeof item !== 'object') return 0;
+  if (Array.isArray(item.data) && item.data.length > 0) {
+    const firstPoint = item.data.find(
+      (p: any) => p && (p.y !== undefined || p.value !== undefined || p.val !== undefined || p.performance !== undefined),
+    );
+    if (firstPoint) return getChartItemValue(firstPoint);
+  }
   const raw =
     item.performance ??
     item.value ??
@@ -75,20 +81,33 @@ const getChartItemValue = (item: any): number => {
 
 const formatChartDisplayValue = (item: any): string => {
   if (!item || typeof item !== 'object') return '';
+  if (Array.isArray(item.data) && item.data.length > 0) {
+    const firstPoint = item.data.find(
+      (p: any) => p && (p.y !== undefined || p.value !== undefined || p.val !== undefined || p.performance !== undefined),
+    );
+    if (firstPoint) return formatChartDisplayValue(firstPoint);
+  }
   if (item.performance !== undefined) return `${item.performance}%`;
   if (item.value !== undefined) return String(item.value);
   if (item.cost !== undefined) return `₦${item.cost.toLocaleString()}`;
   if (item.amount !== undefined) return String(item.amount);
+  if (item.y !== undefined) return `${item.y}%`;
   const raw = item.y ?? item.val ?? 0;
-  return String(raw);
+  return raw !== 0 ? String(raw) : '';
 };
 
 export const DataDisplayBlock: React.FC<DataDisplayBlockProps> = ({ table, chart, dataset }) => {
   const chartData = React.useMemo(() => {
     if (!chart) return null;
     if (Array.isArray(chart)) return chart;
-    if (typeof chart === 'object' && Array.isArray((chart as any).data)) {
-      return (chart as any).data as ChartItem[];
+    if (typeof chart === 'object') {
+      const raw = (chart as any).data;
+      if (Array.isArray(raw)) {
+        if (raw.length === 1 && Array.isArray(raw[0]?.data)) {
+          return raw[0].data as ChartItem[];
+        }
+        return raw as ChartItem[];
+      }
     }
     return null;
   }, [chart]);

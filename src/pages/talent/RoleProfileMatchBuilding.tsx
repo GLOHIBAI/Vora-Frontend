@@ -28,7 +28,7 @@ import {
 import { parseRoleCvStatusPayload } from '../../utils/roleCvStatus';
 import { persistRolePostingId } from '../../utils/rolePostingId';
 
-const CV_STATUS_POLL_MS = 2000;
+const CV_STATUS_POLL_MS = 5000;
 const MATCH_POLL_MS = 3000;
 
 const RoleProfileMatchBuilding: React.FC = () => {

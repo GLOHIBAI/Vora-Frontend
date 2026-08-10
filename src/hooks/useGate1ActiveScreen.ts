@@ -197,11 +197,33 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
           if (
             status === 400 &&
             isRecoverableGate1StartError(message) &&
-            recoverAttemptsRef.current < 1
+            recoverAttemptsRef.current < 3
           ) {
             recoverAttemptsRef.current += 1;
             bootedKeyRef.current = null;
             setError(null);
+
+            // If the error explicitly mentions the in-progress screen, e.g. ("values")
+            const match = message.match(/in-progress screen \("([a-zA-Z0-9_-]+)"\)/i);
+            if (match && match[1]) {
+              const targetScreenKey = match[1] as Gate1ScreenKey;
+              queryClient.setQueryData(
+                assessmentKeys.resumeState(assessmentId, 1),
+                (prev: any) => {
+                  if (!prev) return prev;
+                  return {
+                    ...prev,
+                    nextScreenKey: targetScreenKey,
+                    inProgress: {
+                      screenKey: targetScreenKey,
+                      componentId: prev.inProgress?.componentId || '',
+                      session: prev.session || 1,
+                    },
+                  };
+                },
+              );
+            }
+
             await queryClient.invalidateQueries({
               queryKey: assessmentKeys.resumeState(assessmentId, 1),
             });

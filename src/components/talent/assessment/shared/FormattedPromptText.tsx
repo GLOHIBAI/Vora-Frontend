@@ -64,14 +64,14 @@ export const FormattedPromptText: React.FC<FormattedPromptTextProps> = ({
     if (codeContent.endsWith('\n')) codeContent = codeContent.slice(0, -1);
 
     parts.push(
-      <div key={`code-${keyIdx++}`} className="my-4 rounded-xl border border-[#334155] bg-[#1E293B] overflow-hidden shadow-sm">
-        <div className="bg-[#0F172A] px-4 py-2 flex items-center justify-between border-b border-[#334155]">
-          <span className="text-[11px] font-[800] uppercase tracking-wider text-[#94A3B8]">
+      <div key={`code-${keyIdx++}`} className="my-4 rounded-xl border border-[#E6E6E6] bg-white overflow-hidden shadow-sm">
+        <div className="bg-[#F8FAFC] px-4 py-2 flex items-center justify-between border-b border-[#E6E6E6]">
+          <span className="text-[11px] font-[800] uppercase tracking-wider text-[#0047CC]">
             {lang || 'Code Snippet'}
           </span>
-          <span className="text-[10px] text-[#64748B] font-mono">UTF-8</span>
+          <span className="text-[10px] text-[#808080] font-mono">UTF-8</span>
         </div>
-        <pre className="p-4 font-mono text-[13px] leading-relaxed text-[#F8FAFC] overflow-x-auto custom-scrollbar whitespace-pre">
+        <pre className="p-4 font-mono text-[13px] leading-relaxed text-[#1A1A1A] bg-white overflow-x-auto custom-scrollbar whitespace-pre">
           <code>{codeContent}</code>
         </pre>
       </div>

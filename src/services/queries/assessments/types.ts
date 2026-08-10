@@ -281,6 +281,7 @@ export interface AssessmentGateStartResponse {
   gateName?: string;
   table?: any;
   chart?: any;
+  responses?: ResponsesMap;
 }
 
 export interface Gate2PillarItemsResponse {

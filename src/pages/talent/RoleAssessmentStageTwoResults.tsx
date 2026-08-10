@@ -3,9 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import VoraLogo from '../../components/common/VoraLogo';
 import { useAuth } from '../../context/AuthContext';
 import StageRail from '../../components/talent/StageRail';
-import { useStartAssessmentScreenMutation } from '../../services/queries/assessments';
+import { useStartAssessmentScreenMutation, useGateVerdictQuery, useAssessmentGatesProgressQuery } from '../../services/queries/assessments';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
-import { getActiveAssessmentId } from '../../utils/assessmentSession';
+import { getActiveAssessmentId, unwrapAssessmentData } from '../../utils/assessmentSession';
+import type { GateVerdictResponse } from '../../services/queries/assessments/types';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -24,8 +25,19 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
   const navigate = useNavigate();
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
   const { user } = useAuth();
-  const firstName = user?.firstName || 'Adaeze';
   const assessmentId = resolveGate1AssessmentId() || getActiveAssessmentId() || '';
+  
+  const { data: verdictRaw } = useGateVerdictQuery(assessmentId, 2, { enabled: !!assessmentId });
+  const verdict = unwrapAssessmentData<GateVerdictResponse>(verdictRaw);
+
+  const { data: progressRaw } = useAssessmentGatesProgressQuery(assessmentId, { enabled: !!assessmentId });
+  const progressEntries = unwrapAssessmentData<any[]>(progressRaw) || [];
+  const gate2Progress = Array.isArray(progressEntries) ? progressEntries.find((e) => String(e.gate) === '2') : null;
+
+  const firstName = user?.firstName || verdict?.talent?.firstName || 'Adaeze';
+  const compositeScore = verdict?.score ?? gate2Progress?.score ?? 87;
+  const passThreshold = verdict?.threshold ?? 80;
+
   const startGate3 = useStartAssessmentScreenMutation(3);
   const [isStartingGate3, setIsStartingGate3] = useState(false);
 
@@ -57,7 +69,7 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
         </span>
         <div className="text-[12.5px] text-[#808080] font-[600]">Stage 2 · Result</div>
         <div className="flex items-center gap-[6px] text-[12px] text-[#808080] font-[600]">
-          <svg className="w-[13px] h-[13px] text-[#2CA62C]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+          <svg className="w-[13px] h-[13px] text-[#0047CC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
             <polyline points="20 6 9 17 4 12"/>
           </svg>
           Saved
@@ -65,12 +77,12 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
       </header>
 
       {/* Stage Rail */}
-      <StageRail activeStage={3} greenDone={true} />
+      <StageRail activeStage={3} greenDone={false} />
 
       {/* Hero */}
-      <section className="bg-gradient-to-br from-[#0F3D0F] via-[#1D871D] to-[#2CA62C] text-white p-[48px_32px_60px] relative overflow-hidden">
-        <div className="absolute top-[-100px] right-[-80px] w-[340px] h-[340px] rounded-full bg-white/[0.04]" />
-        <div className="absolute bottom-[-90px] left-[-70px] w-[240px] h-[240px] rounded-full bg-white/[0.03]" />
+      <section className="bg-gradient-to-br from-[#0A1029] via-[#182348] to-[#0047CC] text-white p-[48px_32px_60px] relative overflow-hidden">
+        <div className="absolute top-[-100px] right-[-80px] w-[340px] h-[340px] rounded-full bg-[#387DFF]/10" />
+        <div className="absolute bottom-[-90px] left-[-70px] w-[240px] h-[240px] rounded-full bg-white/[0.04]" />
         <div className="max-w-[880px] mx-auto relative z-[2]">
           <div className="inline-flex items-center gap-[7px] bg-white/[0.16] border border-white/[0.24] rounded-full p-[6px_14px] backdrop-blur-[6px] mb-[16px]">
             <DocumentCheckIcon className="w-[13px] h-[13px]" />
@@ -87,9 +99,9 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
             <div className="bg-white/[0.18] border border-white/[0.3] rounded-[14px] p-[18px_22px] backdrop-blur-[8px] min-w-[140px] flex-1 max-w-[180px]">
               <div className="text-[10.5px] font-[800] tracking-[0.6px] uppercase text-white/72 mb-[6px]">Composite score</div>
               <div className="text-[28px] font-[900] tracking-[-0.5px] leading-[1] tabular-nums">
-                87<small className="text-[14px] font-[700] text-white/70 ml-[3px]">/100</small>
+                {compositeScore}<small className="text-[14px] font-[700] text-white/70 ml-[3px]">/100</small>
               </div>
-              <div className="text-[11.5px] text-white/75 font-[600] mt-[6px] leading-[1.4]">Threshold to pass: 80</div>
+              <div className="text-[11.5px] text-white/75 font-[600] mt-[6px] leading-[1.4]">Threshold to pass: {passThreshold}</div>
             </div>
 
             <div className="bg-white/[0.1] border border-white/[0.18] rounded-[14px] p-[18px_22px] backdrop-blur-[8px] min-w-[140px] flex-1 max-w-[180px]">
@@ -122,9 +134,9 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
       {/* Main content */}
       <main className="max-w-[880px] w-full mx-auto mt-[-32px] px-[20px] sm:px-[28px] pb-[90px] relative z-10 flex-1">
         {/* Narrative Card */}
-        <div className="bg-white rounded-[18px] p-[28px_32px] mb-[22px] shadow-[0_12px_36px_rgba(10,17,114,0.08)] border border-[#E6E6E6] relative before:content-[''] before:absolute before:top-0 before:left-[24px] before:right-[24px] before:height-[3px] before:h-[3px] before:bg-gradient-to-r before:from-[#2CA62C] before:to-[#85E585] before:rounded-[0_0_4px_4px]">
+        <div className="bg-white rounded-[18px] p-[28px_32px] mb-[22px] shadow-[0_12px_36px_rgba(10,17,114,0.08)] border border-[#E6E6E6] relative before:content-[''] before:absolute before:top-0 before:left-[24px] before:right-[24px] before:height-[3px] before:h-[3px] before:bg-gradient-to-r before:from-[#0047CC] before:to-[#387DFF] before:rounded-[0_0_4px_4px]">
           <h2 className="text-[18px] font-[900] text-[#1A1A1A] tracking-[-0.2px] mb-[14px] flex items-center gap-[10px]">
-            <FolderIcon className="w-[20px] h-[20px] text-[#2CA62C]" />
+            <FolderIcon className="w-[20px] h-[20px] text-[#0047CC]" />
             What this stage showed us
           </h2>
           <p className="text-[14.5px] text-[#4A4A4A] leading-[1.75] mb-[12px]">
@@ -149,12 +161,12 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
                 <div className="w-[24px] h-[24px] rounded-[7px] bg-[#EBF6FF] text-[#0047CC] flex items-center justify-center text-[11px] font-[900]">1</div>
                 Part 1 · Knowledge
               </div>
-              <div className="text-[18px] font-[900] text-[#1D871D] tracking-[-0.3px] tabular-nums">
+              <div className="text-[18px] font-[900] text-[#0047CC] tracking-[-0.3px] tabular-nums">
                 82<small className="text-[11.5px] font-[700] text-[#808080] ml-[2px]">%</small>
               </div>
             </div>
             <div className="h-[8px] bg-[#F7F7F7] rounded-full overflow-hidden mb-[8px]">
-              <div className="h-full bg-gradient-to-r from-[#2CA62C] to-[#85E585] rounded-full transition-all duration-1000" style={{ width: '82%' }} />
+              <div className="h-full bg-gradient-to-r from-[#0047CC] to-[#387DFF] rounded-full transition-all duration-1000" style={{ width: '82%' }} />
             </div>
             <p className="text-[12.5px] text-[#808080] leading-[1.55]">
               Pharmacology in the field, biostatistics for programme decisions, compliance and ethics. Three interviews, eighteen questions total.
@@ -167,12 +179,12 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
                 <div className="w-[24px] h-[24px] rounded-[7px] bg-[#EBF6FF] text-[#0047CC] flex items-center justify-center text-[11px] font-[900]">2</div>
                 Part 2 · Reasoning
               </div>
-              <div className="text-[18px] font-[900] text-[#1D871D] tracking-[-0.3px] tabular-nums">
+              <div className="text-[18px] font-[900] text-[#0047CC] tracking-[-0.3px] tabular-nums">
                 91<small className="text-[11.5px] font-[700] text-[#808080] ml-[2px]">%</small>
               </div>
             </div>
             <div className="h-[8px] bg-[#F7F7F7] rounded-full overflow-hidden mb-[8px]">
-              <div className="h-full bg-gradient-to-r from-[#2CA62C] to-[#85E585] rounded-full transition-all duration-1000" style={{ width: '91%' }} />
+              <div className="h-full bg-gradient-to-r from-[#0047CC] to-[#387DFF] rounded-full transition-all duration-1000" style={{ width: '91%' }} />
             </div>
             <p className="text-[12.5px] text-[#808080] leading-[1.55]">
               Clinical scenarios, research appraisal, health data interpretation. Your strongest part of Stage 2.
@@ -185,12 +197,12 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
                 <div className="w-[24px] h-[24px] rounded-[7px] bg-[#EBF6FF] text-[#0047CC] flex items-center justify-center text-[11px] font-[900]">3</div>
                 Part 3 · Simulation
               </div>
-              <div className="text-[18px] font-[900] text-[#1D871D] tracking-[-0.3px] tabular-nums">
+              <div className="text-[18px] font-[900] text-[#0047CC] tracking-[-0.3px] tabular-nums">
                 88<small className="text-[11.5px] font-[700] text-[#808080] ml-[2px]">%</small>
               </div>
             </div>
             <div className="h-[8px] bg-[#F7F7F7] rounded-full overflow-hidden mb-[8px]">
-              <div className="h-full bg-gradient-to-r from-[#2CA62C] to-[#85E585] rounded-full transition-all duration-1000" style={{ width: '88%' }} />
+              <div className="h-full bg-gradient-to-r from-[#0047CC] to-[#387DFF] rounded-full transition-all duration-1000" style={{ width: '88%' }} />
             </div>
             <p className="text-[12.5px] text-[#808080] leading-[1.55]">
               Four written simulations: handover, community message, telehealth reply, safeguarding referral.
@@ -209,7 +221,7 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
                 <span className="text-[13.5px] font-[900] text-[#1A1A1A] tabular-nums">93%</span>
               </div>
               <div className="h-[7px] bg-[#F7F7F7] rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-[#2CA62C] to-[#85E585] rounded-full transition-all duration-1000" style={{ width: '93%' }} />
+                <div className="h-full bg-gradient-to-r from-[#0047CC] to-[#387DFF] rounded-full transition-all duration-1000" style={{ width: '93%' }} />
               </div>
               <div className="text-[11.5px] text-[#808080] font-[600] italic mt-[2px]">Top decile against senior officer benchmarks for this role.</div>
             </div>
@@ -220,7 +232,7 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
                 <span className="text-[13.5px] font-[900] text-[#1A1A1A] tabular-nums">90%</span>
               </div>
               <div className="h-[7px] bg-[#F7F7F7] rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-[#2CA62C] to-[#85E585] rounded-full transition-all duration-1000" style={{ width: '90%' }} />
+                <div className="h-full bg-gradient-to-r from-[#0047CC] to-[#387DFF] rounded-full transition-all duration-1000" style={{ width: '90%' }} />
               </div>
               <div className="text-[11.5px] text-[#808080] font-[600] italic mt-[2px]">Caught uncertainty in confidence intervals consistently.</div>
             </div>
@@ -231,7 +243,7 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
                 <span className="text-[13.5px] font-[900] text-[#1A1A1A] tabular-nums">88%</span>
               </div>
               <div className="h-[7px] bg-[#F7F7F7] rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-[#2CA62C] to-[#85E585] rounded-full transition-all duration-1000" style={{ width: '88%' }} />
+                <div className="h-full bg-gradient-to-r from-[#0047CC] to-[#387DFF] rounded-full transition-all duration-1000" style={{ width: '88%' }} />
               </div>
               <div className="text-[11.5px] text-[#808080] font-[600] italic mt-[2px]">Tone matched audience across all four simulations.</div>
             </div>
@@ -242,7 +254,7 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
                 <span className="text-[13.5px] font-[900] text-[#1A1A1A] tabular-nums">86%</span>
               </div>
               <div className="h-[7px] bg-[#F7F7F7] rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-[#2CA62C] to-[#85E585] rounded-full transition-all duration-1000" style={{ width: '86%' }} />
+                <div className="h-full bg-gradient-to-r from-[#0047CC] to-[#387DFF] rounded-full transition-all duration-1000" style={{ width: '86%' }} />
               </div>
               <div className="text-[11.5px] text-[#808080] font-[600] italic mt-[2px]">Strong protective framing, clean separation of fact from interpretation.</div>
             </div>
@@ -264,7 +276,7 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
                 <span className="text-[13.5px] font-[900] text-[#1A1A1A] tabular-nums">78%</span>
               </div>
               <div className="h-[7px] bg-[#F7F7F7] rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-[#D97706] to-[#FBBF24] rounded-full transition-all duration-1000" style={{ width: '78%' }} />
+                <div className="h-full bg-gradient-to-r from-[#0047CC] to-[#387DFF] rounded-full transition-all duration-1000" style={{ width: '78%' }} />
               </div>
               <div className="text-[11.5px] text-[#808080] font-[600] italic mt-[2px]">Holds up well. Slightly below the strongest area, but comfortably above pass.</div>
             </div>
@@ -272,12 +284,12 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
         </div>
 
         {/* Strengths card */}
-        <div className="bg-gradient-to-b from-[#EEFBEE] to-[#F8FFF8] border-[1.5px] border-[#85E585] rounded-[18px] p-[26px_28px] mb-[22px]">
-          <div className="text-[11px] font-[800] tracking-[0.7px] uppercase text-[#1D871D] mb-[8px]">Four things that came through clearly</div>
+        <div className="bg-gradient-to-b from-[#EBF6FF] to-[#F8FAFC] border-[1.5px] border-[#387DFF]/30 rounded-[18px] p-[26px_28px] mb-[22px]">
+          <div className="text-[11px] font-[800] tracking-[0.7px] uppercase text-[#0047CC] mb-[8px]">Four things that came through clearly</div>
           <h2 className="text-[17px] font-[900] text-[#1A1A1A] tracking-[-0.2px] mb-[18px] leading-[1.3]">What stood out in your work</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
-            <div className="bg-white border border-[#85E585] rounded-[12px] p-[14px_16px] flex gap-[11px] items-start">
-              <svg className="w-[18px] h-[18px] text-[#2CA62C] shrink-0 mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <div className="bg-white border border-[#387DFF]/25 rounded-[12px] p-[14px_16px] flex gap-[11px] items-start">
+              <svg className="w-[18px] h-[18px] text-[#0047CC] shrink-0 mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
               <div className="flex-1 min-w-0">
@@ -286,8 +298,8 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white border border-[#85E585] rounded-[12px] p-[14px_16px] flex gap-[11px] items-start">
-              <svg className="w-[18px] h-[18px] text-[#2CA62C] shrink-0 mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <div className="bg-white border border-[#387DFF]/25 rounded-[12px] p-[14px_16px] flex gap-[11px] items-start">
+              <svg className="w-[18px] h-[18px] text-[#0047CC] shrink-0 mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
               <div className="flex-1 min-w-0">
@@ -296,8 +308,8 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white border border-[#85E585] rounded-[12px] p-[14px_16px] flex gap-[11px] items-start">
-              <svg className="w-[18px] h-[18px] text-[#2CA62C] shrink-0 mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <div className="bg-white border border-[#387DFF]/25 rounded-[12px] p-[14px_16px] flex gap-[11px] items-start">
+              <svg className="w-[18px] h-[18px] text-[#0047CC] shrink-0 mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
               <div className="flex-1 min-w-0">
@@ -306,8 +318,8 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white border border-[#85E585] rounded-[12px] p-[14px_16px] flex gap-[11px] items-start">
-              <svg className="w-[18px] h-[18px] text-[#2CA62C] shrink-0 mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <div className="bg-white border border-[#387DFF]/25 rounded-[12px] p-[14px_16px] flex gap-[11px] items-start">
+              <svg className="w-[18px] h-[18px] text-[#0047CC] shrink-0 mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
               <div className="flex-1 min-w-0">

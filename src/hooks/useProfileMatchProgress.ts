@@ -85,8 +85,8 @@ export const useProfileMatchProgress = ({
         // If no step is running currently, don't do anything
         if (runningIndex === -1) return prev;
 
-        // If step 4 (score) is running and CV match phase hasn't unlocked yet, pause before step 5 (scanning)
-        if (runningIndex === 4 && !matchPhaseStarted) {
+        // If step 4 or 5 is reached and CV match phase hasn't unlocked from backend yet, pause before marking done
+        if (runningIndex >= 4 && !matchPhaseStarted) {
           setHeadline("Finishing CV analysis…");
           return prev;
         }
