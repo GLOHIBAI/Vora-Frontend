@@ -118,12 +118,54 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
       setApiLoading(true);
       setLoadError(null);
       try {
-        let screen = unwrapScreen(
-          await startScreenMutation.mutateAsync({
-            assessmentId: activeAssessmentId,
-            body: { pillar: 'simulation' },
-          }),
-        );
+        let rawRes: any = await startScreenMutation.mutateAsync({
+          assessmentId: activeAssessmentId,
+          body: { pillar: 'simulation' },
+        });
+
+        const rawData = (rawRes?.data && typeof rawRes.data === 'object' ? rawRes.data : rawRes) as Record<string, any>;
+        const isPreparing =
+          rawData?.contentReady === false ||
+          rawData?.content_ready === false ||
+          (!rawData?.items?.length && !(rawData as any)?.pillarCompleted);
+
+        if (isPreparing) {
+          const startTime = Date.now();
+          const maxWaitMs = 60000;
+          const intervalMs = 2500;
+          let ready = false;
+
+          while (Date.now() - startTime < maxWaitMs) {
+            await new Promise((resolve) => setTimeout(resolve, intervalMs));
+            try {
+              const pollRes = await fetchGate2PillarItems(activeAssessmentId, 'simulation', {
+                from: simulationNumber,
+                through: simulationNumber,
+              });
+              const pollData = ((pollRes as any)?.data && typeof (pollRes as any).data === 'object' ? (pollRes as any).data : pollRes) as Record<string, any>;
+              if (
+                pollData?.contentReady === true ||
+                pollData?.content_ready === true ||
+                (Array.isArray(pollData?.items) && pollData.items.length > 0)
+              ) {
+                rawRes = pollRes;
+                ready = true;
+                break;
+              }
+            } catch {
+              // Continue polling
+            }
+          }
+
+          if (!ready) {
+            setLoadError('Assessment question generation is taking longer than expected. The queue worker may be stuck.');
+            setApiScreenData(null);
+            setActiveItem(null);
+            return;
+          }
+        }
+
+        let screen = unwrapScreen(rawRes);
 
         if ((screen as any)?.pillarCompleted) {
           const nextPill = (screen as any).nextPillar;
@@ -156,7 +198,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
         }
 
         if (!screen || !item) {
-          setLoadError('The Stage 2 simulation endpoint did not return this work sample.');
+          setLoadError('Assessment question generation is taking longer than expected. The queue worker may be stuck.');
           setApiScreenData(null);
           setActiveItem(null);
           return;
@@ -317,7 +359,19 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
       );
       navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Failed to submit. Please try again.'));
+      const serverMsg = getApiErrorMessage(err, 'Failed to submit. Please try again.');
+      const lower = serverMsg.toLowerCase();
+      if (
+        lower.includes('already submitted') ||
+        lower.includes('already been submitted') ||
+        lower.includes('completed') ||
+        lower.includes('time limit')
+      ) {
+        toast.success('Simulation complete.');
+        navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);
+        return;
+      }
+      toast.error(serverMsg);
     } finally {
       setIsSubmitting(false);
     }

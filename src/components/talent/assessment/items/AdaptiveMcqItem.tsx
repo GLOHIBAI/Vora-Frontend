@@ -72,7 +72,7 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
               </div>
             )}
 
-            <DataDisplayBlock table={stepContent.table} chart={stepContent.chart} />
+            <DataDisplayBlock table={stepContent.table} chart={stepContent.chart} dataset={stepContent.dataset} />
 
             {priorPrompt && (
               <div className="mt-4">
@@ -129,6 +129,7 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
               <DataDisplayBlock
                 table={content.sharedContext.table}
                 chart={content.sharedContext.chart}
+                dataset={content.sharedContext.dataset}
               />
             </div>
           )}
@@ -191,7 +192,7 @@ const AdaptiveMcqItem: React.FC<AssessmentItemRendererProps> = ({
                 </div>
               )}
 
-              <DataDisplayBlock table={content.table} chart={content.chart} />
+              <DataDisplayBlock table={content.table} chart={content.chart} dataset={content.dataset} />
 
               {content.prompt && (
                 <div className="mt-4">

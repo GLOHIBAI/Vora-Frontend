@@ -178,6 +178,12 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
           if (payload.items.length === 0) {
             setIsGenerating(true);
             bootedKeyRef.current = null;
+            if (recoverAttemptsRef.current >= 20) {
+              setIsGenerating(false);
+              setError("Assessment question generation is taking longer than expected. The queue worker may be stuck.");
+              return null;
+            }
+            recoverAttemptsRef.current += 1;
             setTimeout(() => {
               setBootToken((n) => n + 1);
             }, 3000);

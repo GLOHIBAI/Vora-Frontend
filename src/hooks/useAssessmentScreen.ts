@@ -361,7 +361,9 @@ export function useAssessmentScreen({
             lowerMsg.includes('locked') ||
             lowerMsg.includes('cannot be changed') ||
             lowerMsg.includes('already been submitted') ||
-            lowerMsg.includes('already submitted')
+            lowerMsg.includes('already submitted') ||
+            lowerMsg.includes('time limit') ||
+            lowerMsg.includes('ended')
           ) {
             lockedResponses.current = mergeResponseMaps(lockedResponses.current, unsavedBatch);
             return;

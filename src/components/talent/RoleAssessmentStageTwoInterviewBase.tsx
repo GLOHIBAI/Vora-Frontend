@@ -101,34 +101,63 @@ export interface Option {
 const pollResumeStateUntilReady = async (
   assessmentId: string,
   pillar: string,
-  maxAttempts = 15,
+  maxWaitMs = 60000,
   intervalMs = 2500,
 ): Promise<any> => {
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < maxWaitMs) {
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
+
     try {
+      // 1. Poll GET /assessments/:id/gates/2/pillars/:pillar/items?from=1&through=4
+      const itemsRes = await fetchGate2PillarItems(assessmentId, pillar, { from: 1, through: 4 });
+      const itemsData = unwrapAssessmentData<Record<string, any>>(itemsRes) ?? (itemsRes as Record<string, any>);
+      const rawItems = itemsData?.items || itemsData?.data?.items;
+      const normalizedItems = normalizeAssessmentItems(rawItems);
+      const isReady =
+        (itemsData?.contentReady === true || itemsData?.content_ready === true) &&
+        normalizedItems.length > 0;
+
+      if (isReady || normalizedItems.length > 0) {
+        const startRes = await apiClient.post({
+          url: `/assessments/${assessmentId}/gates/2/start`,
+          body: { pillar },
+          auth: true,
+        });
+        const payload = applyGate2ScreenPayload(startRes);
+        if (payload) return startRes;
+        if (normalizedItems.length > 0) return itemsRes;
+      }
+
+      // 2. Poll GET /assessments/:id/gates/2/resume-state
       const resumeRaw = await apiClient.get<Record<string, any>>({
         url: `/assessments/${assessmentId}/gates/2/resume-state`,
         auth: true,
         suppressErrorToast: true,
       });
-      const data = unwrapAssessmentData<Record<string, any>>(resumeRaw) ?? (resumeRaw as Record<string, any>);
-      if (data?.contentReady === true || (Array.isArray(data?.items) && data.items.length > 0)) {
-        return await apiClient.post({
+      const resumeData = unwrapAssessmentData<Record<string, any>>(resumeRaw) ?? (resumeRaw as Record<string, any>);
+      if (
+        (resumeData?.contentReady === true || resumeData?.content_ready === true) &&
+        Array.isArray(resumeData?.items) &&
+        resumeData.items.length > 0
+      ) {
+        const startRes = await apiClient.post({
           url: `/assessments/${assessmentId}/gates/2/start`,
           body: { pillar },
           auth: true,
         });
+        const payload = applyGate2ScreenPayload(startRes);
+        if (payload) return startRes;
       }
     } catch {
-      // Continue polling
+      // Continue polling until timeout
     }
   }
-  return apiClient.post({
-    url: `/assessments/${assessmentId}/gates/2/start`,
-    body: { pillar },
-    auth: true,
-  });
+
+  throw new Error(
+    'Assessment question generation is taking longer than expected. The queue worker may be stuck.'
+  );
 };
 
 export interface Question {
@@ -243,7 +272,8 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           if (
             msg.toLowerCase().includes('still being prepared') ||
             msg.toLowerCase().includes('preparing') ||
-            msg.toLowerCase().includes('try again')
+            msg.toLowerCase().includes('try again') ||
+            msg.toLowerCase().includes('not ready')
           ) {
             res = await pollResumeStateUntilReady(activeAssessmentId, pillar);
           } else {
@@ -254,6 +284,20 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         if (cancelled) return;
 
         const rawData = unwrapAssessmentData<Record<string, any>>(res) ?? (res as Record<string, any>);
+        const rawItems = rawData?.items || rawData?.data?.items;
+        const normalizedItems = normalizeAssessmentItems(rawItems);
+
+        // If contentReady === false or items are empty when pillar isn't complete yet, poll until ready
+        const isPreparing =
+          rawData?.contentReady === false ||
+          rawData?.content_ready === false ||
+          (!normalizedItems.length && !rawData?.pillarCompleted && !rawData?.gate2Complete);
+
+        if (isPreparing) {
+          res = await pollResumeStateUntilReady(activeAssessmentId, pillar);
+          if (cancelled) return;
+        }
+
         if (rawData?.pillarCompleted) {
           const nextPill = rawData.nextPillar;
           if (nextPill) {
@@ -300,7 +344,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           return;
         }
 
-        setApiError('No questions were returned for this part. Please try again.');
+        setApiError('Assessment question generation is taking longer than expected. The queue worker may be stuck.');
         setApiLoading(false);
       } catch (err: any) {
         if (cancelled) return;
@@ -520,7 +564,9 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           lowerMsg.includes('locked') ||
           lowerMsg.includes('cannot be changed') ||
           lowerMsg.includes('already been submitted') ||
-          lowerMsg.includes('already submitted')
+          lowerMsg.includes('already submitted') ||
+          lowerMsg.includes('time limit') ||
+          lowerMsg.includes('ended')
         ) {
           const match = errMessage.match(/item\s+([a-zA-Z0-9_-]+):/);
           if (match && match[1]) {
@@ -606,6 +652,18 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         getApiErrorMessage(err) ||
         err?.message ||
         'Failed to submit. Please try again.';
+
+      const lower = serverMsg.toLowerCase();
+      if (
+        lower.includes('already submitted') ||
+        lower.includes('already been submitted') ||
+        lower.includes('completed') ||
+        lower.includes('time limit')
+      ) {
+        toast.success('Interview section completed.');
+        navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);
+        return;
+      }
 
       if (serverMsg.toLowerCase().includes('answer every screen in this pillar before submitting')) {
         const match = serverMsg.match(/\((\d+)\/(\d+)\s+saved\)/i);
@@ -723,10 +781,34 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       const nextThrough = windowInfo.through + 4;
 
       setApiLoading(true);
-      const res = await fetchGate2PillarItems(activeAssessmentId, pillar, {
-        from: nextFrom,
-        through: nextThrough,
-      });
+      let res: any;
+      try {
+        res = await fetchGate2PillarItems(activeAssessmentId, pillar, {
+          from: nextFrom,
+          through: nextThrough,
+        });
+      } catch (fetchErr: any) {
+        const msg = getApiErrorMessage(fetchErr, '');
+        const lowerMsg = msg.toLowerCase();
+        if (
+          lowerMsg.includes('already submitted') ||
+          lowerMsg.includes('already been submitted') ||
+          lowerMsg.includes('completed') ||
+          lowerMsg.includes('time limit')
+        ) {
+          const nextPartMap: Record<number, string> = {
+            1: `/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`,
+            2: `/onboarding/talent/${roleSlug}/interview/stage-2/part-3/intro`,
+            3: `/onboarding/talent/${roleSlug}/interview/stage-2/part-4/intro`,
+            4: `/onboarding/talent/${roleSlug}/interview/stage-2/review`,
+          };
+          const targetPath = nextPartMap[partNumber] || `/onboarding/talent/${roleSlug}/interview/stage-2/review`;
+          navigate(targetPath, { replace: true });
+          return;
+        }
+        throw fetchErr;
+      }
+
       const payload = applyGate2ScreenPayload(res);
       const nextItems = payload?.items || [];
       const nextWindow = payload?.window;
@@ -760,15 +842,43 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        toast.error('No more questions were returned. Please try again.');
+        // No more questions in this pillar! Automatically advance to next pillar or review page
+        const nextPartMap: Record<number, string> = {
+          1: `/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`,
+          2: `/onboarding/talent/${roleSlug}/interview/stage-2/part-3/intro`,
+          3: `/onboarding/talent/${roleSlug}/interview/stage-2/part-4/intro`,
+          4: `/onboarding/talent/${roleSlug}/interview/stage-2/review`,
+        };
+        const targetPath = nextPartMap[partNumber] || `/onboarding/talent/${roleSlug}/interview/stage-2/review`;
+        navigate(targetPath, { replace: true });
+        return;
       }
     } catch (err: any) {
       console.error('Failed to save draft or load next window:', err);
       const serverMsg =
         getApiErrorMessage(err) ||
         err?.message ||
-        'Could not save your answers. Please try again before continuing.';
-      toast.error(serverMsg);
+        '';
+
+      const lower = serverMsg.toLowerCase();
+      if (
+        lower.includes('already submitted') ||
+        lower.includes('already been submitted') ||
+        lower.includes('completed') ||
+        lower.includes('time limit')
+      ) {
+        const nextPartMap: Record<number, string> = {
+          1: `/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`,
+          2: `/onboarding/talent/${roleSlug}/interview/stage-2/part-3/intro`,
+          3: `/onboarding/talent/${roleSlug}/interview/stage-2/part-4/intro`,
+          4: `/onboarding/talent/${roleSlug}/interview/stage-2/review`,
+        };
+        const targetPath = nextPartMap[partNumber] || `/onboarding/talent/${roleSlug}/interview/stage-2/review`;
+        navigate(targetPath, { replace: true });
+        return;
+      }
+
+      toast.error(serverMsg || 'Could not save your answers. Please try again before continuing.');
     } finally {
       setApiLoading(false);
       setIsSubmitting(false);

@@ -80,7 +80,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
 
       {/* Floating Options Dropdown Menu */}
       {isOpen && (
-        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-[100] max-h-[260px] overflow-y-auto custom-scrollbar bg-white border border-[#E2E8F0] rounded-[14px] shadow-[0_12px_32px_rgba(0,0,0,0.18)] py-1.5 animate-[fadeUp_0.15s_ease_both]">
+        <div className="absolute left-0 top-[calc(100%+6px)] min-w-full w-max max-w-[min(92vw,480px)] z-[100] max-h-[280px] overflow-y-auto custom-scrollbar bg-white border border-[#E2E8F0] rounded-[14px] shadow-[0_12px_32px_rgba(0,0,0,0.18)] py-1.5 animate-[fadeUp_0.15s_ease_both]">
           {/* Placeholder clear item */}
           <div
             onClick={() => {
@@ -99,17 +99,20 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
             return (
               <div
                 key={opt.value}
+                title={opt.label}
                 onClick={() => {
                   onChange(opt.value);
                   setIsOpen(false);
                 }}
-                className={`px-4 py-2.5 text-[13px] cursor-pointer transition-colors flex items-center justify-between ${
+                className={`px-4 py-2.5 text-[13px] cursor-pointer transition-colors flex items-center justify-between gap-3 ${
                   isSelected
                     ? 'bg-[#EBF6FF] text-[#0047CC] font-bold'
                     : 'text-[#1E293B] font-medium hover:bg-[#F8FAFC]'
                 }`}
               >
-                <span className="truncate leading-normal text-left">{opt.label}</span>
+                <span className="whitespace-normal break-words leading-relaxed text-left font-mono text-[12.5px]">
+                  {opt.label}
+                </span>
                 {isSelected && (
                   <svg className="w-4 h-4 text-[#0047CC] shrink-0 ml-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <polyline points="20 6 9 17 4 12" />

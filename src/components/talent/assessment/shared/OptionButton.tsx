@@ -9,6 +9,42 @@ interface OptionButtonProps {
   index?: number;
 }
 
+const formatCodeForDisplay = (codeText: string): string => {
+  let text = codeText
+    .replace(/\\n/g, '\n')
+    .replace(/\\t/g, '  ')
+    .replace(/->/g, ' -> ')
+    .replace(/=>/g, ' => ');
+
+  // If code is a single line with semicolons or braces, format onto multiple indented lines
+  if (!text.includes('\n') && (text.includes(';') || text.includes('{') || text.includes('=>'))) {
+    text = text
+      .replace(/;\s*/g, ';\n')
+      .replace(/\{\s*/g, ' {\n')
+      .replace(/\}\s*/g, '\n}\n');
+  }
+
+  const lines = text.split('\n');
+  let indent = 0;
+  const formatted = lines
+    .map((line) => {
+      let trimmed = line.trim();
+      if (!trimmed) return '';
+      if (/^[\}\)]/.test(trimmed)) {
+        indent = Math.max(0, indent - 1);
+      }
+      const indentedLine = '  '.repeat(indent) + trimmed;
+      if (/[\{\[\(]\s*$/.test(trimmed) || /=>\s*$/.test(trimmed)) {
+        indent++;
+      }
+      return indentedLine;
+    })
+    .filter((l, idx, arr) => !(l === '' && arr[idx - 1] === ''))
+    .join('\n');
+
+  return formatted;
+};
+
 const OptionButton: React.FC<OptionButtonProps> = ({
   label,
   selected = false,
@@ -41,15 +77,30 @@ const OptionButton: React.FC<OptionButtonProps> = ({
       raw.includes('```') ||
       clean.includes('@RestController') ||
       clean.includes('public class ') ||
-      clean.includes('function(') ||
+      clean.includes('function') ||
       clean.includes('import ') ||
       clean.includes('const ') ||
+      clean.includes('let ') ||
+      clean.includes('var ') ||
+      clean.includes('return ') ||
+      clean.includes('=>') ||
+      clean.includes('->') ||
+      clean.includes('React') ||
+      clean.includes('useState') ||
+      clean.includes('useEffect') ||
+      clean.includes('fetch(') ||
       clean.includes('java\n') ||
       clean.startsWith('java ') ||
       clean.includes('System.out') ||
-      (clean.includes('\n') && (clean.includes('{') || clean.includes(';')))
+      (clean.includes('{') && clean.includes('}')) ||
+      (clean.includes(';') && (clean.includes('{') || clean.includes('(')))
     );
   }, [label, cleanLabel]);
+
+  const formattedCode = useMemo(() => {
+    if (!isCode) return '';
+    return formatCodeForDisplay(cleanLabel);
+  }, [isCode, cleanLabel]);
 
   return (
     <button
@@ -74,12 +125,12 @@ const OptionButton: React.FC<OptionButtonProps> = ({
 
       <div className="flex-1 min-w-0">
         {isCode ? (
-          <pre className={`p-3.5 rounded-lg font-mono text-[12.5px] leading-relaxed overflow-x-auto custom-scrollbar whitespace-pre-wrap text-left border ${
+          <pre className={`p-4 rounded-xl font-mono text-[12px] leading-[1.65] overflow-x-auto custom-scrollbar text-left border ${
             selected
-              ? 'bg-white text-[#1A1A1A] border-[#0047CC]/40 font-medium'
-              : 'bg-[#F8FAFC] text-[#1A1A1A] border-[#E2E8F0]'
+              ? 'bg-[#0F172A] text-[#38BDF8] border-[#0047CC]'
+              : 'bg-[#0F172A] text-[#F8FAFC] border-[#334155]'
           }`}>
-            <code>{cleanLabel}</code>
+            <code className="whitespace-pre">{formattedCode}</code>
           </pre>
         ) : (
           <span className="leading-[1.5] pt-[1.5px] block text-[#1A1A1A]">{label}</span>
