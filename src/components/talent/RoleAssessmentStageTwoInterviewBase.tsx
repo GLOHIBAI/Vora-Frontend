@@ -307,7 +307,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
               return;
             }
           } else if (rawData.nextStep === 'GATE2_COMPLETE') {
-            navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/review`, { replace: true });
+            navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`, { replace: true });
             return;
           }
         }
@@ -800,9 +800,9 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
             1: `/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`,
             2: `/onboarding/talent/${roleSlug}/interview/stage-2/part-3/intro`,
             3: `/onboarding/talent/${roleSlug}/interview/stage-2/part-4/intro`,
-            4: `/onboarding/talent/${roleSlug}/interview/stage-2/review`,
+            4: `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`,
           };
-          const targetPath = nextPartMap[partNumber] || `/onboarding/talent/${roleSlug}/interview/stage-2/review`;
+          const targetPath = nextPartMap[partNumber] || `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`;
           navigate(targetPath, { replace: true });
           return;
         }
@@ -842,14 +842,14 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        // No more questions in this pillar! Automatically advance to next pillar or review page
+        // No more questions in this pillar! Automatically advance to next pillar or analyzing page
         const nextPartMap: Record<number, string> = {
           1: `/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`,
           2: `/onboarding/talent/${roleSlug}/interview/stage-2/part-3/intro`,
           3: `/onboarding/talent/${roleSlug}/interview/stage-2/part-4/intro`,
-          4: `/onboarding/talent/${roleSlug}/interview/stage-2/review`,
+          4: `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`,
         };
-        const targetPath = nextPartMap[partNumber] || `/onboarding/talent/${roleSlug}/interview/stage-2/review`;
+        const targetPath = nextPartMap[partNumber] || `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`;
         navigate(targetPath, { replace: true });
         return;
       }
@@ -871,9 +871,9 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           1: `/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`,
           2: `/onboarding/talent/${roleSlug}/interview/stage-2/part-3/intro`,
           3: `/onboarding/talent/${roleSlug}/interview/stage-2/part-4/intro`,
-          4: `/onboarding/talent/${roleSlug}/interview/stage-2/review`,
+          4: `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`,
         };
-        const targetPath = nextPartMap[partNumber] || `/onboarding/talent/${roleSlug}/interview/stage-2/review`;
+        const targetPath = nextPartMap[partNumber] || `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`;
         navigate(targetPath, { replace: true });
         return;
       }

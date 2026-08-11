@@ -73,7 +73,7 @@ export const resolveGate2ResumeNavigatePath = (
   resume: Gate2ResumeState,
 ): string => {
   if (resume.nextStep === "GATE2_COMPLETE" || resume.gate2Complete) {
-    return `/onboarding/talent/${roleSlug}/interview/stage-2/review`;
+    return `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`;
   }
 
   const pillar = resume.nextPillar ?? resume.pillar;

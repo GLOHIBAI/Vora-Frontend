@@ -278,7 +278,7 @@ const App = () => {
             <Route path="interview/stage-2/part-4/simulation-2" element={<RoleAssessmentStageTwoPartThreeSimulationTwo />} />
             <Route path="interview/stage-2/part-4/simulation-3" element={<RoleAssessmentStageTwoPartThreeSimulationThree />} />
             <Route path="interview/stage-2/part-4/simulation-4" element={<RoleAssessmentStageTwoPartThreeSimulationFour />} />
-            <Route path="interview/stage-2/review" element={<RoleAssessmentStageTwoReview />} />
+            <Route path="interview/stage-2/review" element={<Navigate to="../analyzing" replace />} />
             <Route path="interview/stage-2/analyzing" element={<RoleAssessmentStageTwoAnalyzing />} />
             <Route path="interview/stage-2/results" element={<RoleAssessmentStageTwoResults />} />
             <Route path="interview/stage-3" element={<RoleAssessmentStageThreeIntro />} />

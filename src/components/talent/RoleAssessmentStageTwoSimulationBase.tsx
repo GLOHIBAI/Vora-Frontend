@@ -176,7 +176,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
               return;
             }
           } else if ((screen as any).nextStep === 'GATE2_COMPLETE') {
-            navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/review`, { replace: true });
+            navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`, { replace: true });
             return;
           }
         }
@@ -347,14 +347,14 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
 
       const resData = (submitRes as any)?.data || submitRes;
       if (resData?.nextStep === 'GATE2_COMPLETE' || resData?.pillarCompleted) {
-        toast.success('Simulation complete. Review your Stage 2 responses...');
-        navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/review`);
+        toast.success('Simulation complete. Analyzing your Stage 2 responses...');
+        navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`);
         return;
       }
 
       toast.success(
         simulationNumber >= totalSimulations
-          ? 'Saved. Review your Stage 2 responses next.'
+          ? 'Saved. Analyzing your Stage 2 responses...'
           : 'Simulation submitted successfully!',
       );
       navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);

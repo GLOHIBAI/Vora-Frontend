@@ -169,54 +169,81 @@ const AssessmentAnalyzingView: React.FC<AssessmentAnalyzingViewProps> = ({
       </div>
 
       <div className="inner relative z-[2] text-center max-w-[580px] w-full mt-10">
-        <div className="heart-stage w-[240px] h-[240px] mx-auto mb-8 relative flex items-center justify-center pulse-ring-anim">
-          <svg className="w-[140px] h-[140px] z-[2] relative" viewBox="0 0 100 100">
+        <div className="heart-stage w-[220px] h-[220px] mx-auto mb-6 relative flex items-center justify-center pulse-ring-anim">
+          <svg className="w-[130px] h-[130px] z-[2] relative filter drop-shadow-[0_0_16px_rgba(56,189,248,0.5)]" viewBox="0 0 100 100">
             <path className="v-mark-path" d="M8 51 L27 51 L42 74 L58 29 L66 17 L72 41 L75 39 L78 41 L91 41" />
           </svg>
           <div className="scan-sweep-anim" />
         </div>
 
-        <div className="eyebrow inline-flex items-center gap-[8px] bg-white/[0.08] border border-white/[0.16] rounded-full p-[6px_14px] backdrop-blur-[6px] mb-[14px]">
-          <div className="w-[7px] h-[7px] rounded-full bg-[#85E585] live-dot-anim" />
-          <span className="text-[11.5px] font-[800] tracking-[0.7px] uppercase text-white/90">{eyebrow}</span>
+        <div className="eyebrow inline-flex items-center gap-[8px] bg-[#0047CC]/20 border border-[#38BDF8]/40 rounded-full px-4 py-1.5 backdrop-blur-md mb-4 shadow-[0_0_16px_rgba(0,71,204,0.3)]">
+          <div className="w-[8px] h-[8px] rounded-full bg-[#34D399] live-dot-anim shadow-[0_0_8px_#34D399]" />
+          <span className="text-[12px] font-[800] tracking-[0.8px] uppercase text-[#38BDF8]">{eyebrow}</span>
         </div>
 
-        <h1 className="text-[32px] font-[900] tracking-[-0.5px] leading-[1.2] mb-3 text-white">{title}</h1>
-        <p className="text-[15px] text-white/78 leading-[1.65] mb-9 max-w-[480px] mx-auto">{subtitle}</p>
+        <h1 className="text-[32px] font-[900] tracking-[-0.5px] leading-[1.25] mb-3 bg-gradient-to-r from-white via-[#F1F5F9] to-[#94A3B8] bg-clip-text text-transparent">{title}</h1>
+        <div className="text-[14.5px] text-[#CBD5E1] leading-[1.65] mb-7 max-w-[500px] mx-auto font-medium">{subtitle}</div>
 
-        <div className="steps flex flex-col gap-2 bg-white/[0.06] border border-white/[0.1] rounded-[14px] p-4 sm:p-[16px_18px] backdrop-blur-[10px] max-w-[440px] mx-auto mb-7 text-left">
+        {/* Progress Bar & Percentage */}
+        <div className="max-w-[460px] mx-auto mb-6 px-1">
+          <div className="flex justify-between items-center text-[12px] font-[800] tracking-wider text-[#94A3B8] uppercase mb-2">
+            <span>Analyzing Progress</span>
+            <span className="text-[#34D399]">
+              {Math.min(100, Math.round((Math.min(stepIdx + 1, steps.length) / steps.length) * 100))}%
+            </span>
+          </div>
+          <div className="w-full h-2.5 bg-[#1E293B] rounded-full overflow-hidden p-0.5 border border-[#334155]">
+            <div
+              className="h-full bg-gradient-to-r from-[#0047CC] via-[#38BDF8] to-[#34D399] rounded-full transition-all duration-500 ease-out shadow-[0_0_12px_rgba(52,211,153,0.5)]"
+              style={{
+                width: `${Math.min(100, Math.round((Math.min(stepIdx + 1, steps.length) / steps.length) * 100))}%`,
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Colorful Steps Container */}
+        <div className="steps flex flex-col gap-2.5 bg-[#0F172A]/90 border border-[#38BDF8]/25 rounded-[16px] p-5 backdrop-blur-xl max-w-[460px] mx-auto mb-7 text-left shadow-[0_16px_48px_rgba(0,0,0,0.4)]">
           {steps.map((text, idx) => {
             const isDone = idx < stepIdx;
             const isActive = idx === stepIdx;
             return (
               <div
                 key={text}
-                className={`step flex items-center gap-[12px] text-[13.5px] font-[600] py-[6px] transition-colors duration-300 ${
-                  isDone ? 'text-white/95' : isActive ? 'text-[#85E585]' : 'text-white/50'
+                className={`step flex items-center gap-3 text-[13.5px] font-[600] py-2 px-3 rounded-xl transition-all duration-300 ${
+                  isDone
+                    ? 'bg-[#10B981]/15 text-[#34D399] border border-[#10B981]/30 font-bold'
+                    : isActive
+                    ? 'bg-[#38BDF8]/15 text-[#38BDF8] border border-[#38BDF8]/40 font-bold shadow-[0_0_14px_rgba(56,189,248,0.2)]'
+                    : 'bg-white/[0.03] text-[#64748B] border border-white/[0.05]'
                 }`}
               >
                 <div
-                  className={`step-icon w-[20px] h-[20px] rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-300 ${
+                  className={`step-icon w-[22px] h-[22px] rounded-full shrink-0 flex items-center justify-center transition-all duration-300 ${
                     isDone
-                      ? 'bg-[#85E585] text-[#0A1129]'
+                      ? 'bg-[#10B981] text-[#0A1129] shadow-[0_0_10px_rgba(16,185,129,0.6)] font-extrabold'
                       : isActive
-                        ? 'bg-[#85E585]/20 border-[1.5px] border-[#85E585] step-pulse'
-                        : 'bg-white/[0.08]'
+                      ? 'bg-[#38BDF8]/20 border-2 border-[#38BDF8] text-[#38BDF8] step-pulse'
+                      : 'bg-white/[0.08] text-[#64748B]'
                   }`}
                 >
-                  {isDone && (
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5">
+                  {isDone ? (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
+                  ) : isActive ? (
+                    <div className="w-2 h-2 rounded-full bg-[#38BDF8] animate-ping" />
+                  ) : (
+                    <span className="text-[10px] font-bold">{idx + 1}</span>
                   )}
                 </div>
-                <span>{text}</span>
+                <span className="leading-snug">{text}</span>
               </div>
             );
           })}
         </div>
 
-        <div className="counter text-[11px] font-[700] text-white/50 tracking-[1px] uppercase">{footerNote}</div>
+        <div className="counter text-[11.5px] font-[800] text-[#94A3B8] tracking-[1.2px] uppercase">{footerNote}</div>
       </div>
     </div>
   );

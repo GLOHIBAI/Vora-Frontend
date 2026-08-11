@@ -24,8 +24,10 @@ const RoleAssessmentStageTwoAnalyzing: React.FC = () => {
 
   const schedule = useMemo(
     () => [
-      { atMs: 2500, stepIndex: 3 },
-      { atMs: 5000, stepIndex: 4 },
+      { atMs: 1200, stepIndex: 1 },
+      { atMs: 2400, stepIndex: 2 },
+      { atMs: 3600, stepIndex: 3 },
+      { atMs: 4800, stepIndex: 4 },
     ],
     [],
   );
@@ -68,16 +70,20 @@ const RoleAssessmentStageTwoAnalyzing: React.FC = () => {
       roleSlug={roleSlug}
       eyebrow="Reading your Stage 2 in detail"
       title="Working through everything you submitted"
-      subtitle="Part 1, Part 2, Part 3 and Part 4 together took you through knowledge, expertise, reasoning and written simulations. We're matching the patterns now."
+      subtitle={
+        <>
+          Part 1, Part 2, Part 3 and Part 4 together took you through <span className="text-[#38BDF8] font-bold">Knowledge</span>, <span className="text-[#34D399] font-bold">Expertise</span>, <span className="text-[#F59E0B] font-bold">Reasoning</span> and <span className="text-[#EC4899] font-bold">Written Simulations</span>. We&apos;re matching the patterns now.
+        </>
+      }
       steps={[
         'Knowledge interviews (Part 1) cross-checked',
         'Expertise interviews (Part 2) reviewed',
         'Reasoning patterns (Part 3) read against role demands',
         'Written simulations (Part 4) scored for clarity and tone',
       ]}
-      initialStepIndex={2}
+      initialStepIndex={0}
       schedule={schedule}
-      redirectAtMs={10000}
+      redirectAtMs={8000}
       redirectPath="interview/stage-2/results"
       footerNote="This usually takes 30 to 60 seconds"
       headerMeta="Stage 2 review in progress"
