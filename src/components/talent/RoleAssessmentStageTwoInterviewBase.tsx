@@ -441,7 +441,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
             if (activeAssessmentId && apiScreenData?.componentId && Object.keys(answers).length > 0) {
               const draftPayload = buildUnlockedDraftPayload(answers);
               if (Object.keys(draftPayload).length > 0) {
-                await safeSaveDraft(draftPayload).catch(() => {});
+                await safeSaveDraft(draftPayload).catch(() => { });
               }
             }
 
@@ -625,7 +625,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
     try {
       if (inFlightDraftSaveRef.current) {
-        await inFlightDraftSaveRef.current.catch(() => {});
+        await inFlightDraftSaveRef.current.catch(() => { });
       }
 
       const payloadResponses = sanitizeAnswers(answers);
@@ -931,7 +931,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   ]);
 
   if (apiLoading) {
-    return <FullPageSpinner message="Preparing your personalized questions..." />;
+    return <FullPageSpinner message="Loading your Interview Screen" />;
   }
 
   if (apiError || !apiScreenData) {
@@ -970,8 +970,8 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
   return (
     <StageTwoValidationProvider value={showContinueValidation}>
-    <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col">
-      <style>{`
+      <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col">
+        <style>{`
         .timer-chip {
           display: flex;
           align-items: center;
@@ -1003,224 +1003,222 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         }
       `}</style>
 
-      {/* Fixed Header & Rails */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-white flex flex-col">
-        <AssessmentHeader
-          middleContent={
-            <span className="hidden sm:inline">
-              {formattedGateName} · {apiScreenData.items[0]?.sessionLabel || `Part ${partNumber}`}
+        {/* Fixed Header & Rails */}
+        <div className="fixed top-0 left-0 right-0 z-50 bg-white flex flex-col">
+          <AssessmentHeader
+            middleContent={
+              <span className="hidden sm:inline">
+                {formattedGateName} · {apiScreenData.items[0]?.sessionLabel || `Part ${partNumber}`}
+              </span>
+            }
+            rightContent={
+              <div className="flex items-center gap-[14px]">
+                <div className={timerChipClass()}>
+                  <ClockIcon className="w-[14px] h-[14px] mr-[4px] inline-block align-middle" />
+                  <span className="font-[800] text-[13.5px] tabular-nums inline-block align-middle">
+                    {formatTime(secondsLeft)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-[6px] text-[12px] text-[#808080] font-[600]">
+                  <DocumentCheckIcon className="w-[13px] h-[13px] text-[#0047CC]" />
+                  Auto-saved
+                </div>
+              </div>
+            }
+          />
+
+          <StageRail activeStage={2} showBottomBorder={false} />
+          <PartRail activePart={partNumber} />
+
+          <div className="bg-white border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[10px] flex items-center justify-center gap-[12px] flex-wrap">
+            <span className="text-[11.5px] font-[800] tracking-[0.4px] uppercase text-[#0047CC]">
+              Session {progressMeta.currentSession} of {progressMeta.totalSessions}
             </span>
-          }
-          rightContent={
-            <div className="flex items-center gap-[14px]">
-              <div className={timerChipClass()}>
-                <ClockIcon className="w-[14px] h-[14px] mr-[4px] inline-block align-middle" />
-                <span className="font-[800] text-[13.5px] tabular-nums inline-block align-middle">
-                  {formatTime(secondsLeft)}
-                </span>
-              </div>
-              <div className="flex items-center gap-[6px] text-[12px] text-[#808080] font-[600]">
-                <DocumentCheckIcon className="w-[13px] h-[13px] text-[#0047CC]" />
-                Auto-saved
-              </div>
-            </div>
-          }
-        />
-
-        <StageRail activeStage={2} showBottomBorder={false} />
-        <PartRail activePart={partNumber} />
-
-        <div className="bg-white border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[10px] flex items-center justify-center gap-[12px] flex-wrap">
-          <span className="text-[11.5px] font-[800] tracking-[0.4px] uppercase text-[#0047CC]">
-            Session {progressMeta.currentSession} of {progressMeta.totalSessions}
-          </span>
-          <div className="flex gap-[5px] flex-wrap">
-            {Array.from({ length: progressMeta.totalSessions }).map((_, idx) => {
-              const isActive = idx === progressMeta.completedSessions;
-              const isDone = idx < progressMeta.completedSessions;
-              return (
-                <div
-                  key={idx}
-                  className={`h-[5px] rounded-full transition-all duration-200 ${
-                    isActive
+            <div className="flex gap-[5px] flex-wrap">
+              {Array.from({ length: progressMeta.totalSessions }).map((_, idx) => {
+                const isActive = idx === progressMeta.completedSessions;
+                const isDone = idx < progressMeta.completedSessions;
+                return (
+                  <div
+                    key={idx}
+                    className={`h-[5px] rounded-full transition-all duration-200 ${isActive
                       ? 'bg-[#0047CC] w-[42px]'
                       : isDone
-                      ? 'bg-[#387DFF] w-[26px]'
-                      : 'bg-[#E6E6E6] w-[26px]'
-                  }`}
-                />
-              );
-            })}
+                        ? 'bg-[#387DFF] w-[26px]'
+                        : 'bg-[#E6E6E6] w-[26px]'
+                      }`}
+                  />
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Body */}
-      {(() => {
-        const currentHeaderItem = activeDisplayedItems[0];
-        return (
-          <main
-            className="max-w-[780px] w-full mx-auto px-[24px] py-[32px] flex-1"
-            style={{
-              paddingTop: FIXED_HEADER_OFFSET_PX,
-              paddingBottom: FIXED_FOOTER_OFFSET_PX,
-            }}
-          >
-            <div className="inline-flex items-center gap-[7px] bg-[#EBF6FF] text-[#0047CC] text-[11px] font-[800] tracking-[0.7px] uppercase px-[12px] py-[5px] rounded-full mb-[14px]">
-              {currentHeaderItem?.eyebrow || `Part ${partNumber} · Knowledge`}
-            </div>
-            <h1 className="text-[22px] font-[900] text-[#1A1A1A] tracking-[-0.3px] leading-[1.3] mb-[8px]">
-              {currentHeaderItem?.screenTitle || currentHeaderItem?.title || sectionTitle}
-            </h1>
-            <p className="text-[14px] text-[#808080] leading-[1.6] mb-[20px]">
-              {currentHeaderItem?.screenSubtitle || sectionSub}
-            </p>
-
-            {/* Why matters component */}
-            <div className="bg-[#EBF6FF] rounded-[8px] p-[12px_14px] flex gap-[10px] mb-[22px]">
-              <InfoIcon className="w-[16px] h-[16px] text-[#0047CC] shrink-0 mt-[1px]" />
-              <p className="text-[12.5px] text-[#182348] leading-[1.5]">
-                <strong className="font-[800]">Why this matters · </strong>
-                {currentHeaderItem?.whyThisMatters || whyMattersText}
+        {/* Main Body */}
+        {(() => {
+          const currentHeaderItem = activeDisplayedItems[0];
+          return (
+            <main
+              className="max-w-[780px] w-full mx-auto px-[24px] py-[32px] flex-1"
+              style={{
+                paddingTop: FIXED_HEADER_OFFSET_PX,
+                paddingBottom: FIXED_FOOTER_OFFSET_PX,
+              }}
+            >
+              <div className="inline-flex items-center gap-[7px] bg-[#EBF6FF] text-[#0047CC] text-[11px] font-[800] tracking-[0.7px] uppercase px-[12px] py-[5px] rounded-full mb-[14px]">
+                {currentHeaderItem?.eyebrow || `Part ${partNumber} · Knowledge`}
+              </div>
+              <h1 className="text-[22px] font-[900] text-[#1A1A1A] tracking-[-0.3px] leading-[1.3] mb-[8px]">
+                {currentHeaderItem?.screenTitle || currentHeaderItem?.title || sectionTitle}
+              </h1>
+              <p className="text-[14px] text-[#808080] leading-[1.6] mb-[20px]">
+                {currentHeaderItem?.screenSubtitle || sectionSub}
               </p>
-            </div>
 
-            {topContent && <div className="mb-[22px]">{topContent}</div>}
+              {/* Why matters component */}
+              <div className="bg-[#EBF6FF] rounded-[8px] p-[12px_14px] flex gap-[10px] mb-[22px]">
+                <InfoIcon className="w-[16px] h-[16px] text-[#0047CC] shrink-0 mt-[1px]" />
+                <p className="text-[12.5px] text-[#182348] leading-[1.5]">
+                  <strong className="font-[800]">Why this matters · </strong>
+                  {currentHeaderItem?.whyThisMatters || whyMattersText}
+                </p>
+              </div>
 
-            {/* Questions reusable item components */}
-            <AssessmentItemsList
-              items={activeDisplayedItems}
-              answers={answers}
-              isLocked={(itemId, subKey) =>
-                isSubmitting || isLocked(itemId, subKey) || lockedResponsesRef.current[itemId] !== undefined
-              }
-              onAnswer={(itemId, val, item, subKey) => void handleAnswer(itemId, val, item, subKey)}
-              incompleteItemIds={incompleteItems.map((item) => item.id)}
-              showIncompleteHighlight={showContinueValidation}
-            />
-          </main>
-        );
-      })()}
+              {topContent && <div className="mb-[22px]">{topContent}</div>}
 
-      {/* Fixed Footer */}
-      <footer className="fixed bottom-0 left-0 right-0 bg-white/96 backdrop-blur-[10px] border-t border-[#E6E6E6] p-[14px_32px] flex items-center justify-between gap-[12px] z-50">
-        <div className="text-[13px] text-[#808080] font-[600]">
-          {footerLabel}
-          {showContinueValidation && incompleteCount > 0 ? (
-            <span className="block sm:inline sm:ml-2 text-[12px] text-[#DC2626] font-[600]">
-              {incompleteCount === 1
-                ? '1 question still needs a complete answer'
-                : `${incompleteCount} questions still need complete answers`}
-            </span>
-          ) : null}
-        </div>
-        <div className="flex gap-[10px] items-center">
-          <button
-            onClick={() => setShowSaveModal(true)}
-            disabled={isSubmitting}
-            className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] font-sans disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Save and finish later
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (isSubmitting) return;
-              if (!isAllAnswered) {
-                setShowContinueValidation(true);
-                // Wait a tick so highlight classes paint, then scroll
-                requestAnimationFrame(() => scrollToFirstIncomplete());
-                return;
-              }
-              if (isHasMoreWindows) {
-                void handleContinueNextWindow();
-              } else {
-                void handleSubmit();
-              }
-            }}
-            disabled={isSubmitting}
-            aria-disabled={!isAllAnswered || isSubmitting}
-            className={`border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] inline-flex items-center gap-[8px] font-sans ${
-              !isAllAnswered || isSubmitting
+              {/* Questions reusable item components */}
+              <AssessmentItemsList
+                items={activeDisplayedItems}
+                answers={answers}
+                isLocked={(itemId, subKey) =>
+                  isSubmitting || isLocked(itemId, subKey) || lockedResponsesRef.current[itemId] !== undefined
+                }
+                onAnswer={(itemId, val, item, subKey) => void handleAnswer(itemId, val, item, subKey)}
+                incompleteItemIds={incompleteItems.map((item) => item.id)}
+                showIncompleteHighlight={showContinueValidation}
+              />
+            </main>
+          );
+        })()}
+
+        {/* Fixed Footer */}
+        <footer className="fixed bottom-0 left-0 right-0 bg-white/96 backdrop-blur-[10px] border-t border-[#E6E6E6] p-[14px_32px] flex items-center justify-between gap-[12px] z-50">
+          <div className="text-[13px] text-[#808080] font-[600]">
+            {footerLabel}
+            {showContinueValidation && incompleteCount > 0 ? (
+              <span className="block sm:inline sm:ml-2 text-[12px] text-[#DC2626] font-[600]">
+                {incompleteCount === 1
+                  ? '1 question still needs a complete answer'
+                  : `${incompleteCount} questions still need complete answers`}
+              </span>
+            ) : null}
+          </div>
+          <div className="flex gap-[10px] items-center">
+            <button
+              onClick={() => setShowSaveModal(true)}
+              disabled={isSubmitting}
+              className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] font-sans disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Save and finish later
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (isSubmitting) return;
+                if (!isAllAnswered) {
+                  setShowContinueValidation(true);
+                  // Wait a tick so highlight classes paint, then scroll
+                  requestAnimationFrame(() => scrollToFirstIncomplete());
+                  return;
+                }
+                if (isHasMoreWindows) {
+                  void handleContinueNextWindow();
+                } else {
+                  void handleSubmit();
+                }
+              }}
+              disabled={isSubmitting}
+              aria-disabled={!isAllAnswered || isSubmitting}
+              className={`border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] inline-flex items-center gap-[8px] font-sans ${!isAllAnswered || isSubmitting
                 ? 'bg-[#E6E6E6] text-white shadow-none cursor-pointer'
                 : 'bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] cursor-pointer hover:bg-[#344DA1]'
-            }`}
-          >
-            {isSubmitting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>{isHasMoreWindows ? 'Loading...' : 'Submitting...'}</span>
-              </>
-            ) : isHasMoreWindows ? (
-              'Continue'
-            ) : (
-              `Complete Part ${partNumber}`
-            )}
-          </button>
-        </div>
-      </footer>
+                }`}
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>{isHasMoreWindows ? 'Loading...' : 'Submitting...'}</span>
+                </>
+              ) : isHasMoreWindows ? (
+                'Continue'
+              ) : (
+                `Complete Part ${partNumber}`
+              )}
+            </button>
+          </div>
+        </footer>
 
-      {/* Save and Exit Modal */}
-      {showSaveModal && (
-        <div className="fixed inset-0 bg-[#0A1129]/65 backdrop-blur-[6px] flex items-center justify-center p-[24px] z-[200]">
-          <div className="bg-white rounded-[18px] max-w-[440px] w-full p-[30px_30px_26px] text-center shadow-[0_24px_80px_rgba(0,0,0,0.25)]">
-            <div className="w-[64px] h-[64px] rounded-full bg-[#EBF6FF] text-[#0047CC] flex items-center justify-center mx-auto mb-[16px]">
-              <SaveIcon className="w-[30px] h-[30px]" />
-            </div>
-            <h3 className="text-[18px] font-[900] text-[#1A1A1A] mb-[8px] tracking-[-0.2px]">
-              Pause this interview properly
-            </h3>
-            <p className="text-[14px] text-[#4A4A4A] leading-[1.6] mb-[18px]">
-              Your timer will be saved and Stage 2's 72-hour deadline still applies. When you return, a fresh set of questions will be generated to protect the integrity of your reading.
-            </p>
-            <p className="text-[12.5px] text-[#808080] leading-[1.4] mb-[20px]">
-              You won't be able to use what you saw here as preparation. That's by design.
-            </p>
-            <div className="flex gap-[10px] justify-center flex-wrap">
-              <button
-                onClick={() => setShowSaveModal(false)}
-                disabled={isSubmitting}
-                className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] font-sans disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Keep going
-              </button>
-              <button
-                onClick={() => void confirmSaveAndExit()}
-                disabled={isSubmitting}
-                className="bg-[#0047CC] text-white border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] disabled:opacity-50 disabled:cursor-not-allowed font-sans"
-              >
-                {isSubmitting ? 'Saving...' : 'Save and exit'}
-              </button>
+        {/* Save and Exit Modal */}
+        {showSaveModal && (
+          <div className="fixed inset-0 bg-[#0A1129]/65 backdrop-blur-[6px] flex items-center justify-center p-[24px] z-[200]">
+            <div className="bg-white rounded-[18px] max-w-[440px] w-full p-[30px_30px_26px] text-center shadow-[0_24px_80px_rgba(0,0,0,0.25)]">
+              <div className="w-[64px] h-[64px] rounded-full bg-[#EBF6FF] text-[#0047CC] flex items-center justify-center mx-auto mb-[16px]">
+                <SaveIcon className="w-[30px] h-[30px]" />
+              </div>
+              <h3 className="text-[18px] font-[900] text-[#1A1A1A] mb-[8px] tracking-[-0.2px]">
+                Pause this interview properly
+              </h3>
+              <p className="text-[14px] text-[#4A4A4A] leading-[1.6] mb-[18px]">
+                Your timer will be saved and Stage 2's 72-hour deadline still applies. When you return, a fresh set of questions will be generated to protect the integrity of your reading.
+              </p>
+              <p className="text-[12.5px] text-[#808080] leading-[1.4] mb-[20px]">
+                You won't be able to use what you saw here as preparation. That's by design.
+              </p>
+              <div className="flex gap-[10px] justify-center flex-wrap">
+                <button
+                  onClick={() => setShowSaveModal(false)}
+                  disabled={isSubmitting}
+                  className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] font-sans disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Keep going
+                </button>
+                <button
+                  onClick={() => void confirmSaveAndExit()}
+                  disabled={isSubmitting}
+                  className="bg-[#0047CC] text-white border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] disabled:opacity-50 disabled:cursor-not-allowed font-sans"
+                >
+                  {isSubmitting ? 'Saving...' : 'Save and exit'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
 
 
-      {/* Anti-cheat Alert Modal */}
-      {showCheatModal && (
-        <div className="fixed inset-0 bg-[#0A1129]/65 backdrop-blur-[6px] flex items-center justify-center p-[24px] z-[200]">
-          <div className="bg-white rounded-[18px] max-w-[440px] w-full p-[30px_30px_26px] text-center shadow-[0_24px_80px_rgba(0,0,0,0.25)]">
-            <div className="w-[64px] h-[64px] rounded-full bg-[#FEF2F2] text-[#DC2626] flex items-center justify-center mx-auto mb-[16px]">
-              <AlertTriangleIcon className="w-[30px] h-[30px]" />
+        {/* Anti-cheat Alert Modal */}
+        {showCheatModal && (
+          <div className="fixed inset-0 bg-[#0A1129]/65 backdrop-blur-[6px] flex items-center justify-center p-[24px] z-[200]">
+            <div className="bg-white rounded-[18px] max-w-[440px] w-full p-[30px_30px_26px] text-center shadow-[0_24px_80px_rgba(0,0,0,0.25)]">
+              <div className="w-[64px] h-[64px] rounded-full bg-[#FEF2F2] text-[#DC2626] flex items-center justify-center mx-auto mb-[16px]">
+                <AlertTriangleIcon className="w-[30px] h-[30px]" />
+              </div>
+              <h3 className="text-[18px] font-[900] text-[#1A1A1A] mb-[8px] tracking-[-0.2px]">
+                You navigated away from this tab
+              </h3>
+              <p className="text-[14px] text-[#4A4A4A] leading-[1.6] mb-[18px]">
+                Leaving the interview tab is not allowed. Your interview will auto-submit in:
+              </p>
+              <div className="inline-block bg-[#FEF2F2] text-[#B91C1C] font-[900] text-[20px] p-[4px_14px] rounded-[8px] mb-[14px] tabular-nums">
+                {cheatCountdown}
+              </div>
+              <p className="text-[12.5px] text-[#808080] leading-[1.4]">
+                To pause properly, use <strong>Save and finish later</strong> next time. When you return, fresh questions will be generated.
+              </p>
             </div>
-            <h3 className="text-[18px] font-[900] text-[#1A1A1A] mb-[8px] tracking-[-0.2px]">
-              You navigated away from this tab
-            </h3>
-            <p className="text-[14px] text-[#4A4A4A] leading-[1.6] mb-[18px]">
-              Leaving the interview tab is not allowed. Your interview will auto-submit in:
-            </p>
-            <div className="inline-block bg-[#FEF2F2] text-[#B91C1C] font-[900] text-[20px] p-[4px_14px] rounded-[8px] mb-[14px] tabular-nums">
-              {cheatCountdown}
-            </div>
-            <p className="text-[12.5px] text-[#808080] leading-[1.4]">
-              To pause properly, use <strong>Save and finish later</strong> next time. When you return, fresh questions will be generated.
-            </p>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
     </StageTwoValidationProvider>
   );
 };
