@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useCallback, useState, useRef } from 'react';
+import { AssessmentStageProvider } from './shared/AssessmentStageContext';
 import VoraLogo from '../../common/VoraLogo';
 import Button from '../../common/Button';
 import FullPageSpinner from '../../common/FullPageSpinner';
@@ -340,7 +341,7 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
   }
 
   return (
-
+    <AssessmentStageProvider hideSequenceBadge={true}>
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col">
       {/* Fixed Header & Rails Wrapper */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-white flex flex-col">
@@ -507,6 +508,7 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
         </div>
       )}
     </div>
+    </AssessmentStageProvider>
   );
 };
 

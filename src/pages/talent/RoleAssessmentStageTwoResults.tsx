@@ -27,6 +27,12 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
   const { user } = useAuth();
   const assessmentId = resolveGate1AssessmentId() || getActiveAssessmentId() || '';
   
+  React.useEffect(() => {
+    if (!assessmentId && roleSlug) {
+      navigate(`/onboarding/talent/${roleSlug}`, { replace: true });
+    }
+  }, [assessmentId, roleSlug, navigate]);
+
   const { data: verdictRaw } = useGateVerdictQuery(assessmentId, 2, { enabled: !!assessmentId });
   const verdict = unwrapAssessmentData<GateVerdictResponse>(verdictRaw);
 

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { AssessmentStageProvider } from './shared/AssessmentStageContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import AssessmentHeader from '../AssessmentHeader';
@@ -96,6 +97,7 @@ const MockAssessmentScreenView: React.FC<MockAssessmentScreenViewProps> = ({
   }).length;
 
   return (
+    <AssessmentStageProvider hideSequenceBadge={true}>
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col relative pb-[80px]">
       <AssessmentHeader
         middleContent={chrome.headerTitle}
@@ -199,6 +201,7 @@ const MockAssessmentScreenView: React.FC<MockAssessmentScreenViewProps> = ({
         </div>
       </footer>
     </div>
+    </AssessmentStageProvider>
   );
 };
 

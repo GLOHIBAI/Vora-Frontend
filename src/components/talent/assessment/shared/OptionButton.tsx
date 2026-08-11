@@ -72,29 +72,29 @@ const OptionButton: React.FC<OptionButtonProps> = ({
   const isCode = useMemo(() => {
     const raw = String(label || '');
     const clean = cleanLabel;
-    return (
-      raw.includes('"""') ||
-      raw.includes('```') ||
-      clean.includes('@RestController') ||
-      clean.includes('public class ') ||
-      clean.includes('function') ||
-      clean.includes('import ') ||
-      clean.includes('const ') ||
-      clean.includes('let ') ||
-      clean.includes('var ') ||
-      clean.includes('return ') ||
-      clean.includes('=>') ||
-      clean.includes('->') ||
-      clean.includes('React') ||
-      clean.includes('useState') ||
-      clean.includes('useEffect') ||
-      clean.includes('fetch(') ||
-      clean.includes('java\n') ||
-      clean.startsWith('java ') ||
-      clean.includes('System.out') ||
-      (clean.includes('{') && clean.includes('}')) ||
-      (clean.includes(';') && (clean.includes('{') || clean.includes('(')))
-    );
+
+    // Only treat as code if explicitly delimited with triple quotes / backticks
+    if (raw.includes('"""') || raw.includes('```')) return true;
+
+    // Count strong code-specific signals (need at least 2 to classify as code)
+    let codeSignals = 0;
+    if (clean.includes('@RestController')) codeSignals += 2;
+    if (clean.includes('public class ')) codeSignals += 2;
+    if (clean.includes('System.out')) codeSignals += 2;
+    if (clean.includes('useState')) codeSignals += 2;
+    if (clean.includes('useEffect')) codeSignals += 2;
+    if (/\bfunction\s*\(/.test(clean)) codeSignals += 2; // function( not just "function" in English
+    if (/\bconst\s+\w+\s*=/.test(clean)) codeSignals++; // const x = ...
+    if (/\blet\s+\w+\s*=/.test(clean)) codeSignals++; // let x = ...
+    if (/\bvar\s+\w+\s*=/.test(clean)) codeSignals++; // var x = ...
+    if (/\breturn\s+[{[\w]/.test(clean)) codeSignals++; // return { or return [ or return value
+    if (/=>\s*[{(]/.test(clean)) codeSignals++; // => { or => (
+    if (/\bimport\s+.*\bfrom\b/.test(clean)) codeSignals += 2; // import X from 'Y'
+    if (clean.includes('fetch(')) codeSignals++;
+    if (clean.includes('->') && (clean.includes('{') || clean.includes('('))) codeSignals++;
+    if (clean.includes(';') && clean.includes('{') && clean.includes('}')) codeSignals += 2;
+
+    return codeSignals >= 2;
   }, [label, cleanLabel]);
 
   const formattedCode = useMemo(() => {

@@ -1,5 +1,6 @@
 import React from 'react';
 import FormattedPromptText from './FormattedPromptText';
+import { useAssessmentStageContext } from './AssessmentStageContext';
 
 export interface AssessmentItemCardProps {
   item?: any;
@@ -7,6 +8,8 @@ export interface AssessmentItemCardProps {
   title?: string;
   children: React.ReactNode;
   className?: string;
+  /** When true, the numbered circle badge (sequence) is hidden. */
+  hideSequenceBadge?: boolean;
 }
 
 export const getItemQuestionLabel = (item?: any, explicitLabel?: string): string | undefined => {
@@ -41,14 +44,17 @@ const AssessmentItemCard: React.FC<AssessmentItemCardProps> = ({
   title,
   children,
   className = '',
+  hideSequenceBadge,
 }) => {
+  const stageCtx = useAssessmentStageContext();
+  const shouldHideBadge = hideSequenceBadge ?? stageCtx.hideSequenceBadge;
   const seq = item?.sequence ?? item?.numText ?? item?.sessionScreenIndex;
   const titleText = item?.title ? String(item.title) : undefined;
   const displayLabel = getItemQuestionLabel(item, label);
 
   return (
     <div className={`bg-white border border-[#E6E6E6] rounded-xl p-5 ${className}`}>
-      {seq !== undefined && seq !== null ? (
+      {!shouldHideBadge && seq !== undefined && seq !== null ? (
         <div className="flex items-center gap-2.5 mb-3">
           <div className="w-[30px] h-[30px] rounded-full bg-white border border-[#E6E6E6] text-[#4A4A4A] flex items-center justify-center text-[13px] font-[800] shrink-0 shadow-sm">
             {seq}
