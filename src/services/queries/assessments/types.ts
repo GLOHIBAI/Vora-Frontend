@@ -471,7 +471,26 @@ export interface GateVerdictResponse {
 
   headline?: string;
   summary?: string;
+  heroTag?: string;
   narrativeParagraphs?: string[];
+  parts?: Array<{
+    key?: string;
+    part?: number;
+    partLabel?: string;
+    displayLabel?: string;
+    description?: string;
+    shortDetail?: string;
+    scorePercent: number;
+  }>;
+  curator?: {
+    eyebrow?: string;
+    title?: string;
+    body?: string;
+  };
+  ledgerNote?: {
+    title?: string;
+    body?: string;
+  };
 
   // Pass fields
   strengths?: Array<{

@@ -73,9 +73,9 @@ const RoleAssessmentStageTwoPartThreeSimulationOne = lazy(() => import('./pages/
 const RoleAssessmentStageTwoPartThreeSimulationTwo = lazy(() => import('./pages/talent/RoleAssessmentStageTwoPartThreeSimulationTwo'))
 const RoleAssessmentStageTwoPartThreeSimulationThree = lazy(() => import('./pages/talent/RoleAssessmentStageTwoPartThreeSimulationThree'))
 const RoleAssessmentStageTwoPartThreeSimulationFour = lazy(() => import('./pages/talent/RoleAssessmentStageTwoPartThreeSimulationFour'))
-const RoleAssessmentStageTwoReview = lazy(() => import('./pages/talent/RoleAssessmentStageTwoReview'))
 const RoleAssessmentStageTwoAnalyzing = lazy(() => import('./pages/talent/RoleAssessmentStageTwoAnalyzing'))
 const RoleAssessmentStageTwoResults = lazy(() => import('./pages/talent/RoleAssessmentStageTwoResults'))
+const RoleAssessmentStageTwoOutcome = lazy(() => import('./pages/talent/RoleAssessmentStageTwoOutcome'))
 const RoleAssessmentStageThreeIntro = lazy(() => import('./pages/talent/RoleAssessmentStageThreeIntro'))
 const RoleAssessmentStageThreeVideo = lazy(() => import('./pages/talent/RoleAssessmentStageThreeVideo'))
 const RoleAssessmentStageThreeComplete = lazy(() => import('./pages/talent/RoleAssessmentStageThreeComplete'))
@@ -278,9 +278,9 @@ const App = () => {
             <Route path="interview/stage-2/part-4/simulation-2" element={<RoleAssessmentStageTwoPartThreeSimulationTwo />} />
             <Route path="interview/stage-2/part-4/simulation-3" element={<RoleAssessmentStageTwoPartThreeSimulationThree />} />
             <Route path="interview/stage-2/part-4/simulation-4" element={<RoleAssessmentStageTwoPartThreeSimulationFour />} />
-            <Route path="interview/stage-2/review" element={<Navigate to="../analyzing" replace />} />
             <Route path="interview/stage-2/analyzing" element={<RoleAssessmentStageTwoAnalyzing />} />
             <Route path="interview/stage-2/results" element={<RoleAssessmentStageTwoResults />} />
+            <Route path="interview/stage-2/outcome" element={<RoleAssessmentStageTwoOutcome />} />
             <Route path="interview/stage-3" element={<RoleAssessmentStageThreeIntro />} />
             <Route path="interview/stage-3/video" element={<RoleAssessmentStageThreeVideo />} />
             <Route path="interview/stage-3/complete" element={<RoleAssessmentStageThreeComplete />} />

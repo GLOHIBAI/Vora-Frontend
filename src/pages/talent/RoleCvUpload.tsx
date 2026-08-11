@@ -6,7 +6,7 @@ import RoleApplyContextStrip from '../../components/talent/cvUpload/RoleApplyCon
 import AuthCenterLogoNav from '../../components/auth/AuthCenterLogoNav';
 import CvUploadZone from '../../components/talent/cvUpload/CvUploadZone';
 import CvUploadedFileRow from '../../components/talent/cvUpload/CvUploadedFileRow';
-import { useUploadCvMutation, useGetPublicRoleQuery } from '../../services/queries/talent';
+import { useUploadCvMutation, useGetPublicRoleQuery, useGetPreAssessmentReadinessQuery } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
 import { ROLE_CV_UPLOAD_PATH } from '../../utils/cvUpload';
@@ -31,13 +31,21 @@ const RoleCvUpload: React.FC = () => {
     return mapApiResponseToRoleData(roleSlug, apiData);
   }, [response, roleSlug]);
 
+  const { data: readinessResponse } = useGetPreAssessmentReadinessQuery(roleSlug);
+  const readiness = readinessResponse?.data || readinessResponse;
+
   const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (!roleSlug) {
       navigate('/onboarding/talent?step=1', { replace: true });
+      return;
     }
-  }, [roleSlug, navigate]);
+    // If candidate has already submitted CV for this role and has active assessment progress, skip CV upload screen
+    if (readiness && (readiness.stage >= 1 || readiness.cvLinkedToRole || readiness.assessmentStatus === 'IN_PROGRESS' || readiness.assessmentStatus === 'COMPLETED')) {
+      navigate(`/onboarding/talent/${roleSlug}/interview/resume`, { replace: true });
+    }
+  }, [roleSlug, readiness, navigate]);
 
   if (!roleSlug || !role) {
     return null;
