@@ -68,25 +68,19 @@ const RoleAssessmentStageTwoAnalyzing: React.FC = () => {
   return (
     <AssessmentAnalyzingView
       roleSlug={roleSlug}
-      eyebrow="Reading your Stage 2 in detail"
-      title="Working through everything you submitted"
-      subtitle={
-        <>
-          Part 1, Part 2, Part 3 and Part 4 together took you through <span className="text-[#38BDF8] font-bold">Knowledge</span>, <span className="text-[#34D399] font-bold">Expertise</span>, <span className="text-[#F59E0B] font-bold">Reasoning</span> and <span className="text-[#EC4899] font-bold">Written Simulations</span>. We&apos;re matching the patterns now.
-        </>
-      }
+      title="Scoring Stage 2"
+      subtitle="We're reviewing your full Stage 2 profile."
       steps={[
         'Knowledge interviews (Part 1) cross-checked',
         'Expertise interviews (Part 2) reviewed',
         'Reasoning patterns (Part 3) read against role demands',
         'Written simulations (Part 4) scored for clarity and tone',
+        'Performing response consistency & integrity checks',
       ]}
       initialStepIndex={0}
       schedule={schedule}
       redirectAtMs={8000}
       redirectPath="interview/stage-2/results"
-      footerNote="This usually takes 30 to 60 seconds"
-      headerMeta="Stage 2 review in progress"
     />
   );
 };
