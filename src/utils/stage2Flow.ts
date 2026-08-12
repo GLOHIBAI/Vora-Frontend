@@ -73,7 +73,9 @@ export const resolveGate2ResumeNavigatePath = (
   resume: Gate2ResumeState,
 ): string => {
   if (resume.nextStep === "GATE2_COMPLETE" || resume.gate2Complete) {
-    return `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`;
+    // All pillars done — go to review so the user can POST gates/2/submit.
+    // /analyzing must only be reached after that final submit.
+    return `/onboarding/talent/${roleSlug}/interview/stage-2/review`;
   }
 
   const pillar = resume.nextPillar ?? resume.pillar;
@@ -348,8 +350,9 @@ export const buildGate2ResumeViewModel = (
 
   if (resume.nextStep === "GATE2_COMPLETE") {
     welcomeText =
-      "You've finished every part of Stage 2. Open your results when you're ready.";
+      "You've finished every part of Stage 2. Review your responses and submit when you're ready.";
     positionDesc = "All four pillars are complete.";
+
   } else if (resume.nextStep === "RESUME_PILLAR") {
     welcomeText =
       "You paused mid-way through Stage 2. Your timer kept running, but everything else is exactly where you left it.";

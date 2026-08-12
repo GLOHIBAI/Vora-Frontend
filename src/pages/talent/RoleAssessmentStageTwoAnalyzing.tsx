@@ -11,7 +11,7 @@ const RoleAssessmentStageTwoAnalyzing: React.FC = () => {
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
   const assessmentId = resolveGate1AssessmentId() || getActiveAssessmentId() || '';
 
-  const { data: verdictRaw } = useGateVerdictQuery(assessmentId, 2, {
+  const { data: verdictRaw, error: verdictError } = useGateVerdictQuery(assessmentId, 2, {
     enabled: !!assessmentId,
     refetchInterval: 2500,
   });
@@ -31,6 +31,25 @@ const RoleAssessmentStageTwoAnalyzing: React.FC = () => {
     ],
     [],
   );
+
+  // Guard: if /verdict returns 400 ASSESSMENT_GATE2_FINAL_SUBMIT_REQUIRED it means
+  // the user landed here before POST gates/2/submit ran. Send them to /review so
+  // they can complete the final submit — this is what breaks the infinite loop.
+  useEffect(() => {
+    if (!verdictError) return;
+    const err = verdictError as { status?: number; code?: string; message?: string } | null;
+    const is400 = err?.status === 400;
+    const code = String(err?.code || err?.message || '').toUpperCase();
+    const isFinalSubmitRequired =
+      is400 ||
+      code.includes('ASSESSMENT_GATE2_FINAL_SUBMIT_REQUIRED') ||
+      code.includes('FINAL_SUBMIT') ||
+      code.includes('SUBMIT STAGE 2') ||
+      code.includes('REVIEW SCREEN');
+    if (isFinalSubmitRequired) {
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/review`, { replace: true });
+    }
+  }, [verdictError, roleSlug, navigate]);
 
   useEffect(() => {
     // 1. Primary check: check dynamic gate 2 verdict status from server
@@ -86,3 +105,4 @@ const RoleAssessmentStageTwoAnalyzing: React.FC = () => {
 };
 
 export default RoleAssessmentStageTwoAnalyzing;
+

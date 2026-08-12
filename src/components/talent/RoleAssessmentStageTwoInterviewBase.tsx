@@ -307,7 +307,10 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
               return;
             }
           } else if (rawData.nextStep === 'GATE2_COMPLETE') {
-            navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`, { replace: true });
+            // All pillars done — go to review so the user can do POST gates/2/submit.
+            // /analyzing is only valid AFTER final submit; routing there directly
+            // causes a 400 (ASSESSMENT_GATE2_FINAL_SUBMIT_REQUIRED) → loop.
+            navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/review`, { replace: true });
             return;
           }
         }
