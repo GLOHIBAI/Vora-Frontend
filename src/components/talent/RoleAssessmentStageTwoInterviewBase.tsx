@@ -310,7 +310,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
             // All pillars done — go to review so the user can do POST gates/2/submit.
             // /analyzing is only valid AFTER final submit; routing there directly
             // causes a 400 (ASSESSMENT_GATE2_FINAL_SUBMIT_REQUIRED) → loop.
-            navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/review`, { replace: true });
+            navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`, { replace: true });
             return;
           }
         }
@@ -538,7 +538,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   };
 
   const safeSaveDraft = async (unlockedPayload: Record<string, any>) => {
-    if (!apiScreenData?.componentId || !activeAssessmentId || isSubmitting) return;
+    if (!apiScreenData?.componentId || !activeAssessmentId) return;
 
     // Strictly filter out any items already marked as locked in lockedResponsesRef
     const strictlyUnlocked: Record<string, any> = {};
@@ -561,7 +561,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           lockedResponsesRef.current[key] = val;
         }
       } catch (err: any) {
-        const errMessage = String(err?.message || err?.data?.message || err?.response?.data?.message || '');
+        const errMessage = getApiErrorMessage(err, String(err?.message || err?.data?.message || err?.response?.data?.message || ''));
         const lowerMsg = errMessage.toLowerCase();
         if (
           lowerMsg.includes('locked') ||
@@ -816,6 +816,15 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       const nextItems = payload?.items || [];
       const nextWindow = payload?.window;
       const nextProgress = payload?.progress;
+
+      const fetchedResponses = (res as any)?.responses || (res as any)?.data?.responses || payload?.data?.responses;
+      if (fetchedResponses && typeof fetchedResponses === 'object') {
+        for (const [key, val] of Object.entries(fetchedResponses)) {
+          if (val !== undefined && val !== null) {
+            lockedResponsesRef.current[key] = val;
+          }
+        }
+      }
 
       if (nextItems.length > 0) {
         setShowContinueValidation(false);

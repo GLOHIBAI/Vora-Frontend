@@ -75,7 +75,7 @@ export const resolveGate2ResumeNavigatePath = (
   if (resume.nextStep === "GATE2_COMPLETE" || resume.gate2Complete) {
     // All pillars done — go to review so the user can POST gates/2/submit.
     // /analyzing must only be reached after that final submit.
-    return `/onboarding/talent/${roleSlug}/interview/stage-2/review`;
+    return `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`;
   }
 
   const pillar = resume.nextPillar ?? resume.pillar;

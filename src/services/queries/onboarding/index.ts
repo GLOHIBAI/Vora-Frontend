@@ -5,12 +5,9 @@ import type { ApiResponse } from '../auth/types';
 // ==========================================
 // TALENT ONBOARDING TYPES & MUTATIONS
 // ==========================================
-export interface TalentOnboardingStep1Request {
+export interface TalentOnboardingRequest {
   firstName: string;
   lastName: string;
-}
-
-export interface TalentOnboardingStep2Request {
   professionalTitle: string;
   areasOfInterest: string[];
   experienceLevel: string;
@@ -21,7 +18,7 @@ export interface TalentOnboardingStep2Request {
   residenceCity: string;
   rightToWorkStatus: string;
   willingnessToRelocate: string;
-  relocateCountryCodes: string[];
+  relocateCountryCodes?: string[];
   preferredWorkArrangement: string;
   workAuthorisationConfirmed: boolean;
 
@@ -40,7 +37,7 @@ export interface TalentOnboardingStep2Request {
 export interface TalentOnboardingStateResponse {
   step: number;
   onboardingCompleted?: boolean;
-  fields: Partial<TalentOnboardingStep1Request & TalentOnboardingStep2Request>;
+  fields: Partial<TalentOnboardingRequest>;
   onboarding?: any;
   applyContext?: {
     roleLink: string;
@@ -55,24 +52,12 @@ export interface TalentOnboardingStateResponse {
   };
 }
 
-export const useTalentOnboardingStep1Mutation = () => {
+export const useTalentOnboardingMutation = () => {
   return useMutation({
-    mutationKey: ['talent-onboarding', 'step-1'],
-    mutationFn: (data: TalentOnboardingStep1Request) =>
+    mutationKey: ['talent-onboarding'],
+    mutationFn: (data: TalentOnboardingRequest) =>
       apiClient.put<ApiResponse<any>>({
-        url: '/talent/onboarding/step-1',
-        body: data,
-        auth: true,
-      }),
-  });
-};
-
-export const useTalentOnboardingStep2Mutation = () => {
-  return useMutation({
-    mutationKey: ['talent-onboarding', 'step-2'],
-    mutationFn: (data: TalentOnboardingStep2Request) =>
-      apiClient.put<ApiResponse<any>>({
-        url: '/talent/onboarding/step-2',
+        url: '/talent/onboarding',
         body: data,
         auth: true,
       }),

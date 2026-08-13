@@ -177,7 +177,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
             }
           } else if ((screen as any).nextStep === 'GATE2_COMPLETE') {
             // All pillars done — go to review (final submit must happen before /analyzing).
-            navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/review`, { replace: true });
+            navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`, { replace: true });
             return;
           }
         }
@@ -351,7 +351,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
         toast.success('All simulations complete. Review your Stage 2 responses before submitting.');
         // Go to review-summary so the user can POST gates/2/submit first;
         // /analyzing is only valid after that final submit.
-        navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/review`);
+        navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`);
         return;
       }
 

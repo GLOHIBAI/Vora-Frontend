@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
-import { useTalentOnboardingStep1Mutation, useTalentOnboardingStep2Mutation, useTalentOnboardingStateQuery } from '../../services/queries/onboarding';
+import { useTalentOnboardingMutation, useTalentOnboardingStateQuery } from '../../services/queries/onboarding';
 import Button from '../../components/common/Button';
 import FullPageSpinner from '../../components/common/FullPageSpinner';
 import { useFullPageLoading } from '../../hooks/useFullPageLoading';
@@ -170,8 +170,7 @@ const TalentOnboarding: React.FC = () => {
     if (fromState) saveRoleApplySlug(fromState);
   }, [location.state]);
 
-  const step1Mutation = useTalentOnboardingStep1Mutation();
-  const step2Mutation = useTalentOnboardingStep2Mutation();
+  const onboardingMutation = useTalentOnboardingMutation();
 
   const { isSubmittingStep, runStepSubmit } = useOnboardingStepSubmit();
 
@@ -394,115 +393,110 @@ const TalentOnboarding: React.FC = () => {
     e.preventDefault();
 
     await runStepSubmit(async () => {
+      // Screen 1: Client-side validation only, advance to Screen 2 (no API submit yet)
       if (step === 1 && isStep1Valid) {
-
-        try {
-          await step1Mutation.mutateAsync({
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-          });
-          await refetchOnboardingState(queryClient, TALENT_ONBOARDING_STATE_KEY);
-          setStep(2);
-          window.scrollTo(0, 0);
-        } catch {
-          // Errors are automatically caught and toasted by our interceptor
-        }
+        setStep(2);
+        window.scrollTo(0, 0);
         return;
       }
 
+      // Screen 2: Submit single consolidated payload containing all step 1 + step 2 fields
       if (step === 2 && isStep2Valid) {
-
         try {
-        const payloadExperienceLevel = (() => {
-          switch (experienceLevel) {
-            case 'student-graduate': return 'STUDENT_GRADUATE';
-            case 'entry-academic': return 'ENTRY_LEVEL';
-            case 'entry-non-academic': return 'ENTRY_LEVEL';
-            case 'mid-professional': return 'MID_LEVEL';
-            case 'senior-professional': return 'SENIOR_LEVEL';
-            case 'masters': return 'STUDENT_GRADUATE';
-            case 'phd': return 'STUDENT_GRADUATE';
-            case 'post-doctorate': return 'STUDENT_GRADUATE';
-            default: return 'STUDENT_GRADUATE';
-          }
-        })();
+          const payloadExperienceLevel = (() => {
+            switch (experienceLevel) {
+              case 'student-graduate': return 'STUDENT_GRADUATE';
+              case 'entry-academic': return 'ENTRY_LEVEL';
+              case 'entry-non-academic': return 'ENTRY_LEVEL';
+              case 'mid-professional': return 'MID_LEVEL';
+              case 'senior-professional': return 'SENIOR_LEVEL';
+              case 'masters': return 'STUDENT_GRADUATE';
+              case 'phd': return 'STUDENT_GRADUATE';
+              case 'post-doctorate': return 'STUDENT_GRADUATE';
+              default: return 'STUDENT_GRADUATE';
+            }
+          })();
 
-        const payloadRightToWorkStatus = (() => {
-          switch (rightToWork) {
-            case 'national': return 'NATIONAL_ROLE_COUNTRY_NO_VISA';
-            case 'eu_eea': return 'EU_EEA_FREEDOM_OF_MOVEMENT';
-            case 'study_permit': return 'STUDENT_VISA_LIMITED_WORK';
-            case 'work_permit': return 'WORK_VISA_ROLE_COUNTRY';
-            case 'open_permit': return 'OPEN_WORK_PERMIT_MULTI_COUNTRY';
-            case 'ilr_uk': return 'UK_ILR_SETTLED_STATUS';
-            case 'green_card': return 'US_LAWFUL_PERMANENT_RESIDENT';
-            case 'pr_canada': return 'CA_PERMANENT_RESIDENT';
-            case 'pr_aus_nz': return 'AU_NZ_PERMANENT_RESIDENT';
-            case 'pr_eu': return 'EU_MEMBER_PERMANENT_RESIDENT';
-            case 'pr_other': return 'OTHER_LONG_TERM_OR_PERMANENT';
-            case 'need_sponsorship': return 'REQUIRES_EMPLOYER_SPONSORSHIP';
-            case 'remote_only': return 'REMOTE_OR_CONSULTANCY_ONLY';
-            default: return 'NATIONAL_ROLE_COUNTRY_NO_VISA';
-          }
-        })();
+          const payloadRightToWorkStatus = (() => {
+            switch (rightToWork) {
+              case 'national': return 'NATIONAL_ROLE_COUNTRY_NO_VISA';
+              case 'eu_eea': return 'EU_EEA_FREEDOM_OF_MOVEMENT';
+              case 'study_permit': return 'STUDENT_VISA_LIMITED_WORK';
+              case 'work_permit': return 'WORK_VISA_ROLE_COUNTRY';
+              case 'open_permit': return 'OPEN_WORK_PERMIT_MULTI_COUNTRY';
+              case 'ilr_uk': return 'UK_ILR_SETTLED_STATUS';
+              case 'green_card': return 'US_LAWFUL_PERMANENT_RESIDENT';
+              case 'pr_canada': return 'CA_PERMANENT_RESIDENT';
+              case 'pr_aus_nz': return 'AU_NZ_PERMANENT_RESIDENT';
+              case 'pr_eu': return 'EU_MEMBER_PERMANENT_RESIDENT';
+              case 'pr_other': return 'OTHER_LONG_TERM_OR_PERMANENT';
+              case 'need_sponsorship': return 'REQUIRES_EMPLOYER_SPONSORSHIP';
+              case 'remote_only': return 'REMOTE_OR_CONSULTANCY_ONLY';
+              default: return 'NATIONAL_ROLE_COUNTRY_NO_VISA';
+            }
+          })();
 
-        const payloadWillingnessToRelocate = (() => {
-          switch (relocation) {
-            case 'open': return 'OPEN_ANYWHERE';
-            case 'specific': return 'SPECIFIC_REGIONS';
-            case 'no': return 'STAYING_CURRENT_LOCATION';
-            case 'remote': return 'REMOTE_ONLY';
-            default: return 'OPEN_ANYWHERE';
-          }
-        })();
+          const payloadWillingnessToRelocate = (() => {
+            switch (relocation) {
+              case 'open': return 'OPEN_ANYWHERE';
+              case 'specific': return 'SPECIFIC_REGIONS';
+              case 'no': return 'STAYING_CURRENT_LOCATION';
+              case 'remote': return 'REMOTE_ONLY';
+              default: return 'OPEN_ANYWHERE';
+            }
+          })();
 
-        const payloadPreferredWorkArrangement =
-          WORK_ARRANGEMENT_TO_API[workArrangement] ?? 'FULLY_REMOTE';
+          const payloadPreferredWorkArrangement =
+            WORK_ARRANGEMENT_TO_API[workArrangement] ?? 'FULLY_REMOTE';
 
-        const payloadRelocateCountryCodes = relocation === 'specific'
-          ? (await Promise.all(relocationDestinations.split(',').map(s => getCountryIsoCode(s.trim())))).filter(Boolean)
-          : [];
+          const payloadRelocateCountryCodes = relocation === 'specific'
+            ? (await Promise.all(relocationDestinations.split(',').map(s => getCountryIsoCode(s.trim())))).filter(Boolean)
+            : [];
 
-        await step2Mutation.mutateAsync({
-          professionalTitle,
-          areasOfInterest,
-          experienceLevel: payloadExperienceLevel,
-          country,
-          region: country,
-          nationalities,
-          countryOfResidence: await getCountryIsoCode(residence),
-          residenceCity: city.split(',')[0].trim(),
-          rightToWorkStatus: payloadRightToWorkStatus,
-          willingnessToRelocate: payloadWillingnessToRelocate,
-          relocateCountryCodes: payloadRelocateCountryCodes,
-          preferredWorkArrangement: payloadPreferredWorkArrangement,
-          workAuthorisationConfirmed: true,
+          await onboardingMutation.mutateAsync({
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            professionalTitle,
+            areasOfInterest,
+            experienceLevel: payloadExperienceLevel,
+            country,
+            region: country,
+            nationalities,
+            countryOfResidence: await getCountryIsoCode(residence),
+            residenceCity: city.split(',')[0].trim(),
+            rightToWorkStatus: payloadRightToWorkStatus,
+            willingnessToRelocate: payloadWillingnessToRelocate,
+            relocateCountryCodes: payloadRelocateCountryCodes,
+            preferredWorkArrangement: payloadPreferredWorkArrangement,
+            workAuthorisationConfirmed: true,
 
-          studyPermitType: showStudyPanel ? studyPermitType : undefined,
-          studyCountry: showStudyPanel ? await getCountryIsoCode(studyCountry) : undefined,
-          studyValidity: showStudyPanel ? studyValidity : undefined,
-          studyHoursManual: (showStudyPanel && !studyHoursData) ? studyHoursManual : undefined,
-          permitType: showPermitPanel ? permitType : undefined,
-          permitCountry: showPermitPanel ? await getCountryIsoCode(permitCountry) : undefined,
-          permitValidity: showPermitPanel ? permitValidity : undefined,
-          prType: showPRPanel ? prType : undefined,
-          prCountry: showPRPanel ? await getCountryIsoCode(prCountry) : undefined,
-          prValidity: showPRPanel ? prValidity : undefined,
-        });
-
-        updateUser({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-        });
-        await refetchOnboardingState(queryClient, TALENT_ONBOARDING_STATE_KEY);
-          
-        if (isRoleApplyFlow) {
-          navigate(`/onboarding/talent/${roleSlug}/cv`, {
-            state: { firstName: formData.firstName },
+            studyPermitType: showStudyPanel ? studyPermitType : undefined,
+            studyCountry: showStudyPanel ? await getCountryIsoCode(studyCountry) : undefined,
+            studyValidity: showStudyPanel ? studyValidity : undefined,
+            studyHoursManual: (showStudyPanel && !studyHoursData) ? studyHoursManual : undefined,
+            permitType: showPermitPanel ? permitType : undefined,
+            permitCountry: showPermitPanel ? await getCountryIsoCode(permitCountry) : undefined,
+            permitValidity: showPermitPanel ? permitValidity : undefined,
+            prType: showPRPanel ? prType : undefined,
+            prCountry: showPRPanel ? await getCountryIsoCode(prCountry) : undefined,
+            prValidity: showPRPanel ? prValidity : undefined,
           });
-        } else {
-          navigate('/dashboard', { replace: true });
-        }
+
+          updateUser({
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            onboardingCompleted: true,
+            isOnboardingComplete: true,
+          });
+          await refetchOnboardingState(queryClient, TALENT_ONBOARDING_STATE_KEY);
+            
+          if (isRoleApplyFlow) {
+            navigate(`/onboarding/talent/${roleSlug}/cv`, {
+              state: { firstName: formData.firstName },
+            });
+          } else {
+            navigate('/dashboard', { replace: true });
+          }
         } catch {
           // Errors are automatically caught and toasted by our interceptor
         }
@@ -548,7 +542,9 @@ const TalentOnboarding: React.FC = () => {
               Back
             </button>
           )}
-          <span className="text-sm font-medium text-[#1C1C1C]">{step}/2</span>
+          <span className="text-sm font-medium text-[#1C1C1C]">
+            {step === 1 ? '0/1' : '1/1'}
+          </span>
         </div>
         <div className="flex gap-1 w-full h-1.5">
           <div className={`flex-1 h-full rounded-full transition-all duration-500 ${step >= 1 ? 'bg-[#0047CC]' : 'bg-[#F3F4F6]'}`} />

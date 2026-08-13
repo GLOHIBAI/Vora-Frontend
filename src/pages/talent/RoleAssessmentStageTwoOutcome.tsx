@@ -207,9 +207,9 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
                 <div className="text-[28px] font-[900] tracking-[-0.5px] leading-none tabular-nums">
                   {p.scorePercent}<small className="text-[14px] font-[700] text-white/70 ml-1">%</small>
                 </div>
-                {(p.description || p.shortDetail) && (
+                {(p.shortDetail || p.description) && (
                   <div className="text-[11.5px] text-white/75 font-[600] mt-1.5 leading-snug line-clamp-2">
-                    {p.description || p.shortDetail}
+                    {p.shortDetail || p.description}
                   </div>
                 )}
               </div>

@@ -158,7 +158,7 @@ const RoleAssessmentResumeGate: React.FC = () => {
     if (gate2Resume.nextStep === 'GATE2_COMPLETE' || gate2Resume.gate2Complete) {
       // Pillars are done but final submit may not have happened yet.
       // Send to review so the user can POST gates/2/submit → /analyzing → /results.
-      navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/review`, { replace: true });
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`, { replace: true });
     }
   }, [currentStage, gate2Loading, gate2Resume, navigate, roleSlug]);
 

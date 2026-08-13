@@ -85,11 +85,13 @@ export function formatGate2Answer(
     // Single best + reason
     case 'jb': {
       if (typeof rawAnswer === 'object' && !Array.isArray(rawAnswer)) {
-        const choice = String(rawAnswer.choice ?? rawAnswer.optionId ?? rawAnswer.selectedOption ?? '');
-        const reason = String(rawAnswer.reason ?? rawAnswer.reasoning ?? '');
+        const choice = String(rawAnswer.choice ?? rawAnswer.optionId ?? rawAnswer.selectedOption ?? '').trim();
+        const reason = String(rawAnswer.reason ?? rawAnswer.reasoning ?? '').trim();
+        if (!choice) return '';
         return { choice, reason };
       }
-      return { choice: String(rawAnswer), reason: '' };
+      const choiceStr = String(rawAnswer ?? '').trim();
+      return choiceStr ? { choice: choiceStr, reason: '' } : '';
     }
 
     // Choice (+ optional reason)
@@ -111,14 +113,15 @@ export function formatGate2Answer(
     case 'metric':
     case 'threshold': {
       if (typeof rawAnswer === 'object' && !Array.isArray(rawAnswer)) {
-        const choice = String(rawAnswer.choice ?? rawAnswer.optionId ?? rawAnswer.selectedOption ?? '');
+        const choice = String(rawAnswer.choice ?? rawAnswer.optionId ?? rawAnswer.selectedOption ?? '').trim();
         const reason = String(rawAnswer.reason ?? rawAnswer.reasoning ?? '').trim();
+        if (!choice) return '';
         if (reason.length > 0) {
           return { choice, reason };
         }
         return choice;
       }
-      return String(rawAnswer);
+      return String(rawAnswer ?? '').trim();
     }
 
     // highlight: option id string OR { choice: "<options[].id>", reason?: "..." }

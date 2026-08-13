@@ -54,9 +54,16 @@ const HotspotItem: React.FC<AssessmentItemRendererProps> = ({
         </div>
       )}
 
-      <div className="mb-5 rounded-[14px] overflow-hidden border border-[#E6E6E6] bg-white shadow-sm font-mono text-[13px]">
-        <div className="bg-[#F8FAFC] px-4 py-2 border-b border-[#E6E6E6] text-[11px] font-mono text-[#0047CC] font-bold uppercase tracking-wider">
-          Tap the line containing the issue
+      <div className={`mb-5 rounded-[14px] overflow-hidden border transition-all bg-white shadow-sm font-mono text-[13px] ${
+        !selectedOptionId ? 'border-[#FCA5A5]' : 'border-[#E6E6E6]'
+      }`}>
+        <div className="bg-[#F8FAFC] px-4 py-2 border-b border-[#E6E6E6] flex items-center justify-between text-[11px] font-mono tracking-wider">
+          <span className="text-[#0047CC] font-bold uppercase">Tap the line containing the issue</span>
+          {!selectedOptionId && (
+            <span className="text-[#DC2626] font-sans font-bold text-[11.5px] uppercase tracking-normal">
+              ⚠️ Tap a line of code below
+            </span>
+          )}
         </div>
         <div className="p-2 space-y-1">
           {options.map((opt, idx) => {

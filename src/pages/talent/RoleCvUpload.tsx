@@ -41,8 +41,13 @@ const RoleCvUpload: React.FC = () => {
       navigate('/onboarding/talent?step=1', { replace: true });
       return;
     }
-    // If candidate has already submitted CV for this role and has active assessment progress, skip CV upload screen
-    if (readiness && (readiness.stage >= 1 || readiness.cvLinkedToRole || readiness.assessmentStatus === 'IN_PROGRESS' || readiness.assessmentStatus === 'COMPLETED')) {
+    // After hibernate/reload, prefer readiness for stage routing (checks.cvOnFile, checks.cvUploadRequired, nextStep / flowPhase)
+    const hasCvOnFile = readiness?.checks?.cvOnFile === true || readiness?.cvOnFile === true;
+    const cvUploadNotRequired = readiness?.checks?.cvUploadRequired === false || readiness?.cvUploadRequired === false;
+    const pastCvUploadPhase = readiness?.flowPhase && readiness.flowPhase !== 'CV_UPLOAD';
+    const isStageOrStatusAdvanced = readiness && (readiness.stage >= 1 || readiness.cvLinkedToRole || readiness.assessmentStatus === 'IN_PROGRESS' || readiness.assessmentStatus === 'COMPLETED');
+
+    if (readiness && (hasCvOnFile || cvUploadNotRequired || pastCvUploadPhase || isStageOrStatusAdvanced)) {
       navigate(`/onboarding/talent/${roleSlug}/interview/resume`, { replace: true });
     }
   }, [roleSlug, readiness, navigate]);

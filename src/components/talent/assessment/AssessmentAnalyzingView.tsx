@@ -18,10 +18,10 @@ export type AssessmentAnalyzingViewProps = {
   initialStepIndex?: number;
   /** Timed advances; last entry typically sets stepIndex to steps.length. */
   schedule: AssessmentAnalyzingStepSchedule[];
-  /** Absolute ms from mount when navigation fires. */
-  redirectAtMs: number;
+  /** Optional absolute ms from mount when navigation fires. */
+  redirectAtMs?: number;
   /** Path relative to /onboarding/talent/:roleSlug/ or absolute app path. */
-  redirectPath: string;
+  redirectPath?: string;
   roleSlug: string;
   footerNote?: string;
   headerMeta?: string;
@@ -48,16 +48,19 @@ const AssessmentAnalyzingView: React.FC<AssessmentAnalyzingViewProps> = ({
       window.setTimeout(() => setStepIdx(stepIndex), atMs),
     );
 
-    const redirectTimer = window.setTimeout(() => {
-      const path = redirectPath.startsWith('/')
-        ? redirectPath
-        : `/onboarding/talent/${roleSlug}/${redirectPath}`;
-      navigate(path, { replace: true });
-    }, redirectAtMs);
+    let redirectTimer: number | null = null;
+    if (redirectAtMs && redirectAtMs > 0 && redirectPath) {
+      redirectTimer = window.setTimeout(() => {
+        const path = redirectPath.startsWith('/')
+          ? redirectPath
+          : `/onboarding/talent/${roleSlug}/${redirectPath}`;
+        navigate(path, { replace: true });
+      }, redirectAtMs);
+    }
 
     return () => {
       timers.forEach((id) => window.clearTimeout(id));
-      window.clearTimeout(redirectTimer);
+      if (redirectTimer) window.clearTimeout(redirectTimer);
     };
   }, [navigate, redirectAtMs, redirectPath, roleSlug, schedule]);
 

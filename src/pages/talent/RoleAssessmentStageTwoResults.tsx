@@ -27,12 +27,6 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
   const { user } = useAuth();
   const assessmentId = resolveGate1AssessmentId() || getActiveAssessmentId() || '';
   
-  React.useEffect(() => {
-    if (!assessmentId && roleSlug) {
-      navigate(`/onboarding/talent/${roleSlug}`, { replace: true });
-    }
-  }, [assessmentId, roleSlug, navigate]);
-
   const { data: verdictRaw } = useGateVerdictQuery(assessmentId, 2, { enabled: !!assessmentId });
   const verdict = unwrapAssessmentData<GateVerdictResponse>(verdictRaw);
 
@@ -40,8 +34,20 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
   const progressEntries = unwrapAssessmentData<any[]>(progressRaw) || [];
   const gate2Progress = Array.isArray(progressEntries) ? progressEntries.find((e) => String(e.gate) === '2') : null;
 
+  React.useEffect(() => {
+    if (!assessmentId && roleSlug) {
+      navigate(`/onboarding/talent/${roleSlug}`, { replace: true });
+      return;
+    }
+    // If scoring is still generating, send back to analyzing screen to show loader & poll
+    if (verdict && String(verdict.status || '').toLowerCase() === 'generating') {
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`, { replace: true });
+    }
+  }, [assessmentId, verdict, roleSlug, navigate]);
+
   const firstName = user?.firstName || verdict?.talent?.firstName || 'Candidate';
-  const compositeScore = verdict?.score ?? gate2Progress?.score ?? 87;
+  const rollupScore = (verdict as any)?.rollup?.score;
+  const compositeScore = verdict?.score ?? rollupScore ?? gate2Progress?.score ?? 80;
   const passThreshold = verdict?.threshold ?? 80;
   const heroTag = verdict?.heroTag || 'You passed Stage 2';
   const headline = verdict?.headline || `${firstName}, you're through to Stage 3`;
@@ -175,7 +181,7 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
                   <div className="h-full bg-gradient-to-r from-[#0047CC] to-[#387DFF] rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, p.scorePercent)}%` }} />
                 </div>
                 <p className="text-[12.5px] text-[#808080] leading-[1.55]">
-                  {p.description || p.shortDetail}
+                  {p.shortDetail || p.description}
                 </p>
               </div>
             ))}

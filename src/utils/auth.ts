@@ -19,19 +19,17 @@ export function routeAfterAuth(user: User): string {
   }
 
   const isOnboardingComplete =
-    user.isOnboardingComplete ??
-    user.onboardingCompleted ??
-    (role !== 'MENTOR' && !!user.firstName);
+    user.isOnboardingComplete === true || user.onboardingCompleted === true;
 
   if (!isOnboardingComplete) {
     if (role === 'EMPLOYER') {
       return `/onboarding/employer?step=${onboardingStep + 1}`;
     }
     if (role === 'TALENT') {
-      return `/onboarding/talent?step=${onboardingStep + 1}`;
+      return '/onboarding/talent';
     }
 
-    return `/onboarding?step=${onboardingStep + 1}`;
+    return '/onboarding';
   }
 
   return '/dashboard';
