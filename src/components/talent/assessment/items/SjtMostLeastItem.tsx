@@ -105,7 +105,7 @@ const SjtMostLeastItem: React.FC<AssessmentItemRendererProps> = ({
         })}
       </div>
 
-      {(content.reasonPrompt || content.reasoningPrompt || content.justifyPrompt) && (
+      {Boolean(content.reasonPrompt || content.reasoningPrompt || content.justifyPrompt) && (
         <ReasonTextarea
           label={String(content.reasonPrompt || content.reasoningPrompt || content.justifyPrompt || 'Explain your reasoning')}
           itemType={String(item.type || 'sjt_most_least')}
