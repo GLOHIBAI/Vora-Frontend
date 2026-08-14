@@ -500,8 +500,6 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     activeDisplayedItems.forEach((i) => {
       if (i && i.id) {
         allFetchedItemsRef.current.set(i.id, i);
-        // Clear lock for current window items so user's fresh answers can be saved
-        delete lockedResponsesRef.current[i.id];
       }
     });
   }, [activeDisplayedItems]);
@@ -547,9 +545,23 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
   const buildUnlockedDraftPayload = (rawAnswers: Record<string, any>, itemsForTypes?: AssessmentItem[]) => {
     const unlocked: Record<string, any> = {};
+    const allItems = (itemsForTypes ?? []).concat(
+      Array.from(allFetchedItemsRef.current.values()),
+      apiScreenData?.items ?? [],
+      activeDisplayedItems ?? [],
+    );
+    const itemMap = new Map<string, AssessmentItem>();
+    allItems.forEach((i) => {
+      if (i && i.id) itemMap.set(i.id, i);
+    });
+
     for (const [itemId, val] of Object.entries(rawAnswers)) {
       if (val !== undefined && val !== null && val !== '' && lockedResponsesRef.current[itemId] !== true) {
-        unlocked[itemId] = val;
+        const item = itemMap.get(itemId);
+        // Only include in draft PATCH payload when complete (prevents partial then complete 400 locked errors)
+        if (!item || isItemAnswerComplete(item, val)) {
+          unlocked[itemId] = val;
+        }
       }
     }
     return sanitizeAnswers(unlocked, itemsForTypes);
@@ -571,13 +583,31 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
     const savePromise = (async () => {
       try {
-        await saveDraftMutation.mutateAsync({
+        const saveRes = await saveDraftMutation.mutateAsync({
           assessmentId: activeAssessmentId,
           componentId: compId,
           responses: validPayload,
         });
+
+        // Mark all saved keys as locked locally so subsequent patches don't re-send them
+        Object.keys(validPayload).forEach((k) => {
+          lockedResponsesRef.current[k] = true;
+        });
+
+        const respObj = (saveRes as any)?.responses || (saveRes as any)?.data?.responses;
+        if (respObj && typeof respObj === 'object') {
+          Object.keys(respObj).forEach((k) => {
+            lockedResponsesRef.current[k] = true;
+          });
+        }
       } catch (err: any) {
-        const errMessage = getApiErrorMessage(err, String(err?.message || err?.data?.message || err?.response?.data?.message || ''));
+        const rawMsg =
+          err?.response?.data?.message ||
+          err?.data?.message ||
+          getApiErrorMessage(err, '') ||
+          err?.message ||
+          '';
+        const errMessage = String(rawMsg);
         const lowerMsg = errMessage.toLowerCase();
         if (
           lowerMsg.includes('locked') ||
@@ -590,11 +620,10 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           const match = errMessage.match(/item\s+([a-zA-Z0-9_-]+):/);
           if (match && match[1]) {
             lockedResponsesRef.current[match[1]] = true;
-          } else {
-            Object.keys(unlockedPayload).forEach((k) => {
-              lockedResponsesRef.current[k] = true;
-            });
           }
+          Object.keys(validPayload).forEach((k) => {
+            lockedResponsesRef.current[k] = true;
+          });
           return;
         }
         throw err;
@@ -614,8 +643,9 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   const buildCurrentWindowDraftPayload = () => {
     const windowAnswers: Record<string, any> = {};
     for (const item of activeDisplayedItems) {
+      if (lockedResponsesRef.current[item.id] === true) continue;
       const val = answers[item.id];
-      if (val !== undefined && val !== null && val !== '') {
+      if (val !== undefined && val !== null && val !== '' && isItemAnswerComplete(item, val)) {
         windowAnswers[item.id] = val;
       }
     }
@@ -670,7 +700,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       await submitScreenMutation.mutateAsync({
         assessmentId: activeAssessmentId,
         componentId: compId,
-        responses: Object.keys(submitPayload).length > 0 ? submitPayload : unlockedDraft,
+        responses: submitPayload,
       });
 
       toast.success('Submitted successfully.');
@@ -685,6 +715,8 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     } catch (err: any) {
       console.error('Failed to submit assessment:', err);
       const serverMsg =
+        err?.response?.data?.message ||
+        err?.data?.message ||
         getApiErrorMessage(err) ||
         err?.message ||
         '';
@@ -694,7 +726,9 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         lower.includes('already submitted') ||
         lower.includes('already been submitted') ||
         lower.includes('completed') ||
-        lower.includes('time limit')
+        lower.includes('time limit') ||
+        lower.includes('locked') ||
+        lower.includes('cannot be changed')
       ) {
         const nextPartMap: Record<number, string> = {
           1: `/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`,
@@ -749,6 +783,24 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
   const isAllAnswered = activeDisplayedItems.length > 0 && incompleteCount === 0;
 
+  // Keep pillarProgress.answered in sync with actual local + locked answered counts
+  useEffect(() => {
+    const lockedCount = Object.keys(lockedResponsesRef.current).length;
+    const localAnsweredCount = activeDisplayedItems.filter((item) => {
+      const val = answers[item.id];
+      return val !== undefined && val !== null && val !== '';
+    }).length;
+    // Only count local answers that aren't already locked
+    const localOnlyCount = activeDisplayedItems.filter((item) => {
+      const val = answers[item.id];
+      return val !== undefined && val !== null && val !== '' && !lockedResponsesRef.current[item.id];
+    }).length;
+    const totalAnswered = lockedCount + localOnlyCount;
+    if (totalAnswered > pillarProgress.answered) {
+      setPillarProgress((prev) => ({ ...prev, answered: totalAnswered }));
+    }
+  }, [answers, activeDisplayedItems, pillarProgress.answered]);
+
   useEffect(() => {
     if (isAllAnswered) setShowContinueValidation(false);
   }, [isAllAnswered]);
@@ -761,6 +813,8 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   };
 
   const isHasMoreWindows = useMemo(() => {
+    // If all items for this pillar are answered, there are no more windows to fetch
+    if (pillarProgress.total > 0 && pillarProgress.answered >= pillarProgress.total) return false;
     if (windowInfo.hasMore === true) return true;
     if (windowInfo.hasMore === false) return false;
     if (pillarProgress.total > 0) return windowInfo.through < pillarProgress.total;
@@ -828,13 +882,20 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           through: nextThrough,
         });
       } catch (fetchErr: any) {
-        const msg = getApiErrorMessage(fetchErr, '');
-        const lowerMsg = msg.toLowerCase();
+        const rawMsg =
+          fetchErr?.response?.data?.message ||
+          fetchErr?.data?.message ||
+          getApiErrorMessage(fetchErr, '') ||
+          fetchErr?.message ||
+          '';
+        const lowerMsg = String(rawMsg).toLowerCase();
         if (
           lowerMsg.includes('already submitted') ||
           lowerMsg.includes('already been submitted') ||
           lowerMsg.includes('completed') ||
-          lowerMsg.includes('time limit')
+          lowerMsg.includes('time limit') ||
+          lowerMsg.includes('locked') ||
+          lowerMsg.includes('cannot be changed')
         ) {
           const nextPartMap: Record<number, string> = {
             1: `/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`,
@@ -870,6 +931,25 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           nextItems.every((ni) => activeDisplayedItems.some((ai) => ai.id === ni.id));
 
         if (isSameWindowReturned) {
+          // If the backend says all items are answered, this pillar is actually complete —
+          // the clamp happened because there are no NEW items to advance to.
+          const answeredAll =
+            (nextProgress && nextProgress.answered >= nextProgress.total) ||
+            (pillarProgress.total > 0 && pillarProgress.answered >= pillarProgress.total);
+
+          if (answeredAll) {
+            const nextPartMap: Record<number, string> = {
+              1: `/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`,
+              2: `/onboarding/talent/${roleSlug}/interview/stage-2/part-3/intro`,
+              3: `/onboarding/talent/${roleSlug}/interview/stage-2/part-4/intro`,
+              4: `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`,
+            };
+            const targetPath = nextPartMap[partNumber] || `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`;
+            toast.success('All questions answered! Moving to the next section.');
+            navigate(targetPath, { replace: true });
+            return;
+          }
+
           setShowContinueValidation(true);
           toast.error('Please make sure all questions on this page are fully answered before continuing.');
           setApiLoading(false);
