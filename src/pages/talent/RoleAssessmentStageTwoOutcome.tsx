@@ -53,6 +53,21 @@ const ClockIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
+const renderFormattedText = (text: string, isHero = false) => {
+  if (!text) return null;
+  const parts = text.split(/(\d+(?:\.\d+)?%)/g);
+  return parts.map((part, index) => {
+    if (/^\d+(?:\.\d+)?%$/.test(part)) {
+      return (
+        <strong key={index} className={`font-[800] ${isHero ? 'text-white' : 'text-[#1A1A1A]'}`}>
+          {part}
+        </strong>
+      );
+    }
+    return part;
+  });
+};
+
 const RoleAssessmentStageTwoOutcome: React.FC = () => {
   const navigate = useNavigate();
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
@@ -79,7 +94,7 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
   const heroTag = vData?.heroTag || 'Stage 2 outcome · with your next path';
   const headline = vData?.headline || `Stage 2 assessment: ${firstName}, you did not pass.`;
   const summary = vData?.summary || `Your Stage 2 composite score of ${score}% did not clear the ${threshold}% threshold for ${roleTitle} at ${employerName}.`;
-  
+
   const narrativeParagraphs: string[] =
     vData?.narrativeParagraphs ||
     vData?.data?.narrativeParagraphs ||
@@ -164,7 +179,7 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
         <div className="text-[12.5px] text-[#808080] font-[600]">Stage 2 · Outcome and what to do next</div>
         <div className="flex items-center gap-[6px] text-[12px] text-[#808080] font-[600]">
           <svg className="w-[13px] h-[13px] text-[#2CA62C]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-            <polyline points="20 6 9 17 4 12"/>
+            <polyline points="20 6 9 17 4 12" />
           </svg>
           Saved
         </div>
@@ -184,7 +199,7 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
             {headline}
           </h1>
           <p className="text-[15.5px] text-white/85 leading-[1.7] max-w-[560px]">
-            {summary}
+            {renderFormattedText(summary, true)}
           </p>
 
           {/* Composite score & Part breakdown boxes */}
@@ -225,7 +240,7 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
           <div className="bg-white rounded-[18px] p-[28px_32px] shadow-[0_12px_36px_rgba(10,17,114,0.08)] border border-[#E6E6E6]">
             {narrativeParagraphs.map((para, idx) => (
               <p key={idx} className="text-[15px] text-[#4A4A4A] leading-[1.85] mb-3.5 last:mb-0">
-                {para}
+                {renderFormattedText(para)}
               </p>
             ))}
           </div>
@@ -241,7 +256,7 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
               {gaps.length} {gaps.length === 1 ? 'competency came' : 'competencies came'} in below the bar
             </h2>
             <p className="text-[13.5px] text-[#808080] leading-[1.6] mb-4">
-              These areas specifically pulled your composite score ({score}%) below the required {threshold}% threshold.
+              These areas specifically pulled your composite score (<strong className="font-[800] text-[#1A1A1A]">{score}%</strong>) below the required <strong className="font-[800] text-[#1A1A1A]">{threshold}%</strong> threshold.
             </p>
 
             <div className="space-y-3.5">
@@ -289,7 +304,7 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
               Diagnosis & Feedback
             </div>
             <h2 className="text-[18px] font-[900] text-[#1A1A1A] tracking-[-0.2px] mb-2">
-              Assessment Rationale
+              Interview Rationale
             </h2>
             <p className="text-[14px] text-[#4A4A4A] leading-[1.7]">
               {diagnosis.rationale}

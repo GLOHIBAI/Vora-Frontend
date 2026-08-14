@@ -1,6 +1,9 @@
+import React from 'react';
 import AssessmentItemCard from '../shared/AssessmentItemCard';
 import type { AssessmentItemRendererProps } from '../shared/types';
 import type { MostLeastAnswerValue } from '../../../../services/queries/assessments/types';
+import ReasonTextarea from '../shared/ReasonTextarea';
+import { getReasonMinWords } from '../shared/reasonMinWords';
 
 const SjtMostLeastItem: React.FC<AssessmentItemRendererProps> = ({
   item,
@@ -13,8 +16,15 @@ const SjtMostLeastItem: React.FC<AssessmentItemRendererProps> = ({
   const options = content.options ?? content.values ?? [];
   const current = (value as MostLeastAnswerValue | undefined) ?? { most: '', least: '' };
 
+  const reasoningText =
+    typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? String((value as any).reason ?? (value as any).reasoning ?? '')
+      : '';
+
+  const minWords = getReasonMinWords(content as Record<string, unknown>, String(item.type || 'sjt_most_least'));
+
   const pickMost = (optionId: string) => {
-    const next = { ...current };
+    const next = { ...current, reason: reasoningText };
     if (next.most === optionId) {
       next.most = '';
     } else {
@@ -25,7 +35,7 @@ const SjtMostLeastItem: React.FC<AssessmentItemRendererProps> = ({
   };
 
   const pickLeast = (optionId: string) => {
-    const next = { ...current };
+    const next = { ...current, reason: reasoningText };
     if (next.least === optionId) {
       next.least = '';
     } else {
@@ -35,9 +45,16 @@ const SjtMostLeastItem: React.FC<AssessmentItemRendererProps> = ({
     onChange(next);
   };
 
+  const handleReason = (newReason: string) => {
+    onChange({
+      ...current,
+      reason: newReason,
+    });
+  };
+
   return (
     <AssessmentItemCard item={item} title={prompt ? String(prompt) : undefined}>
-      <div className="space-y-3">
+      <div className="space-y-3 mb-4">
         {options.map((opt, idx) => {
           const text = opt.label || opt.text || opt.description || (opt as any).statement || (opt as any).content || (opt as any).value || (opt as any).prompt || '';
           if (!text.trim()) return null;
@@ -87,6 +104,18 @@ const SjtMostLeastItem: React.FC<AssessmentItemRendererProps> = ({
           );
         })}
       </div>
+
+      {(content.reasonPrompt || content.reasoningPrompt || content.justifyPrompt) && (
+        <ReasonTextarea
+          label={String(content.reasonPrompt || content.reasoningPrompt || content.justifyPrompt || 'Explain your reasoning')}
+          itemType={String(item.type || 'sjt_most_least')}
+          content={content}
+          value={reasoningText}
+          disabled={disabled}
+          onChange={handleReason}
+          minWords={minWords}
+        />
+      )}
     </AssessmentItemCard>
   );
 };

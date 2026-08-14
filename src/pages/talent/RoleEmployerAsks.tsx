@@ -133,7 +133,7 @@ const RoleEmployerAsks: React.FC = () => {
     if (Array.isArray(readiness?.requiredDocuments) && readiness.requiredDocuments.length > 0) {
       return readiness.requiredDocuments;
     }
-    if (Array.isArray(readiness?.items)) {
+    if (Array.isArray(readiness?.items) && readiness.items.length > 0) {
       return readiness.items
         .filter((item: any) => item.kind === 'file' || item.inputType === 'file')
         .map((item: any) => ({
@@ -149,6 +149,34 @@ const RoleEmployerAsks: React.FC = () => {
           instruction: item.instruction
         }));
     }
+
+    const docTypes =
+      readiness?.employerDocumentTypes ||
+      readiness?.requiredDocumentTypes ||
+      readiness?.preAssessmentDocumentTypes ||
+      [];
+
+    if (Array.isArray(docTypes) && docTypes.length > 0) {
+      return docTypes.map((typeKey: string) => {
+        const formatLabel = (key: string) => {
+          return key
+            .split('_')
+            .map((w) => (w === 'or' ? 'or' : w.charAt(0).toUpperCase() + w.slice(1)))
+            .join(' ');
+        };
+        const label = formatLabel(typeKey);
+        return {
+          code: typeKey,
+          label,
+          category: 'written_research',
+          required: true,
+          submitted: false,
+          whyWeAsk: 'to review your work and frame specific questions based on the evidence.',
+          instruction: `Please upload your ${label.toLowerCase()}.`
+        };
+      });
+    }
+
     return [];
   }, [readiness]);
 
@@ -310,7 +338,15 @@ const RoleEmployerAsks: React.FC = () => {
   }, [error, navigate, roleSlug]);
 
   const completedRequired = readiness?.progress?.completedRequired ?? 0;
-  const totalRequired = readiness?.progress?.totalRequired ?? 0;
+  const totalRequired = useMemo(() => {
+    if (readiness?.progress?.totalRequired && readiness.progress.totalRequired > 0) {
+      return readiness.progress.totalRequired;
+    }
+    if (readiness?.checklistCounts?.totalRequired && readiness.checklistCounts.totalRequired > 0) {
+      return readiness.checklistCounts.totalRequired;
+    }
+    return requiredDocs.length;
+  }, [readiness, requiredDocs]);
 
   const localCompletedRequired = useMemo(() => {
     let count = completedRequired;

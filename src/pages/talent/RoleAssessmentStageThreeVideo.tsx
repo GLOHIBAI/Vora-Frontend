@@ -4,6 +4,15 @@ import toast from 'react-hot-toast';
 import AssessmentHeader from '../../components/talent/AssessmentHeader';
 import StageRail from '../../components/talent/StageRail';
 import Button from '../../components/common/Button';
+import {
+  startGate3Session,
+  fetchGate3Items,
+  uploadGate3Video,
+  submitComponentResponses,
+} from '../../services/queries/assessments';
+import { resolveGate1AssessmentId } from '../../config/gate1Api';
+import { getActiveAssessmentId } from '../../utils/assessmentSession';
+import type { Gate3Item } from '../../services/queries/assessments/types';
 
 interface Question {
   id: string;
@@ -93,11 +102,96 @@ const ClockPlayIcon: React.FC<{ className?: string }> = ({ className }) => (
 const RoleAssessmentStageThreeVideo: React.FC = () => {
   const navigate = useNavigate();
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
+  const assessmentId = resolveGate1AssessmentId() || getActiveAssessmentId() || '';
+
+  // API State
+  const [isPreparingContent, setIsPreparingContent] = useState<boolean>(true);
+  const [componentId, setComponentId] = useState<string>('');
+  const [currentItem, setCurrentItem] = useState<Gate3Item | null>(null);
+  const [progress, setProgress] = useState<{ current: number; total: number }>({ current: 1, total: 5 });
+  const [scoringReady, setScoringReady] = useState<boolean>(false);
+  const [isSubmittingVideo, setIsSubmittingVideo] = useState<boolean>(false);
+  const recordedBlobRef = useRef<Blob | null>(null);
 
   // Question State
   const [currentIdx, setCurrentIdx] = useState<number>(0);
   const [completedList, setCompletedList] = useState<boolean[]>([false, false, false, false, false]);
   const currentQuestion = QUESTIONS[currentIdx];
+
+  // Derived Prompt fields
+  const currentPromptText = currentItem?.content?.prompt || currentQuestion.text;
+  const currentContextText = currentItem?.content?.context || currentQuestion.context;
+  const currentCategoryTag = currentItem?.content?.category || currentQuestion.focus;
+  const isRelationalType = currentItem?.type === 'video_relational';
+  const personaText = currentItem?.content?.persona;
+  const scenarioText = currentItem?.content?.scenario;
+  const currentNum = currentItem?.sequence || progress.current || (currentIdx + 1);
+  const totalNum = currentItem?.total || progress.total || 5;
+  const eyebrowText = currentItem?.eyebrow || `Question ${currentNum} · How you show up`;
+
+  // Start Gate 3 session & poll GET /gates/3/items until contentReady === true
+  useEffect(() => {
+    let pollInterval: any = null;
+    let isCancelled = false;
+
+    const initGate3 = async () => {
+      if (!assessmentId) {
+        setIsPreparingContent(false);
+        return;
+      }
+      try {
+        const res = await startGate3Session(assessmentId);
+        if (isCancelled) return;
+
+        if (res.componentId) setComponentId(res.componentId);
+        if (res.progress) setProgress(res.progress);
+        setScoringReady(!!res.scoringReady);
+
+        if (res.contentReady && res.items && res.items.length > 0) {
+          setCurrentItem(res.items[0]);
+          setIsPreparingContent(false);
+          const readSecs = res.items[0].content?.readingTimeSecs || 30;
+          const recSecs = res.items[0].content?.recordingTimeSecs || 180;
+          setThinkTimeLeft(readSecs);
+          setSecondsLeft(recSecs);
+        } else {
+          setIsPreparingContent(true);
+          // Poll every 2.5s
+          pollInterval = setInterval(async () => {
+            try {
+              const pollRes = await fetchGate3Items(assessmentId);
+              if (isCancelled) return;
+              if (pollRes.componentId) setComponentId(pollRes.componentId);
+              if (pollRes.progress) setProgress(pollRes.progress);
+              setScoringReady(!!pollRes.scoringReady);
+
+              if (pollRes.contentReady && pollRes.items && pollRes.items.length > 0) {
+                setCurrentItem(pollRes.items[0]);
+                setIsPreparingContent(false);
+                const readSecs = pollRes.items[0].content?.readingTimeSecs || 30;
+                const recSecs = pollRes.items[0].content?.recordingTimeSecs || 180;
+                setThinkTimeLeft(readSecs);
+                setSecondsLeft(recSecs);
+                clearInterval(pollInterval);
+              }
+            } catch (err) {
+              console.warn('Error polling Gate 3 items:', err);
+            }
+          }, 2500);
+        }
+      } catch (err) {
+        console.error('Failed to start Gate 3 session:', err);
+        setIsPreparingContent(false);
+      }
+    };
+
+    initGate3();
+
+    return () => {
+      isCancelled = true;
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [assessmentId]);
 
   // Modes tab
   const [activeTab, setActiveTab] = useState<'live' | 'upload'>('live');
@@ -143,10 +237,10 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
-  // Timer: Think Time
+  // Timer: Think Time (Starts only when contentReady === true)
   useEffect(() => {
     let interval: any = null;
-    if (isThinking && thinkTimeLeft > 0 && !showCheatModal && !showSaveModal && !showSubmitModal) {
+    if (!isPreparingContent && isThinking && thinkTimeLeft > 0 && !showCheatModal && !showSaveModal && !showSubmitModal) {
       interval = setInterval(() => {
         setThinkTimeLeft(prev => {
           if (prev <= 1) {
@@ -160,7 +254,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isThinking, thinkTimeLeft, showCheatModal, showSaveModal, showSubmitModal]);
+  }, [isPreparingContent, isThinking, thinkTimeLeft, showCheatModal, showSaveModal, showSubmitModal]);
 
   // Timer: Answer countdown (counts down when recording or file mode is ready)
   useEffect(() => {
@@ -189,6 +283,9 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
 
   // Tab change visibility listener (Anti-cheat)
   useEffect(() => {
+    const ENABLE_ANTI_CHEAT_TAB_SWITCH = import.meta.env.VITE_ENABLE_ANTI_CHEAT_TAB_SWITCH === 'true';
+    if (!ENABLE_ANTI_CHEAT_TAB_SWITCH) return;
+
     const handleVisibilityChange = () => {
       if (document.hidden) {
         // Tab hidden! Trigger warning modal if user is actively answering/recording
@@ -306,6 +403,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
         };
         mediaRecorder.onstop = () => {
           const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+          recordedBlobRef.current = blob;
           const url = URL.createObjectURL(blob);
           setRecordedVideoUrl(url);
           setIsRecordingStopped(true);
@@ -340,6 +438,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
 
   const handleRetake = () => {
     setRecordedVideoUrl(null);
+    recordedBlobRef.current = null;
     setIsRecordingStopped(false);
     setIsRecording(false);
     setHasAnswer(false);
@@ -381,8 +480,8 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
       return;
     }
 
-    if (file.size > 200 * 1024 * 1024) {
-      toast.error('File size exceeds the 200MB limit!');
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('File size exceeds the 50MB limit!');
       return;
     }
 
@@ -418,7 +517,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
     executeSubmitFlow();
   };
 
-  const executeSubmitFlow = () => {
+  const executeSubmitFlow = async () => {
     // Save current step progress
     setCompletedList(prev => {
       const copy = [...prev];
@@ -426,35 +525,85 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
       return copy;
     });
 
-    // Reset components states
-    stopCamera();
-    setRecordedVideoUrl(null);
-    setIsRecordingStopped(false);
-    setIsRecording(false);
-    setUploadedFile(null);
-    setUploadedUrl(null);
-    setHasAnswer(false);
-    setIsPreviewPlaying(false);
+    try {
+      setIsSubmittingVideo(true);
+      const videoPayload = uploadedFile || recordedBlobRef.current;
 
-    if (currentIdx < 4) {
-      setCurrentIdx(prev => prev + 1);
-      setThinkTimeLeft(30);
-      setIsThinking(true);
-      setSecondsLeft(180);
-      setRecElapsed(0);
-    } else {
-      runCompletionLoader();
+      let uploadRes: any;
+      if (assessmentId && currentItem?.id && videoPayload) {
+        uploadRes = await uploadGate3Video(assessmentId, currentItem.id, videoPayload);
+      }
+
+      const isScoringReady = uploadRes?.scoringReady || scoringReady || (progress.current >= progress.total);
+      const targetCompId = uploadRes?.componentId || componentId;
+
+      if (isScoringReady && targetCompId && assessmentId) {
+        runCompletionLoader(targetCompId);
+        return;
+      }
+
+      // Fetch next item from backend
+      if (assessmentId) {
+        const nextItemsRes = await fetchGate3Items(assessmentId);
+        if (nextItemsRes.scoringReady && nextItemsRes.componentId) {
+          runCompletionLoader(nextItemsRes.componentId);
+          return;
+        }
+
+        if (nextItemsRes.items && nextItemsRes.items.length > 0) {
+          const nextItem = nextItemsRes.items[0];
+          setCurrentItem(nextItem);
+          if (nextItemsRes.progress) setProgress(nextItemsRes.progress);
+          setScoringReady(!!nextItemsRes.scoringReady);
+
+          const readSecs = nextItem.content?.readingTimeSecs || 30;
+          const recSecs = nextItem.content?.recordingTimeSecs || 180;
+          setThinkTimeLeft(readSecs);
+          setSecondsLeft(recSecs);
+          setIsThinking(true);
+        } else if (currentIdx < 4) {
+          setCurrentIdx(prev => prev + 1);
+          setThinkTimeLeft(30);
+          setIsThinking(true);
+          setSecondsLeft(180);
+          setRecElapsed(0);
+        } else {
+          runCompletionLoader(targetCompId || 'gate3_component');
+        }
+      } else if (currentIdx < 4) {
+        setCurrentIdx(prev => prev + 1);
+        setThinkTimeLeft(30);
+        setIsThinking(true);
+        setSecondsLeft(180);
+        setRecElapsed(0);
+      } else {
+        runCompletionLoader('gate3_component');
+      }
+    } catch (err: any) {
+      console.error('Failed to submit Stage 3 video response:', err);
+      toast.error('Failed to upload video response. Please retry.');
+    } finally {
+      setIsSubmittingVideo(false);
+      stopCamera();
+      setRecordedVideoUrl(null);
+      recordedBlobRef.current = null;
+      setIsRecordingStopped(false);
+      setIsRecording(false);
+      setUploadedFile(null);
+      setUploadedUrl(null);
+      setHasAnswer(false);
+      setIsPreviewPlaying(false);
     }
   };
 
-  const runCompletionLoader = () => {
+  const runCompletionLoader = (finalComponentId?: string) => {
     setIsCompiling(true);
     
     const compilerSteps = [
-      { text: 'Saving final question feed...', time: 1000 },
-      { text: 'Encoding video chunks to H.264 MP4...', time: 2200 },
-      { text: 'Verifying audio stream decibels...', time: 3300 },
-      { text: 'Compiling assessment submission package...', time: 4200 }
+      { text: 'Saving final question feed...', time: 800 },
+      { text: 'Encoding video chunks to H.264 MP4...', time: 1800 },
+      { text: 'Verifying audio stream decibels...', time: 2600 },
+      { text: 'Compiling assessment submission package...', time: 3400 }
     ];
 
     compilerSteps.forEach((step) => {
@@ -463,13 +612,21 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
       }, step.time);
     });
 
-    setTimeout(() => {
+    setTimeout(async () => {
+      const compId = finalComponentId || componentId;
+      if (assessmentId && compId) {
+        try {
+          await submitComponentResponses(assessmentId, compId, {});
+        } catch (err) {
+          console.error('Error submitting Stage 3 component:', err);
+        }
+      }
       localStorage.setItem('vora_stage3_completed', 'true');
       localStorage.setItem('vora_stage4_unlocked', 'true');
       setIsCompiling(false);
       toast.success('Stage 3 video assessment completed!');
       navigate(`/onboarding/talent/${roleSlug}/interview/stage-3/complete`);
-    }, 5500);
+    }, 4200);
   };
 
   const handleSaveAndConfirmExit = () => {
@@ -497,7 +654,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
       
       {/* Topbar */}
       <AssessmentHeader
-        middleContent={`Stage 3 · Video interview · Question ${currentQuestion.num} of 5`}
+        middleContent={`Stage 3 · Video interview · Question ${currentNum} of ${totalNum}`}
         rightContent={
           <div className="flex items-center gap-[14px]">
             <div className={`flex items-center gap-[7px] border-[1.5px] rounded-full p-[6px_14px] font-[800] text-[13.5px] tabular-nums transition-all ${getTimerChipClass()}`}>
@@ -522,12 +679,13 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
 
       {/* Question pebble rail */}
       <div className="bg-gradient-to-b from-white to-[#FBFCFF] border-b border-[#E6E6E6] p-[12px_32px] flex items-center justify-center gap-[8px] flex-wrap">
-        {QUESTIONS.map((q, idx) => {
-          const isActive = idx === currentIdx;
-          const isDone = completedList[idx];
+        {Array.from({ length: totalNum }).map((_, idx) => {
+          const qNum = idx + 1;
+          const isActive = qNum === currentNum;
+          const isDone = qNum < currentNum || completedList[idx];
           return (
             <div 
-              key={q.id}
+              key={qNum}
               className={`flex items-center gap-[7px] p-[6px_12px] rounded-full border-[1.5px] text-[11.5px] font-[700] transition-all duration-200 ${
                 isDone 
                   ? 'bg-[#EBF6FF] border-[#387DFF]/30 text-[#0047CC]' 
@@ -539,9 +697,9 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
               <div className={`w-[18px] h-[18px] rounded-full text-[9px] font-[900] flex items-center justify-center shrink-0 text-white ${
                 isDone || isActive ? 'bg-[#0047CC]' : 'bg-[#ADADAD]'
               }`}>
-                {isDone ? <CheckIcon className="w-[9px] h-[9px]" /> : q.num}
+                {isDone ? <CheckIcon className="w-[9px] h-[9px]" /> : qNum}
               </div>
-              Question {q.num}
+              Question {qNum}
             </div>
           );
         })}
@@ -559,28 +717,38 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
             <div className="flex justify-between items-start mb-[16px] gap-[14px] flex-wrap">
               <div className="flex items-center gap-[10px]">
                 <div className="inline-flex items-center justify-center w-[36px] h-[36px] rounded-[10px] bg-white/[0.16] border border-white/[0.22] font-[900] text-[14px] backdrop-blur-[8px]">
-                  {currentQuestion.num.toString().padStart(2, '0')}
+                  {currentNum.toString().padStart(2, '0')}
                 </div>
                 <div>
-                  <div className="text-[11px] font-[800] tracking-[1px] uppercase text-white/70">Question</div>
-                  <div className="text-[12.5px] font-[700] text-white/88">{currentQuestion.num} of 5 · Focus</div>
+                  <div className="text-[11px] font-[800] tracking-[1px] uppercase text-white/70">{eyebrowText}</div>
+                  <div className="text-[12.5px] font-[700] text-white/88">{currentNum} of {totalNum} · {currentCategoryTag}</div>
                 </div>
               </div>
               <div className="inline-flex items-center gap-[7px] bg-white/[0.16] border border-white/[0.24] rounded-full p-[5px_12px] font-[800] text-[11px] uppercase">
-                Just unfurled
+                {currentCategoryTag}
               </div>
             </div>
 
             <div className="text-[23px] font-[900] tracking-[-0.3px] leading-[1.35] mb-[14px]">
-              {currentQuestion.text}
+              {currentPromptText}
             </div>
 
-            <div className="bg-white/[0.1] border-[#387DFF] rounded-[10px] p-[13px_16px] flex gap-[11px] items-start mb-[18px]">
-              <InfoIcon className="w-[16px] h-[16px] text-[#387DFF] shrink-0 mt-[2px]" />
-              <div className="text-[13px] leading-[1.55] text-white/88">
-                <strong>Why we ask · </strong>{currentQuestion.context}
+            {isRelationalType && personaText && (
+              <div className="bg-white/[0.14] border border-white/[0.24] rounded-[10px] p-[13px_16px] mb-[14px]">
+                <div className="text-[11px] font-[800] uppercase tracking-[0.6px] text-white/70 mb-1">Persona & Scenario</div>
+                <div className="text-[13.5px] font-[700] text-white mb-1">{personaText}</div>
+                {scenarioText && <div className="text-[12.5px] text-white/88 leading-[1.5]">{scenarioText}</div>}
               </div>
-            </div>
+            )}
+
+            {currentContextText && (
+              <div className="bg-white/[0.1] border border-white/[0.2] rounded-[10px] p-[13px_16px] flex gap-[11px] items-start mb-[18px]">
+                <InfoIcon className="w-[16px] h-[16px] text-[#387DFF] shrink-0 mt-[2px]" />
+                <div className="text-[13px] leading-[1.55] text-white/88">
+                  <strong>Why we ask · </strong>{currentContextText}
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-[8px] flex-wrap">
               <div className="flex-1 min-w-[130px] bg-white/[0.08] border border-white/[0.14] rounded-[10px] p-[9px_13px]">
@@ -592,11 +760,11 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
               </div>
               <div className="flex-1 min-w-[130px] bg-white/[0.08] border border-white/[0.14] rounded-[10px] p-[9px_13px]">
                 <div className="text-[9.5px] font-[800] uppercase tracking-[0.6px] text-white/60 mb-[3px]">Hard cap</div>
-                <div className="text-[14px] font-[900] text-white">{currentQuestion.hardCap}</div>
+                <div className="text-[14px] font-[900] text-white">3:00</div>
               </div>
               <div className="flex-1 min-w-[130px] bg-white/[0.08] border border-white/[0.14] rounded-[10px] p-[9px_13px]">
                 <div className="text-[9.5px] font-[800] uppercase tracking-[0.6px] text-white/60 mb-[3px]">Attempts allowed</div>
-                <div className="text-[14px] font-[900] text-white">Unlimited within timer</div>
+                <div className="text-[14px] font-[900] text-white">1 retake (max 2 takes)</div>
               </div>
             </div>
           </div>

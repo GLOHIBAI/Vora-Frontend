@@ -323,7 +323,7 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
             </div>
             <div className="flex gap-[9px] items-start font-[600] text-[12.5px] text-[#1A1A1A] leading-[1.5]">
               <svg className="w-[14px] h-[14px] text-[#0047CC] shrink-0 mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <circle cx="12" cy="12" r="10"/><path d="M16 12l-4-4-4 4M12 16V8" stroke-linecap="round"/>
+                <circle cx="12" cy="12" r="10"/><path d="M16 12l-4-4-4 4M12 16V8" strokeLinecap="round"/>
               </svg>
               If something breaks, your progress saves automatically.
             </div>
@@ -350,7 +350,7 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
             pill={false}
           >
             Begin video interview
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" stroke-linecap="round" className="shrink-0">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="shrink-0">
               <path d="M3 8h10M9 4l4 4-4 4"/>
             </svg>
           </Button>

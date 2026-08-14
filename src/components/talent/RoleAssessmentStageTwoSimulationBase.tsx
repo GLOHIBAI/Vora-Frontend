@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import AssessmentHeader from './AssessmentHeader';
@@ -73,7 +73,7 @@ const unwrapScreen = (raw: unknown): AssessmentGateStartResponse | null => {
 const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps> = ({
   simulationNumber,
   nextPath,
-  totalSimulations = 4,
+  totalSimulations: totalSimulationsProp,
 }) => {
   const navigate = useNavigate();
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
@@ -100,6 +100,17 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
   const [apiScreenData, setApiScreenData] = useState<AssessmentGateStartResponse | null>(null);
   const [activeItem, setActiveItem] = useState<AssessmentItem | null>(null);
   const [apiLoading, setApiLoading] = useState(!!activeAssessmentId);
+
+  const effectiveTotalSimulations = useMemo(() => {
+    const apiTotal =
+      apiScreenData?.progress?.total ||
+      (apiScreenData as any)?.total ||
+      activeItem?.total ||
+      (apiScreenData?.items?.[0] as any)?.total ||
+      apiScreenData?.items?.length;
+    if (typeof apiTotal === 'number' && apiTotal > 0) return apiTotal;
+    return totalSimulationsProp ?? 1;
+  }, [apiScreenData, activeItem, totalSimulationsProp]);
 
   const startScreenMutation = useStartAssessmentScreenMutation(2);
   const saveDraftMutation = useSaveAssessmentDraftMutation();
@@ -270,7 +281,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
   }, [savedForLater, showCheatModal, secondsLeft === null]);
 
   useEffect(() => {
-    const ENABLE_ANTI_CHEAT_TAB_SWITCH = false;
+    const ENABLE_ANTI_CHEAT_TAB_SWITCH = import.meta.env.VITE_ENABLE_ANTI_CHEAT_TAB_SWITCH === 'true';
     if (!ENABLE_ANTI_CHEAT_TAB_SWITCH) return;
 
     const handleVisibilityChange = () => {
@@ -338,6 +349,30 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
       return;
     }
 
+    const wordCountMin =
+      Number(activeItem?.content?.minWords) > 0
+        ? Number(activeItem.content.minWords)
+        : getReasonMinWords(activeItem?.content as any, 'work_sample', { reasonShown: true });
+    const wordCountMax =
+      Number(activeItem?.content?.maxWords) > 0
+        ? Number(activeItem.content.maxWords)
+        : 300;
+
+    const currentWordCount = prose ? prose.split(/\s+/).filter(Boolean).length : 0;
+
+    if (!reason) {
+      if (currentWordCount < wordCountMin) {
+        toast.error(`Please provide at least ${wordCountMin} words for your response.`);
+        setShowContinueValidation(true);
+        return;
+      }
+      if (currentWordCount > wordCountMax) {
+        toast.error(`Your response is too long (${currentWordCount} words). Maximum allowed is ${wordCountMax} words.`);
+        setShowContinueValidation(true);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       const submitRes = await submitScreenMutation.mutateAsync({
@@ -356,7 +391,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
       }
 
       toast.success(
-        simulationNumber >= totalSimulations
+        simulationNumber >= effectiveTotalSimulations
           ? 'Saved. Analyzing your Stage 2 responses...'
           : 'Simulation submitted successfully!',
       );
@@ -438,12 +473,12 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
     Number(content.minWords) > 0
       ? Number(content.minWords)
       : getReasonMinWords(content, 'work_sample', { reasonShown: true });
-  const wordCountMax = Number(content.maxWords) > 0 ? Number(content.maxWords) : Math.max(wordCountMin * 3, 250);
-  const meetsMinWords = wordCount >= wordCountMin;
+  const wordCountMax = Number(content.maxWords) > 0 ? Number(content.maxWords) : 300;
+  const meetsWordLimits = wordCount >= wordCountMin && wordCount <= wordCountMax;
 
   useEffect(() => {
-    if (meetsMinWords) setShowContinueValidation(false);
-  }, [meetsMinWords]);
+    if (meetsWordLimits) setShowContinueValidation(false);
+  }, [meetsWordLimits]);
 
   const timerChipClass = () => {
     if (secondsLeft === null) return 'timer-chip';
@@ -454,7 +489,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
 
   const getCounterClass = () => {
     if (wordCount >= wordCountMin && wordCount <= wordCountMax) return 'text-[#1D871D] font-bold';
-    if (wordCount > wordCountMax) return 'text-[#D97706] font-bold';
+    if (wordCount > wordCountMax) return 'text-[#DC2626] font-bold';
     return 'text-[#808080]';
   };
 
@@ -545,7 +580,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
       <AssessmentHeader
         middleContent={
           <span className="hidden sm:inline">
-            Stage 2 · Part 4 · Simulation {simulationNumber} of {totalSimulations}
+            Stage 2 · Part 4 · Simulation {simulationNumber} of {effectiveTotalSimulations}
           </span>
         }
         rightContent={
@@ -570,7 +605,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
       <PartRail activePart={4} />
 
       <div className="bg-white border-b border-[#E6E6E6] px-[20px] sm:px-[32px] py-[10px] flex items-center justify-center gap-[6px]">
-        {Array.from({ length: totalSimulations }, (_, i) => {
+        {Array.from({ length: effectiveTotalSimulations }, (_, i) => {
           const n = i + 1;
           const filled = simulationNumber >= n;
           const active = simulationNumber === n;
@@ -689,7 +724,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
             ref={editorRef}
             id="editor"
             className={`editor p-[18px_20px] min-h-[280px] outline-none text-[14px] text-[#1A1A1A] leading-[1.75] ${
-              showContinueValidation && !meetsMinWords ? 'bg-[#FEF2F2]/40' : ''
+              showContinueValidation && !meetsWordLimits ? 'bg-[#FEF2F2]/40' : ''
             }`}
             contentEditable="true"
             onInput={handleEditorInput}
@@ -702,9 +737,11 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
               </div>
               {editorSubtext ? <span className="text-[#ADADAD]">{editorSubtext}</span> : null}
             </div>
-            {showContinueValidation && !meetsMinWords ? (
+            {showContinueValidation && !meetsWordLimits ? (
               <div className="text-[12px] font-[600] text-[#DC2626]">
-                Please enter more words ({wordCount} of {wordCountMin} minimum)
+                {wordCount > wordCountMax
+                  ? `Please shorten your response to at most ${wordCountMax} words (${wordCount} words currently)`
+                  : `Please enter more words (${wordCount} of ${wordCountMin} minimum)`}
               </div>
             ) : null}
           </div>
@@ -713,7 +750,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
 
       <footer className="sticky bottom-0 bg-white/96 backdrop-blur-[10px] border-t border-[#E6E6E6] p-[14px_32px] flex items-center justify-between gap-[12px] z-[40]">
         <div className="text-[13px] text-[#808080] font-[600]">
-          Simulation {simulationNumber} of {totalSimulations} · Part 4
+          Simulation {simulationNumber} of {effectiveTotalSimulations} · Part 4
         </div>
         <div className="flex gap-[10px]">
           <button
@@ -728,7 +765,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
             type="button"
             onClick={() => {
               if (isSubmitting) return;
-              if (!meetsMinWords) {
+              if (!meetsWordLimits) {
                 setShowContinueValidation(true);
                 editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
@@ -736,16 +773,16 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
               void handleSubmit();
             }}
             disabled={isSubmitting}
-            aria-disabled={!meetsMinWords || isSubmitting}
+            aria-disabled={!meetsWordLimits || isSubmitting}
             className={`border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] inline-flex items-center justify-center font-sans ${
-              !meetsMinWords || isSubmitting
+              !meetsWordLimits || isSubmitting
                 ? 'bg-[#E6E6E6] text-white shadow-none cursor-pointer'
                 : 'bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] cursor-pointer hover:bg-[#344DA1]'
             }`}
           >
             {isSubmitting
               ? 'Submitting...'
-              : simulationNumber >= totalSimulations
+              : simulationNumber >= effectiveTotalSimulations
                 ? 'Complete Stage 2'
                 : 'Next simulation'}
           </button>

@@ -3,6 +3,7 @@ import AssessmentItemCard from '../shared/AssessmentItemCard';
 import type { AssessmentItemRendererProps } from '../shared/types';
 import ReasonTextarea from '../shared/ReasonTextarea';
 import { getReasonMinWords } from '../shared/reasonMinWords';
+import FormattedPromptText from '../shared/FormattedPromptText';
 
 const CompareItem: React.FC<AssessmentItemRendererProps> = ({
   item,
@@ -49,7 +50,7 @@ const CompareItem: React.FC<AssessmentItemRendererProps> = ({
     <AssessmentItemCard item={item} title={String(prompt)}>
       {content.scenario && (
         <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] p-4 mb-4 text-[14px] text-[#334155] leading-relaxed font-medium">
-          {String(content.scenario)}
+          <FormattedPromptText text={String(content.scenario)} />
         </div>
       )}
 

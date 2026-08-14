@@ -681,4 +681,68 @@ export const useGate2PillarItemsQuery = (
     enabled: (options?.enabled ?? true) && !!assessmentId && !!pillar,
   });
 
+// ── Gate 3 API Endpoints ──────────────────────────────────────────────────────
+
+/**
+ * POST /api/v1/assessments/:assessmentId/gates/3/start
+ * No body. Initialises Stage 3 session.
+ */
+export const startGate3Session = async (
+  assessmentId: string,
+): Promise<import('./types').Gate3StartResponse> => {
+  return apiClient.post<import('./types').Gate3StartResponse>({
+    url: `/assessments/${assessmentId}/gates/3/start`,
+    auth: true,
+  });
+};
+
+/**
+ * GET /api/v1/assessments/:assessmentId/gates/3/items
+ * Retrieves current Gate 3 item prompt / polling status.
+ */
+export const fetchGate3Items = async (
+  assessmentId: string,
+): Promise<import('./types').Gate3StartResponse> => {
+  return apiClient.get<import('./types').Gate3StartResponse>({
+    url: `/assessments/${assessmentId}/gates/3/items`,
+    auth: true,
+  });
+};
+
+/**
+ * POST /api/v1/assessments/:assessmentId/gates/3/items/:itemId/video
+ * Multipart form upload for video prompt response.
+ */
+export const uploadGate3Video = async (
+  assessmentId: string,
+  itemId: string,
+  file: Blob | File,
+): Promise<import('./types').Gate3UploadResponse> => {
+  const formData = new FormData();
+  formData.append('file', file, file instanceof File ? file.name : 'video-response.webm');
+
+  return apiClient.post<import('./types').Gate3UploadResponse>({
+    url: `/assessments/${assessmentId}/gates/3/items/${itemId}/video`,
+    body: formData,
+    auth: true,
+  });
+};
+
+/**
+ * POST /api/v1/assessments/:assessmentId/components/:componentId/submit
+ * Final component submit for Gate 3 when scoringReady === true.
+ */
+export const submitComponentResponses = async (
+  assessmentId: string,
+  componentId: string,
+  responses: Record<string, any> = {},
+): Promise<any> => {
+  return apiClient.post({
+    url: `/assessments/${assessmentId}/components/${componentId}/submit`,
+    body: { responses },
+    auth: true,
+  });
+};
+
+
 

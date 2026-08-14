@@ -3,6 +3,7 @@ import AssessmentItemCard from '../shared/AssessmentItemCard';
 import type { AssessmentItemRendererProps } from '../shared/types';
 import ReasonTextarea from '../shared/ReasonTextarea';
 import { getReasonMinWords } from '../shared/reasonMinWords';
+import FormattedPromptText from '../shared/FormattedPromptText';
 
 interface HighlightOption {
   id: string;
@@ -24,28 +25,13 @@ const HighlightItem: React.FC<AssessmentItemRendererProps> = ({
 
   const selectedAnswer =
     typeof value === 'object' && value !== null && !Array.isArray(value)
-      ? (value as {
-          selectedIds?: string[];
-          choice?: string | string[];
-          optionId?: string;
-          reasoning?: string;
-          reason?: string;
-        })
-      : typeof value === 'string'
-        ? { choice: value }
-        : {};
+      ? (value as { optionId?: string; choice?: string; reasoning?: string; reason?: string })
+      : { optionId: typeof value === 'string' ? value : '' };
 
-  const selectedId = String(
-    (typeof selectedAnswer.choice === 'string' && selectedAnswer.choice) ||
-      selectedAnswer.optionId ||
-      (Array.isArray(selectedAnswer.selectedIds) && selectedAnswer.selectedIds[0]) ||
-      (Array.isArray(selectedAnswer.choice) && selectedAnswer.choice[0]) ||
-      '',
-  );
-
+  const selectedOptionId = String(selectedAnswer.optionId ?? selectedAnswer.choice ?? '');
   const reasoningText = String(selectedAnswer.reasoning ?? selectedAnswer.reason ?? '');
 
-  const selectHighlight = (optionId: string) => {
+  const handleSelectOption = (optionId: string) => {
     if (reasoningText) {
       onChange({ choice: optionId, reason: reasoningText });
     } else {
@@ -54,18 +40,18 @@ const HighlightItem: React.FC<AssessmentItemRendererProps> = ({
   };
 
   const handleReasoning = (reasoning: string) => {
-    if (selectedId) {
-      onChange({ choice: selectedId, reason: reasoning });
+    if (selectedOptionId) {
+      onChange({ choice: selectedOptionId, reason: reasoning });
     } else {
       onChange({ choice: '', reason: reasoning });
     }
   };
 
   return (
-    <AssessmentItemCard title={String(prompt)}>
+    <AssessmentItemCard item={item} title={String(prompt)}>
       {content.scenario && (
         <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] p-4 mb-4 text-[14px] text-[#334155] leading-relaxed font-medium">
-          {String(content.scenario)}
+          <FormattedPromptText text={String(content.scenario)} />
         </div>
       )}
 
@@ -75,14 +61,14 @@ const HighlightItem: React.FC<AssessmentItemRendererProps> = ({
         </div>
         <div className="flex flex-wrap gap-2 leading-relaxed">
           {options.map((opt) => {
-            const isHighlighted = selectedId === opt.id;
+            const isHighlighted = selectedOptionId === opt.id;
 
             return (
               <button
                 key={opt.id}
                 type="button"
                 disabled={disabled}
-                onClick={() => selectHighlight(opt.id)}
+                onClick={() => handleSelectOption(opt.id)}
                 className={`p-2 px-3 rounded-xl text-[13.5px] font-medium transition-all cursor-pointer ${
                   isHighlighted
                     ? 'bg-[#EBF6FF] border-2 border-[#0047CC] text-[#0047CC] font-bold shadow-sm'

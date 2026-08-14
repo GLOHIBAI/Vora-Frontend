@@ -4,6 +4,8 @@ import type { AssessmentItemRendererProps } from '../shared/types';
 import ReasonTextarea from '../shared/ReasonTextarea';
 import { getReasonMinWords } from '../shared/reasonMinWords';
 
+import FormattedPromptText from '../shared/FormattedPromptText';
+
 interface HotspotOption {
   id: string;
   text: string;
@@ -50,20 +52,13 @@ const HotspotItem: React.FC<AssessmentItemRendererProps> = ({
     <AssessmentItemCard item={item} title={String(prompt)}>
       {content.scenario && (
         <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] p-4 mb-4 text-[14px] text-[#334155] leading-relaxed font-medium">
-          {String(content.scenario)}
+          <FormattedPromptText text={String(content.scenario)} />
         </div>
       )}
 
-      <div className={`mb-5 rounded-[14px] overflow-hidden border transition-all bg-white shadow-sm font-mono text-[13px] ${
-        !selectedOptionId ? 'border-[#FCA5A5]' : 'border-[#E6E6E6]'
-      }`}>
+      <div className="mb-5 rounded-[14px] overflow-hidden border border-[#E6E6E6] transition-all bg-white shadow-sm font-mono text-[13px]">
         <div className="bg-[#F8FAFC] px-4 py-2 border-b border-[#E6E6E6] flex items-center justify-between text-[11px] font-mono tracking-wider">
           <span className="text-[#0047CC] font-bold uppercase">Tap the line containing the issue</span>
-          {!selectedOptionId && (
-            <span className="text-[#DC2626] font-sans font-bold text-[11.5px] uppercase tracking-normal">
-              ⚠️ Tap a line of code below
-            </span>
-          )}
         </div>
         <div className="p-2 space-y-1">
           {options.map((opt, idx) => {

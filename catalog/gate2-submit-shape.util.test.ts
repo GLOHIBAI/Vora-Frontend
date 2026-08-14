@@ -53,8 +53,8 @@ assertEqual(
 );
 assertEqual(
   formatGate2Answer('hotspot', { choice: 'a', reason: '' }),
-  'a',
-  'hotspot choice without reason returns bare string'
+  { choice: 'a', reason: '' },
+  'hotspot choice without reason returns object'
 );
 
 // 4. compare (A/B cards)

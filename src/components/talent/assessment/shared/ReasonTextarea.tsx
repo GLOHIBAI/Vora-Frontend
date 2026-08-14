@@ -43,20 +43,22 @@ const ReasonTextarea: React.FC<ReasonTextareaProps> = ({
     minWordsProp !== undefined
       ? minWordsProp
       : getReasonMinWords(content ?? undefined, itemType, { reasonShown: true });
+  const maxWords = Number(content?.maxWords) > 0 ? Number(content?.maxWords) : 300;
 
   const trimmed = (value ?? '').trim();
   const hasText = trimmed.length > 0;
-  const meetsMin = minWords > 0 ? isReasonMinWordsMet(value, minWords) : hasText || !required;
-  const isInvalid = required
-    ? !meetsMin
-    : hasText && minWords > 0 && !isReasonMinWordsMet(value, minWords);
+  const wordCount = hasText ? trimmed.split(/\s+/).filter(Boolean).length : 0;
+  const isOverMax = wordCount > maxWords;
 
-  const showError = showValidation && isInvalid;
+  const meetsMin = minWords > 0 ? isReasonMinWordsMet(value, minWords) : hasText || !required;
+  const isInvalid = (required ? !meetsMin : hasText && minWords > 0 && !isReasonMinWordsMet(value, minWords)) || isOverMax;
+
+  const showError = (showValidation && isInvalid) || isOverMax;
 
   return (
     <div className={`mt-5 pt-2 ${className}`.trim()}>
       <div className="flex items-center gap-1.5 text-[11px] font-[800] text-[#0047CC] tracking-[0.6px] uppercase mb-2">
-        <span>{label.toUpperCase()}</span>
+        <span>{(label ?? '').toUpperCase()}</span>
       </div>
 
       <textarea
@@ -64,19 +66,23 @@ const ReasonTextarea: React.FC<ReasonTextareaProps> = ({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onPaste={(e) => {
-          const ENABLE_PASTE_BLOCKING = false;
+          const ENABLE_PASTE_BLOCKING = import.meta.env.VITE_ENABLE_ANTI_CHEAT_PASTE === 'true';
           if (!ENABLE_PASTE_BLOCKING) return;
           e.preventDefault();
           setShowPasteWarning(true);
           toast.error('Pasting is disabled for reasoning answers');
         }}
         placeholder={placeholder}
-        className={`w-full ${minHeightClassName} p-3.5 sm:p-4 bg-white border border-[#E6E6E6] focus:border-[#0047CC] focus:ring-2 focus:ring-[#0047CC]/20 rounded-[14px] text-[13.5px] text-[#1A1A1A] placeholder:text-[#94A3B8] outline-none transition-all resize-y font-sans leading-relaxed shadow-[0_2px_8px_rgba(0,71,204,0.06)] disabled:opacity-60 disabled:cursor-not-allowed`}
+        className={`w-full ${minHeightClassName} p-3.5 sm:p-4 bg-white border ${
+          isOverMax ? 'border-[#DC2626] ring-2 ring-[#DC2626]/10' : 'border-[#E6E6E6] focus:border-[#0047CC] focus:ring-2 focus:ring-[#0047CC]/20'
+        } rounded-[14px] text-[13.5px] text-[#1A1A1A] placeholder:text-[#94A3B8] outline-none transition-all resize-y font-sans leading-relaxed shadow-[0_2px_8px_rgba(0,71,204,0.06)] disabled:opacity-60 disabled:cursor-not-allowed`}
       />
 
       {showError && (
         <div className="mt-2 text-[11.5px] font-[600] text-[#DC2626]">
-          Please enter more words
+          {isOverMax
+            ? `Your response is too long (${wordCount}/${maxWords} words). Please shorten your answer.`
+            : `Please enter at least ${minWords} words`}
         </div>
       )}
 

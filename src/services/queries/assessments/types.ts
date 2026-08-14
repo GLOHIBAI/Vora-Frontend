@@ -822,3 +822,52 @@ export interface Gate2ResumeState {
   pausedAt?: string;
 }
 
+// ── Gate 3 Types ──────────────────────────────────────────────────────────────
+
+export interface Gate3ItemContent {
+  type: string;
+  prompt: string;
+  context?: string;
+  category?: string;
+  readingTimeSecs?: number;
+  recordingTimeSecs?: number;
+  persona?: string;
+  scenario?: string;
+}
+
+export interface Gate3Item {
+  id: string;
+  type: 'video_prompt' | 'video_relational' | string;
+  sequence: number;
+  total: number;
+  eyebrow?: string;
+  content: Gate3ItemContent;
+}
+
+export interface Gate3StartResponse {
+  componentId: string;
+  contentReady: boolean;
+  items: Gate3Item[];
+  progress: { current: number; total: number };
+  window: { from: number; through: number; hasMore: boolean };
+  modes: string[];
+  uploadMaxMb: number;
+  uploadFormats: string[];
+  tabSwitchAutoSubmitSecs: number;
+  timers: { itemLimitSecs: number };
+  scoringReady: boolean;
+}
+
+export interface Gate3UploadResponse {
+  itemId: string;
+  uploadId: string;
+  videoUrl?: string;
+  componentId: string;
+  progress: { uploaded: number; total: number };
+  transcriptStatus?: 'pending' | 'ready' | 'skipped' | 'failed' | string;
+  takeCount?: number;
+  scoringReady?: boolean;
+  nextSequence?: number;
+}
+
+

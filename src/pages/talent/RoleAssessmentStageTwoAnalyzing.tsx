@@ -63,7 +63,17 @@ const RoleAssessmentStageTwoAnalyzing: React.FC = () => {
           const canRetry = isScoringInProgressError(err) && attempt < GATE2_SUBMIT_MAX_ATTEMPTS;
           if (!canRetry) {
             console.error('Gate 2 final submit failed after retries:', err);
-            setGateSubmitted(true); // still start polling — verdict endpoint will clarify
+            const errStr = String((err as any)?.message || (err as any)?.data?.message || '').toLowerCase();
+            if (
+              errStr.includes('review screen') ||
+              errStr.includes('before checking your verdict') ||
+              errStr.includes('incomplete') ||
+              errStr.includes('final submit')
+            ) {
+              navigate(`/onboarding/talent/${roleSlug}/interview/journey`, { replace: true });
+              return;
+            }
+            setGateSubmitted(true);
             return;
           }
           await sleep(GATE2_SUBMIT_RETRY_MS);

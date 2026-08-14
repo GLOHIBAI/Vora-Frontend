@@ -82,19 +82,8 @@ export function formatGate2Answer(
       return String(rawAnswer ?? '');
     }
 
-    // Single best + reason
-    case 'jb': {
-      if (typeof rawAnswer === 'object' && !Array.isArray(rawAnswer)) {
-        const choice = String(rawAnswer.choice ?? rawAnswer.optionId ?? rawAnswer.selectedOption ?? '').trim();
-        const reason = String(rawAnswer.reason ?? rawAnswer.reasoning ?? '').trim();
-        if (!choice) return '';
-        return { choice, reason };
-      }
-      const choiceStr = String(rawAnswer ?? '').trim();
-      return choiceStr ? { choice: choiceStr, reason: '' } : '';
-    }
-
-    // Choice (+ optional reason)
+    // Single best + reason / Choice + reason (jb, hotspot, allocate, highlight, etc.)
+    case 'jb':
     case 'allocate':
     case 'data':
     case 'dashboard':
@@ -112,16 +101,14 @@ export function formatGate2Answer(
     case 'factcheck':
     case 'metric':
     case 'threshold': {
-      if (typeof rawAnswer === 'object' && !Array.isArray(rawAnswer)) {
+      if (typeof rawAnswer === 'object' && rawAnswer !== null && !Array.isArray(rawAnswer)) {
         const choice = String(rawAnswer.choice ?? rawAnswer.optionId ?? rawAnswer.selectedOption ?? '').trim();
         const reason = String(rawAnswer.reason ?? rawAnswer.reasoning ?? '').trim();
         if (!choice) return '';
-        if (reason.length > 0) {
-          return { choice, reason };
-        }
-        return choice;
+        return { choice, reason };
       }
-      return String(rawAnswer ?? '').trim();
+      const choiceStr = String(rawAnswer ?? '').trim();
+      return choiceStr ? { choice: choiceStr, reason: '' } : '';
     }
 
     // highlight: option id string OR { choice: "<options[].id>", reason?: "..." }
@@ -142,15 +129,16 @@ export function formatGate2Answer(
         ).trim();
         const reason = String(rawAnswer.reason ?? rawAnswer.reasoning ?? '').trim();
         if (!choice) {
-          return reason ? { choice: '', reason } : '';
+          return '';
         }
-        return reason.length > 0 ? { choice, reason } : choice;
+        return { choice, reason };
       }
       if (Array.isArray(rawAnswer)) {
         const choice = String(rawAnswer[rawAnswer.length - 1] ?? '').trim();
-        return choice || '';
+        return choice ? { choice, reason: '' } : '';
       }
-      return String(rawAnswer || '').trim();
+      const choiceStr = String(rawAnswer || '').trim();
+      return choiceStr ? { choice: choiceStr, reason: '' } : '';
     }
 
     // A/B cards: { choice: "A"|"B", reason: "..." }

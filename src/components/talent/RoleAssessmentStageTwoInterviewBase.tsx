@@ -17,6 +17,7 @@ import {
 import { getActiveAssessmentId } from '../../utils/assessmentSession';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
 import { isItemAnswerComplete } from '../../utils/assessmentValidation';
+import { getReasonMinWords, extractReasonText } from '../../utils/reasonMinWords';
 import { normalizeAssessmentItems } from '../../utils/assessmentItems';
 import { unwrapAssessmentData } from '../../utils/assessmentSession';
 import { gate2PillarStartPath, gate2PillarIntroPath } from '../../utils/stage2Flow';
@@ -244,6 +245,15 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     return pillarMap[partNumber] || 'knowledge';
   }, [partNumber]);
 
+  const activeComponentId = useMemo(() => {
+    return (
+      apiScreenData?.componentId ||
+      (apiScreenData as any)?.component_id ||
+      (apiScreenData as any)?.data?.componentId ||
+      `g2-${pillar}`
+    );
+  }, [apiScreenData, pillar]);
+
   useEffect(() => {
     if (!activeAssessmentId) {
       setApiLoading(false);
@@ -434,33 +444,24 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     return () => clearInterval(timer);
   }, [savedForLater, showCheatModal]);
 
-  // Tab switch visibility listener: enforce question regeneration on tab switch (> 3 seconds) silently without modal
+  // Tab switch visibility listener: save current window draft answers on blur without resetting item window
   useEffect(() => {
+    const ENABLE_ANTI_CHEAT_TAB_SWITCH = import.meta.env.VITE_ENABLE_ANTI_CHEAT_TAB_SWITCH === 'true';
+    if (!ENABLE_ANTI_CHEAT_TAB_SWITCH) return;
+
     const handleVisibilityChange = () => {
       if (document.hidden && !savedForLater) {
         blurTimerRef.current = setTimeout(async () => {
           try {
-            // 1. Flush draft answers for current window
+            // Flush draft answers for current window silently
             if (activeAssessmentId && apiScreenData?.componentId && Object.keys(answers).length > 0) {
               const draftPayload = buildUnlockedDraftPayload(answers);
               if (Object.keys(draftPayload).length > 0) {
                 await safeSaveDraft(draftPayload).catch(() => { });
               }
             }
-
-            // 2. Fetch start / items window to regenerate unanswered questions
-            const res = await startScreenMutation.mutateAsync({
-              assessmentId: activeAssessmentId || '',
-              body: { pillar },
-            }).catch(() => null);
-
-            const payload = applyGate2ScreenPayload(res);
-            if (payload) {
-              setApiScreenData(payload.data);
-              setActiveItems(payload.items);
-            }
           } catch (err) {
-            console.warn('Tab switch question regeneration notice:', err);
+            console.warn('Tab switch draft save notice:', err);
           }
         }, 3000);
       } else if (!document.hidden) {
@@ -476,7 +477,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
     };
-  }, [activeAssessmentId, apiScreenData, answers, pillar, savedForLater]);
+  }, [activeAssessmentId, apiScreenData, answers, savedForLater]);
 
   const handleAnswer = async (itemId: string, value: any, item: any, subKey?: string) => {
     await recordAnswer(itemId, value, item, subKey);
@@ -497,7 +498,11 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
   useEffect(() => {
     activeDisplayedItems.forEach((i) => {
-      if (i && i.id) allFetchedItemsRef.current.set(i.id, i);
+      if (i && i.id) {
+        allFetchedItemsRef.current.set(i.id, i);
+        // Clear lock for current window items so user's fresh answers can be saved
+        delete lockedResponsesRef.current[i.id];
+      }
     });
   }, [activeDisplayedItems]);
 
@@ -513,15 +518,28 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
   const validateWindowMinWords = (targetItems: AssessmentItem[], currentAnswers: Record<string, any>): boolean => {
     for (const item of targetItems) {
-      const rawMinWords = (item?.content as any)?.minWords;
-      const minWords = typeof rawMinWords === 'number' ? rawMinWords : Number(rawMinWords) || 0;
+      const typeStr = String(item.type ?? '').toLowerCase().trim();
+      const minWords = getReasonMinWords(item?.content as any, typeStr);
+      const maxWords = Number(item?.content?.maxWords) > 0 ? Number(item.content.maxWords) : 300;
+
+      const val = currentAnswers[item.id];
+      const reason = extractReasonText(val);
+      const wordCount = reason ? reason.trim().split(/\s+/).filter(Boolean).length : 0;
+
       if (minWords > 0) {
-        const val = currentAnswers[item.id];
-        const reason = typeof val === 'object' && val !== null ? (val.reason ?? val.prose ?? val.reasoning ?? '') : String(val ?? '');
         if (!validateMinWords(reason, minWords)) {
           toast.error(`Please provide at least ${minWords} words for your explanation.`);
+          const el = document.getElementById(`assessment-item-${item.id}`);
+          el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
           return false;
         }
+      }
+
+      if (wordCount > maxWords) {
+        toast.error(`Your response is too long (${wordCount} words). Maximum allowed is ${maxWords} words.`);
+        const el = document.getElementById(`assessment-item-${item.id}`);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
       }
     }
     return true;
@@ -530,7 +548,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   const buildUnlockedDraftPayload = (rawAnswers: Record<string, any>, itemsForTypes?: AssessmentItem[]) => {
     const unlocked: Record<string, any> = {};
     for (const [itemId, val] of Object.entries(rawAnswers)) {
-      if (val !== undefined && val !== null && val !== '' && lockedResponsesRef.current[itemId] === undefined) {
+      if (val !== undefined && val !== null && val !== '' && lockedResponsesRef.current[itemId] !== true) {
         unlocked[itemId] = val;
       }
     }
@@ -538,28 +556,26 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   };
 
   const safeSaveDraft = async (unlockedPayload: Record<string, any>) => {
-    if (!apiScreenData?.componentId || !activeAssessmentId) return;
+    const compId = activeComponentId;
+    if (!compId || !activeAssessmentId) return;
 
-    // Strictly filter out any items already marked as locked in lockedResponsesRef
-    const strictlyUnlocked: Record<string, any> = {};
+    // Filter out items already locked on the server to avoid 400 errors
+    const validPayload: Record<string, any> = {};
     for (const [key, val] of Object.entries(unlockedPayload)) {
-      if (lockedResponsesRef.current[key] === undefined && val !== undefined && val !== null && val !== '') {
-        strictlyUnlocked[key] = val;
+      if (lockedResponsesRef.current[key] !== true && val !== undefined && val !== null && val !== '') {
+        validPayload[key] = val;
       }
     }
 
-    if (Object.keys(strictlyUnlocked).length === 0) return; // All answers on page already saved/locked on server
+    if (Object.keys(validPayload).length === 0) return;
 
     const savePromise = (async () => {
       try {
         await saveDraftMutation.mutateAsync({
           assessmentId: activeAssessmentId,
-          componentId: apiScreenData.componentId,
-          responses: strictlyUnlocked,
+          componentId: compId,
+          responses: validPayload,
         });
-        for (const [key, val] of Object.entries(strictlyUnlocked)) {
-          lockedResponsesRef.current[key] = val;
-        }
       } catch (err: any) {
         const errMessage = getApiErrorMessage(err, String(err?.message || err?.data?.message || err?.response?.data?.message || ''));
         const lowerMsg = errMessage.toLowerCase();
@@ -603,7 +619,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         windowAnswers[item.id] = val;
       }
     }
-    return buildUnlockedDraftPayload(windowAnswers, activeDisplayedItems);
+    return sanitizeAnswers(windowAnswers, activeDisplayedItems);
   };
 
   const handleSubmit = async (reason?: string) => {
@@ -620,7 +636,8 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       sessionStorage.setItem('submitReason', reason);
     }
 
-    if (!activeAssessmentId || !apiScreenData) {
+    const compId = activeComponentId;
+    if (!activeAssessmentId || !compId) {
       toast.error('Assessment is not ready. Please reload and try again.');
       setIsSubmitting(false);
       return;
@@ -632,7 +649,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       }
 
       const payloadResponses = sanitizeAnswers(answers);
-      if (!apiScreenData.componentId || Object.keys(payloadResponses).length === 0) {
+      if (Object.keys(payloadResponses).length === 0) {
         toast.error('Please complete your answers before submitting.');
         setIsSubmitting(false);
         return;
@@ -642,19 +659,35 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       const unlockedDraft = buildUnlockedDraftPayload(answers);
       await safeSaveDraft(unlockedDraft);
 
+      // For submit, also exclude locked items to avoid 400 "locked" errors
+      const submitPayload: Record<string, any> = {};
+      for (const [key, val] of Object.entries(unlockedDraft)) {
+        if (lockedResponsesRef.current[key] !== true && val !== undefined && val !== null && val !== '') {
+          submitPayload[key] = val;
+        }
+      }
+
       await submitScreenMutation.mutateAsync({
         assessmentId: activeAssessmentId,
-        componentId: apiScreenData.componentId,
-        responses: unlockedDraft,
+        componentId: compId,
+        responses: Object.keys(submitPayload).length > 0 ? submitPayload : unlockedDraft,
       });
-      toast.success('Interview submitted successfully!');
-      navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);
+
+      toast.success('Submitted successfully.');
+      const nextPartMap: Record<number, string> = {
+        1: `/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`,
+        2: `/onboarding/talent/${roleSlug}/interview/stage-2/part-3/intro`,
+        3: `/onboarding/talent/${roleSlug}/interview/stage-2/part-4/intro`,
+        4: `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`,
+      };
+      const targetPath = nextPartMap[partNumber] || `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`;
+      navigate(targetPath);
     } catch (err: any) {
-      console.error('Failed to submit Stage 2 screen to API:', err);
+      console.error('Failed to submit assessment:', err);
       const serverMsg =
         getApiErrorMessage(err) ||
         err?.message ||
-        'Failed to submit. Please try again.';
+        '';
 
       const lower = serverMsg.toLowerCase();
       if (
@@ -663,22 +696,19 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         lower.includes('completed') ||
         lower.includes('time limit')
       ) {
-        toast.success('Interview section completed.');
-        navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);
+        const nextPartMap: Record<number, string> = {
+          1: `/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`,
+          2: `/onboarding/talent/${roleSlug}/interview/stage-2/part-3/intro`,
+          3: `/onboarding/talent/${roleSlug}/interview/stage-2/part-4/intro`,
+          4: `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`,
+        };
+        const targetPath = nextPartMap[partNumber] || `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`;
+        navigate(targetPath, { replace: true });
         return;
       }
 
-      if (serverMsg.toLowerCase().includes('answer every screen in this pillar before submitting')) {
-        const match = serverMsg.match(/\((\d+)\/(\d+)\s+saved\)/i);
-        const savedCount = match ? parseInt(match[1], 10) : 9;
-        const totalCount = match ? parseInt(match[2], 10) : 13;
-        setPillarProgress((prev) => ({ ...prev, total: totalCount, answered: savedCount }));
-        setWindowInfo((prev) => ({ ...prev, hasMore: true }));
-        setIsSubmitting(false);
-        return handleContinueNextWindow();
-      }
-
-      toast.error(serverMsg);
+      toast.error(serverMsg || 'Failed to submit. Please try again.');
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -755,9 +785,13 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   const handleContinueNextWindow = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
+    setApiLoading(true);
     try {
-      if (!activeAssessmentId || !apiScreenData?.componentId) {
+      const compId = activeComponentId;
+      if (!activeAssessmentId || !compId) {
         toast.error('Assessment is not ready. Please reload and try again.');
+        setApiLoading(false);
+        setIsSubmitting(false);
         return;
       }
 
@@ -768,10 +802,14 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
       if (!hasAnsweredCurrentWindow) {
         toast.error('Please answer the questions on this page before continuing.');
+        setApiLoading(false);
+        setIsSubmitting(false);
         return;
       }
 
       if (!validateWindowMinWords(activeDisplayedItems, answers)) {
+        setApiLoading(false);
+        setIsSubmitting(false);
         return;
       }
 
@@ -783,7 +821,6 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       const nextFrom = windowInfo.through + 1;
       const nextThrough = windowInfo.through + 4;
 
-      setApiLoading(true);
       let res: any;
       try {
         res = await fetchGate2PillarItems(activeAssessmentId, pillar, {
@@ -827,6 +864,19 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       }
 
       if (nextItems.length > 0) {
+        // If the backend clamped and returned the same window items (because some item wasn't marked stored/answered on server):
+        const isSameWindowReturned =
+          (nextWindow && nextWindow.from <= windowInfo.from) ||
+          nextItems.every((ni) => activeDisplayedItems.some((ai) => ai.id === ni.id));
+
+        if (isSameWindowReturned) {
+          setShowContinueValidation(true);
+          toast.error('Please make sure all questions on this page are fully answered before continuing.');
+          setApiLoading(false);
+          setIsSubmitting(false);
+          return;
+        }
+
         setShowContinueValidation(false);
         setActiveItems(nextItems);
         setApiScreenData((prev) => (prev ? { ...prev, items: nextItems } : prev));
@@ -1117,13 +1167,6 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         <footer className="fixed bottom-0 left-0 right-0 bg-white/96 backdrop-blur-[10px] border-t border-[#E6E6E6] p-[14px_32px] flex items-center justify-between gap-[12px] z-50">
           <div className="text-[13px] text-[#808080] font-[600]">
             {footerLabel}
-            {showContinueValidation && incompleteCount > 0 ? (
-              <span className="block sm:inline sm:ml-2 text-[12px] text-[#DC2626] font-[600]">
-                {incompleteCount === 1
-                  ? '1 question still needs a complete answer'
-                  : `${incompleteCount} questions still need complete answers`}
-              </span>
-            ) : null}
           </div>
           <div className="flex gap-[10px] items-center">
             <button
@@ -1138,8 +1181,19 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
               onClick={() => {
                 if (isSubmitting) return;
                 if (!isAllAnswered) {
+                  const unselected = activeDisplayedItems.find((item) => {
+                    const val = answers[item.id];
+                    if (val === undefined || val === null || val === '') return true;
+                    if (typeof val === 'object' && !Array.isArray(val)) {
+                      const choice = (val as any)?.choice || (val as any)?.optionId || (val as any)?.most;
+                      if (!choice) return true;
+                    }
+                    return false;
+                  });
+                  if (unselected) {
+                    toast.error('Please pick an option before continuing.');
+                  }
                   setShowContinueValidation(true);
-                  // Wait a tick so highlight classes paint, then scroll
                   requestAnimationFrame(() => scrollToFirstIncomplete());
                   return;
                 }

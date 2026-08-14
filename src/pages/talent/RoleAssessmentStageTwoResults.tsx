@@ -21,6 +21,21 @@ const FolderIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
+const renderFormattedText = (text: string, isHero = false) => {
+  if (!text) return null;
+  const parts = text.split(/(\d+(?:\.\d+)?%)/g);
+  return parts.map((part, index) => {
+    if (/^\d+(?:\.\d+)?%$/.test(part)) {
+      return (
+        <strong key={index} className={`font-[800] ${isHero ? 'text-white' : 'text-[#1A1A1A]'}`}>
+          {part}
+        </strong>
+      );
+    }
+    return part;
+  });
+};
+
 const RoleAssessmentStageTwoResults: React.FC = () => {
   const navigate = useNavigate();
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
@@ -154,7 +169,7 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
             </h2>
             {narrativeParagraphs.map((para, idx) => (
               <p key={idx} className="text-[14.5px] text-[#4A4A4A] leading-[1.75] mb-[12px] last:mb-0">
-                {para}
+                {renderFormattedText(para)}
               </p>
             ))}
           </div>

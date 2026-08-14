@@ -184,9 +184,8 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
 
   // Tab change & paste warning listener (tab-switch enforcement disabled for now per user instruction)
   useEffect(() => {
-    const ENABLE_ANTI_CHEAT_TAB_SWITCH = false;
-
     const handleVisibilityChange = () => {
+      const ENABLE_ANTI_CHEAT_TAB_SWITCH = import.meta.env.VITE_ENABLE_ANTI_CHEAT_TAB_SWITCH === 'true';
       if (!ENABLE_ANTI_CHEAT_TAB_SWITCH) return;
       if (document.hidden && !alreadyCheated) {
         blurTimerRef.current = setTimeout(() => {
@@ -205,6 +204,8 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
     };
 
     const handlePaste = (e: ClipboardEvent) => {
+      const ENABLE_PASTE_BLOCKING = import.meta.env.VITE_ENABLE_ANTI_CHEAT_PASTE === 'true';
+      if (!ENABLE_PASTE_BLOCKING) return;
       e.preventDefault();
       triggerCheatWarning('paste');
     };

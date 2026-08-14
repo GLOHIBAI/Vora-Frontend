@@ -12,6 +12,29 @@ const REASON_DEFAULT_MIN_WORD_TYPES = new Set([
   'work_sample',
 ]);
 
+const NO_REASON_TYPES = new Set([
+  'scale',
+  'numeric',
+  'numeric_scale',
+  'likert',
+  'values_tradeoff',
+  'sjt_values_tradeoff',
+  'values_ab_pairs',
+  'mcq',
+  'single_choice',
+  'sb',
+  'ms',
+  'multi_select',
+  'rank',
+  'drag_rank',
+  'sjt_rank',
+  'sjt_rank_all',
+  'match',
+  'cloze',
+  'cat',
+  'forced_choice',
+]);
+
 /**
  * Resolve min-words for a reason field.
  * - When a reason is shown/required: use content.minWords, else default 5.
@@ -23,6 +46,11 @@ export const getReasonMinWords = (
   options?: { reasonShown?: boolean },
 ): number => {
   const typeStr = String(type ?? '').toLowerCase().trim();
+
+  if (NO_REASON_TYPES.has(typeStr) && content?.requireReasoning !== true && content?.showReasoning !== true) {
+    return 0;
+  }
+
   const inferredShown =
     content?.requireReasoning === true ||
     content?.showReasoning === true ||
