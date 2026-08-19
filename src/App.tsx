@@ -165,7 +165,7 @@ const App = () => {
           navigate('/dashboard');
         }
         
-        toast.error('Connection lost. Saving progress and returning to the dashboard.', {
+        toast.error('Connection lost. Saving progress', {
           id: 'offline-assessment-redirect',
           duration: 5000,
         });

@@ -7,6 +7,7 @@ import { useStartAssessmentScreenMutation, useGateVerdictQuery, useAssessmentGat
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
 import { getActiveAssessmentId, unwrapAssessmentData } from '../../utils/assessmentSession';
 import type { GateVerdictResponse } from '../../services/queries/assessments/types';
+import FullPageSpinner from '../../components/common/FullPageSpinner';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -42,7 +43,7 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
   const { user } = useAuth();
   const assessmentId = resolveGate1AssessmentId() || getActiveAssessmentId() || '';
   
-  const { data: verdictRaw } = useGateVerdictQuery(assessmentId, 2, { enabled: !!assessmentId });
+  const { data: verdictRaw, isLoading: isVerdictLoading, isFetching: isVerdictFetching } = useGateVerdictQuery(assessmentId, 2, { enabled: !!assessmentId });
   const verdict = unwrapAssessmentData<GateVerdictResponse>(verdictRaw);
 
   const { data: progressRaw } = useAssessmentGatesProgressQuery(assessmentId, { enabled: !!assessmentId });
@@ -60,11 +61,15 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
     }
   }, [assessmentId, verdict, roleSlug, navigate]);
 
+  if (isVerdictLoading || isVerdictFetching || !verdict) {
+    return <FullPageSpinner message="Retrieving your interview results..." />;
+  }
+
   const firstName = user?.firstName || verdict?.talent?.firstName || 'Candidate';
   const rollupScore = (verdict as any)?.rollup?.score;
-  const compositeScore = verdict?.score ?? rollupScore ?? gate2Progress?.score ?? 80;
+  const compositeScore = verdict?.score ?? rollupScore ?? gate2Progress?.score ?? 0;
   const passThreshold = verdict?.threshold ?? 80;
-  const heroTag = verdict?.heroTag || 'You passed Stage 2';
+  const heroTag = verdict?.heroTag || (compositeScore >= passThreshold ? 'You passed Stage 2' : 'Stage 2 Outcome');
   const headline = verdict?.headline || `${firstName}, you're through to Stage 3`;
   const summary = verdict?.summary || 'Your professional dimension reads strong. The detail below is for you, so you can see what stood out and where there\'s room.';
   const narrativeParagraphs = verdict?.narrativeParagraphs || [];

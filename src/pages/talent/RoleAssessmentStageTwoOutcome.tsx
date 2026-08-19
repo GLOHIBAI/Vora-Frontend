@@ -7,6 +7,7 @@ import { useGateVerdictQuery } from '../../services/queries/assessments';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
 import { getActiveAssessmentId, unwrapAssessmentData } from '../../utils/assessmentSession';
 import type { GateVerdictResponse } from '../../services/queries/assessments/types';
+import FullPageSpinner from '../../components/common/FullPageSpinner';
 
 const AlertCircleIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -80,8 +81,12 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
     }
   }, [assessmentId, roleSlug, navigate]);
 
-  const { data: verdictRaw } = useGateVerdictQuery(assessmentId, 2, { enabled: !!assessmentId });
+  const { data: verdictRaw, isLoading: isVerdictLoading, isFetching: isVerdictFetching } = useGateVerdictQuery(assessmentId, 2, { enabled: !!assessmentId });
   const verdict = unwrapAssessmentData<GateVerdictResponse>(verdictRaw);
+
+  if (isVerdictLoading || isVerdictFetching || !verdict) {
+    return <FullPageSpinner message="Retrieving your assessment outcome..." />;
+  }
 
   const vData: any = (verdict as any)?.data || verdict || (verdictRaw as any)?.data || verdictRaw || {};
 

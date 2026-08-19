@@ -173,29 +173,29 @@ export const FormattedPromptText: React.FC<FormattedPromptTextProps> = ({
     const codeLines = formattedCode.split('\n');
 
     parts.push(
-      <div key={`code-${keyIdx++}`} className="my-4 rounded-xl border border-[#E2E8F0] bg-[#0F172A] overflow-hidden shadow-md">
-        <div className="bg-[#1E293B] px-4 py-2.5 flex items-center justify-between border-b border-[#334155]">
+      <div key={`code-${keyIdx++}`} className="my-4 rounded-[14px] border border-[#E6E6E6] bg-white overflow-hidden shadow-sm">
+        <div className="bg-[#F8FAFC] px-4 py-2.5 flex items-center justify-between border-b border-[#E6E6E6]">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444] block" />
             <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B] block" />
             <span className="w-2.5 h-2.5 rounded-full bg-[#10B981] block" />
-            <span className="ml-2 text-[11px] font-[800] uppercase tracking-wider text-[#387DFF]">
+            <span className="ml-2 font-mono text-[11px] font-[700] uppercase tracking-wider text-[#0047CC]">
               {lang || 'Code Snippet'}
             </span>
           </div>
-          <span className="text-[10px] text-[#94A3B8] font-mono uppercase tracking-wider">
+          <span className="text-[10px] text-[#808080] font-mono uppercase tracking-wider font-semibold">
             {lang ? lang.toUpperCase() : 'CODE'}
           </span>
         </div>
-        <div className="p-4 overflow-x-auto bg-[#0F172A]">
+        <div className="p-4 overflow-x-auto bg-white">
           <table className="w-full font-mono text-[13px] border-collapse">
             <tbody>
               {codeLines.map((line, i) => (
-                <tr key={i} className="hover:bg-[#1E293B]/50">
-                  <td className="w-8 select-none text-right pr-3 text-[#64748B] text-[11px] align-top py-0.5 border-r border-[#334155] mr-3">
+                <tr key={i} className="hover:bg-[#F8FAFC]">
+                  <td className="w-8 select-none text-right pr-3 text-[#94A3B8] text-[11px] align-top py-0.5 border-r border-[#F1F5F9] mr-3">
                     {i + 1}
                   </td>
-                  <td className="text-[#F8FAFC] whitespace-pre font-mono pl-3 py-0.5 leading-relaxed">
+                  <td className="text-[#1E293B] whitespace-pre font-mono pl-3 py-0.5 leading-relaxed">
                     {line}
                   </td>
                 </tr>

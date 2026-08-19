@@ -125,10 +125,10 @@ const OptionButton: React.FC<OptionButtonProps> = ({
 
       <div className="flex-1 min-w-0">
         {isCode ? (
-          <pre className={`p-4 rounded-xl font-mono text-[12px] leading-[1.65] overflow-x-auto custom-scrollbar text-left border ${
+          <pre className={`p-3 rounded-lg font-mono text-[12px] leading-[1.6] overflow-x-auto custom-scrollbar text-left border ${
             selected
-              ? 'bg-[#0F172A] text-[#38BDF8] border-[#0047CC]'
-              : 'bg-[#0F172A] text-[#F8FAFC] border-[#334155]'
+              ? 'bg-[#EFF6FF] text-[#0047CC] border-[#0047CC]/40 font-semibold'
+              : 'bg-[#F8FAFC] text-[#1E293B] border-[#E2E8F0]'
           }`}>
             <code className="whitespace-pre">{formattedCode}</code>
           </pre>

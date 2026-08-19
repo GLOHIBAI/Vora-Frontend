@@ -161,23 +161,12 @@ const pollResumeStateUntilReady = async (
   );
 };
 
-export interface Question {
-  id: string;
-  numText: string;
-  questionText: string;
-  options: Option[];
-  scenarioTag?: string;
-  scenarioText?: string;
-}
-
 interface StageTwoInterviewBaseProps {
   interviewNumber: number; // e.g., 1 or 2
   interviewTitle: string; // e.g., "Pharmacology in the field"
   sectionTitle: string;
   sectionSub: string;
   whyMattersText: string;
-  /** @deprecated Local mock questions are no longer used; Stage 2 loads from the start endpoint only. */
-  questions?: Question[];
   nextPath: string;
   partNumber?: number;
   timeLimitSeconds?: number;

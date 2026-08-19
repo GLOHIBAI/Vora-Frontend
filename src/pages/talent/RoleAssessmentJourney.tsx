@@ -710,7 +710,7 @@ const RoleAssessmentJourney: React.FC = () => {
                 </div>
               </div>
               <div className="absolute top-[22px] right-[22px] hidden sm:flex items-center gap-[6px] text-[11px] font-[800] px-[11px] py-[5px] rounded-full tracking-[0.4px] bg-white border border-[#0047CC] text-[#0047CC] transition-all duration-200 group-hover:bg-[#0047CC] group-hover:text-white group-hover:border-[#0047CC] hover:bg-[#0047CC] hover:text-white hover:border-[#0047CC] cursor-pointer">
-                {isStage2Completed ? 'Complete' : hasStartedStage2 ? 'Resume' : 'Start here'}
+                {isStage2Completed ? 'View results' : hasStartedStage2 ? 'Resume' : 'Start here'}
               </div>
             </div>
           ) : (
