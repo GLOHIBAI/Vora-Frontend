@@ -1,19 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../api";
-import { isGate1MockSession, shouldMockGate1 } from "../../../config/gate1Api";
-import {
-  mockGate1AdaptiveStep,
-  mockGate1Draft,
-  mockGate1Progress,
-  mockGate1ResumeState,
-  mockGate1ReviewSummary,
-  mockGate1SaveDraft,
-  mockGate1ScreensCatalog,
-  mockGate1StartScreen,
-  mockGate1SubmitScreen,
-  mockGate1Verdict,
-} from "../../../mocks/gate1MockSession";
 import type { Gate1ScreenKey } from "./types";
+
 import type {
   AssessmentGateStartResponse,
   AssessmentDraftResponse,
@@ -117,12 +105,10 @@ export const useAssessmentScreensQuery = (gate: 1 | 2 | 3 = 1) =>
   useQuery({
     queryKey: assessmentKeys.screens(gate),
     queryFn: () =>
-      shouldMockGate1(gate)
-        ? mockGate1ScreensCatalog()
-        : apiClient.get<{ data: AssessmentScreenCatalog[] }>({
-            url: `/assessments/gates/${gate}/screens`,
-            auth: true,
-          }),
+      apiClient.get<{ data: AssessmentScreenCatalog[] }>({
+        url: `/assessments/gates/${gate}/screens`,
+        auth: true,
+      }),
     staleTime: 10 * 60 * 1000, // catalog rarely changes mid-session
   });
 
@@ -159,12 +145,10 @@ export const useGateResumeStateQuery = (
   useQuery({
     queryKey: assessmentKeys.resumeState(assessmentId, gate),
     queryFn: async (): Promise<unknown> =>
-      shouldMockGate1(gate)
-        ? mockGate1ResumeState()
-        : apiClient.get<GateResumeState>({
-            url: `/assessments/${assessmentId}/gates/${gate}/resume-state`,
-            auth: true,
-          }),
+      apiClient.get<GateResumeState>({
+        url: `/assessments/${assessmentId}/gates/${gate}/resume-state`,
+        auth: true,
+      }),
     enabled: (options?.enabled ?? true) && !!assessmentId,
     staleTime: 30 * 1000, // 30s re-fetch after each screen submit
   });
@@ -195,10 +179,6 @@ export const useStartAssessmentScreenMutation = (gate: 1 | 2 | 3 = 1) => {
       /** Gate 1 → { screen }; Gate 2 → { pillar }; Gate 3 → { screen? } */
       body: Record<string, string>;
     }) => {
-      if (shouldMockGate1(gate)) {
-        const screenKey = (body.screen ?? "personality") as Gate1ScreenKey;
-        return mockGate1StartScreen(screenKey);
-      }
       return apiClient.post<AssessmentGateStartResponse>({
         url: `/assessments/${assessmentId}/gates/${gate}/start`,
         body,
@@ -246,9 +226,6 @@ export const useSaveAssessmentDraftMutation = () => {
       /** Only NEW (unlocked) keys never re-send already-saved answers */
       responses: ResponsesMap;
     }) => {
-      if (isGate1MockSession(assessmentId)) {
-        return mockGate1SaveDraft(componentId, responses);
-      }
       return apiClient.patch<SaveDraftResponse>({
         url: `/assessments/${assessmentId}/components/${componentId}/responses`,
         body: { responses },
@@ -280,13 +257,11 @@ export const useAssessmentDraftQuery = (
   useQuery({
     queryKey: assessmentKeys.draft(assessmentId, componentId),
     queryFn: () =>
-      isGate1MockSession(assessmentId)
-        ? mockGate1Draft(componentId)
-        : apiClient.get<AssessmentDraftResponse>({
-            url: `/assessments/${assessmentId}/components/${componentId}/responses`,
-            auth: true,
-            suppressErrorToast: true,
-          }),
+      apiClient.get<AssessmentDraftResponse>({
+        url: `/assessments/${assessmentId}/components/${componentId}/responses`,
+        auth: true,
+        suppressErrorToast: true,
+      }),
     enabled: (options?.enabled ?? true) && !!assessmentId && !!componentId,
   });
 
@@ -312,9 +287,6 @@ export const useSubmitAssessmentScreenMutation = () => {
       componentId: string;
       responses: ResponsesMap;
     }) => {
-      if (isGate1MockSession(assessmentId)) {
-        return mockGate1SubmitScreen(componentId, responses);
-      }
       return apiClient.post<AssessmentSubmitResponse>({
         url: `/assessments/${assessmentId}/components/${componentId}/submit`,
         body: { responses },
@@ -442,28 +414,6 @@ export const useSubmitGateMutation = () => {
       /** When true, caller handles toasts (e.g. 409 scoring retry). */
       suppressErrorToast?: boolean;
     }) => {
-      if (isGate1MockSession(assessmentId)) {
-        return Promise.resolve({
-          statusCode: 200,
-          message: "Stage 1 submitted for scoring.",
-          data: {
-            schemaVersion: 1,
-            assessmentId,
-            gate1Complete: true,
-            finalSubmittedAt: new Date().toISOString(),
-            status: "passed",
-            verdict: {
-              passed: true,
-              score: 81,
-              verdict: "qualified",
-              gate: 1,
-              integrityGate: "pass",
-              coreBandScore: 0.78,
-              unlocksNextGate: true
-            }
-          }
-        });
-      }
       return apiClient.post<any>({
         url: `/assessments/${assessmentId}/gates/${gate}/submit`,
         auth: true,
@@ -507,17 +457,15 @@ const submitAdaptiveStepOnce = (args: {
   const existing = adaptiveStepInflight.get(flightKey);
   if (existing) return existing;
 
-  const request = (
-    isGate1MockSession(assessmentId)
-      ? mockGate1AdaptiveStep(componentId, itemId)
-      : apiClient.post<AdaptiveStepResponse>({
-          url: `/assessments/${assessmentId}/components/${componentId}/items/${itemId}/adaptive`,
-          body: { optionId },
-          auth: true,
-        })
-  ).finally(() => {
-    adaptiveStepInflight.delete(flightKey);
-  }) as Promise<AdaptiveStepResponse>;
+  const request = apiClient
+    .post<AdaptiveStepResponse>({
+      url: `/assessments/${assessmentId}/components/${componentId}/items/${itemId}/adaptive`,
+      body: { optionId },
+      auth: true,
+    })
+    .finally(() => {
+      adaptiveStepInflight.delete(flightKey);
+    }) as Promise<AdaptiveStepResponse>;
 
   adaptiveStepInflight.set(flightKey, request);
   return request;
@@ -540,12 +488,10 @@ export const useAssessmentGatesProgressQuery = (
   useQuery({
     queryKey: assessmentKeys.progress(assessmentId),
     queryFn: () =>
-      isGate1MockSession(assessmentId)
-        ? mockGate1Progress()
-        : apiClient.get<{ data: GateProgressEntry[] }>({
-            url: `/assessments/${assessmentId}/gates/progress`,
-            auth: true,
-          }),
+      apiClient.get<{ data: GateProgressEntry[] }>({
+        url: `/assessments/${assessmentId}/gates/progress`,
+        auth: true,
+      }),
     enabled: (options?.enabled ?? true) && !!assessmentId,
     refetchInterval: options?.refetchInterval ?? false,
   });
@@ -564,13 +510,11 @@ export const useGateVerdictQuery = (
   useQuery({
     queryKey: assessmentKeys.verdict(assessmentId, gate),
     queryFn: () =>
-      shouldMockGate1(gate)
-        ? mockGate1Verdict()
-        : apiClient.get<GateVerdictResponse>({
-            url: `/assessments/${assessmentId}/gates/${gate}/verdict`,
-            auth: true,
-            suppressErrorToast: true,
-          }),
+      apiClient.get<GateVerdictResponse>({
+        url: `/assessments/${assessmentId}/gates/${gate}/verdict`,
+        auth: true,
+        suppressErrorToast: true,
+      }),
     enabled: (options?.enabled ?? true) && !!assessmentId,
     refetchInterval: options?.refetchInterval ?? false,
   });
@@ -588,12 +532,10 @@ export const useReviewSummaryQuery = (
   useQuery({
     queryKey: assessmentKeys.reviewSummary(assessmentId, gate),
     queryFn: async (): Promise<unknown> =>
-      shouldMockGate1(gate)
-        ? mockGate1ReviewSummary()
-        : apiClient.get<{ data: ReviewSummaryEntry[] }>({
-            url: `/assessments/${assessmentId}/gates/${gate}/review-summary`,
-            auth: true,
-          }),
+      apiClient.get<{ data: ReviewSummaryEntry[] }>({
+        url: `/assessments/${assessmentId}/gates/${gate}/review-summary`,
+        auth: true,
+      }),
     enabled: (options?.enabled ?? true) && !!assessmentId,
   });
 
@@ -690,10 +632,11 @@ export const useGate2PillarItemsQuery = (
 export const startGate3Session = async (
   assessmentId: string,
 ): Promise<import('./types').Gate3StartResponse> => {
-  return apiClient.post<import('./types').Gate3StartResponse>({
+  const res = await apiClient.post<any>({
     url: `/assessments/${assessmentId}/gates/3/start`,
     auth: true,
   });
+  return (res?.data || res) as import('./types').Gate3StartResponse;
 };
 
 /**
@@ -703,10 +646,11 @@ export const startGate3Session = async (
 export const fetchGate3Items = async (
   assessmentId: string,
 ): Promise<import('./types').Gate3StartResponse> => {
-  return apiClient.get<import('./types').Gate3StartResponse>({
+  const res = await apiClient.get<any>({
     url: `/assessments/${assessmentId}/gates/3/items`,
     auth: true,
   });
+  return (res?.data || res) as import('./types').Gate3StartResponse;
 };
 
 /**
@@ -721,11 +665,12 @@ export const uploadGate3Video = async (
   const formData = new FormData();
   formData.append('file', file, file instanceof File ? file.name : 'video-response.webm');
 
-  return apiClient.post<import('./types').Gate3UploadResponse>({
+  const res = await apiClient.post<any>({
     url: `/assessments/${assessmentId}/gates/3/items/${itemId}/video`,
     body: formData,
     auth: true,
   });
+  return (res?.data || res) as import('./types').Gate3UploadResponse;
 };
 
 /**
@@ -737,11 +682,12 @@ export const submitComponentResponses = async (
   componentId: string,
   responses: Record<string, any> = {},
 ): Promise<any> => {
-  return apiClient.post({
+  const res = await apiClient.post<any>({
     url: `/assessments/${assessmentId}/components/${componentId}/submit`,
     body: { responses },
     auth: true,
   });
+  return res?.data || res;
 };
 
 

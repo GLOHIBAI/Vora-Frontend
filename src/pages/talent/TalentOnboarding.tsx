@@ -3,6 +3,7 @@ import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { useTalentOnboardingMutation, useTalentOnboardingStateQuery } from '../../services/queries/onboarding';
+import { apiClient } from '../../services/api';
 import Button from '../../components/common/Button';
 import FullPageSpinner from '../../components/common/FullPageSpinner';
 import { useFullPageLoading } from '../../hooks/useFullPageLoading';
@@ -497,8 +498,53 @@ const TalentOnboarding: React.FC = () => {
           } else {
             navigate('/dashboard', { replace: true });
           }
-        } catch {
-          // Errors are automatically caught and toasted by our interceptor
+        } catch (err: any) {
+          const status = err?.status;
+
+          // 409 = "Onboarding already completed" — it worked, just continue
+          if (status === 409) {
+            console.info('Onboarding already completed (409). Continuing...');
+          } else if (status === 500 || status >= 500) {
+            // 500 = server error — check GET state before giving up
+            try {
+              const stateCheck = await apiClient.get<any>({
+                url: '/talent/onboarding',
+                auth: true,
+                suppressErrorToast: true,
+              });
+              const stateData = stateCheck?.data || stateCheck;
+              if (stateData?.onboardingCompleted === true) {
+                console.info('Onboarding completed despite 500. Continuing...');
+              } else {
+                // Genuinely failed — let the user retry
+                return;
+              }
+            } catch {
+              // GET also failed — surface the original error
+              return;
+            }
+          } else {
+            // 400, 422, etc — validation errors already toasted by interceptor
+            return;
+          }
+
+          // If we reach here, onboarding is confirmed complete — proceed
+          updateUser({
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            onboardingCompleted: true,
+            isOnboardingComplete: true,
+          });
+          await refetchOnboardingState(queryClient, TALENT_ONBOARDING_STATE_KEY);
+
+          if (isRoleApplyFlow) {
+            navigate(`/onboarding/talent/${roleSlug}/cv`, {
+              state: { firstName: formData.firstName },
+            });
+          } else {
+            navigate('/dashboard', { replace: true });
+          }
+          return;
         }
       }
     });

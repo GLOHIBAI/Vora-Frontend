@@ -1,7 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../api";
-import { isGate1ApiEnabled } from "../../../config/gate1Api";
-import { mockBeginAssessment } from "../../../mocks/gate1MockSession";
 
 export const useGetPublicRoleQuery = (slug: string) => {
   return useQuery({
@@ -305,9 +303,6 @@ export const useCompletePreAssessmentMutation = () => {
 export const useBeginAssessmentMutation = () => {
   return useMutation({
     mutationFn: async (data: { rolePostingId: string }) => {
-      if (!isGate1ApiEnabled()) {
-        return mockBeginAssessment();
-      }
       return apiClient.post<{
         data?: { assessmentId?: string; id?: string };
         assessmentId?: string;
@@ -320,3 +315,4 @@ export const useBeginAssessmentMutation = () => {
     },
   });
 };
+

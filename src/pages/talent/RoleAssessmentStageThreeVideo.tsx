@@ -4,14 +4,17 @@ import toast from 'react-hot-toast';
 import AssessmentHeader from '../../components/talent/AssessmentHeader';
 import StageRail from '../../components/talent/StageRail';
 import Button from '../../components/common/Button';
+import FullPageSpinner from '../../components/common/FullPageSpinner';
 import {
   startGate3Session,
   fetchGate3Items,
   uploadGate3Video,
   submitComponentResponses,
 } from '../../services/queries/assessments';
+import { useGetPublicRoleQuery } from '../../services/queries/talent';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
 import { getActiveAssessmentId } from '../../utils/assessmentSession';
+import { VORA_LOGO_SRC } from '../../constants/brand';
 import type { Gate3Item } from '../../services/queries/assessments/types';
 
 interface Question {
@@ -30,7 +33,7 @@ const QUESTIONS: Question[] = [
     num: 1,
     text: 'Tell us about a time you had to adapt your communication style to convey complex technical or field information to a non-technical stakeholder or community member.',
     focus: 'Communication clarity',
-    context: 'Reach Africa wants to see how you synthesize complicated scenarios without losing the core message. Focus on structural details and clear transitions.',
+    context: 'We want to see how you synthesize complicated scenarios without losing the core message. Focus on structural details and clear transitions.',
     suggestedLength: '1 to 2 minutes',
     hardCap: '3:00'
   },
@@ -39,7 +42,7 @@ const QUESTIONS: Question[] = [
     num: 2,
     text: "Walk us through a programme you led that didn't go to plan. What happened, what you did in the moment, and what stayed with you.",
     focus: 'Storytelling depth',
-    context: "Reach Africa's hiring committee has said they want to hear how candidates handle the messy edges, not just success stories. Tell it like you'd tell a friend.",
+    context: "We want to hear how candidates handle the messy edges, not just success stories. Tell it like you'd tell a friend.",
     suggestedLength: '2 to 3 minutes',
     hardCap: '3:00'
   },
@@ -64,9 +67,9 @@ const QUESTIONS: Question[] = [
   {
     id: 'q5',
     num: 5,
-    text: 'Why is this specific role at reach-africa and ORA’s broader mission aligned with your long-term professional aspirations and core values?',
+    text: 'Why is this specific role and our broader mission aligned with your long-term professional aspirations and core values?',
     focus: 'Composure, warmth & mission fit',
-    context: 'Explain the deeper motivation behind your work. Show us how your history matches our future ambitions in the community.',
+    context: 'Explain the deeper motivation behind your work. Show us how your history matches our future ambitions.',
     suggestedLength: '2 to 3 minutes',
     hardCap: '3:00'
   }
@@ -104,6 +107,14 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
   const assessmentId = resolveGate1AssessmentId() || getActiveAssessmentId() || '';
 
+  // Feature enforcement toggles from env (default to true)
+  const ENABLE_STAGE3_HARD_CAP = import.meta.env.VITE_ENABLE_STAGE3_HARD_CAP !== 'false';
+  const ENABLE_STAGE3_RETAKE_LIMIT = import.meta.env.VITE_ENABLE_STAGE3_RETAKE_LIMIT !== 'false';
+
+  const { data: roleResponse } = useGetPublicRoleQuery(roleSlug || '');
+  const roleData = roleResponse?.data || roleResponse;
+  const companyName = roleData?.companyName || 'The hiring team';
+
   // API State
   const [isPreparingContent, setIsPreparingContent] = useState<boolean>(true);
   const [componentId, setComponentId] = useState<string>('');
@@ -115,12 +126,19 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
 
   // Question State
   const [currentIdx, setCurrentIdx] = useState<number>(0);
+  const [takesCount, setTakesCount] = useState<number>(0);
   const [completedList, setCompletedList] = useState<boolean[]>([false, false, false, false, false]);
   const currentQuestion = QUESTIONS[currentIdx];
 
+  // Reset takes count whenever current question changes
+  useEffect(() => {
+    setTakesCount(0);
+  }, [currentItem?.id, currentIdx]);
+
   // Derived Prompt fields
   const currentPromptText = currentItem?.content?.prompt || currentQuestion.text;
-  const currentContextText = currentItem?.content?.context || currentQuestion.context;
+  const defaultContext = `${companyName} wants to see how you synthesize complicated scenarios without losing the core message. Focus on structural details and clear transitions.`;
+  const currentContextText = currentItem?.content?.context || defaultContext;
   const currentCategoryTag = currentItem?.content?.category || currentQuestion.focus;
   const isRelationalType = currentItem?.type === 'video_relational';
   const personaText = currentItem?.content?.persona;
@@ -128,6 +146,8 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
   const currentNum = currentItem?.sequence || progress.current || (currentIdx + 1);
   const totalNum = currentItem?.total || progress.total || 5;
   const eyebrowText = currentItem?.eyebrow || `Question ${currentNum} · How you show up`;
+
+  const [apiError, setApiError] = useState<string | null>(null);
 
   // Start Gate 3 session & poll GET /gates/3/items until contentReady === true
   useEffect(() => {
@@ -137,17 +157,19 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
     const initGate3 = async () => {
       if (!assessmentId) {
         setIsPreparingContent(false);
+        setApiError('No active assessment session found.');
         return;
       }
       try {
-        const res = await startGate3Session(assessmentId);
+        const rawRes: any = await startGate3Session(assessmentId);
         if (isCancelled) return;
+        const res = rawRes?.data || rawRes;
 
-        if (res.componentId) setComponentId(res.componentId);
-        if (res.progress) setProgress(res.progress);
-        setScoringReady(!!res.scoringReady);
+        if (res?.componentId) setComponentId(res.componentId);
+        if (res?.progress) setProgress(res.progress);
+        setScoringReady(!!res?.scoringReady);
 
-        if (res.contentReady && res.items && res.items.length > 0) {
+        if (res?.contentReady && res?.items && res.items.length > 0) {
           setCurrentItem(res.items[0]);
           setIsPreparingContent(false);
           const readSecs = res.items[0].content?.readingTimeSecs || 30;
@@ -159,13 +181,15 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
           // Poll every 2.5s
           pollInterval = setInterval(async () => {
             try {
-              const pollRes = await fetchGate3Items(assessmentId);
+              const rawPoll: any = await fetchGate3Items(assessmentId);
               if (isCancelled) return;
-              if (pollRes.componentId) setComponentId(pollRes.componentId);
-              if (pollRes.progress) setProgress(pollRes.progress);
-              setScoringReady(!!pollRes.scoringReady);
+              const pollRes = rawPoll?.data || rawPoll;
 
-              if (pollRes.contentReady && pollRes.items && pollRes.items.length > 0) {
+              if (pollRes?.componentId) setComponentId(pollRes.componentId);
+              if (pollRes?.progress) setProgress(pollRes.progress);
+              setScoringReady(!!pollRes?.scoringReady);
+
+              if (pollRes?.contentReady && pollRes?.items && pollRes.items.length > 0) {
                 setCurrentItem(pollRes.items[0]);
                 setIsPreparingContent(false);
                 const readSecs = pollRes.items[0].content?.readingTimeSecs || 30;
@@ -179,8 +203,9 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
             }
           }, 2500);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to start Gate 3 session:', err);
+        setApiError(err?.message || 'Failed to initialize Stage 3 assessment from server.');
         setIsPreparingContent(false);
       }
     };
@@ -192,6 +217,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
       if (pollInterval) clearInterval(pollInterval);
     };
   }, [assessmentId]);
+
 
   // Modes tab
   const [activeTab, setActiveTab] = useState<'live' | 'upload'>('live');
@@ -323,7 +349,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
 
   // Camera stream initiation
   useEffect(() => {
-    if (activeTab === 'live' && !isThinking && !isRecordingStopped) {
+    if (activeTab === 'live' && !isRecordingStopped) {
       startCamera();
     } else {
       stopCamera();
@@ -331,7 +357,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
     return () => {
       stopCamera();
     };
-  }, [activeTab, currentIdx, isThinking, isRecordingStopped]);
+  }, [activeTab, currentIdx, isRecordingStopped]);
 
   // Visual audio bars levels rhythm
   useEffect(() => {
@@ -348,13 +374,19 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
     };
   }, [isRecording, activeTab]);
 
-  const startCamera = async () => {
+  const startCamera = async (): Promise<MediaStream | null> => {
     try {
+      if (streamRef.current && streamRef.current.active) {
+        if (videoRef.current && videoRef.current.srcObject !== streamRef.current) {
+          videoRef.current.srcObject = streamRef.current;
+        }
+        return streamRef.current;
+      }
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 1280, height: 720 },
+        video: { width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: true
       });
       streamRef.current = stream;
@@ -362,9 +394,11 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
         videoRef.current.srcObject = stream;
       }
       setHasWebcamPermission(true);
+      return stream;
     } catch (err) {
-      console.warn('Webcam stream unavailable, falling back to simulated silhouette feed', err);
+      console.warn('Webcam stream unavailable', err);
       setHasWebcamPermission(false);
+      return null;
     }
   };
 
@@ -388,61 +422,115 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
 
   const handleStartRecording = async () => {
     setRecordedVideoUrl(null);
+    recordedBlobRef.current = null;
     setIsRecordingStopped(false);
     setRecElapsed(0);
     chunksRef.current = [];
 
-    if (hasWebcamPermission && streamRef.current) {
-      try {
-        const mediaRecorder = new MediaRecorder(streamRef.current, { mimeType: 'video/webm' });
-        mediaRecorderRef.current = mediaRecorder;
-        mediaRecorder.ondataavailable = (e) => {
-          if (e.data && e.data.size > 0) {
-            chunksRef.current.push(e.data);
-          }
-        };
-        mediaRecorder.onstop = () => {
-          const blob = new Blob(chunksRef.current, { type: 'video/webm' });
-          recordedBlobRef.current = blob;
-          const url = URL.createObjectURL(blob);
-          setRecordedVideoUrl(url);
-          setIsRecordingStopped(true);
-          setHasAnswer(true);
-        };
-        mediaRecorder.start();
-        setIsRecording(true);
-      } catch (err) {
-        console.warn('MediaRecorder error, recording simulation active', err);
-        setIsRecording(true);
-      }
-    } else {
-      setIsRecording(true);
+    let stream = streamRef.current;
+    if (!stream || !stream.active) {
+      stream = await startCamera();
     }
-    toast.success('Live recording started');
+
+    if (!stream) {
+      toast.error('Unable to access camera or microphone. Please allow camera permissions.');
+      return;
+    }
+
+    try {
+      let mimeType = 'video/webm';
+      if (typeof MediaRecorder !== 'undefined') {
+        if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
+          mimeType = 'video/webm;codecs=vp9,opus';
+        } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
+          mimeType = 'video/webm;codecs=vp8,opus';
+        } else if (MediaRecorder.isTypeSupported('video/webm')) {
+          mimeType = 'video/webm';
+        } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+          mimeType = 'video/mp4';
+        }
+      }
+
+      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          chunksRef.current.push(e.data);
+        }
+      };
+      mediaRecorder.onstop = () => {
+        const actualType = mimeType || 'video/webm';
+        const blob = new Blob(chunksRef.current, { type: actualType });
+        recordedBlobRef.current = blob;
+        const url = URL.createObjectURL(blob);
+        setRecordedVideoUrl(url);
+        setIsRecordingStopped(true);
+        setHasAnswer(true);
+        setIsRecording(false);
+      };
+
+      mediaRecorder.start(1000);
+      setIsRecording(true);
+      setTakesCount(prev => prev + 1);
+      toast.success('Live recording started');
+    } catch (err: any) {
+      console.error('MediaRecorder start error:', err);
+      toast.error('Failed to start recording: ' + (err?.message || 'Error initializing recorder'));
+      setIsRecording(false);
+    }
   };
 
   const handleStopRecording = () => {
     if (!isRecording) return;
-    setIsRecording(false);
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
+      try {
+        if (mediaRecorderRef.current.state === 'recording') {
+          mediaRecorderRef.current.requestData();
+        }
+        mediaRecorderRef.current.stop();
+        toast.success('Recording captured! You can preview or submit now.');
+      } catch (err) {
+        console.error('Error stopping MediaRecorder:', err);
+      }
     } else {
-      // Mock result URL
-      setRecordedVideoUrl('mock-video-preview');
-      setIsRecordingStopped(true);
-      setHasAnswer(true);
+      setIsRecording(false);
+      toast.error('No active video recording found.');
     }
-    toast.success('Recording captured! You can preview or submit now.');
+  };
+
+  // Fix Chrome/Chromium MediaRecorder WebM duration bug (Infinity/0:01 seekbar bug)
+  const handlePreviewLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const video = e.currentTarget;
+    if (!video) return;
+    if (video.duration === Infinity || isNaN(video.duration) || video.duration === 0) {
+      video.currentTime = 1e101;
+      video.ontimeupdate = () => {
+        video.ontimeupdate = null;
+        video.currentTime = 0;
+      };
+    }
   };
 
   const handleRetake = () => {
+    if (ENABLE_STAGE3_RETAKE_LIMIT && takesCount >= 2) {
+      toast.error('Maximum retakes reached (2 takes used).');
+      return;
+    }
     setRecordedVideoUrl(null);
     recordedBlobRef.current = null;
     setIsRecordingStopped(false);
     setIsRecording(false);
     setHasAnswer(false);
     handleStartRecording();
+  };
+
+  const handleSwitchTab = (tab: 'live' | 'upload') => {
+    if (isRecording) {
+      toast.error('Please stop recording before switching modes.');
+      return;
+    }
+    setActiveTab(tab);
   };
 
   // Upload zones drag and drop handlers
@@ -764,7 +852,15 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
               </div>
               <div className="flex-1 min-w-[130px] bg-white/[0.08] border border-white/[0.14] rounded-[10px] p-[9px_13px]">
                 <div className="text-[9.5px] font-[800] uppercase tracking-[0.6px] text-white/60 mb-[3px]">Attempts allowed</div>
-                <div className="text-[14px] font-[900] text-white">1 retake (max 2 takes)</div>
+                <div className="text-[14px] font-[900] text-white">
+                  {!ENABLE_STAGE3_RETAKE_LIMIT
+                    ? 'Unlimited (dev mode)'
+                    : takesCount >= 2
+                    ? '0 retakes left'
+                    : takesCount === 1
+                    ? '1 retake left'
+                    : '1 retake (max 2 takes)'}
+                </div>
               </div>
             </div>
           </div>
@@ -773,8 +869,8 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
         {/* Mode Toggle Tabs */}
         <div className="flex bg-white border-[1.5px] border-[#E6E6E6] rounded-[12px] p-[5px] mb-[20px] max-w-[480px] mx-auto">
           <button
-            onClick={() => !isRecording && !isRecordingStopped && setActiveTab('live')}
-            disabled={isRecording || isRecordingStopped}
+            onClick={() => handleSwitchTab('live')}
+            disabled={isRecording}
             className={`flex-1 py-[11px] px-[16px] rounded-[8px] font-bold text-[13px] flex items-center justify-center gap-[8px] transition-all border-none cursor-pointer ${
               activeTab === 'live'
                 ? 'bg-gradient-to-br from-[#0047CC] to-[#387DFF] text-white shadow-[0_4px_12px_rgba(0,71,204,0.22)]'
@@ -793,8 +889,8 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
             </span>
           </button>
           <button
-            onClick={() => !isRecording && !isRecordingStopped && setActiveTab('upload')}
-            disabled={isRecording || isRecordingStopped}
+            onClick={() => handleSwitchTab('upload')}
+            disabled={isRecording}
             className={`flex-1 py-[11px] px-[16px] rounded-[8px] font-bold text-[13px] flex items-center justify-center gap-[8px] transition-all border-none cursor-pointer ${
               activeTab === 'upload'
                 ? 'bg-gradient-to-br from-[#0047CC] to-[#387DFF] text-white shadow-[0_4px_12px_rgba(0,71,204,0.22)]'
@@ -830,8 +926,9 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
                   {/* Preparing Think time overlay */}
                   {isThinking && (
                     <div className="absolute inset-0 bg-[#0B0F14]/95 flex flex-col items-center justify-center p-6 text-center z-20 backdrop-blur-sm">
-                      <div className="w-[100px] h-[100px] rounded-full border-[3px] border-white/10 border-t-[#0047CC] animate-spin flex items-center justify-center relative mb-4">
-                        <span className="absolute text-[24px] font-[900] tabular-nums text-white">
+                      <div className="relative w-[100px] h-[100px] mb-4 flex items-center justify-center">
+                        <div className="absolute inset-0 rounded-full border-[3px] border-white/10 border-t-[#0047CC] animate-spin" />
+                        <span className="text-[26px] font-[900] tabular-nums text-white relative z-10">
                           {thinkTimeLeft}
                         </span>
                       </div>
@@ -878,6 +975,8 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
                         <video 
                           src={recordedVideoUrl || ''} 
                           controls
+                          playsInline
+                          onLoadedMetadata={handlePreviewLoadedMetadata}
                           className="w-full h-full object-contain"
                         />
                       ) : (
@@ -957,16 +1056,18 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
                           </button>
                         ) : isRecordingStopped ? (
                           <>
-                            <button 
-                              onClick={handleRetake}
-                              className="bg-transparent text-white border-[1.5px] border-white/22 rounded-[100px] py-[10px] px-[18px] font-bold text-[13px] cursor-pointer inline-flex items-center gap-[7px]"
-                            >
-                              <svg className="w-[13px] h-[13px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                                <polyline points="23 4 23 10 17 10"/>
-                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                              </svg>
-                              Retake
-                            </button>
+                            {(!ENABLE_STAGE3_RETAKE_LIMIT || takesCount < 2) && (
+                              <button 
+                                onClick={handleRetake}
+                                className="bg-transparent text-white border-[1.5px] border-white/22 rounded-[100px] py-[10px] px-[18px] font-bold text-[13px] cursor-pointer inline-flex items-center gap-[7px] hover:bg-white/10"
+                              >
+                                <svg className="w-[13px] h-[13px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                  <polyline points="23 4 23 10 17 10"/>
+                                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                </svg>
+                                {ENABLE_STAGE3_RETAKE_LIMIT ? 'Retake (1 left)' : 'Retake'}
+                              </button>
+                            )}
                           </>
                         ) : (
                           <button 
@@ -1149,20 +1250,30 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
         <div className="flex gap-[10px]">
           <button 
             onClick={() => setShowSaveModal(true)}
-            className="btn-secondary bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7]"
+            disabled={isSubmittingVideo}
+            className="btn-secondary bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Save and finish later
           </button>
           
           <button
             onClick={() => setShowSubmitModal(true)}
-            disabled={!hasAnswer}
+            disabled={!hasAnswer || isSubmittingVideo}
             className="btn-primary bg-[#0047CC] text-white border-none rounded-[10px] p-[12px_26px] text-[14px] font-[700] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_4px_14px_rgba(0,71,204,0.28)] disabled:bg-[#E6E6E6] disabled:text-[#ADADAD] disabled:cursor-not-allowed disabled:shadow-none hover:bg-[#344DA1] transition-all"
           >
-            Submit answer
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M3 8h10M9 4l4 4-4 4"/>
-            </svg>
+            {isSubmittingVideo ? (
+              <>
+                <div className="w-[14px] h-[14px] rounded-full border-2 border-white border-t-transparent animate-spin inline-block" />
+                Uploading video...
+              </>
+            ) : (
+              <>
+                Submit answer
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M3 8h10M9 4l4 4-4 4"/>
+                </svg>
+              </>
+            )}
           </button>
         </div>
       </footer>
@@ -1176,14 +1287,17 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
                 <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
               </svg>
             </div>
+            <div className="inline-flex items-center gap-1.5 bg-[#FEE2E2] text-[#B91C1C] px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider mb-3">
+              Screen Focus Warning
+            </div>
             <h3 className="text-[18px] font-[900] text-[#1A1A1A] tracking-[-0.2px] mb-2">
-              You navigated away from this tab
+              Tab switch detected
             </h3>
-            <p className="text-[14px] text-[#4A4A4A] leading-[1.6] mb-4">
-              Leaving the interview tab during a video question is not allowed. Your current attempt will auto-submit in:
+            <p className="text-[13.5px] text-[#4A4A4A] leading-[1.6] mb-3">
+              Navigating away from the interview screen triggers an automatic submission of your current question state.
             </p>
-            <div className="inline-block bg-[#FEF2F2] text-[#B91C1C] font-[900] text-[20px] padding py-1 px-[14px] rounded-[8px] mb-4">
-              {cheatCountdown}s
+            <div className="text-[13px] font-bold text-[#DC2626] bg-[#FEF2F2] border border-[#FCA5A5] p-2.5 rounded-lg mb-4">
+              Auto-submitting in {cheatCountdown}s...
             </div>
             <p className="text-[12.5px] text-[#808080] leading-[1.5] mb-6">
               To pause properly, use <strong>Save and finish later</strong>. When you return, a fresh question will be generated.
@@ -1257,16 +1371,48 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
             <div className="flex gap-[10px] justify-center flex-wrap">
               <button 
                 onClick={() => setShowSubmitModal(false)}
-                className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] py-[11px] px-[18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7]"
+                disabled={isSubmittingVideo}
+                className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] py-[11px] px-[18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] disabled:opacity-50"
               >
                 Let me check it
               </button>
               <button 
                 onClick={handleConfirmSubmit}
-                className="bg-[#0047CC] text-white border-none rounded-[10px] py-[11px] px-[18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#344DA1]"
+                disabled={isSubmittingVideo}
+                className="bg-[#0047CC] text-white border-none rounded-[10px] py-[11px] px-[18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#344DA1] disabled:opacity-50 inline-flex items-center gap-2"
               >
+                {isSubmittingVideo && (
+                  <div className="w-[14px] h-[14px] rounded-full border-2 border-white border-t-transparent animate-spin inline-block" />
+                )}
                 {currentIdx < 4 ? `Yes, submit and unlock Q${currentIdx + 2}` : 'Yes, submit and complete'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UPLOADING VIDEO MODAL OVERLAY */}
+      {isSubmittingVideo && !isCompiling && (
+        <div className="fixed inset-0 z-[200] bg-[#0A1129]/80 flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm">
+          <div className="bg-white rounded-[20px] p-8 max-w-[420px] w-full shadow-[0_24px_80px_rgba(0,0,0,0.3)] border border-white/20 flex flex-col items-center animate-fadeIn">
+            {/* Rolling Circle with VORA Logo inside */}
+            <div className="relative w-20 h-20 mb-5 flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full border-[3.5px] border-[#0047CC]/15 border-t-[#0047CC] animate-spin" />
+              <img
+                src={VORA_LOGO_SRC}
+                alt="VORA"
+                className="w-10 h-10 object-contain animate-pulse relative z-10"
+              />
+            </div>
+            <h3 className="text-[19px] font-[900] text-[#1A1A1A] tracking-[-0.2px] mb-2">
+              Uploading Video Answer
+            </h3>
+            <p className="text-[13.5px] text-[#4A4A4A] leading-relaxed mb-3">
+              Your video answer is being uploaded and secured by the server.
+            </p>
+            <div className="inline-flex items-center gap-2 bg-[#F7F7F7] text-[#808080] px-3.5 py-1.5 rounded-full text-[12px] font-bold">
+              <div className="w-2 h-2 rounded-full bg-[#0047CC] animate-ping" />
+              Please keep this tab open...
             </div>
           </div>
         </div>
@@ -1275,13 +1421,14 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
       {/* COMPILING LOADING MODAL OVERLAY */}
       {isCompiling && (
         <div className="fixed inset-0 z-[200] bg-[#0A1129]/95 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md">
-          <div className="w-[120px] h-[120px] mb-6 relative flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full border-[4px] border-white/5 border-t-[#0047CC] animate-spin" />
-            <div className="absolute inset-2 rounded-full border-[4px] border-white/5 border-t-[#387DFF] animate-spin-reverse" />
-            
-            <svg className="w-10 h-10 text-[#387DFF] animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-            </svg>
+          <div className="w-24 h-24 mb-6 relative flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full border-[4px] border-white/10 border-t-[#0047CC] animate-spin" />
+            <div className="absolute inset-2 rounded-full border-[3px] border-white/5 border-t-[#387DFF] animate-spin-reverse" />
+            <img
+              src={VORA_LOGO_SRC}
+              alt="VORA"
+              className="w-12 h-12 object-contain animate-pulse relative z-10 brightness-0 invert"
+            />
           </div>
           
           <h2 className="text-[22px] font-[900] text-white tracking-[-0.3px] mb-2 animate-pulse">
