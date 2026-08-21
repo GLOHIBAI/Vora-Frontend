@@ -94,6 +94,14 @@ export const assessmentKeys = {
       componentId,
       "responses",
     ] as const,
+
+  // Stage 4 Decision
+  decision: (assessmentId: string) =>
+    [...assessmentKeys.all, assessmentId, "decision"] as const,
+  employerReviewQueue: (rolePostingId: string) =>
+    [...assessmentKeys.all, "role", rolePostingId, "review-queue"] as const,
+  employerReport: (assessmentId: string, rolePostingId?: string) =>
+    [...assessmentKeys.all, assessmentId, "employer-report", { rolePostingId }] as const,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -663,12 +671,28 @@ export const uploadGate3Video = async (
   file: Blob | File,
 ): Promise<import('./types').Gate3UploadResponse> => {
   const formData = new FormData();
-  formData.append('file', file, file instanceof File ? file.name : 'video-response.webm');
+  
+  // Extract clean MIME type without parameters (e.g. "video/webm;codecs=vp9,opus" -> "video/webm")
+  const rawType = file.type || '';
+  let cleanType = rawType.split(';')[0].trim().toLowerCase();
+  if (!cleanType || !cleanType.startsWith('video/')) {
+    cleanType = 'video/webm';
+  }
+
+  const ext = cleanType.includes('mp4') ? 'mp4' : cleanType.includes('quicktime') || cleanType.includes('mov') ? 'mov' : 'webm';
+  const fileName = (file instanceof File && file.name) ? file.name : `video-response.${ext}`;
+
+  const uploadFile = file instanceof File && file.type === cleanType
+    ? file
+    : new File([file], fileName, { type: cleanType });
+
+  formData.append('file', uploadFile, fileName);
 
   const res = await apiClient.post<any>({
     url: `/assessments/${assessmentId}/gates/3/items/${itemId}/video`,
     body: formData,
     auth: true,
+    suppressErrorToast: true,
   });
   return (res?.data || res) as import('./types').Gate3UploadResponse;
 };
@@ -688,6 +712,183 @@ export const submitComponentResponses = async (
     auth: true,
   });
   return res?.data || res;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STAGE 4: Final Decision & Employer Review Queries / Mutations
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /assessments/:assessmentId/decision
+ * Fetch candidate Stage 4 decision status & screen data (awaiting_employer, hired, alignment, rejected).
+ */
+export const fetchAssessmentDecision = async (
+  assessmentId: string,
+): Promise<import('./types').Stage4DecisionResponse> => {
+  const res = await apiClient.get<any>({
+    url: `/assessments/${assessmentId}/decision`,
+    auth: true,
+  });
+  return (res?.data || res) as import('./types').Stage4DecisionResponse;
+};
+
+export const useAssessmentDecisionQuery = (
+  assessmentId: string,
+  options?: {
+    enabled?: boolean;
+    refetchInterval?: number | false | ((query: any) => number | false);
+  },
+) =>
+  useQuery({
+    queryKey: assessmentKeys.decision(assessmentId),
+    queryFn: () => fetchAssessmentDecision(assessmentId),
+    enabled: Boolean(assessmentId) && (options?.enabled ?? true),
+    refetchInterval: options?.refetchInterval ?? 4000,
+    staleTime: 2000,
+  });
+
+/**
+ * POST /assessments/:assessmentId/decision/slot
+ * Confirm selected alignment slot for candidate.
+ */
+export const confirmAlignmentSlot = async (
+  assessmentId: string,
+  slotId: string,
+): Promise<any> => {
+  const res = await apiClient.post<any>({
+    url: `/assessments/${assessmentId}/decision/slot`,
+    body: { slotId },
+    auth: true,
+  });
+  return res?.data || res;
+};
+
+export const useConfirmAlignmentSlotMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ assessmentId, slotId }: { assessmentId: string; slotId: string }) =>
+      confirmAlignmentSlot(assessmentId, slotId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: assessmentKeys.decision(variables.assessmentId) });
+    },
+  });
+};
+
+/**
+ * GET /assessments/role/:rolePostingId/review-queue
+ * Employer review queue for a role.
+ */
+export const fetchEmployerReviewQueue = async (
+  rolePostingId: string,
+): Promise<import('./types').EmployerReviewQueueItem[]> => {
+  const res = await apiClient.get<any>({
+    url: `/assessments/role/${rolePostingId}/review-queue`,
+    auth: true,
+  });
+  return (res?.data?.items || res?.data || res) as import('./types').EmployerReviewQueueItem[];
+};
+
+export const useEmployerReviewQueueQuery = (rolePostingId: string, options?: { enabled?: boolean }) =>
+  useQuery({
+    queryKey: assessmentKeys.employerReviewQueue(rolePostingId),
+    queryFn: () => fetchEmployerReviewQueue(rolePostingId),
+    enabled: Boolean(rolePostingId) && (options?.enabled ?? true),
+    refetchInterval: 5000,
+  });
+
+/**
+ * GET /assessments/:assessmentId/employer-report?rolePostingId=
+ * Full dossier / report for employer decision.
+ */
+export const fetchEmployerReport = async (
+  assessmentId: string,
+  rolePostingId?: string,
+): Promise<import('./types').EmployerReportData> => {
+  const qs = rolePostingId ? `?rolePostingId=${encodeURIComponent(rolePostingId)}` : '';
+  const res = await apiClient.get<any>({
+    url: `/assessments/${assessmentId}/employer-report${qs}`,
+    auth: true,
+  });
+  return (res?.data || res) as import('./types').EmployerReportData;
+};
+
+export const useEmployerReportQuery = (
+  assessmentId: string,
+  rolePostingId?: string,
+  options?: { enabled?: boolean },
+) =>
+  useQuery({
+    queryKey: assessmentKeys.employerReport(assessmentId, rolePostingId),
+    queryFn: () => fetchEmployerReport(assessmentId, rolePostingId),
+    enabled: Boolean(assessmentId) && (options?.enabled ?? true),
+  });
+
+/**
+ * POST /assessments/:assessmentId/decision/hire
+ */
+export const useEmployerDecideHireMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ assessmentId, offer }: { assessmentId: string; offer?: Record<string, any> }) =>
+      apiClient.post<any>({
+        url: `/assessments/${assessmentId}/decision/hire`,
+        body: offer || {},
+        auth: true,
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: assessmentKeys.all });
+    },
+  });
+};
+
+/**
+ * POST /assessments/:assessmentId/decision/align
+ */
+export const useEmployerDecideAlignMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      assessmentId,
+      slots,
+    }: {
+      assessmentId: string;
+      slots: Array<{ label: string; startsAt: string; timezone?: string }>;
+    }) =>
+      apiClient.post<any>({
+        url: `/assessments/${assessmentId}/decision/align`,
+        body: { slots },
+        auth: true,
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: assessmentKeys.all });
+    },
+  });
+};
+
+/**
+ * POST /assessments/:assessmentId/decision/reject
+ */
+export const useEmployerDecideRejectMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      assessmentId,
+      kind,
+      reason,
+    }: {
+      assessmentId: string;
+      kind: 'LEGITIMATE' | 'FRAUD';
+      reason?: string;
+    }) =>
+      apiClient.post<any>({
+        url: `/assessments/${assessmentId}/decision/reject`,
+        body: { kind, reason },
+        auth: true,
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: assessmentKeys.all });
+    },
+  });
 };
 
 

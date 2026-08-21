@@ -81,6 +81,7 @@ const RoleAssessmentStageThreeVideo = lazy(() => import('./pages/talent/RoleAsse
 const RoleAssessmentStageThreeComplete = lazy(() => import('./pages/talent/RoleAssessmentStageThreeComplete'))
 const RoleAssessmentStageFourReview = lazy(() => import('./pages/talent/RoleAssessmentStageFourReview'))
 const RoleAssessmentStageFourOutcome = lazy(() => import('./pages/talent/RoleAssessmentStageFourOutcome'))
+const RoleAssessmentStageFourDecision = lazy(() => import('./pages/talent/RoleAssessmentStageFourDecision'))
 const RoleAssessmentResumeGate = lazy(() => import('./pages/talent/RoleAssessmentResumeGate'))
 const RoleProfileRolesFound = lazy(() => import('./pages/talent/RoleProfileRolesFound'))
 const RoleProfileMatchWaitlist = lazy(() => import('./pages/talent/RoleProfileMatchWaitlist'))
@@ -284,8 +285,10 @@ const App = () => {
             <Route path="interview/stage-3" element={<RoleAssessmentStageThreeIntro />} />
             <Route path="interview/stage-3/video" element={<RoleAssessmentStageThreeVideo />} />
             <Route path="interview/stage-3/complete" element={<RoleAssessmentStageThreeComplete />} />
-            <Route path="interview/stage-4/review" element={<RoleAssessmentStageFourReview />} />
-            <Route path="interview/stage-4/outcome" element={<RoleAssessmentStageFourOutcome />} />
+            <Route path="interview/stage-4" element={<RoleAssessmentStageFourDecision />} />
+            <Route path="interview/stage-4/decision" element={<RoleAssessmentStageFourDecision />} />
+            <Route path="interview/stage-4/review" element={<RoleAssessmentStageFourDecision />} />
+            <Route path="interview/stage-4/outcome" element={<RoleAssessmentStageFourDecision />} />
             <Route path="interview/resume" element={<RoleAssessmentResumeGate />} />
             {/* Legacy /assessment/* URLs → /interview/* */}
             <Route

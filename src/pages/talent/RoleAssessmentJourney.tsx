@@ -300,7 +300,14 @@ const RoleAssessmentJourney: React.FC = () => {
 
   const isStage4Unlocked = useMemo(() => {
     if (!readiness || isLocked) return false;
-    return readiness.assessmentStatus === 'COMPLETED' || readiness.nextStep === 'COMPLETED';
+    return (
+      readiness.assessmentStatus === 'COMPLETED' ||
+      readiness.nextStep === 'COMPLETED' ||
+      readiness.nextStep === 'STAGE_4_DECISION' ||
+      readiness.flowPhase === 'STAGE_4' ||
+      readiness.checks?.flowPhase === 'STAGE_4' ||
+      (typeof readiness.stage === 'number' && readiness.stage >= 4)
+    );
   }, [readiness, isLocked]);
 
   const onboardingItems = useMemo(() => {
@@ -842,7 +849,10 @@ const RoleAssessmentJourney: React.FC = () => {
 
           {/* Stage 4 (locked/active) */}
           {isStage4Unlocked ? (
-            <div className="bg-gradient-to-b from-[#FAFCFF] to-white border-[1.5px] border-[#0047CC] rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all shadow-[0_8px_24px_rgba(0,71,204,0.1)] z-[1]">
+            <div 
+              onClick={() => navigate(`/onboarding/talent/${roleSlug}/interview/stage-4/decision`)}
+              className="bg-gradient-to-b from-[#FAFCFF] to-white border-[1.5px] border-[#0047CC] rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all shadow-[0_8px_24px_rgba(0,71,204,0.1)] z-[1] cursor-pointer hover:shadow-[0_12px_32px_rgba(0,71,204,0.16)]"
+            >
               <div className="w-[54px] h-[54px] rounded-[14px] flex items-center justify-center shrink-0 relative z-[2] text-[17px] font-[900] bg-gradient-to-br from-[#0047CC] to-[#387DFF] text-white shadow-[0_4px_14px_rgba(0,71,204,0.3)]">
                 04
               </div>
@@ -867,7 +877,7 @@ const RoleAssessmentJourney: React.FC = () => {
                 </div>
               </div>
               <div className="absolute top-[22px] right-[22px] hidden sm:flex items-center gap-[6px] text-[11px] font-[800] px-[11px] py-[5px] rounded-full tracking-[0.4px] bg-white border border-[#0047CC] text-[#0047CC]">
-                Under review
+                Under review →
               </div>
             </div>
           ) : (

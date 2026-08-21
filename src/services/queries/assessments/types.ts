@@ -833,6 +833,7 @@ export interface Gate3ItemContent {
   recordingTimeSecs?: number;
   persona?: string;
   scenario?: string;
+  suggestedLength?: string;
 }
 
 export interface Gate3Item {
@@ -868,6 +869,97 @@ export interface Gate3UploadResponse {
   takeCount?: number;
   scoringReady?: boolean;
   nextSequence?: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STAGE 4: Final Decision & Employer Review Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type Stage4DecisionScreen = 'awaiting_employer' | 'hired' | 'alignment' | 'rejected';
+
+export interface Stage4DecisionStep {
+  label: string;
+  status: 'done' | 'active' | 'pending';
+  description?: string;
+  timestamp?: string;
+}
+
+export interface Stage4Reviewer {
+  name: string;
+  role?: string;
+  avatar?: string;
+}
+
+export interface Stage4AlignmentSlot {
+  id: string;
+  label: string;
+  startsAt: string;
+  timezone?: string;
+  taken?: boolean;
+}
+
+export interface Stage4Alignment {
+  durationMins?: number;
+  slots: Stage4AlignmentSlot[];
+  selectedSlotId?: string;
+}
+
+export interface Stage4Rejection {
+  kind?: 'LEGITIMATE' | 'FRAUD' | string;
+  reason?: string;
+}
+
+export interface Stage4Offer {
+  roleTitle?: string;
+  employerName?: string;
+  location?: string;
+  startDate?: string;
+  salary?: string;
+  notes?: string;
+}
+
+export interface Stage4DecisionData {
+  screen: Stage4DecisionScreen;
+  employerName?: string;
+  talentFirstName?: string;
+  typicalWait?: string;
+  startedAgo?: string;
+  steps?: Stage4DecisionStep[];
+  reviewers?: Stage4Reviewer[];
+  note?: string;
+  alignment?: Stage4Alignment;
+  rejection?: Stage4Rejection;
+  offer?: Stage4Offer;
+}
+
+export interface Stage4DecisionResponse {
+  statusCode?: number;
+  message?: string;
+  data: Stage4DecisionData;
+}
+
+export interface EmployerReviewQueueItem {
+  assessmentId: string;
+  rolePostingId: string;
+  talentId: string;
+  talentName: string;
+  talentCountry?: string;
+  grade?: string;
+  scores?: Record<string, any>;
+  status: string;
+  decision?: Stage4DecisionScreen;
+  completedAt?: string;
+}
+
+export interface EmployerReportData {
+  assessmentId: string;
+  talentName: string;
+  talentCountry?: string;
+  grade?: string;
+  scores?: Record<string, any>;
+  videos?: Array<{ itemId: string; videoUrl: string; sequence?: number; prompt?: string }>;
+  summary?: string;
+  decision?: Stage4DecisionScreen;
 }
 
 

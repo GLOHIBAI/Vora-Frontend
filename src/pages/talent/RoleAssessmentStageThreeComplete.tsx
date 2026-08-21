@@ -4,6 +4,8 @@ import AssessmentHeader from '../../components/talent/AssessmentHeader';
 import StageRail from '../../components/talent/StageRail';
 import { useAuth } from '../../context/AuthContext';
 
+import { useGetPublicRoleQuery } from '../../services/queries/talent';
+
 const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="20 6 9 17 4 12"/>
@@ -14,10 +16,17 @@ const RoleAssessmentStageThreeComplete: React.FC = () => {
   const navigate = useNavigate();
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
   const { user } = useAuth();
-  const firstName = user?.firstName || 'there';
+  const { data: roleResponse } = useGetPublicRoleQuery(roleSlug || '');
+  const roleData = roleResponse?.data || roleResponse;
+  const companyName = roleData?.companyName || 'the hiring team';
+
+  const rawFirstName = user?.firstName?.trim() || '';
+  const firstName = rawFirstName && !rawFirstName.includes('-') && !/\d/.test(rawFirstName)
+    ? rawFirstName
+    : '';
 
   const handleSeeProgress = () => {
-    navigate(`/onboarding/talent/${roleSlug}/interview/stage-4/review`);
+    navigate(`/onboarding/talent/${roleSlug}/interview/stage-4/decision`);
   };
 
   const handleBackToDashboard = () => {
@@ -55,21 +64,21 @@ const RoleAssessmentStageThreeComplete: React.FC = () => {
             Stage 3 complete
           </div>
           <h1 className="text-[28px] font-[900] text-[#1A1A1A] tracking-[-0.4px] leading-[1.22] mb-[14px]">
-            Beautifully done, {firstName}
+            {firstName ? `Beautifully done, ${firstName}` : 'Beautifully done'}
           </h1>
           <p className="text-[15px] text-[#4A4A4A] leading-[1.7] mb-[26px]">
-            All five video answers are in. The handoff to Reach Africa is happening now. From here it&apos;s their decision and their timeline.
+            All video answers are in. The handoff to {companyName} is happening now. From here it&apos;s their decision and their timeline.
           </p>
 
           {/* Submitted Summary box */}
           <div className="bg-[#FAFCFF] border border-[#387DFF]/20 rounded-[14px] p-[18px_20px] mb-[22px] text-left">
             <div className="text-[13px] font-[800] text-[#0047CC] mb-[10px] flex items-center gap-[8px]">
               <CheckIcon className="w-[16px] h-[16px] text-[#0047CC]" />
-              What we just submitted to Reach Africa
+              What we just submitted to {companyName}
             </div>
             <ul className="list-none flex flex-col gap-[6px] pl-[24px]">
               {[
-                'Your five video answers, in the order recorded',
+                'Your video answers, in the order recorded',
                 'Your Stage 1 profile and Stage 2 composite',
                 'Your candidate profile, written prompts and references',
                 'A short trait summary the hiring team will read alongside'
@@ -90,7 +99,7 @@ const RoleAssessmentStageThreeComplete: React.FC = () => {
               Stage 4 · Final decision
             </div>
             <div className="text-[13px] text-[#4A4A4A] leading-[1.55]">
-              Reach Africa&apos;s hiring team typically responds within <strong>a couple of hours</strong>. You&apos;ll see the outcome here, and you&apos;ll get an email the moment it&apos;s in. You don&apos;t need to wait on this screen.
+              {companyName}&apos;s hiring team typically responds within <strong>a couple of hours</strong>. You&apos;ll see the outcome here, and you&apos;ll get an email the moment it&apos;s in. You don&apos;t need to wait on this screen.
             </div>
           </div>
 
