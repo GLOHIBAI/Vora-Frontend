@@ -562,10 +562,17 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
         return;
       }
 
+      // Use window / nextSequence hints from the upload response to fetch exactly
+      // the next prompt, especially when retake is exhausted (takeCount === 2).
+      const fetchWindow = uploadRes?.window;
+      const fetchParams = fetchWindow
+        ? { from: fetchWindow.from, through: fetchWindow.through }
+        : undefined;
+
       // Fetch next questions from backend GET /gates/3/items
       if (assessmentId) {
         try {
-          const rawNextItems: any = await fetchGate3Items(assessmentId);
+          const rawNextItems: any = await fetchGate3Items(assessmentId, fetchParams);
           const nextItemsRes = rawNextItems?.data || rawNextItems;
           
           if (nextItemsRes?.scoringReady) {
@@ -588,6 +595,10 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
               if (currentIdx >= 0 && currentIdx + 1 < backendItems.length) {
                 nextItem = backendItems[currentIdx + 1];
               }
+            }
+            // If window returned only the next item (e.g. from=3&through=3), just use it
+            if (!nextItem && backendItems.length === 1 && backendItems[0].id !== currentItemId) {
+              nextItem = backendItems[0];
             }
 
             if (nextItem) {

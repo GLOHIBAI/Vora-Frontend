@@ -650,12 +650,19 @@ export const startGate3Session = async (
 /**
  * GET /api/v1/assessments/:assessmentId/gates/3/items
  * Retrieves current Gate 3 item prompt / polling status.
+ * Optionally pass from/through to request a specific window (from upload response hints).
  */
 export const fetchGate3Items = async (
   assessmentId: string,
+  params?: { from?: number; through?: number },
 ): Promise<import('./types').Gate3StartResponse> => {
+  const queryParams = new URLSearchParams();
+  if (params?.from !== undefined) queryParams.set('from', String(params.from));
+  if (params?.through !== undefined) queryParams.set('through', String(params.through));
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+
   const res = await apiClient.get<any>({
-    url: `/assessments/${assessmentId}/gates/3/items`,
+    url: `/assessments/${assessmentId}/gates/3/items${queryString}`,
     auth: true,
   });
   return (res?.data || res) as import('./types').Gate3StartResponse;

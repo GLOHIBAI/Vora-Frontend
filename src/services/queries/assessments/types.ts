@@ -869,6 +869,10 @@ export interface Gate3UploadResponse {
   takeCount?: number;
   scoringReady?: boolean;
   nextSequence?: number;
+  /** True when the item has reached max takes (GATE3_MAX_TAKE_COUNT = 2). */
+  retakeExhausted?: boolean;
+  /** Advance-hint window for the next items fetch. */
+  window?: { from: number; through: number; hasMore: boolean };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
