@@ -732,11 +732,25 @@ export const submitComponentResponses = async (
 export const fetchAssessmentDecision = async (
   assessmentId: string,
 ): Promise<import('./types').Stage4DecisionResponse> => {
-  const res = await apiClient.get<any>({
-    url: `/assessments/${assessmentId}/decision`,
-    auth: true,
-  });
-  return (res?.data || res) as import('./types').Stage4DecisionResponse;
+  try {
+    const res = await apiClient.get<any>({
+      url: `/assessments/${assessmentId}/decision`,
+      auth: true,
+      suppressErrorToast: true,
+    });
+    return (res?.data || res) as import('./types').Stage4DecisionResponse;
+  } catch (err: any) {
+    // If the interview has not reached employer decision formulation yet or is in review,
+    // safely fallback to the awaiting_employer screen state without raising global error toasts.
+    return {
+      statusCode: 200,
+      message: 'Awaiting employer decision formulation',
+      data: {
+        screen: 'awaiting_employer',
+        status: 'in_review',
+      },
+    } as any;
+  }
 };
 
 export const useAssessmentDecisionQuery = (

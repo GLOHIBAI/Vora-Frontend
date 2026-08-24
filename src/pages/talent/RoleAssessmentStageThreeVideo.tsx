@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import AssessmentHeader from '../../components/talent/AssessmentHeader';
-import StageRail from '../../components/talent/StageRail';
 import Button from '../../components/common/Button';
 import FullPageSpinner from '../../components/common/FullPageSpinner';
 import AssessmentAnalyzingView from '../../components/talent/assessment/AssessmentAnalyzingView';
@@ -20,21 +19,21 @@ import type { Gate3Item } from '../../services/queries/assessments/types';
 
 const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12"/>
+    <polyline points="20 6 9 17 4 12" />
   </svg>
 );
 
 const InfoIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-    <circle cx="12" cy="12" r="10"/>
-    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01" />
   </svg>
 );
 
 const ClockPlayIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-    <circle cx="12" cy="12" r="9"/>
-    <polyline points="12 7 12 12 16 14"/>
+    <circle cx="12" cy="12" r="9" />
+    <polyline points="12 7 12 12 16 14" />
   </svg>
 );
 
@@ -60,14 +59,10 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
   const [isSubmittingVideo, setIsSubmittingVideo] = useState<boolean>(false);
   const recordedBlobRef = useRef<Blob | null>(null);
   const allItemsRef = useRef<Gate3Item[]>([]);
+  const completedItemIdsRef = useRef<Set<string>>(new Set());
 
   // Question State
   const [takesCount, setTakesCount] = useState<number>(0);
-
-  // Reset takes count whenever current question changes
-  useEffect(() => {
-    setTakesCount(0);
-  }, [currentItem?.id]);
 
   // Derived Prompt fields strictly from backend
   const currentPromptText = currentItem?.content?.prompt || '';
@@ -108,10 +103,30 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
           allItemsRef.current = res.items;
         }
 
+        const videoUploads = res?.videoUploads || {};
+        const totalItems = res?.progress?.total || 6;
+
+        // If backend already marked scoringReady or all questions have recorded uploads
+        if (res?.scoringReady || Object.keys(videoUploads).length >= totalItems) {
+          setIsPreparingContent(false);
+          navigateToCandidateQuestions();
+          return;
+        }
+
         if (res?.contentReady && res?.items && res.items.length > 0) {
           const currentSeq = res.progress?.current || 1;
           const activeItem = res.items.find((it: Gate3Item) => it.sequence === currentSeq) || res.items[0];
+
+          // If current item is the last question and already completed
+          if (activeItem.sequence >= totalItems && videoUploads[activeItem.id]?.takeCount >= 2) {
+            setIsPreparingContent(false);
+            navigateToCandidateQuestions();
+            return;
+          }
+
           setCurrentItem(activeItem);
+          const initialTakes = videoUploads[activeItem.id]?.takeCount || 0;
+          setTakesCount(initialTakes);
           setIsPreparingContent(false);
           const readSecs = activeItem.content?.readingTimeSecs || 30;
           const recSecs = activeItem.content?.recordingTimeSecs || 180;
@@ -134,10 +149,30 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
                 allItemsRef.current = pollRes.items;
               }
 
+              const pollVideoUploads = pollRes?.videoUploads || {};
+              const pollTotal = pollRes?.progress?.total || 6;
+
+              if (pollRes?.scoringReady || Object.keys(pollVideoUploads).length >= pollTotal) {
+                setIsPreparingContent(false);
+                clearInterval(pollInterval);
+                navigateToCandidateQuestions();
+                return;
+              }
+
               if (pollRes?.contentReady && pollRes?.items && pollRes.items.length > 0) {
                 const currentSeq = pollRes.progress?.current || 1;
                 const activeItem = pollRes.items.find((it: Gate3Item) => it.sequence === currentSeq) || pollRes.items[0];
+
+                if (activeItem.sequence >= pollTotal && pollVideoUploads[activeItem.id]?.takeCount >= 2) {
+                  setIsPreparingContent(false);
+                  clearInterval(pollInterval);
+                  navigateToCandidateQuestions();
+                  return;
+                }
+
                 setCurrentItem(activeItem);
+                const pollTakes = pollVideoUploads[activeItem.id]?.takeCount || 0;
+                setTakesCount(pollTakes);
                 setIsPreparingContent(false);
                 const readSecs = activeItem.content?.readingTimeSecs || 30;
                 const recSecs = activeItem.content?.recordingTimeSecs || 180;
@@ -190,6 +225,10 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
 
+  // Collapsible panels (redesign)
+  const [showWhyWeAsk, setShowWhyWeAsk] = useState<boolean>(false);
+  const [showTips, setShowTips] = useState<boolean>(true);
+
   // Modals state
   const [showSaveModal, setShowSaveModal] = useState<boolean>(false);
   const [showSubmitModal, setShowSubmitModal] = useState<boolean>(false);
@@ -207,18 +246,12 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
-  // Timer: Think Time (Starts only when contentReady === true)
+  // Timer: Think Time countdown (Starts only when contentReady === true)
   useEffect(() => {
     let interval: any = null;
     if (!isPreparingContent && isThinking && thinkTimeLeft > 0 && !showCheatModal && !showSaveModal && !showSubmitModal) {
       interval = setInterval(() => {
-        setThinkTimeLeft(prev => {
-          if (prev <= 1) {
-            handleStartAnswerFlow();
-            return 0;
-          }
-          return prev - 1;
-        });
+        setThinkTimeLeft(prev => Math.max(0, prev - 1));
       }, 1000);
     }
     return () => {
@@ -226,19 +259,19 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
     };
   }, [isPreparingContent, isThinking, thinkTimeLeft, showCheatModal, showSaveModal, showSubmitModal]);
 
+  // Auto-start answer flow when think time runs out
+  useEffect(() => {
+    if (!isPreparingContent && isThinking && thinkTimeLeft === 0 && !showCheatModal && !showSaveModal && !showSubmitModal) {
+      handleStartAnswerFlow();
+    }
+  }, [isPreparingContent, isThinking, thinkTimeLeft, showCheatModal, showSaveModal, showSubmitModal]);
+
   // Timer: Answer countdown (counts down ONLY when actively recording)
   useEffect(() => {
     let interval: any = null;
     if (isRecording && !isRecordingStopped && !showCheatModal && !showSaveModal && !showSubmitModal) {
       interval = setInterval(() => {
-        setSecondsLeft(prev => {
-          if (ENABLE_STAGE3_HARD_CAP && prev <= 1) {
-            handleStopRecording();
-            return 0;
-          }
-          return Math.max(0, prev - 1);
-        });
-
+        setSecondsLeft(prev => Math.max(0, prev - 1));
         setRecElapsed(prev => prev + 1);
       }, 1000);
     }
@@ -246,6 +279,13 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
       if (interval) clearInterval(interval);
     };
   }, [isRecording, isRecordingStopped, showCheatModal, showSaveModal, showSubmitModal]);
+
+  // Auto-stop recording when hard cap time runs out
+  useEffect(() => {
+    if (ENABLE_STAGE3_HARD_CAP && isRecording && secondsLeft === 0) {
+      handleStopRecording();
+    }
+  }, [ENABLE_STAGE3_HARD_CAP, isRecording, secondsLeft]);
 
   // Tab change visibility listener (Anti-cheat)
   useEffect(() => {
@@ -272,18 +312,19 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
     let interval: any = null;
     if (showCheatModal && cheatCountdown > 0) {
       interval = setInterval(() => {
-        setCheatCountdown(prev => {
-          if (prev <= 1) {
-            handleCheatSubmit();
-            return 0;
-          }
-          return prev - 1;
-        });
+        setCheatCountdown(prev => Math.max(0, prev - 1));
       }, 1000);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
+  }, [showCheatModal, cheatCountdown]);
+
+  // Auto-submit on cheat countdown expiration
+  useEffect(() => {
+    if (showCheatModal && cheatCountdown === 0) {
+      handleCheatSubmit();
+    }
   }, [showCheatModal, cheatCountdown]);
 
   // Camera stream initiation
@@ -495,7 +536,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
     }
 
     if (file.size > 200 * 1024 * 1024) {
-      toast.error('File size exceeds the 200MB limit!');
+      toast.error('File size exceeds the 50 mb limit!');
       return;
     }
 
@@ -555,77 +596,120 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
         }
       }
 
-      const targetCompId = uploadRes?.componentId || componentId;
+      if (currentItemId) {
+        completedItemIdsRef.current.add(currentItemId);
+      }
 
-      if (uploadRes?.scoringReady && targetCompId && assessmentId) {
-        runCompletionLoader(targetCompId);
+      const targetCompId = uploadRes?.componentId || componentId;
+      const currentSequence = currentItem?.sequence || progress.current || 1;
+      const totalCount = currentItem?.total || progress.total || 6;
+      const targetNextSeq = uploadRes?.nextSequence || (currentSequence + 1);
+
+      // 1. If this was the last question (e.g. Q6) or backend marked scoringReady / all uploaded
+      if (
+        uploadRes?.scoringReady ||
+        currentSequence >= totalCount ||
+        targetNextSeq > totalCount ||
+        (uploadRes?.progress?.uploaded && uploadRes.progress.uploaded >= totalCount) ||
+        (uploadRes?.window && !uploadRes.window.hasMore && currentSequence >= totalCount) ||
+        completedItemIdsRef.current.size >= totalCount
+      ) {
+        navigateToCandidateQuestions();
         return;
       }
 
-      // Use window / nextSequence hints from the upload response to fetch exactly
-      // the next prompt, especially when retake is exhausted (takeCount === 2).
+      // 2. Use window / nextSequence hints from the upload response to fetch exactly the next prompt
       const fetchWindow = uploadRes?.window;
       const fetchParams = fetchWindow
         ? { from: fetchWindow.from, through: fetchWindow.through }
-        : undefined;
+        : { from: targetNextSeq, through: targetNextSeq };
+
+      let foundNextItem: Gate3Item | null = null;
+      let nextVideoUploads: Record<string, any> = {};
 
       // Fetch next questions from backend GET /gates/3/items
       if (assessmentId) {
         try {
           const rawNextItems: any = await fetchGate3Items(assessmentId, fetchParams);
           const nextItemsRes = rawNextItems?.data || rawNextItems;
-          
+
           if (nextItemsRes?.scoringReady) {
-            runCompletionLoader(nextItemsRes.componentId || targetCompId || 'gate3_component');
+            navigateToCandidateQuestions();
             return;
           }
 
           const backendItems: Gate3Item[] = nextItemsRes?.items || [];
-          if (backendItems.length > 0) {
-            // Find next item that isn't the one we just submitted
-            let nextItem = backendItems.find(
-              it => it.id !== currentItemId && it.sequence > (currentItem?.sequence || 0)
-            );
-            if (!nextItem) {
-              nextItem = backendItems.find(it => it.id !== currentItemId);
-            }
-            // If still not found by ID, advance to the next in list or fallback
-            if (!nextItem && backendItems.length > 1) {
-              const currentIdx = backendItems.findIndex(it => it.id === currentItemId);
-              if (currentIdx >= 0 && currentIdx + 1 < backendItems.length) {
-                nextItem = backendItems[currentIdx + 1];
-              }
-            }
-            // If window returned only the next item (e.g. from=3&through=3), just use it
-            if (!nextItem && backendItems.length === 1 && backendItems[0].id !== currentItemId) {
-              nextItem = backendItems[0];
-            }
+          nextVideoUploads = nextItemsRes?.videoUploads || {};
 
-            if (nextItem) {
-              setCurrentItem(nextItem);
-              if (nextItemsRes.progress) {
-                setProgress(nextItemsRes.progress);
-              } else {
-                setProgress(prev => ({ ...prev, current: nextItem.sequence }));
-              }
-              const readSecs = nextItem.content?.readingTimeSecs || 30;
-              const recSecs = nextItem.content?.recordingTimeSecs || 180;
-              setThinkTimeLeft(readSecs);
-              setSecondsLeft(recSecs);
-              setIsThinking(true);
-              toast.dismiss();
-              return;
+          // Sync completed from videoUploads
+          Object.keys(nextVideoUploads).forEach(id => {
+            if (nextVideoUploads[id]?.takeCount >= 1) {
+              completedItemIdsRef.current.add(id);
             }
+          });
+
+          // Accumulate into allItemsRef
+          backendItems.forEach((it: Gate3Item) => {
+            if (!allItemsRef.current.some(existing => existing.id === it.id)) {
+              allItemsRef.current.push(it);
+            }
+          });
+
+          // Priority 1: Match targetNextSeq from backendItems not completed
+          foundNextItem = backendItems.find(
+            it => !completedItemIdsRef.current.has(it.id) && it.sequence === targetNextSeq
+          ) || null;
+
+          // Priority 2: Any item in backendItems with sequence > currentSequence not completed
+          if (!foundNextItem) {
+            foundNextItem = backendItems.find(
+              it => !completedItemIdsRef.current.has(it.id) && it.sequence > currentSequence
+            ) || null;
+          }
+
+          // Priority 3: Any item in backendItems not in completedItemIdsRef
+          if (!foundNextItem) {
+            foundNextItem = backendItems.find(
+              it => !completedItemIdsRef.current.has(it.id) && it.id !== currentItemId
+            ) || null;
           }
         } catch (fetchErr) {
           console.warn('Error fetching next Gate 3 items:', fetchErr);
         }
       }
 
-      // If backend explicitly marked scoringReady or no more items
-      if (scoringReady) {
-        runCompletionLoader(targetCompId || 'gate3_component');
+      // Priority 4: Search allItemsRef for targetNextSeq not completed
+      if (!foundNextItem) {
+        foundNextItem = allItemsRef.current.find(
+          it => !completedItemIdsRef.current.has(it.id) && it.sequence === targetNextSeq
+        ) || null;
       }
+
+      // Priority 5: Search allItemsRef for any item sequence > currentSequence not completed
+      if (!foundNextItem) {
+        foundNextItem = allItemsRef.current.find(
+          it => !completedItemIdsRef.current.has(it.id) && it.sequence > currentSequence
+        ) || null;
+      }
+
+      // If a valid next item is found, transition to it cleanly
+      if (foundNextItem) {
+        setCurrentItem(foundNextItem);
+        setProgress(prev => ({ ...prev, current: foundNextItem!.sequence }));
+        const readSecs = foundNextItem.content?.readingTimeSecs || 30;
+        const recSecs = foundNextItem.content?.recordingTimeSecs || 180;
+        setThinkTimeLeft(readSecs);
+        setSecondsLeft(recSecs);
+        setIsThinking(true);
+        const nextTakes = nextVideoUploads[foundNextItem.id]?.takeCount || 0;
+        setTakesCount(nextTakes);
+        toast.dismiss();
+        return;
+      }
+
+      // If no next question exists and we've answered available questions:
+      navigateToCandidateQuestions();
+      return;
     } catch (err: any) {
       console.error('Failed to submit Stage 3 video response:', err);
       toast.error('Failed to upload video response. Please retry.');
@@ -642,9 +726,14 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
     }
   };
 
+  const navigateToCandidateQuestions = () => {
+    stopCamera();
+    navigate(`/onboarding/talent/${roleSlug}/interview/stage-3/candidate-questions`);
+  };
+
   const runCompletionLoader = (finalComponentId?: string) => {
     setIsCompiling(true);
-    
+
     setTimeout(async () => {
       const compId = finalComponentId || componentId;
       if (assessmentId && compId) {
@@ -753,7 +842,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col relative select-none">
-      
+
       {/* Topbar */}
       <AssessmentHeader
         middleContent={`Stage 3 · Video interview · Question ${currentNum} of ${totalNum}`}
@@ -761,14 +850,14 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
           <div className="flex items-center gap-[14px]">
             <div className={`flex items-center gap-[7px] border-[1.5px] rounded-full p-[6px_14px] font-[800] text-[13.5px] tabular-nums transition-all ${getTimerChipClass()}`}>
               <svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <circle cx="12" cy="12" r="9"/>
-                <polyline points="12 7 12 12 16 14"/>
+                <circle cx="12" cy="12" r="9" />
+                <polyline points="12 7 12 12 16 14" />
               </svg>
               <span>{isThinking ? `Think: ${thinkTimeLeft}s` : formatTimer(secondsLeft)}</span>
             </div>
             <div className="flex items-center gap-[6px] text-[12px] text-[#808080] font-[600]">
               <svg className="text-[#0047CC] w-[13px] h-[13px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="20 6 9 17 4 12"/>
+                <polyline points="20 6 9 17 4 12" />
               </svg>
               Auto-saved
             </div>
@@ -776,185 +865,131 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
         }
       />
 
-      {/* Stage Rail */}
-      <StageRail activeStage={3} greenDone={false} showBottomBorder={false} />
-
-      {/* Question pebble rail */}
-      <div className="bg-gradient-to-b from-white to-[#FBFCFF] border-b border-[#E6E6E6] p-[12px_32px] flex items-center justify-center gap-[8px] flex-wrap">
-        {Array.from({ length: totalNum }).map((_, idx) => {
-          const qNum = idx + 1;
-          const isActive = qNum === currentNum;
-          const isDone = qNum < currentNum;
-          return (
-            <div 
-              key={qNum}
-              className={`flex items-center gap-[7px] p-[6px_12px] rounded-full border-[1.5px] text-[11.5px] font-[700] transition-all duration-200 ${
-                isDone 
-                  ? 'bg-[#EBF6FF] border-[#387DFF]/30 text-[#0047CC]' 
-                  : isActive 
-                  ? 'border-[#0047CC] bg-[#EBF6FF] text-[#0047CC] shadow-[0_0_0_3px_rgba(0,71,204,0.08)]' 
-                  : 'border-[#E6E6E6] text-[#ADADAD]'
-              }`}
-            >
-              <div className={`w-[18px] h-[18px] rounded-full text-[9px] font-[900] flex items-center justify-center shrink-0 text-white ${
-                isDone || isActive ? 'bg-[#0047CC]' : 'bg-[#ADADAD]'
-              }`}>
-                {isDone ? <CheckIcon className="w-[9px] h-[9px]" /> : qNum}
-              </div>
-              Question {qNum}
-            </div>
-          );
-        })}
+      {/* ── Segmented progress bar (replaces StageRail + question pills) ── */}
+      <div className="bg-white border-b border-[#E6E6E6] px-[32px] py-[10px]">
+        <div className="max-w-[1180px] mx-auto flex gap-[4px]">
+          {Array.from({ length: totalNum }).map((_, idx) => (
+            <div
+              key={idx}
+              className={`flex-1 h-[4px] rounded-full transition-all duration-300 ${idx < currentNum ? 'bg-[#0047CC]' : 'bg-[#E6E6E6]'
+                }`}
+            />
+          ))}
+        </div>
       </div>
 
-      {/* Main Workspace Layout */}
-      <main className="max-w-[1180px] w-full mx-auto p-[28px_28px_90px]">
-        
-        {/* Question Reveal Card */}
-        <div className="bg-gradient-to-br from-[#182348] via-[#344DA1] to-[#0047CC] text-white rounded-[18px] p-[30px_34px_32px] relative overflow-hidden mb-[22px] shadow-[0_12px_36px_rgba(10,17,114,0.18)]">
-          <div className="absolute top-[-60px] right-[-50px] w-[200px] h-[200px] rounded-full bg-white/[0.05]" />
-          <div className="absolute bottom-[-60px] left-[-30px] w-[140px] h-[140px] rounded-full bg-white/[0.04]" />
-          
-          <div className="relative z-10">
-            <div className="flex justify-between items-start mb-[16px] gap-[14px] flex-wrap">
-              <div className="flex items-center gap-[10px]">
-                <div className="inline-flex items-center justify-center w-[36px] h-[36px] rounded-[10px] bg-white/[0.16] border border-white/[0.22] font-[900] text-[14px] backdrop-blur-[8px]">
-                  {currentNum.toString().padStart(2, '0')}
-                </div>
-                <div>
-                  <div className="text-[11px] font-[800] tracking-[1px] uppercase text-white/70">{eyebrowText}</div>
-                  <div className="text-[12.5px] font-[700] text-white/88">{currentNum} of {totalNum} · {currentCategoryTag}</div>
-                </div>
-              </div>
-              <div className="inline-flex items-center gap-[7px] bg-white/[0.16] border border-white/[0.24] rounded-full p-[5px_12px] font-[800] text-[11px] uppercase">
-                {currentCategoryTag}
-              </div>
-            </div>
+      {/* ── Main workspace ── */}
+      <main className="max-w-[1180px] w-full mx-auto p-[28px_28px_100px]">
 
-            <div className="text-[23px] font-[900] tracking-[-0.3px] leading-[1.35] mb-[14px]">
-              {currentPromptText}
-            </div>
+        {/* ── Question area + right panel split ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-[28px] items-start">
 
-            {isRelationalType && personaText && (
-              <div className="bg-white/[0.14] border border-white/[0.24] rounded-[10px] p-[13px_16px] mb-[14px]">
-                <div className="text-[11px] font-[800] uppercase tracking-[0.6px] text-white/70 mb-1">Persona & Scenario</div>
-                <div className="text-[13.5px] font-[700] text-white mb-1">{personaText}</div>
-                {scenarioText && <div className="text-[12.5px] text-white/88 leading-[1.5]">{scenarioText}</div>}
-              </div>
-            )}
+          {/* ── Left column: question → video ── */}
+          <div className="flex flex-col gap-[20px]">
 
-            {currentContextText && (
-              <div className="bg-white/[0.1] border border-white/[0.2] rounded-[10px] p-[13px_16px] flex gap-[11px] items-start mb-[18px]">
-                <InfoIcon className="w-[16px] h-[16px] text-[#387DFF] shrink-0 mt-[2px]" />
-                <div className="text-[13px] leading-[1.55] text-white/88">
-                  <strong>Why we ask · </strong>{currentContextText}
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-[8px] flex-wrap">
-              <div className="flex-1 min-w-[130px] bg-white/[0.08] border border-white/[0.14] rounded-[10px] p-[9px_13px]">
-                <div className="text-[9.5px] font-[800] uppercase tracking-[0.6px] text-white/60 mb-[3px]">Suggested length</div>
-                <div className="text-[14px] font-[900] text-white flex items-center gap-[6px]">
-                  <ClockPlayIcon className="w-[13px] h-[13px] text-[#387DFF]" />
-                  {suggestedLengthText}
-                </div>
-              </div>
-              <div className="flex-1 min-w-[130px] bg-white/[0.08] border border-white/[0.14] rounded-[10px] p-[9px_13px]">
-                <div className="text-[9.5px] font-[800] uppercase tracking-[0.6px] text-white/60 mb-[3px]">Hard cap</div>
-                <div className="text-[14px] font-[900] text-white">2:00</div>
-              </div>
-              <div className="flex-1 min-w-[130px] bg-white/[0.08] border border-white/[0.14] rounded-[10px] p-[9px_13px]">
-                <div className="text-[9.5px] font-[800] uppercase tracking-[0.6px] text-white/60 mb-[3px]">Attempts allowed</div>
-                <div className="text-[14px] font-[900] text-white">
-                  {!ENABLE_STAGE3_RETAKE_LIMIT
-                    ? 'Unlimited (dev mode)'
-                    : takesCount >= 2
+            {/* Metadata line — quiet, gray, inline */}
+            <div className="flex items-center gap-[6px] text-[13px] text-[#808080] font-[500] flex-wrap">
+              <span>Question {currentNum} of {totalNum}</span>
+              <span className="text-[#D4D4D4]">·</span>
+              <span>{currentCategoryTag === 'video_prompt' ? 'How you show up' : currentCategoryTag}</span>
+              <span className="text-[#D4D4D4]">·</span>
+              <span>{suggestedLengthText}</span>
+              <span className="text-[#D4D4D4]">·</span>
+              <span>
+                {!ENABLE_STAGE3_RETAKE_LIMIT
+                  ? 'Unlimited retakes'
+                  : takesCount >= 2
                     ? '0 retakes left'
                     : takesCount === 1
-                    ? '1 retake left'
-                    : '1 retake (max 2 takes)'}
-                </div>
-              </div>
+                      ? '1 retake left'
+                      : '1 retake allowed'}
+              </span>
             </div>
-          </div>
-        </div>
 
-        {/* Mode Toggle Tabs */}
-        <div className="flex bg-white border-[1.5px] border-[#E6E6E6] rounded-[12px] p-[5px] mb-[20px] max-w-[480px] mx-auto">
-          <button
-            onClick={() => handleSwitchTab('live')}
-            disabled={isRecording}
-            className={`flex-1 py-[11px] px-[16px] rounded-[8px] font-bold text-[13px] flex items-center justify-center gap-[8px] transition-all border-none cursor-pointer ${
-              activeTab === 'live'
-                ? 'bg-gradient-to-br from-[#0047CC] to-[#387DFF] text-white shadow-[0_4px_12px_rgba(0,71,204,0.22)]'
-                : 'bg-transparent text-[#808080] hover:text-[#1A1A1A]'
-            }`}
-          >
-            <svg className="w-[16px] h-[16px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <circle cx="12" cy="12" r="9"/>
-              <circle cx="12" cy="12" r="3" fill="currentColor"/>
-            </svg>
-            Record live
-            <span className={`text-[9.5px] font-[900] px-2 py-[2px] rounded-full uppercase tracking-[0.4px] ${
-              activeTab === 'live' ? 'bg-white/20 text-white' : 'bg-[#F7F7F7] text-[#808080]'
-            }`}>
-              Path 1
-            </span>
-          </button>
-          <button
-            onClick={() => handleSwitchTab('upload')}
-            disabled={isRecording}
-            className={`flex-1 py-[11px] px-[16px] rounded-[8px] font-bold text-[13px] flex items-center justify-center gap-[8px] transition-all border-none cursor-pointer ${
-              activeTab === 'upload'
-                ? 'bg-gradient-to-br from-[#0047CC] to-[#387DFF] text-white shadow-[0_4px_12px_rgba(0,71,204,0.22)]'
-                : 'bg-transparent text-[#808080] hover:text-[#1A1A1A]'
-            }`}
-          >
-            <svg className="w-[16px] h-[16px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="17 8 12 3 7 8"/>
-              <line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
-            Upload pre-recorded
-            <span className={`text-[9.5px] font-[900] px-2 py-[2px] rounded-full uppercase tracking-[0.4px] ${
-              activeTab === 'upload' ? 'bg-white/20 text-white' : 'bg-[#F7F7F7] text-[#808080]'
-            }`}>
-              Path 2
-            </span>
-          </button>
-        </div>
+            {/* ── THE QUESTION — dominant element ── */}
+            <h1 className="text-[24px] font-[700] text-[#1A1A1A] leading-[1.4] tracking-[-0.3px] m-0">
+              {currentPromptText}
+            </h1>
 
-        {/* Workspace Split */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_.9fr] gap-[18px] items-stretch">
-          
-          {/* Active Work Area */}
-          <div className="flex flex-col">
-            
-            {/* Record Live Panel */}
+            {/* Persona & scenario (relational prompts only) */}
+            {isRelationalType && personaText && (
+              <div className="bg-[#FAFAFA] border border-[#E6E6E6] rounded-[12px] p-[16px_20px]">
+                <div className="text-[12px] font-[600] text-[#808080] uppercase tracking-[0.5px] mb-[6px]">Persona & scenario</div>
+                <div className="text-[14px] font-[600] text-[#1A1A1A] mb-[4px]">{personaText}</div>
+                {scenarioText && <div className="text-[13px] text-[#666] leading-[1.55]">{scenarioText}</div>}
+              </div>
+            )}
+
+            {/* "Why we ask" — collapsible disclosure */}
+            {currentContextText && (
+              <button
+                onClick={() => setShowWhyWeAsk(prev => !prev)}
+                className="w-full bg-[#FAFAFA] hover:bg-[#F5F5F5] border border-[#E6E6E6] rounded-[12px] p-[12px_16px] flex items-center gap-[10px] cursor-pointer transition-colors text-left"
+              >
+                <InfoIcon className="w-[15px] h-[15px] text-[#ADADAD] shrink-0" />
+                <span className="flex-1 text-[13px] font-[500] text-[#808080]">Why we ask</span>
+                <svg
+                  className={`w-[14px] h-[14px] text-[#ADADAD] transition-transform duration-200 ${showWhyWeAsk ? 'rotate-180' : ''}`}
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+            )}
+            {showWhyWeAsk && currentContextText && (
+              <div className="bg-[#FAFAFA] border border-[#E6E6E6] rounded-[12px] p-[14px_18px] -mt-[12px] text-[13px] text-[#666] leading-[1.6]">
+                {currentContextText}
+              </div>
+            )}
+
+            {/* ── Mode toggle — plain text tabs ── */}
+            <div className="flex items-center gap-[24px] border-b border-[#E6E6E6] mt-[4px]">
+              <button
+                onClick={() => handleSwitchTab('live')}
+                disabled={isRecording}
+                className={`pb-[10px] text-[13.5px] font-[600] border-b-[2px] transition-all cursor-pointer bg-transparent ${activeTab === 'live'
+                  ? 'text-[#0047CC] border-[#0047CC]'
+                  : 'text-[#808080] border-transparent hover:text-[#4A4A4A]'
+                  }`}
+              >
+                Record now
+              </button>
+              <button
+                onClick={() => handleSwitchTab('upload')}
+                disabled={isRecording}
+                className={`pb-[10px] text-[13.5px] font-[600] border-b-[2px] transition-all cursor-pointer bg-transparent ${activeTab === 'upload'
+                  ? 'text-[#0047CC] border-[#0047CC]'
+                  : 'text-[#808080] border-transparent hover:text-[#4A4A4A]'
+                  }`}
+              >
+                Upload a recording
+              </button>
+            </div>
+
+            {/* ── Record live panel ── */}
             {activeTab === 'live' && (
-              <div className="bg-[#0B0F14] rounded-[16px] overflow-hidden flex flex-col min-h-[460px] relative shadow-[0_12px_36px_rgba(0,0,0,0.18)]">
-                
-                <div className="flex-1 relative bg-[#0B0F14] flex items-center justify-center min-h-[340px] overflow-hidden">
-                  
-                  {/* Preparing Think time overlay */}
+              <div className="bg-[#0B0F14] rounded-[12px] overflow-hidden flex flex-col min-h-[420px] relative shadow-[0_8px_24px_rgba(0,0,0,0.15)]">
+
+                <div className="flex-1 relative bg-[#0B0F14] flex items-center justify-center min-h-[320px] overflow-hidden">
+
+                  {/* Think time overlay */}
                   {isThinking && (
                     <div className="absolute inset-0 bg-[#0B0F14]/95 flex flex-col items-center justify-center p-6 text-center z-20 backdrop-blur-sm">
-                      <div className="relative w-[100px] h-[100px] mb-4 flex items-center justify-center">
+                      <div className="relative w-[88px] h-[88px] mb-4 flex items-center justify-center">
                         <div className="absolute inset-0 rounded-full border-[3px] border-white/10 border-t-[#0047CC] animate-spin" />
-                        <span className="text-[26px] font-[900] tabular-nums text-white relative z-10">
+                        <span className="text-[24px] font-[700] tabular-nums text-white relative z-10">
                           {thinkTimeLeft}
                         </span>
                       </div>
-                      <h3 className="text-[17px] font-[800] mb-1 text-white">Think time active</h3>
-                      <p className="text-[12.5px] text-white/70 max-w-[340px] mb-6 leading-relaxed">
-                        Prepare your answer. Recording will automatically begin when the timer runs down.
+                      <h3 className="text-[16px] font-[700] mb-1 text-white">Think time</h3>
+                      <p className="text-[13px] text-white/60 max-w-[320px] mb-5 leading-relaxed font-[400]">
+                        Prepare your answer. Recording begins when the timer ends.
                       </p>
                       <Button
                         onClick={handleStartAnswerFlow}
                         variant="primary"
                         pill={false}
-                        className="bg-[#0047CC] hover:bg-[#344DA1] text-white border-none rounded-lg font-bold text-[13px] px-6 py-2 min-h-0"
+                        className="bg-[#0047CC] hover:bg-[#344DA1] text-white border-none rounded-[10px] font-[600] text-[13px] px-6 py-2 min-h-0"
                         fullWidth={false}
                       >
                         Start recording now
@@ -965,7 +1000,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
                   {/* Camera view or recorded playback */}
                   {!isRecordingStopped ? (
                     hasWebcamPermission ? (
-                      <video 
+                      <video
                         ref={videoRef}
                         autoPlay
                         muted
@@ -974,21 +1009,21 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
                       />
                     ) : (
                       <div className="flex flex-col items-center justify-center p-6 text-center text-white/70">
-                        <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mb-3 text-white/40">
-                          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            <circle cx="12" cy="9" r="3.5"/>
-                            <path d="M5 20.5a7 7 0 0 1 14 0"/>
+                        <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center mb-3 text-white/40">
+                          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <circle cx="12" cy="9" r="3.5" />
+                            <path d="M5 20.5a7 7 0 0 1 14 0" />
                           </svg>
                         </div>
-                        <div className="text-[14px] font-bold text-white mb-1">Camera and mic standby</div>
-                        <p className="text-[12px] text-white/50 max-w-[240px]">Allow camera permissions or start recording to begin</p>
+                        <div className="text-[14px] font-[600] text-white mb-1">Camera standby</div>
+                        <p className="text-[12px] text-white/50 max-w-[240px] font-[400]">Allow camera permissions to begin</p>
                       </div>
                     )
                   ) : (
                     <div className="absolute inset-0 bg-[#0B0F14] z-10 flex flex-col items-center justify-center">
                       {recordedVideoUrl ? (
-                        <video 
-                          src={recordedVideoUrl} 
+                        <video
+                          src={recordedVideoUrl}
                           controls
                           playsInline
                           className="w-full h-full object-contain"
@@ -997,35 +1032,34 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Overlays */}
+                  {/* Recording overlays */}
                   {!isThinking && (
                     <>
-                      <div className="absolute top-[14px] left-[14px] right-[14px] flex justify-between items-center z-5 pointer-events-none">
-                        <div className="inline-flex items-center gap-[7px] bg-black/60 backdrop-blur-[8px] border border-white/12 rounded-full p-[5px_12px] text-[11.5px] font-[800] text-white">
-                          <div className={`w-[8px] h-[8px] rounded-full ${isRecording ? 'bg-[#DC2626] animate-pulse' : 'bg-[#387DFF]'}`} />
-                          <span>{isRecording ? 'RECORDING' : isRecordingStopped ? 'PREVIEWING' : 'STANDBY'}</span>
+                      <div className="absolute top-[12px] left-[12px] right-[12px] flex justify-between items-center z-5 pointer-events-none">
+                        <div className="inline-flex items-center gap-[6px] bg-black/60 backdrop-blur-[8px] border border-white/12 rounded-full p-[5px_12px] text-[11px] font-[600] text-white">
+                          <div className={`w-[7px] h-[7px] rounded-full ${isRecording ? 'bg-[#DC2626] animate-pulse' : 'bg-[#387DFF]'}`} />
+                          <span>{isRecording ? 'RECORDING' : isRecordingStopped ? 'PREVIEW' : 'STANDBY'}</span>
                         </div>
-                        <div className="bg-black/60 backdrop-blur-[8px] border border-white/12 rounded-full p-[5px_12px] text-[12px] font-[800] text-white tabular-nums">
+                        <div className="bg-black/60 backdrop-blur-[8px] border border-white/12 rounded-full p-[5px_12px] text-[12px] font-[600] text-white tabular-nums">
                           {formatTimer(recElapsed)}
                         </div>
                       </div>
 
-                      {/* Microphone Levels */}
-                      <div className="absolute bottom-[14px] left-[14px] right-[14px] z-5 flex items-center gap-[10px] bg-black/55 backdrop-blur-[8px] border border-white/10 rounded-[10px] p-[8px_12px]">
+                      {/* Audio levels */}
+                      <div className="absolute bottom-[12px] left-[12px] right-[12px] z-5 flex items-center gap-[8px] bg-black/55 backdrop-blur-[8px] border border-white/10 rounded-[10px] p-[7px_12px]">
                         <div className="text-[#387DFF] shrink-0">
-                          <svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+                          <svg className="w-[13px] h-[13px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" />
                           </svg>
                         </div>
-                        <div className="flex-1 flex gap-[2px] items-end h-[18px]">
+                        <div className="flex-1 flex gap-[2px] items-end h-[16px]">
                           {audioLevels.map((lvl, idx) => (
                             <div
                               key={idx}
                               style={{ height: `${lvl}%` }}
-                              className={`flex-1 rounded-[1.5px] transition-[height] duration-75 ${
-                                lvl > 80 ? 'bg-[#D97706]' : lvl > 90 ? 'bg-[#DC2626]' : 'bg-[#387DFF]'
-                              }`}
+                              className={`flex-1 rounded-[1.5px] transition-[height] duration-75 ${lvl > 80 ? 'bg-[#D97706]' : lvl > 90 ? 'bg-[#DC2626]' : 'bg-[#387DFF]'
+                                }`}
                             />
                           ))}
                         </div>
@@ -1034,49 +1068,49 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
                   )}
                 </div>
 
-                {/* Live Controls */}
-                <div className="bg-[#0B0F14] p-[18px_20px] border-t border-[#1A2028] flex items-center justify-between gap-[14px] flex-wrap">
-                  <div className="text-[11.5px] font-[600] flex items-center gap-[10px] text-[#9CA3AF]">
-                    <svg className="w-[14px] h-[14px] text-[#387DFF] stroke-[2.5]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <polyline points="20 6 9 17 4 12"/>
+                {/* Controls bar */}
+                <div className="bg-[#0B0F14] p-[14px_18px] border-t border-[#1A2028] flex items-center justify-between gap-[12px] flex-wrap">
+                  <div className="text-[11px] font-[500] flex items-center gap-[8px] text-[#9CA3AF]">
+                    <svg className="w-[13px] h-[13px] text-[#387DFF] stroke-[2.5]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <polyline points="20 6 9 17 4 12" />
                     </svg>
                     Camera and mic active
                   </div>
-                  
+
                   <div className="flex gap-[10px] flex-wrap">
                     {!isThinking && (
                       <>
                         {isRecording ? (
-                          <button 
+                          <button
                             onClick={handleStopRecording}
-                            className="bg-white text-[#1A1A1A] border-none rounded-[100px] py-[11px] px-[22px] font-extrabold text-[13.5px] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_4px_14px_rgba(255,255,255,0.18)]"
+                            className="bg-white text-[#1A1A1A] border-none rounded-full py-[10px] px-[20px] font-[600] text-[13px] cursor-pointer inline-flex items-center gap-[7px] shadow-[0_4px_14px_rgba(255,255,255,0.15)]"
                           >
-                            <svg className="w-[13px] h-[13px]" viewBox="0 0 24 24" fill="currentColor">
-                              <rect x="6" y="6" width="12" height="12" rx="1.5"/>
+                            <svg className="w-[12px] h-[12px]" viewBox="0 0 24 24" fill="currentColor">
+                              <rect x="6" y="6" width="12" height="12" rx="1.5" />
                             </svg>
                             Stop recording
                           </button>
                         ) : isRecordingStopped ? (
                           <>
                             {(!ENABLE_STAGE3_RETAKE_LIMIT || takesCount < 2) && (
-                              <button 
+                              <button
                                 onClick={handleRetake}
-                                className="bg-transparent text-white border-[1.5px] border-white/22 rounded-[100px] py-[10px] px-[18px] font-bold text-[13px] cursor-pointer inline-flex items-center gap-[7px] hover:bg-white/10"
+                                className="bg-transparent text-white border border-white/20 rounded-full py-[9px] px-[16px] font-[600] text-[13px] cursor-pointer inline-flex items-center gap-[6px] hover:bg-white/10 transition-colors"
                               >
-                                <svg className="w-[13px] h-[13px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                                  <polyline points="23 4 23 10 17 10"/>
-                                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                <svg className="w-[12px] h-[12px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                  <polyline points="23 4 23 10 17 10" />
+                                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
                                 </svg>
                                 {ENABLE_STAGE3_RETAKE_LIMIT ? 'Retake (1 left)' : 'Retake'}
                               </button>
                             )}
                           </>
                         ) : (
-                          <button 
+                          <button
                             onClick={handleStartRecording}
-                            className="bg-gradient-to-br from-[#DC2626] to-[#B91C1C] text-white border-none rounded-[100px] py-[11px] px-[22px] font-extrabold text-[13.5px] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_6px_18px_rgba(220,38,38,0.32)]"
+                            className="bg-[#DC2626] hover:bg-[#B91C1C] text-white border-none rounded-full py-[10px] px-[20px] font-[600] text-[13px] cursor-pointer inline-flex items-center gap-[7px] shadow-[0_4px_14px_rgba(220,38,38,0.25)] transition-colors"
                           >
-                            <div className="w-[11px] h-[11px] rounded-full bg-white inline-block" />
+                            <div className="w-[10px] h-[10px] rounded-full bg-white inline-block" />
                             Record
                           </button>
                         )}
@@ -1087,40 +1121,36 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
               </div>
             )}
 
-            {/* Upload Pre-recorded Panel */}
+            {/* ── Upload panel ── */}
             {activeTab === 'upload' && (
-              <div className="bg-white border-[1.5px] border-[#E6E6E6] rounded-[16px] p-6 min-h-[460px] flex flex-col items-stretch">
+              <div className="bg-white border border-[#E6E6E6] rounded-[12px] p-[24px] min-h-[420px] flex flex-col items-stretch">
                 {uploadedUrl ? (
                   <div className="flex-1 flex flex-col justify-between">
-                    <div className="bg-[#0B0F14] rounded-[12px] h-[240px] flex items-center justify-center relative overflow-hidden mb-[14px]">
-                      <video 
-                        src={uploadedUrl} 
+                    <div className="bg-[#0B0F14] rounded-[10px] h-[240px] flex items-center justify-center relative overflow-hidden mb-[14px]">
+                      <video
+                        src={uploadedUrl}
                         controls
                         className="w-full h-full object-contain"
                       />
                       <div className="absolute bottom-[10px] left-[10px] right-[10px] flex justify-between items-center z-[2]">
-                        <div className="text-white text-[11.5px] font-[700] bg-black/55 backdrop-blur-[6px] p-[5px_11px] rounded-[6px] max-w-[60%] truncate">
+                        <div className="text-white text-[11px] font-[600] bg-black/55 backdrop-blur-[6px] p-[4px_10px] rounded-[6px] max-w-[60%] truncate">
                           {uploadedFile?.name}
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="p-[14px_16px] bg-[#EBF6FF] border border-[#387DFF]/20 rounded-[10px] flex items-center gap-[11px]">
-                      <CheckIcon className="w-[18px] h-[18px] text-[#0047CC] shrink-0" />
+
+                    <div className="p-[14px_16px] bg-[#EBF6FF] border border-[#387DFF]/20 rounded-[10px] flex items-center gap-[10px]">
+                      <CheckIcon className="w-[16px] h-[16px] text-[#0047CC] shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <div className="text-[13px] font-[800] text-[#1A1A1A] mb-[2px]">Uploaded · within limits</div>
-                        <div className="text-[11.5px] text-[#0047CC] font-[600]">
+                        <div className="text-[13px] font-[600] text-[#1A1A1A] mb-[2px]">Uploaded · within limits</div>
+                        <div className="text-[11.5px] text-[#0047CC] font-[500]">
                           {uploadedFile ? (uploadedFile.size / (1024 * 1024)).toFixed(1) : 0} MB · Ready to submit
                         </div>
                       </div>
-                      <button 
+                      <button
                         onClick={handleReplaceUpload}
-                        className="bg-white border border-[#E6E6E6] text-[#4A4A4A] p-[7px_14px] rounded-[8px] font-bold text-[12px] cursor-pointer inline-flex items-center gap-[5px] shrink-0 hover:bg-[#F7F7F7]"
+                        className="bg-white border border-[#E6E6E6] text-[#4A4A4A] p-[6px_12px] rounded-[8px] font-[600] text-[12px] cursor-pointer inline-flex items-center gap-[5px] shrink-0 hover:bg-[#F7F7F7] transition-colors"
                       >
-                        <svg className="w-[11px] h-[11px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <polyline points="23 4 23 10 17 10"/>
-                          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                        </svg>
                         Replace
                       </button>
                     </div>
@@ -1130,98 +1160,109 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
-                    className={`flex-1 border-2 border-dashed rounded-[14px] flex flex-col items-center justify-center p-[40px_30px] text-center cursor-pointer transition-all ${
-                      isDragging 
-                        ? 'border-[#0047CC] bg-[#EBF6FF]' 
-                        : 'border-[#387DFF] bg-gradient-to-b from-[#FAFCFF] to-white hover:border-[#0047CC] hover:bg-[#EBF6FF]'
-                    }`}
+                    className={`flex-1 border-[1.5px] border-dashed rounded-[12px] flex flex-col items-center justify-center p-[40px_28px] text-center cursor-pointer transition-all ${isDragging
+                      ? 'border-[#0047CC] bg-[#F4F8FF]'
+                      : 'border-[#D4D4D4] bg-[#FAFAFA] hover:border-[#808080] hover:bg-[#F5F5F5]'
+                      }`}
                   >
-                    <input 
-                      type="file" 
-                      id="file-upload-input" 
+                    <input
+                      type="file"
+                      id="file-upload-input"
                       accept=".mp4,.mov,.webm"
-                      className="hidden" 
+                      className="hidden"
                       onChange={handleFileSelect}
                     />
-                    
-                    <div className="w-[84px] h-[84px] rounded-[18px] bg-gradient-to-br from-[#EBF6FF] to-white border border-[#EBF6FF] flex items-center justify-center text-[#0047CC] mb-[16px] relative">
-                      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="17 8 12 3 7 8"/>
-                        <line x1="12" y1="3" x2="12" y2="15"/>
+
+                    <div className="w-[72px] h-[72px] rounded-[16px] bg-white border border-[#E6E6E6] flex items-center justify-center text-[#808080] mb-[14px]">
+                      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
                       </svg>
                     </div>
-                    <div className="text-[17px] font-[900] text-[#1A1A1A] mb-[6px] tracking-[-0.2px]">
-                      Drop a pre-recorded video here
+                    <div className="text-[16px] font-[700] text-[#1A1A1A] mb-[6px]">
+                      Drop a video here
                     </div>
-                    <div className="text-[13.5px] text-[#808080] leading-[1.55] mb-[18px] max-w-[340px]">
-                      Or pick from your device. Recommended: under 2 minutes, well-lit, clear audio. We accept MP4, MOV and WebM up to 200MB.
+                    <div className="text-[13px] text-[#808080] leading-[1.55] mb-[16px] max-w-[320px] font-[400]">
+                      Or pick from your device. MP4, MOV, or WebM up to 50 mb.
                     </div>
-                    <label 
+                    <label
                       htmlFor="file-upload-input"
-                      className="bg-[#0047CC] text-white border-none rounded-[10px] p-[11px_22px] font-extrabold text-[13px] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_4px_14px_rgba(0,71,204,0.24)] hover:bg-[#344DA1]"
+                      className="bg-[#0047CC] text-white border-none rounded-[10px] p-[10px_20px] font-[600] text-[13px] cursor-pointer inline-flex items-center gap-[7px] shadow-[0_2px_8px_rgba(0,71,204,0.2)] hover:bg-[#344DA1] transition-colors"
                     >
-                      <svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-                      </svg>
                       Choose video file
                     </label>
-                    <div className="mt-[14px] flex gap-[6px] flex-wrap justify-center">
-                      <span className="text-[10px] font-[700] bg-[#F7F7F7] text-[#808080] py-[3px] px-[8px] rounded-[6px] tracking-[0.4px]">MP4</span>
-                      <span className="text-[10px] font-[700] bg-[#F7F7F7] text-[#808080] py-[3px] px-[8px] rounded-[6px] tracking-[0.4px]">MOV</span>
-                      <span className="text-[10px] font-[700] bg-[#F7F7F7] text-[#808080] py-[3px] px-[8px] rounded-[6px] tracking-[0.4px]">WebM</span>
-                      <span className="text-[10px] font-[700] bg-[#F7F7F7] text-[#808080] py-[3px] px-[8px] rounded-[6px] tracking-[0.4px]">200 MB max</span>
-                      <span className="text-[10px] font-[700] bg-[#F7F7F7] text-[#808080] py-[3px] px-[8px] rounded-[6px] tracking-[0.4px]">2:00 max</span>
-                    </div>
                   </div>
                 )}
               </div>
             )}
           </div>
 
-          {/* Right Companion Panel */}
-          <aside className="flex flex-col gap-[14px]">
-            
-            <div className="border-[1.5px] border-[#0047CC] rounded-[14px] p-[16px_18px] flex gap-[11px] items-start bg-[#F4F8FF]">
-              <svg className="w-[18px] h-[18px] text-[#0047CC] shrink-0 mt-[1px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-              <div>
-                <div className="text-[13px] font-[800] text-[#0047CC] mb-[4px]">
-                  {isThinking ? '30s think time running' : '30s think time used'}
+          {/* ── Right companion panel — single unified card ── */}
+          <aside className="lg:sticky lg:top-[68px]">
+            <div className="bg-white border border-[#E6E6E6] rounded-[12px] overflow-hidden">
+
+              {/* Timer / status notice — always visible */}
+              <div className="p-[18px_20px] flex items-start gap-[12px]">
+                <div className="w-[36px] h-[36px] rounded-full border-[2.5px] border-[#E6E6E6] border-t-[#0047CC] flex items-center justify-center shrink-0 animate-spin-slow">
+                  <ClockPlayIcon className="w-[14px] h-[14px] text-[#0047CC] animate-none" />
                 </div>
-                <div className="text-[12px] text-[#0047CC] leading-[1.55]">
-                  {isThinking 
-                    ? 'Take a breath and structure your thoughts. Recording will start automatically or click skip.' 
-                    : "Your answer timer is running. Speak at your natural pace. Don't worry about word-perfect."}
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-[600] text-[#1A1A1A] mb-[3px]">
+                    {isThinking ? 'Think time active' : 'Answer time running'}
+                  </div>
+                  <div className="text-[12.5px] text-[#808080] leading-[1.5] font-[400]">
+                    {isThinking
+                      ? 'Structure your thoughts. Recording starts when the timer ends.'
+                      : "Speak naturally. A pause or \"let me think\" won't count against you."}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="bg-white border-[1.5px] border-[#E6E6E6] rounded-[14px] p-[18px_20px]">
-              <div className="text-[10.5px] font-[800] tracking-[0.7px] uppercase text-[#0047CC] mb-[8px]">Tips for a strong answer</div>
-              <div className="text-[14px] font-[800] text-[#1A1A1A] mb-[8px] tracking-[-0.1px]">A useful shape</div>
-              <ul className="list-none flex flex-col gap-[8px] mt-[8px] p-0 m-0">
-                <li className="text-[12px] text-[#4A4A4A] font-[600] pl-[18px] relative leading-[1.5] before:content-[''] before:absolute before:left-0 before:top-[6px] before:w-[6px] before:h-[6px] before:rounded-full before:bg-[#0047CC]">
-                  Briefly set the scene: where, when, what the problem or task was
-                </li>
-                <li className="text-[12px] text-[#4A4A4A] font-[600] pl-[18px] relative leading-[1.5] before:content-[''] before:absolute before:left-0 before:top-[6px] before:w-[6px] before:h-[6px] before:rounded-full before:bg-[#0047CC]">
-                  Name what challenges were faced in plain, structured language
-                </li>
-                <li className="text-[12px] text-[#4A4A4A] font-[600] pl-[18px] relative leading-[1.5] before:content-[''] before:absolute before:left-0 before:top-[6px] before:w-[6px] before:h-[6px] before:rounded-full before:bg-[#0047CC]">
-                  Walk us through what you did in the moment, including key decisions
-                </li>
-                <li className="text-[12px] text-[#4A4A4A] font-[600] pl-[18px] relative leading-[1.5] before:content-[''] before:absolute before:left-0 before:top-[6px] before:w-[6px] before:h-[6px] before:rounded-full before:bg-[#0047CC]">
-                  End with what outcome was achieved and key takeaways
-                </li>
-              </ul>
-            </div>
+              {/* Divider */}
+              <div className="border-t border-[#E6E6E6]" />
 
-            <div className="bg-white border-[1.5px] border-[#E6E6E6] rounded-[14px] p-[18px_20px]">
-              <div className="text-[10.5px] font-[800] tracking-[0.7px] uppercase text-[#0047CC] mb-[8px]">Honest reminder</div>
-              <div className="text-[14px] font-[800] text-[#1A1A1A] mb-[8px] tracking-[-0.1px]">We're not grading polish</div>
-              <div className="text-[12.5px] text-[#4A4A4A] leading-[1.6]">
-                A small pause or a "let me think" doesn't count against you. We're listening for substance, structured thinking, and self-awareness, not a TED talk.
+              {/* Tips section — collapsible */}
+              <div className="p-[14px_20px]">
+                <button
+                  onClick={() => setShowTips(prev => !prev)}
+                  className="w-full flex items-center justify-between cursor-pointer bg-transparent border-none text-left p-0"
+                >
+                  <span className="text-[12px] font-[600] text-[#808080] uppercase tracking-[0.5px]">Tips for a strong answer</span>
+                  <svg
+                    className={`w-[14px] h-[14px] text-[#ADADAD] transition-transform duration-200 ${showTips ? 'rotate-180' : ''}`}
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {showTips && (
+                  <ul className="list-none flex flex-col gap-[8px] mt-[12px] p-0 m-0">
+                    <li className="text-[12.5px] text-[#666] font-[400] pl-[16px] relative leading-[1.55] before:content-[''] before:absolute before:left-0 before:top-[7px] before:w-[5px] before:h-[5px] before:rounded-full before:bg-[#D4D4D4]">
+                      Set the scene: where, when, what the problem was
+                    </li>
+                    <li className="text-[12.5px] text-[#666] font-[400] pl-[16px] relative leading-[1.55] before:content-[''] before:absolute before:left-0 before:top-[7px] before:w-[5px] before:h-[5px] before:rounded-full before:bg-[#D4D4D4]">
+                      Name the challenges in plain, structured language
+                    </li>
+                    <li className="text-[12.5px] text-[#666] font-[400] pl-[16px] relative leading-[1.55] before:content-[''] before:absolute before:left-0 before:top-[7px] before:w-[5px] before:h-[5px] before:rounded-full before:bg-[#D4D4D4]">
+                      Walk through what you did, including key decisions
+                    </li>
+                    <li className="text-[12.5px] text-[#666] font-[400] pl-[16px] relative leading-[1.55] before:content-[''] before:absolute before:left-0 before:top-[7px] before:w-[5px] before:h-[5px] before:rounded-full before:bg-[#D4D4D4]">
+                      End with the outcome and what you learned
+                    </li>
+                  </ul>
+                )}
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-[#E6E6E6]" />
+
+              {/* Reassurance — always visible, calm */}
+              <div className="p-[14px_20px]">
+                <p className="text-[12.5px] text-[#808080] leading-[1.55] font-[400] italic m-0">
+                  We're not grading polish — substance and structured thinking matter most.
+                </p>
               </div>
             </div>
           </aside>
@@ -1229,47 +1270,47 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
       </main>
 
       {/* Footer bar */}
-      <footer className="sticky bottom-0 bg-white/95 backdrop-blur-[10px] border-t border-[#E6E6E6] p-[14px_32px] flex items-center justify-between gap-[12px] z-[40]">
-        <div className="text-[12.5px] text-[#4A4A4A] font-[600] flex items-center gap-[10px]">
+      <footer className="sticky bottom-0 bg-white/95 backdrop-blur-[10px] border-t border-[#E6E6E6] p-[12px_28px] flex items-center justify-between gap-[12px] z-[40]">
+        <div className="text-[12.5px] text-[#4A4A4A] font-[500] flex items-center gap-[10px]">
           {hasAnswer ? (
-            <span className="inline-flex items-center gap-[6px] bg-[#EBF6FF] text-[#0047CC] border border-[#387DFF]/20 px-[13px] py-[6px] rounded-full text-[11.5px] font-[800]">
+            <span className="inline-flex items-center gap-[6px] bg-[#EBF6FF] text-[#0047CC] border border-[#387DFF]/20 px-[12px] py-[5px] rounded-full text-[11.5px] font-[600]">
               <CheckIcon className="w-[11px] h-[11px]" />
-              {activeTab === 'live' ? 'Recording captured · ready' : 'Video uploaded · ready'}
+              {activeTab === 'live' ? 'Recording captured' : 'Video uploaded'}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-[6px] bg-[#F7F7F7] text-[#808080] px-[13px] py-[6px] rounded-full text-[11.5px] font-[800]">
-              No answer captured yet
+            <span className="inline-flex items-center gap-[6px] bg-[#F7F7F7] text-[#808080] px-[12px] py-[5px] rounded-full text-[11.5px] font-[500]">
+              No answer yet
             </span>
           )}
-          <span className="text-[#808080] text-[11.5px] font-[600]">
+          <span className="text-[#ADADAD] text-[11.5px] font-[500]">
             Question {currentNum} of {totalNum}
           </span>
         </div>
-        
+
         <div className="flex gap-[10px]">
-          <button 
+          <button
             onClick={() => setShowSaveModal(true)}
             disabled={isSubmittingVideo}
-            className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-white text-[#4A4A4A] border border-[#E6E6E6] rounded-[10px] p-[10px_16px] text-[13px] font-[600] cursor-pointer hover:bg-[#F7F7F7] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Save and finish later
           </button>
-          
+
           <button
             onClick={() => setShowSubmitModal(true)}
             disabled={!hasAnswer || isSubmittingVideo}
-            className="bg-[#0047CC] text-white border-none rounded-[10px] p-[12px_26px] text-[14px] font-[700] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_4px_14px_rgba(0,71,204,0.28)] disabled:bg-[#E6E6E6] disabled:text-[#ADADAD] disabled:cursor-not-allowed disabled:shadow-none hover:bg-[#344DA1] transition-all"
+            className="bg-[#0047CC] text-white border-none rounded-[10px] p-[10px_22px] text-[13.5px] font-[600] cursor-pointer inline-flex items-center gap-[7px] shadow-[0_2px_8px_rgba(0,71,204,0.2)] disabled:bg-[#E6E6E6] disabled:text-[#ADADAD] disabled:cursor-not-allowed disabled:shadow-none hover:bg-[#344DA1] transition-all"
           >
             {isSubmittingVideo ? (
               <>
                 <div className="w-[14px] h-[14px] rounded-full border-2 border-white border-t-transparent animate-spin inline-block" />
-                Uploading video...
+                Uploading…
               </>
             ) : (
               <>
                 Submit answer
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M3 8h10M9 4l4 4-4 4"/>
+                  <path d="M3 8h10M9 4l4 4-4 4" />
                 </svg>
               </>
             )}
@@ -1283,7 +1324,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
           <div className="bg-white border border-[#E6E6E6] rounded-[18px] max-w-[460px] w-full p-[30px_30px_26px] text-center shadow-[0_24px_80px_rgba(0,0,0,0.25)]">
             <div className="w-[64px] h-[64px] bg-[#FEF2F2] text-[#DC2626] rounded-full flex items-center justify-center mx-auto mb-4 border border-[#FEF2F2]">
               <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
             </div>
             <div className="inline-flex items-center gap-1.5 bg-[#FEE2E2] text-[#B91C1C] px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider mb-3">
@@ -1319,7 +1360,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
           <div className="bg-white border border-[#E6E6E6] rounded-[18px] max-w-[460px] w-full p-[30px_30px_26px] text-center shadow-[0_24px_80px_rgba(0,0,0,0.25)]">
             <div className="w-[64px] h-[64px] bg-[#EBF6FF] text-[#0047CC] rounded-full flex items-center justify-center mx-auto mb-4 border border-[#EBF6FF]">
               <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                <polyline points="9 11 12 14 22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
               </svg>
             </div>
             <h3 className="text-[18px] font-[900] text-[#1A1A1A] tracking-[-0.2px] mb-2">
@@ -1329,13 +1370,13 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
               Your submitted answers stay saved. The current question (Q{currentNum}) hasn't been submitted yet, so it'll be <strong>regenerated</strong> when you return.
             </p>
             <div className="flex gap-[10px] justify-center flex-wrap mt-6">
-              <button 
+              <button
                 onClick={() => setShowSaveModal(false)}
                 className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] py-[11px] px-[18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7]"
               >
                 Keep going
               </button>
-              <button 
+              <button
                 onClick={handleSaveAndConfirmExit}
                 className="bg-[#0047CC] text-white border-none rounded-[10px] py-[11px] px-[18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#344DA1]"
               >
@@ -1352,7 +1393,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
           <div className="bg-white border border-[#E6E6E6] rounded-[18px] max-w-[460px] w-full p-[30px_30px_26px] text-center shadow-[0_24px_80px_rgba(0,0,0,0.25)]">
             <div className="w-[64px] h-[64px] bg-[#EBF6FF] text-[#0047CC] rounded-full flex items-center justify-center mx-auto mb-4 border border-[#EBF6FF]">
               <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12"/>
+                <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
             <h3 className="text-[18px] font-[900] text-[#1A1A1A] tracking-[-0.2px] mb-2">
@@ -1365,14 +1406,14 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
               Take a moment if you want to retake first.
             </p>
             <div className="flex gap-[10px] justify-center flex-wrap">
-              <button 
+              <button
                 onClick={() => setShowSubmitModal(false)}
                 disabled={isSubmittingVideo}
                 className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] py-[11px] px-[18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] disabled:opacity-50"
               >
                 Let me check it
               </button>
-              <button 
+              <button
                 onClick={handleConfirmSubmit}
                 disabled={isSubmittingVideo}
                 className="bg-[#0047CC] text-white border-none rounded-[10px] py-[11px] px-[18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#344DA1] disabled:opacity-50 inline-flex items-center gap-2"
@@ -1406,7 +1447,6 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
               Your video answer is being uploaded and secured by the server.
             </p>
             <div className="inline-flex items-center gap-2 bg-[#F7F7F7] text-[#808080] px-3.5 py-1.5 rounded-full text-[12px] font-bold">
-              <div className="w-2 h-2 rounded-full bg-[#0047CC] animate-ping" />
               Please keep this tab open...
             </div>
           </div>

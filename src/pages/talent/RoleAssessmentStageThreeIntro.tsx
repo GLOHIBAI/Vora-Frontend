@@ -7,7 +7,7 @@ import Button from '../../components/common/Button';
 
 const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-    <polyline points="20 6 9 17 4 12"/>
+    <polyline points="20 6 9 17 4 12" />
   </svg>
 );
 
@@ -87,7 +87,7 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
             <div className="bg-gradient-to-b from-[#F7F7F7] to-white border border-[#E6E6E6] rounded-[12px] p-[16px]">
               <div className="w-[34px] h-[34px] rounded-[9px] bg-gradient-to-br from-[#EBF6FF] to-white border border-[#EBF6FF] flex items-center justify-center text-[#0047CC] mb-[10px]">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
                 </svg>
               </div>
               <div className="text-[13.5px] font-[800] text-[#1A1A1A] mb-[4px] tracking-[-0.1px]">Communication clarity</div>
@@ -97,7 +97,7 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
             <div className="bg-gradient-to-b from-[#F7F7F7] to-white border border-[#E6E6E6] rounded-[12px] p-[16px]">
               <div className="w-[34px] h-[34px] rounded-[9px] bg-gradient-to-br from-[#EBF6FF] to-white border border-[#EBF6FF] flex items-center justify-center text-[#0047CC] mb-[10px]">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
                 </svg>
               </div>
               <div className="text-[13.5px] font-[800] text-[#1A1A1A] mb-[4px] tracking-[-0.1px]">Professional presence</div>
@@ -107,7 +107,7 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
             <div className="bg-gradient-to-b from-[#F7F7F7] to-white border border-[#E6E6E6] rounded-[12px] p-[16px]">
               <div className="w-[34px] h-[34px] rounded-[9px] bg-gradient-to-br from-[#EBF6FF] to-white border border-[#EBF6FF] flex items-center justify-center text-[#0047CC] mb-[10px]">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01" strokeLinecap="round"/>
+                  <circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01" strokeLinecap="round" />
                 </svg>
               </div>
               <div className="text-[13.5px] font-[800] text-[#1A1A1A] mb-[4px] tracking-[-0.1px]">Thinking on your feet</div>
@@ -117,7 +117,7 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
             <div className="bg-gradient-to-b from-[#F7F7F7] to-white border border-[#E6E6E6] rounded-[12px] p-[16px]">
               <div className="w-[34px] h-[34px] rounded-[9px] bg-gradient-to-br from-[#EBF6FF] to-white border border-[#EBF6FF] flex items-center justify-center text-[#0047CC] mb-[10px]">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
                 </svg>
               </div>
               <div className="text-[13.5px] font-[800] text-[#1A1A1A] mb-[4px] tracking-[-0.1px]">Storytelling depth</div>
@@ -160,7 +160,7 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
             <div className="p-[22px_20px] rounded-[14px] border-[1.5px] border-[#E6E6E6] relative bg-gradient-to-b from-[#FAFCFF] to-white">
               <div className="w-[50px] h-[50px] rounded-[12px] bg-gradient-to-br from-[#EBF6FF] to-white border-[1.5px] border-[#EBF6FF] display flex items-center justify-center text-[#0047CC] mb-[14px]">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/>
+                  <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="3" fill="currentColor" />
                 </svg>
               </div>
               <div className="text-[10.5px] font-[800] tracking-[0.5px] uppercase text-[#0047CC] mb-[6px]">Path 1</div>
@@ -183,7 +183,7 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
             <div className="p-[22px_20px] rounded-[14px] border-[1.5px] border-[#E6E6E6] relative bg-gradient-to-b from-[#FAFCFF] to-white">
               <div className="w-[50px] h-[50px] rounded-[12px] bg-gradient-to-br from-[#EBF6FF] to-white border-[1.5px] border-[#EBF6FF] display flex items-center justify-center text-[#0047CC] mb-[14px]">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
                 </svg>
               </div>
               <div className="text-[10.5px] font-[800] tracking-[0.5px] uppercase text-[#0047CC] mb-[6px]">Path 2</div>
@@ -192,7 +192,7 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
               <ul className="list-none flex flex-col gap-[7px]">
                 {[
                   'Per-question file upload, MP4, MOV or WebM',
-                  'Max 200MB per question, max 3 minutes long',
+                  'Max 50 mb per question, max 3 minutes long',
                   'Watch preview before submitting',
                   'Replace freely while the question timer is running'
                 ].map((li, i) => (
@@ -206,7 +206,7 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
 
           <div className="mt-[18px] padding py-3 px-[14px] border border-[#0047CC] rounded-[10px] text-[12.5px] text-[#0047CC] leading-[1.55] display flex gap-[9px] items-start">
             <svg className="w-[15px] h-[15px] text-[#0047CC] shrink-0 mt-[1px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
             <div><strong>Mix and match freely.</strong> You can record one question live, upload the next, then record the third. The method doesn&apos;t affect how you&apos;re assessed, only the content does.</div>
           </div>
@@ -223,7 +223,7 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
               <div className="flex items-center gap-[14px] p-[12px_14px] bg-[#FAFCFF] border border-[#387DFF]/20 rounded-[10px]">
                 <div className="w-[34px] h-[34px] rounded-[9px] bg-[#EBF6FF] text-[#0047CC] flex items-center justify-center shrink-0">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                    <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -239,7 +239,7 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
               <div className="flex items-center gap-[14px] p-[12px_14px] bg-[#FAFCFF] border border-[#387DFF]/20 rounded-[10px]">
                 <div className="w-[34px] h-[34px] rounded-[9px] bg-[#EBF6FF] text-[#0047CC] flex items-center justify-center shrink-0">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" />
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -255,7 +255,7 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
               <div className="flex items-center gap-[14px] p-[12px_14px] bg-[#FAFCFF] border border-[#387DFF]/20 rounded-[10px]">
                 <div className="w-[34px] h-[34px] rounded-[9px] bg-[#EBF6FF] text-[#0047CC] flex items-center justify-center shrink-0">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>
+                    <path d="M5 12.55a11 11 0 0 1 14.08 0" /><path d="M1.42 9a16 16 0 0 1 21.16 0" /><path d="M8.53 16.11a6 6 0 0 1 6.95 0" /><line x1="12" y1="20" x2="12.01" y2="20" />
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -271,7 +271,7 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
               <div className="flex items-center gap-[14px] p-[12px_14px] bg-[#FAFCFF] border border-[#387DFF]/20 rounded-[10px]">
                 <div className="w-[34px] h-[34px] rounded-[9px] bg-[#EBF6FF] text-[#0047CC] flex items-center justify-center shrink-0">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    <circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -293,37 +293,37 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-[10px]">
             <div className="flex gap-[9px] items-start font-[600] text-[12.5px] text-[#1A1A1A] leading-[1.5]">
               <svg className="w-[14px] h-[14px] text-[#0047CC] shrink-0 mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 16 14"/>
+                <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 16 14" />
               </svg>
               Each question is timed. Most have a 3-minute answer cap.
             </div>
             <div className="flex gap-[9px] items-start font-[600] text-[12.5px] text-[#1A1A1A] leading-[1.5]">
               <svg className="w-[14px] h-[14px] text-[#0047CC] shrink-0 mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M9 12l2 2 4-4M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z"/>
+                <path d="M9 12l2 2 4-4M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z" />
               </svg>
               You can pause between questions, not during one.
             </div>
             <div className="flex gap-[9px] items-start font-[600] text-[12.5px] text-[#1A1A1A] leading-[1.5]">
               <svg className="w-[14px] h-[14px] text-[#0047CC] shrink-0 mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/>
+                <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 9h6v6H9z" />
               </svg>
               Don&apos;t switch tabs during recording. Auto-submits in 3 seconds.
             </div>
             <div className="flex gap-[9px] items-start font-[600] text-[12.5px] text-[#1A1A1A] leading-[1.5]">
               <svg className="w-[14px] h-[14px] text-[#0047CC] shrink-0 mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                <polyline points="9 11 12 14 22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
               </svg>
               Use &quot;Save and continue later&quot; if you need a real break.
             </div>
             <div className="flex gap-[9px] items-start font-[600] text-[12.5px] text-[#1A1A1A] leading-[1.5]">
               <svg className="w-[14px] h-[14px] text-[#0047CC] shrink-0 mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+                <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
               </svg>
               Speak naturally. No need to sound rehearsed.
             </div>
             <div className="flex gap-[9px] items-start font-[600] text-[12.5px] text-[#1A1A1A] leading-[1.5]">
               <svg className="w-[14px] h-[14px] text-[#0047CC] shrink-0 mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <circle cx="12" cy="12" r="10"/><path d="M16 12l-4-4-4 4M12 16V8" strokeLinecap="round"/>
+                <circle cx="12" cy="12" r="10" /><path d="M16 12l-4-4-4 4M12 16V8" strokeLinecap="round" />
               </svg>
               If something breaks, your progress saves automatically.
             </div>
@@ -351,7 +351,7 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
           >
             Begin video interview
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="shrink-0">
-              <path d="M3 8h10M9 4l4 4-4 4"/>
+              <path d="M3 8h10M9 4l4 4-4 4" />
             </svg>
           </Button>
         </div>
