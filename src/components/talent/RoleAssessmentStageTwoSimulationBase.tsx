@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import AssessmentHeader from './AssessmentHeader';
 import StageRail from './StageRail';
 import PartRail from './PartRail';
+import ProctoringCamera from './assessment/shared/ProctoringCamera';
 import FullPageSpinner from '../common/FullPageSpinner';
 import {
   useStartAssessmentScreenMutation,
@@ -576,6 +577,11 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
           pointer-events: none;
         }
       `}</style>
+
+      {/* Fixed Proctoring Camera */}
+      <div className="fixed left-[16px] sm:left-[32px] top-[44px] sm:top-[48px] z-[100] hidden sm:block">
+        <ProctoringCamera />
+      </div>
 
       <AssessmentHeader
         middleContent={

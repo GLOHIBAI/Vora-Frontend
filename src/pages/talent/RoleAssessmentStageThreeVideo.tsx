@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import AssessmentHeader from '../../components/talent/AssessmentHeader';
 import Button from '../../components/common/Button';
@@ -8,13 +8,17 @@ import AssessmentAnalyzingView from '../../components/talent/assessment/Assessme
 import {
   startGate3Session,
   fetchGate3Items,
+  fetchGate3ResumeState,
   uploadGate3Video,
+  requestGate3UploadUrl,
+  completeGate3DirectUpload,
   submitComponentResponses,
 } from '../../services/queries/assessments';
 import { useGetPublicRoleQuery } from '../../services/queries/talent';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
 import { getActiveAssessmentId } from '../../utils/assessmentSession';
 import { VORA_LOGO_SRC } from '../../constants/brand';
+import { BackgroundSpeechTranscriber } from '../../utils/backgroundSpeechTranscriber';
 import type { Gate3Item } from '../../services/queries/assessments/types';
 
 const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -58,8 +62,11 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
   const [scoringReady, setScoringReady] = useState<boolean>(false);
   const [isSubmittingVideo, setIsSubmittingVideo] = useState<boolean>(false);
   const recordedBlobRef = useRef<Blob | null>(null);
+  const transcriberRef = useRef<BackgroundSpeechTranscriber>(new BackgroundSpeechTranscriber());
   const allItemsRef = useRef<Gate3Item[]>([]);
   const completedItemIdsRef = useRef<Set<string>>(new Set());
+  /** Whether the backend signals 3-step direct upload instead of multipart */
+  const [useDirectUpload, setUseDirectUpload] = useState<boolean>(false);
 
   // Question State
   const [takesCount, setTakesCount] = useState<number>(0);
@@ -79,6 +86,58 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
 
   const [apiError, setApiError] = useState<string | null>(null);
 
+  /**
+   * Navigate to the next step by consulting resume-state.nextStep.
+   * If there are still unanswered prompts (RESUME_ITEMS), presents the remaining question.
+   * Directs candidate forward to candidate-questions (or complete) only when all core prompts are done.
+   */
+  const navigateByNextStep = async () => {
+    const base = `/onboarding/talent/${roleSlug}/interview/stage-3`;
+    try {
+      const rawResume: any = await fetchGate3ResumeState(assessmentId);
+      const resumeRes = rawResume?.data || rawResume;
+      const step = resumeRes?.nextStep || '';
+
+      if (step === 'STAGE3_COMPLETE' || step === 'GATE3_REVIEW' || resumeRes?.gate3Complete) {
+        stopCamera();
+        navigate(`${base}/complete`);
+        return;
+      }
+
+      if (step === 'CANDIDATE_VOICE' || step === 'CANDIDATE_QUESTIONS') {
+        stopCamera();
+        navigate(`${base}/candidate-questions`);
+        return;
+      }
+
+      // If backend says there are still unanswered core prompts (RESUME_ITEMS / GATE3_ITEMS)
+      if (resumeRes?.items && resumeRes.items.length > 0) {
+        const currentSeq = resumeRes.progress?.current || 1;
+        const remainingItem = resumeRes.items.find((it: Gate3Item) => it.sequence === currentSeq) || resumeRes.items[0];
+        if (remainingItem) {
+          setCurrentItem(remainingItem);
+          if (resumeRes.progress) setProgress(resumeRes.progress);
+          const resumeUploads = resumeRes.videoUploads || {};
+          const takes = resumeUploads[remainingItem.id]?.takeCount || 0;
+          setTakesCount(takes);
+          const readSecs = remainingItem.content?.readingTimeSecs || 30;
+          const recSecs = remainingItem.content?.recordingTimeSecs || 180;
+          setThinkTimeLeft(readSecs);
+          setSecondsLeft(recSecs);
+          setIsThinking(true);
+          toast(`Please complete Question ${remainingItem.sequence} of ${resumeRes.progress?.total || 6} to finish Stage 3.`);
+          return;
+        }
+      }
+
+      stopCamera();
+      navigate(`${base}/candidate-questions`);
+    } catch {
+      stopCamera();
+      navigate(`${base}/candidate-questions`);
+    }
+  };
+
   // Start Gate 3 session & poll GET /gates/3/items until contentReady === true
   useEffect(() => {
     let pollInterval: any = null;
@@ -97,6 +156,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
 
         if (res?.componentId) setComponentId(res.componentId);
         if (res?.progress) setProgress(res.progress);
+        if (res?.directUpload !== undefined) setUseDirectUpload(!!res.directUpload);
         setScoringReady(!!res?.scoringReady);
 
         if (res?.items && Array.isArray(res.items)) {
@@ -109,7 +169,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
         // If backend already marked scoringReady or all questions have recorded uploads
         if (res?.scoringReady || Object.keys(videoUploads).length >= totalItems) {
           setIsPreparingContent(false);
-          navigateToCandidateQuestions();
+          await navigateByNextStep();
           return;
         }
 
@@ -120,7 +180,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
           // If current item is the last question and already completed
           if (activeItem.sequence >= totalItems && videoUploads[activeItem.id]?.takeCount >= 2) {
             setIsPreparingContent(false);
-            navigateToCandidateQuestions();
+            await navigateByNextStep();
             return;
           }
 
@@ -143,6 +203,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
 
               if (pollRes?.componentId) setComponentId(pollRes.componentId);
               if (pollRes?.progress) setProgress(pollRes.progress);
+              if (pollRes?.directUpload !== undefined) setUseDirectUpload(!!pollRes.directUpload);
               setScoringReady(!!pollRes?.scoringReady);
 
               if (pollRes?.items && Array.isArray(pollRes.items)) {
@@ -155,7 +216,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
               if (pollRes?.scoringReady || Object.keys(pollVideoUploads).length >= pollTotal) {
                 setIsPreparingContent(false);
                 clearInterval(pollInterval);
-                navigateToCandidateQuestions();
+                await navigateByNextStep();
                 return;
               }
 
@@ -166,7 +227,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
                 if (activeItem.sequence >= pollTotal && pollVideoUploads[activeItem.id]?.takeCount >= 2) {
                   setIsPreparingContent(false);
                   clearInterval(pollInterval);
-                  navigateToCandidateQuestions();
+                  await navigateByNextStep();
                   return;
                 }
 
@@ -186,6 +247,53 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
           }, 2500);
         }
       } catch (err: any) {
+        // Fallback: If session was already active / started, recover from resume-state
+        try {
+          const rawResume: any = await fetchGate3ResumeState(assessmentId);
+          if (isCancelled) return;
+          const resumeRes = rawResume?.data || rawResume;
+
+          if (resumeRes?.componentId) setComponentId(resumeRes.componentId);
+          if (resumeRes?.progress) setProgress(resumeRes.progress);
+          setScoringReady(!!resumeRes?.scoringReady);
+
+          if (resumeRes?.items && Array.isArray(resumeRes.items)) {
+            allItemsRef.current = resumeRes.items;
+          }
+
+          const resumeVideoUploads = resumeRes?.videoUploads || {};
+          const resumeTotal = resumeRes?.progress?.total || 6;
+
+          if (resumeRes?.scoringReady || Object.keys(resumeVideoUploads).length >= resumeTotal) {
+            setIsPreparingContent(false);
+            await navigateByNextStep();
+            return;
+          }
+
+          if (resumeRes?.items && resumeRes.items.length > 0) {
+            const currentSeq = resumeRes.progress?.current || 1;
+            const activeItem = resumeRes.items.find((it: Gate3Item) => it.sequence === currentSeq) || resumeRes.items[0];
+
+            if (activeItem.sequence >= resumeTotal && resumeVideoUploads[activeItem.id]?.takeCount >= 2) {
+              setIsPreparingContent(false);
+              await navigateByNextStep();
+              return;
+            }
+
+            setCurrentItem(activeItem);
+            const takes = resumeVideoUploads[activeItem.id]?.takeCount || 0;
+            setTakesCount(takes);
+            setIsPreparingContent(false);
+            const readSecs = activeItem.content?.readingTimeSecs || 30;
+            const recSecs = activeItem.content?.recordingTimeSecs || 180;
+            setThinkTimeLeft(readSecs);
+            setSecondsLeft(recSecs);
+            return;
+          }
+        } catch (resumeErr) {
+          console.warn('Resume-state fallback attempt failed:', resumeErr);
+        }
+
         console.error('Failed to start Gate 3 session:', err);
         setApiError(err?.message || 'Failed to initialize Stage 3 assessment from server.');
         setIsPreparingContent(false);
@@ -454,6 +562,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
       mediaRecorder.start();
       setIsRecording(true);
       setTakesCount(prev => prev + 1);
+      transcriberRef.current.start();
       toast.success('Live recording started');
     } catch (err: any) {
       console.error('MediaRecorder start error:', err);
@@ -464,6 +573,8 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
 
   const handleStopRecording = () => {
     if (!isRecording) return;
+
+    transcriberRef.current.stop();
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       try {
@@ -481,6 +592,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
       toast.error('Maximum retakes reached (2 takes used).');
       return;
     }
+    transcriberRef.current.reset();
     setRecordedVideoUrl(null);
     recordedBlobRef.current = null;
     setIsRecordingStopped(false);
@@ -583,7 +695,27 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
 
       if (assessmentId && currentItemId && videoPayload) {
         try {
-          uploadRes = await uploadGate3Video(assessmentId, currentItemId, videoPayload);
+          const transcript = transcriberRef.current.getTranscript();
+
+          if (useDirectUpload) {
+            // 3-step direct upload: get URL → PUT to storage → POST complete
+            const rawType = videoPayload.type || 'video/webm';
+            const contentType = rawType.split(';')[0].trim().toLowerCase() || 'video/webm';
+            const urlRes = await requestGate3UploadUrl(assessmentId, currentItemId, { contentType });
+            // Step 2: PUT directly to pre-signed URL
+            await fetch(urlRes.uploadUrl, {
+              method: urlRes.method || 'PUT',
+              headers: { 'Content-Type': contentType, ...(urlRes.headers || {}) },
+              body: videoPayload,
+            });
+            // Step 3: Confirm completion
+            uploadRes = await completeGate3DirectUpload(assessmentId, currentItemId, {
+              uploadId: urlRes.uploadId,
+              transcript,
+            });
+          } else {
+            uploadRes = await uploadGate3Video(assessmentId, currentItemId, videoPayload, transcript);
+          }
         } catch (uploadErr: any) {
           const errStatus = uploadErr?.statusCode || uploadErr?.status || uploadErr?.response?.status || 0;
           // Any 400 or 409 means this prompt was already used/consumed — silently fetch next question
@@ -614,7 +746,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
         (uploadRes?.window && !uploadRes.window.hasMore && currentSequence >= totalCount) ||
         completedItemIdsRef.current.size >= totalCount
       ) {
-        navigateToCandidateQuestions();
+        await navigateByNextStep();
         return;
       }
 
@@ -634,7 +766,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
           const nextItemsRes = rawNextItems?.data || rawNextItems;
 
           if (nextItemsRes?.scoringReady) {
-            navigateToCandidateQuestions();
+            await navigateByNextStep();
             return;
           }
 
@@ -708,7 +840,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
       }
 
       // If no next question exists and we've answered available questions:
-      navigateToCandidateQuestions();
+      await navigateByNextStep();
       return;
     } catch (err: any) {
       console.error('Failed to submit Stage 3 video response:', err);
@@ -716,6 +848,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
     } finally {
       setIsSubmittingVideo(false);
       stopCamera();
+      transcriberRef.current.reset();
       setRecordedVideoUrl(null);
       recordedBlobRef.current = null;
       setIsRecordingStopped(false);
@@ -724,11 +857,6 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
       setUploadedUrl(null);
       setHasAnswer(false);
     }
-  };
-
-  const navigateToCandidateQuestions = () => {
-    stopCamera();
-    navigate(`/onboarding/talent/${roleSlug}/interview/stage-3/candidate-questions`);
   };
 
   const runCompletionLoader = (finalComponentId?: string) => {

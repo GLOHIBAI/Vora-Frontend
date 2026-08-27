@@ -528,7 +528,7 @@ export const RoleAssessmentStageFourDecision: React.FC = () => {
         <div className="bg-[#FAFCFF] border border-[#387DFF]/20 rounded-[14px] p-[16px_20px] mb-[20px] flex items-start gap-[12px]">
           <InfoIcon className="w-[18px] h-[18px] text-[#0047CC] shrink-0 mt-0.5" />
           <div className="text-[13px] text-[#4A4A4A] leading-[1.6]">
-            {note}
+            {typeof note === 'string' ? note : (note?.body || note?.title || '')}
           </div>
         </div>
 

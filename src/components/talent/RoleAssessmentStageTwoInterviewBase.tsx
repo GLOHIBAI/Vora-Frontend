@@ -5,6 +5,7 @@ import AssessmentHeader from './AssessmentHeader';
 import StageRail from './StageRail';
 import PartRail from './PartRail';
 import AssessmentItemsList from './assessment/AssessmentItemsList';
+import ProctoringCamera from './assessment/shared/ProctoringCamera';
 import FullPageSpinner from '../common/FullPageSpinner';
 import { useLocalAssessmentScreen } from '../../hooks/useLocalAssessmentScreen';
 import {
@@ -1136,6 +1137,9 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
         {/* Fixed Header & Rails */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-white flex flex-col">
+          <div className="fixed left-[16px] sm:left-[32px] top-[44px] sm:top-[48px] z-[100] hidden sm:block">
+            <ProctoringCamera />
+          </div>
           <AssessmentHeader
             middleContent={
               <span className="hidden sm:inline">

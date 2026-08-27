@@ -161,19 +161,30 @@ const Login: React.FC = () => {
             {...emailAutofillBlock}
           />
 
-          <Input
-            label="Password"
-            type="password"
-            name="vora-login-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onBlur={() => handleBlur('password')}
-            placeholder="Enter password"
-            showPasswordToggle
-            error={!!passwordError}
-            helperText={passwordError}
-            {...passwordAutofillBlock}
-          />
+          <div className="space-y-1">
+            <Input
+              label="Password"
+              type="password"
+              name="vora-login-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onBlur={() => handleBlur('password')}
+              placeholder="Enter password"
+              showPasswordToggle
+              error={!!passwordError}
+              helperText={passwordError}
+              {...passwordAutofillBlock}
+            />
+            <div className="flex justify-end pt-1">
+              <Link
+                to={slug ? `/role/${slug}/forgot-password` : "/forgot-password"}
+                state={{ email: email.trim(), roleSlug: slug }}
+                className="text-xs sm:text-sm font-medium text-[#60A5FA] hover:text-[#2563EB] transition-colors"
+              >
+                Forgot password?
+              </Link>
+            </div>
+          </div>
 
           <Button
             variant={isFormValid ? 'primary' : 'secondary'}

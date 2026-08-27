@@ -9,4 +9,6 @@ export const authKeys = {
   oauthSelectRole: () => [...authKeys.all, 'oauthSelectRole'] as const,
   oauthVerify: () => [...authKeys.all, 'oauthVerify'] as const,
   oauthResendOtp: () => [...authKeys.all, 'oauthResendOtp'] as const,
+  forgotPassword: () => [...authKeys.all, 'forgotPassword'] as const,
+  resetPassword: () => [...authKeys.all, 'resetPassword'] as const,
 };

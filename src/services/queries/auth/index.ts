@@ -13,6 +13,10 @@ import type {
   OAuthVerifyEmailRequest,
   OAuthStatusResponse,
   ApiResponse,
+  ForgotPasswordRequest,
+  ForgotPasswordResponse,
+  ResetPasswordRequest,
+  ResetPasswordResponse,
 } from "./types";
 import { useAuth } from "../../../context/AuthContext";
 import { startTokenRefreshSchedule } from "../../api/scheduleRefreshToken";
@@ -219,5 +223,29 @@ export const useGetOAuthStatus = (options = {}) => {
     },
     enabled: hasSetupToken || !!getSetupToken(),
     ...options,
+  });
+};
+
+export const useForgotPasswordMutation = () => {
+  return useMutation({
+    mutationKey: authKeys.forgotPassword(),
+    mutationFn: (data: ForgotPasswordRequest) =>
+      apiClient.post<ForgotPasswordResponse>({
+        url: "/auth/password/forgot",
+        body: data,
+        auth: false,
+      }),
+  });
+};
+
+export const useResetPasswordMutation = () => {
+  return useMutation({
+    mutationKey: authKeys.resetPassword(),
+    mutationFn: (data: ResetPasswordRequest) =>
+      apiClient.post<ResetPasswordResponse>({
+        url: "/auth/password/reset",
+        body: data,
+        auth: false,
+      }),
   });
 };

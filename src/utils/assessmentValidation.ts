@@ -15,6 +15,7 @@ import {
   hasReasonField,
   isReasonMinWordsMet,
 } from './reasonMinWords';
+import { isWrittenReasonType, WRITTEN_REASON_TYPES } from './writtenReasonTypes';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -252,12 +253,7 @@ export const isItemAnswerComplete = (item: AssessmentItem, value: AnswerValue | 
   }
 
   // 10. Single best / Choice + reason
-  const isChoiceReasonType = [
-    'jb', 'compare', 'allocate', 'data', 'dashboard', 'hotspot',
-    'nextq', 'diagnose', 'proofread', 'visual', 'liveui', 'specialist', 'abtest',
-    'chartread', 'architect', 'liveplan', 'liveadapt', 'risktriage', 'orchestrate',
-    'factcheck', 'metric', 'threshold', 'querybuild', 'coverage', 'dataquality',
-  ].includes(typeStr);
+  const isChoiceReasonType = WRITTEN_REASON_TYPES.has(typeStr);
 
   const looksLikeChoiceAnswer =
     typeof value === 'string' ||
@@ -301,12 +297,9 @@ export const isItemAnswerComplete = (item: AssessmentItem, value: AnswerValue | 
     if (!choiceVal) return false;
 
     const requireReason =
-      typeStr === 'jb' ||
-      typeStr === 'compare' ||
-      typeStr === 'hotspot' ||
+      isWrittenReasonType(typeStr) ||
       item.content.requireReasoning === true ||
-      item.content.showReasoning === true ||
-      hasReasonField(content);
+      item.content.showReasoning === true;
 
     if (requireReason) {
       return reasonMeetsRequirement(item, reasonVal, typeStr, true);

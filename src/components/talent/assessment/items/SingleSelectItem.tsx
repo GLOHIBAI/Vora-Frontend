@@ -8,6 +8,8 @@ import { getReasonMinWords } from '../shared/reasonMinWords';
 
 import FormattedPromptText from '../shared/FormattedPromptText';
 
+import { isWrittenReasonType } from '../../../../utils/writtenReasonTypes';
+
 const SingleSelectItem: React.FC<AssessmentItemRendererProps> = ({
   item,
   value,
@@ -32,17 +34,12 @@ const SingleSelectItem: React.FC<AssessmentItemRendererProps> = ({
 
   const normalizedType = String(item.type ?? item.content?.type ?? '').toLowerCase();
 
-  // Only show a reason box when the API/content explicitly asks for one,
-  // or for known reason-required families (jb / compare / hotspot).
+  // Reason box appears strictly for types in the written-reason list or explicit content flags.
+  // Do not guess or show reasoning on sb/mcq just because prompt/reasonPrompt exists.
   const showReasoning =
-    normalizedType === 'jb' ||
-    normalizedType === 'compare' ||
-    normalizedType === 'hotspot' ||
+    isWrittenReasonType(normalizedType) ||
     content.requireReasoning === true ||
-    content.showReasoning === true ||
-    !!content.reasonPrompt ||
-    !!content.reasoningPrompt ||
-    !!content.justifyPrompt;
+    content.showReasoning === true;
 
   const reasoningPrompt =
     String(

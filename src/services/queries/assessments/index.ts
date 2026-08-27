@@ -648,6 +648,35 @@ export const startGate3Session = async (
 };
 
 /**
+ * GET /api/v1/assessments/:assessmentId/gates/3/resume-state
+ * Welcome-back routing for Stage 3 — nextStep / nextCalls, and current prompt window.
+ */
+export const fetchGate3ResumeState = async (
+  assessmentId: string,
+): Promise<import('./types').Gate3ResumeState> => {
+  const res = await apiClient.get<any>({
+    url: `/assessments/${assessmentId}/gates/3/resume-state`,
+    auth: true,
+  });
+  return (res?.data || res) as import('./types').Gate3ResumeState;
+};
+
+/**
+ * React Query hook for Gate 3 resume-state.
+ */
+export const useGate3ResumeStateQuery = (
+  assessmentId: string,
+  options?: { enabled?: boolean },
+) =>
+  useQuery({
+    queryKey: assessmentKeys.resumeState(assessmentId, 3),
+    queryFn: async (): Promise<import('./types').Gate3ResumeState> =>
+      fetchGate3ResumeState(assessmentId),
+    enabled: (options?.enabled ?? true) && !!assessmentId,
+    staleTime: 15 * 1000,
+  });
+
+/**
  * GET /api/v1/assessments/:assessmentId/gates/3/items
  * Retrieves current Gate 3 item prompt / polling status.
  * Optionally pass from/through to request a specific window (from upload response hints).
@@ -676,6 +705,7 @@ export const uploadGate3Video = async (
   assessmentId: string,
   itemId: string,
   file: Blob | File,
+  transcript?: string,
 ): Promise<import('./types').Gate3UploadResponse> => {
   const formData = new FormData();
   
@@ -694,6 +724,10 @@ export const uploadGate3Video = async (
     : new File([file], fileName, { type: cleanType });
 
   formData.append('file', uploadFile, fileName);
+
+  if (transcript && transcript.trim()) {
+    formData.append('transcript', transcript.trim());
+  }
 
   const res = await apiClient.post<any>({
     url: `/assessments/${assessmentId}/gates/3/items/${itemId}/video`,
@@ -716,6 +750,174 @@ export const submitComponentResponses = async (
   const res = await apiClient.post<any>({
     url: `/assessments/${assessmentId}/components/${componentId}/submit`,
     body: { responses },
+    auth: true,
+  });
+  return res?.data || res;
+};
+
+// ── Gate 3 Direct Upload (3-step flow) ──────────────────────────────────────
+
+/**
+ * POST /api/v1/assessments/:assessmentId/gates/3/items/:itemId/upload-url
+ * Step 1: Request a pre-signed upload URL for direct upload.
+ */
+export const requestGate3UploadUrl = async (
+  assessmentId: string,
+  itemId: string,
+  opts: { contentType: string; fileName?: string },
+): Promise<import('./types').Gate3DirectUploadUrlResponse> => {
+  const res = await apiClient.post<any>({
+    url: `/assessments/${assessmentId}/gates/3/items/${itemId}/upload-url`,
+    body: { contentType: opts.contentType, fileName: opts.fileName },
+    auth: true,
+  });
+  return (res?.data || res) as import('./types').Gate3DirectUploadUrlResponse;
+};
+
+/**
+ * POST /api/v1/assessments/:assessmentId/gates/3/items/:itemId/complete
+ * Step 3: Confirm the direct upload and optionally attach transcript.
+ */
+export const completeGate3DirectUpload = async (
+  assessmentId: string,
+  itemId: string,
+  opts: { uploadId: string; transcript?: string },
+): Promise<import('./types').Gate3UploadResponse> => {
+  const body: Record<string, any> = { uploadId: opts.uploadId };
+  if (opts.transcript?.trim()) body.transcript = opts.transcript.trim();
+
+  const res = await apiClient.post<any>({
+    url: `/assessments/${assessmentId}/gates/3/items/${itemId}/complete`,
+    body,
+    auth: true,
+  });
+  return (res?.data || res) as import('./types').Gate3UploadResponse;
+};
+
+// ── Gate 3 Candidate Voice ──────────────────────────────────────────────────
+
+/**
+ * GET /api/v1/assessments/:assessmentId/gates/3/candidate-voice
+ * Compulsory step — fetch current candidate-voice state.
+ */
+export const fetchGate3CandidateVoice = async (
+  assessmentId: string,
+): Promise<import('./types').Gate3CandidateVoiceResponse> => {
+  const res = await apiClient.get<any>({
+    url: `/assessments/${assessmentId}/gates/3/candidate-voice`,
+    auth: true,
+    suppressErrorToast: true,
+  });
+  return (res?.data || res) as import('./types').Gate3CandidateVoiceResponse;
+};
+
+/**
+ * POST /api/v1/assessments/:assessmentId/gates/3/candidate-voice/choice
+ * Submit "yes" (will record questions) or "no" (skip).
+ */
+export const submitGate3CandidateVoiceChoice = async (
+  assessmentId: string,
+  choice: 'yes' | 'no',
+): Promise<import('./types').Gate3CandidateVoiceResponse> => {
+  const res = await apiClient.post<any>({
+    url: `/assessments/${assessmentId}/gates/3/candidate-voice/choice`,
+    body: { choice },
+    auth: true,
+    suppressErrorToast: true,
+  });
+  return (res?.data || res) as import('./types').Gate3CandidateVoiceResponse;
+};
+
+/**
+ * POST /api/v1/assessments/:assessmentId/gates/3/candidate-voice/questions
+ * Multipart upload of a candidate question video.
+ */
+export const uploadCandidateVoiceQuestion = async (
+  assessmentId: string,
+  file: Blob | File,
+  topic?: string,
+): Promise<import('./types').Gate3CandidateVoiceQuestion> => {
+  const formData = new FormData();
+
+  const rawType = file.type || '';
+  let cleanType = rawType.split(';')[0].trim().toLowerCase();
+  if (!cleanType || !cleanType.startsWith('video/')) cleanType = 'video/webm';
+
+  const ext = cleanType.includes('mp4') ? 'mp4' : cleanType.includes('mov') ? 'mov' : 'webm';
+  const fileName = (file instanceof File && file.name) ? file.name : `question.${ext}`;
+  const uploadFile = file instanceof File && file.type === cleanType
+    ? file
+    : new File([file], fileName, { type: cleanType });
+
+  formData.append('file', uploadFile, fileName);
+  if (topic?.trim()) formData.append('topic', topic.trim());
+
+  const res = await apiClient.post<any>({
+    url: `/assessments/${assessmentId}/gates/3/candidate-voice/questions`,
+    body: formData,
+    auth: true,
+  });
+  return (res?.data || res) as import('./types').Gate3CandidateVoiceQuestion;
+};
+
+/**
+ * DELETE /api/v1/assessments/:assessmentId/gates/3/candidate-voice/questions/:questionId
+ * Remove a previously-uploaded candidate question.
+ */
+export const deleteCandidateVoiceQuestion = async (
+  assessmentId: string,
+  questionId: string,
+): Promise<void> => {
+  await apiClient.delete<any>({
+    url: `/assessments/${assessmentId}/gates/3/candidate-voice/questions/${questionId}`,
+    auth: true,
+  });
+};
+
+// ── Employer Candidate-Voice Replies ────────────────────────────────────────
+
+/**
+ * POST /api/v1/assessments/:assessmentId/candidate-voice/questions/:questionId/reply-text
+ * Employer text reply to a candidate question.
+ */
+export const postCandidateVoiceReplyText = async (
+  assessmentId: string,
+  questionId: string,
+  text: string,
+): Promise<any> => {
+  const res = await apiClient.post<any>({
+    url: `/assessments/${assessmentId}/candidate-voice/questions/${questionId}/reply-text`,
+    body: { text },
+    auth: true,
+  });
+  return res?.data || res;
+};
+
+/**
+ * POST /api/v1/assessments/:assessmentId/candidate-voice/questions/:questionId/reply-video
+ * Employer video reply to a candidate question (multipart).
+ */
+export const postCandidateVoiceReplyVideo = async (
+  assessmentId: string,
+  questionId: string,
+  file: Blob | File,
+): Promise<any> => {
+  const formData = new FormData();
+  const rawType = file.type || '';
+  let cleanType = rawType.split(';')[0].trim().toLowerCase();
+  if (!cleanType || !cleanType.startsWith('video/')) cleanType = 'video/webm';
+
+  const ext = cleanType.includes('mp4') ? 'mp4' : cleanType.includes('mov') ? 'mov' : 'webm';
+  const fileName = (file instanceof File && file.name) ? file.name : `reply.${ext}`;
+  const uploadFile = file instanceof File && file.type === cleanType
+    ? file
+    : new File([file], fileName, { type: cleanType });
+
+  formData.append('file', uploadFile, fileName);
+
+  const res = await apiClient.post<any>({
+    url: `/assessments/${assessmentId}/candidate-voice/questions/${questionId}/reply-video`,
+    body: formData,
     auth: true,
   });
   return res?.data || res;

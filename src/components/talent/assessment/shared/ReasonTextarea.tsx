@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useLayoutEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { getReasonMinWords, isReasonMinWordsMet } from '../../../../utils/reasonMinWords';
 import { useShowStageTwoValidation } from './StageTwoValidationContext';
@@ -21,6 +21,7 @@ export interface ReasonTextareaProps {
 
 /**
  * Shared Stage 2 reason / free-text field.
+ * Auto-expands height as the user types so content is fully visible without inner scrollbar.
  * Validation ("Please enter more words") only appears after Continue is attempted.
  */
 const ReasonTextarea: React.FC<ReasonTextareaProps> = ({
@@ -38,6 +39,19 @@ const ReasonTextarea: React.FC<ReasonTextareaProps> = ({
 }) => {
   const [showPasteWarning, setShowPasteWarning] = useState(false);
   const showValidation = useShowStageTwoValidation();
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Auto-resize textarea height as content expands
+  const adjustHeight = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
+
+  useLayoutEffect(() => {
+    adjustHeight();
+  }, [value, adjustHeight]);
 
   const minWords =
     minWordsProp !== undefined
@@ -62,9 +76,13 @@ const ReasonTextarea: React.FC<ReasonTextareaProps> = ({
       </div>
 
       <textarea
+        ref={textareaRef}
         disabled={disabled}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          onChange(e.target.value);
+          adjustHeight();
+        }}
         onPaste={(e) => {
           const ENABLE_PASTE_BLOCKING = import.meta.env.VITE_ENABLE_ANTI_CHEAT_PASTE === 'true';
           if (!ENABLE_PASTE_BLOCKING) return;
@@ -75,7 +93,7 @@ const ReasonTextarea: React.FC<ReasonTextareaProps> = ({
         placeholder={placeholder}
         className={`w-full ${minHeightClassName} p-3.5 sm:p-4 bg-white border ${
           isOverMax ? 'border-[#DC2626] ring-2 ring-[#DC2626]/10' : 'border-[#E6E6E6] focus:border-[#0047CC] focus:ring-2 focus:ring-[#0047CC]/20'
-        } rounded-[14px] text-[13.5px] text-[#1A1A1A] placeholder:text-[#94A3B8] outline-none transition-all resize-y font-sans leading-relaxed shadow-[0_2px_8px_rgba(0,71,204,0.06)] disabled:opacity-60 disabled:cursor-not-allowed`}
+        } rounded-[14px] text-[13.5px] text-[#1A1A1A] placeholder:text-[#94A3B8] outline-none transition-colors overflow-hidden resize-none font-sans leading-relaxed shadow-[0_2px_8px_rgba(0,71,204,0.06)] disabled:opacity-60 disabled:cursor-not-allowed`}
       />
 
       {showError && (

@@ -4,10 +4,19 @@ import toast from 'react-hot-toast';
 import AssessmentHeader from '../../components/talent/AssessmentHeader';
 import Button from '../../components/common/Button';
 import AssessmentAnalyzingView from '../../components/talent/assessment/AssessmentAnalyzingView';
-import { submitComponentResponses, fetchGate3Items } from '../../services/queries/assessments';
+import {
+  submitComponentResponses,
+  fetchGate3Items,
+  fetchGate3CandidateVoice,
+  submitGate3CandidateVoiceChoice,
+  uploadCandidateVoiceQuestion,
+  deleteCandidateVoiceQuestion,
+} from '../../services/queries/assessments';
 import { useGetPublicRoleQuery } from '../../services/queries/talent';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
 import { getActiveAssessmentId } from '../../utils/assessmentSession';
+import { BackgroundSpeechTranscriber } from '../../utils/backgroundSpeechTranscriber';
+import type { Gate3CandidateVoiceQuestion } from '../../services/queries/assessments/types';
 
 interface CandidateQuestionItem {
   id: string;
@@ -15,6 +24,7 @@ interface CandidateQuestionItem {
   videoUrl: string;
   videoBlob?: Blob;
   durationSecs?: number;
+  transcript?: string;
   createdAt: string;
 }
 
@@ -67,6 +77,10 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isUploadingQuestion, setIsUploadingQuestion] = useState<boolean>(false);
+
+  // Backend scoring readiness and session info
+  const [scoringReady, setScoringReady] = useState<boolean>(false);
 
   // Analysis / completion overlay
   const [isCompiling, setIsCompiling] = useState<boolean>(false);
@@ -77,17 +91,67 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recordedBlobRef = useRef<Blob | null>(null);
+  const transcriberRef = useRef<BackgroundSpeechTranscriber>(new BackgroundSpeechTranscriber());
 
-  // Fetch componentId from session if available
+  // Fetch candidate-voice state & componentId from session on mount
   useEffect(() => {
     if (!assessmentId) return;
-    fetchGate3Items(assessmentId)
-      .then((res: any) => {
-        const comp = res?.componentId || res?.data?.componentId;
-        if (comp) setComponentId(comp);
+
+    // Load candidate-voice state from backend
+    fetchGate3CandidateVoice(assessmentId)
+      .then((voiceRes: any) => {
+        const data = voiceRes?.data || voiceRes;
+        if (data?.componentId) setComponentId(data.componentId);
+        if (data?.scoringReady !== undefined) setScoringReady(!!data.scoringReady);
+
+        if (Array.isArray(data?.questions) && data.questions.length > 0) {
+          const loaded: CandidateQuestionItem[] = data.questions.map((q: Gate3CandidateVoiceQuestion) => ({
+            id: q.questionId || `q_${Date.now()}`,
+            topic: q.topic || 'Question',
+            videoUrl: q.videoUrl || '',
+            durationSecs: q.durationSecs,
+            createdAt: q.createdAt || new Date().toISOString(),
+          }));
+          setQuestionsList(loaded);
+          setHasQuestions('yes');
+        } else if (data?.candidateVoice === false || data?.voiceComplete === true) {
+          setHasQuestions('no');
+        }
       })
-      .catch(() => { });
+      .catch((err: any) => {
+        console.warn('Could not fetch candidate voice state:', err);
+        const msg = String(err?.message || err?.data?.message || '');
+        const status = err?.statusCode || err?.status || err?.response?.status;
+        if (status === 400 || msg.toLowerCase().includes('finish all stage 3')) {
+          toast.error('Please complete all video interview prompts first.');
+          navigate(`/onboarding/talent/${roleSlug}/interview/stage-3/video`, { replace: true });
+          return;
+        }
+
+        // Fallback to fetchGate3Items for componentId
+        fetchGate3Items(assessmentId)
+          .then((res: any) => {
+            const comp = res?.componentId || res?.data?.componentId;
+            if (comp) setComponentId(comp);
+            if (res?.scoringReady !== undefined) setScoringReady(!!res.scoringReady);
+          })
+          .catch(() => { });
+      });
   }, [assessmentId]);
+
+  // Handle user choice change (Yes / No)
+  const handleSelectChoice = async (choice: 'yes' | 'no') => {
+    setHasQuestions(choice);
+    if (!assessmentId) return;
+    try {
+      const res = await submitGate3CandidateVoiceChoice(assessmentId, choice);
+      const data = (res as any)?.data || res;
+      if (data?.scoringReady !== undefined) setScoringReady(!!data.scoringReady);
+      if (data?.componentId) setComponentId(data.componentId);
+    } catch (err) {
+      console.warn('Error submitting candidate voice choice:', err);
+    }
+  };
 
   // Camera stream controls
   useEffect(() => {
@@ -147,17 +211,17 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: true
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+        audio: { echoCancellation: true, noiseSuppression: true },
       });
       streamRef.current = stream;
+      setHasWebcamPermission(true);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
-      setHasWebcamPermission(true);
       return stream;
     } catch (err) {
-      console.warn('Webcam stream unavailable', err);
+      console.warn('Candidate questions camera error:', err);
       setHasWebcamPermission(false);
       return null;
     }
@@ -174,83 +238,64 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
   };
 
   const handleStartRecording = async () => {
-    setRecordedVideoUrl(null);
-    recordedBlobRef.current = null;
-    setIsRecordingStopped(false);
-    setRecElapsed(0);
-    chunksRef.current = [];
-
-    let stream = streamRef.current;
-    if (!stream || !stream.active) {
-      stream = await startCamera();
-    }
-
+    const stream = await startCamera();
     if (!stream) {
-      toast.error('Unable to access camera or microphone. Please allow permissions.');
+      toast.error('Unable to access camera or microphone.');
       return;
     }
 
-    try {
-      let mimeType = 'video/webm';
-      if (typeof MediaRecorder !== 'undefined') {
-        if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
-          mimeType = 'video/webm;codecs=vp9,opus';
-        } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
-          mimeType = 'video/webm;codecs=vp8,opus';
-        } else if (MediaRecorder.isTypeSupported('video/webm')) {
-          mimeType = 'video/webm';
-        } else if (MediaRecorder.isTypeSupported('video/mp4')) {
-          mimeType = 'video/mp4';
-        }
-      }
+    chunksRef.current = [];
+    recordedBlobRef.current = null;
+    setRecordedVideoUrl(null);
+    setIsRecordingStopped(false);
+    setRecElapsed(0);
 
-      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-      mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.ondataavailable = (e) => {
+    try {
+      const mimeTypes = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'];
+      let selectedMime = mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || '';
+      const recorder = new MediaRecorder(stream, selectedMime ? { mimeType: selectedMime } : undefined);
+
+      recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) {
           chunksRef.current.push(e.data);
         }
       };
-      mediaRecorder.onstop = () => {
-        const cleanType = (mimeType || 'video/webm').split(';')[0].trim().toLowerCase() || 'video/webm';
-        const file = new File(chunksRef.current, `candidate-question-${Date.now()}.webm`, { type: cleanType });
-        recordedBlobRef.current = file;
-        const url = URL.createObjectURL(file);
-        setRecordedVideoUrl(url);
+
+      recorder.onstop = () => {
+        const finalBlob = new Blob(chunksRef.current, { type: selectedMime || 'video/webm' });
+        recordedBlobRef.current = finalBlob;
+        const videoUrl = URL.createObjectURL(finalBlob);
+        setRecordedVideoUrl(videoUrl);
         setIsRecordingStopped(true);
-        setIsRecording(false);
       };
 
-      mediaRecorder.start();
+      recorder.start(500);
+      mediaRecorderRef.current = recorder;
       setIsRecording(true);
-      toast.success('Live recording started');
-    } catch (err: any) {
-      console.error('MediaRecorder start error:', err);
-      toast.error('Failed to start recording: ' + (err?.message || 'Error initializing recorder'));
-      setIsRecording(false);
+      transcriberRef.current.start();
+    } catch (err) {
+      console.error('Failed to start candidate question recorder:', err);
+      toast.error('Failed to start recording.');
     }
   };
 
   const handleStopRecording = () => {
-    if (!isRecording) return;
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      try {
-        mediaRecorderRef.current.stop();
-        toast.success('Question recorded! You can preview or save.');
-      } catch (err) {
-        console.error('Error stopping recorder:', err);
-      }
+      mediaRecorderRef.current.stop();
     }
     setIsRecording(false);
+    transcriberRef.current.stop();
+    toast.success('Recording finished.');
   };
 
   const handleRetake = () => {
+    transcriberRef.current.reset();
     setRecordedVideoUrl(null);
     recordedBlobRef.current = null;
     setIsRecordingStopped(false);
     setIsRecording(false);
     setRecElapsed(0);
-    handleStartRecording();
+    startCamera();
   };
 
   // Upload handlers
@@ -263,7 +308,7 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
     setIsDragging(false);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
     const files = e.dataTransfer.files;
@@ -299,11 +344,11 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
     toast.success('Video upload validated.');
   };
 
-  const handleSaveQuestion = () => {
+  const handleSaveQuestion = async () => {
     const videoUrl = activeTab === 'live' ? recordedVideoUrl : uploadedUrl;
     const videoBlob = activeTab === 'live' ? (recordedBlobRef.current || undefined) : (uploadedFile || undefined);
 
-    if (!videoUrl) {
+    if (!videoUrl || !videoBlob) {
       toast.error('Please record or upload a video for this question.');
       return;
     }
@@ -313,32 +358,63 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
       return;
     }
 
-    const newQuestion: CandidateQuestionItem = {
-      id: `candidate_q_${Date.now()}`,
-      topic: currentTopic.trim() || `Question ${questionsList.length + 1}`,
-      videoUrl,
-      videoBlob,
-      durationSecs: recElapsed || undefined,
-      createdAt: new Date().toISOString(),
-    };
+    const topic = currentTopic.trim() || `Question ${questionsList.length + 1}`;
+    setIsUploadingQuestion(true);
 
-    setQuestionsList(prev => [...prev, newQuestion]);
-    toast.success(`Question ${questionsList.length + 1} added!`);
+    try {
+      let createdId = `candidate_q_${Date.now()}`;
+      let finalVideoUrl = videoUrl;
 
-    // Reset current form
-    setCurrentTopic('');
-    setRecordedVideoUrl(null);
-    recordedBlobRef.current = null;
-    setIsRecordingStopped(false);
-    setIsRecording(false);
-    setUploadedFile(null);
-    setUploadedUrl(null);
-    setRecElapsed(0);
+      if (assessmentId) {
+        const uploadRes: any = await uploadCandidateVoiceQuestion(assessmentId, videoBlob, topic);
+        const resData = uploadRes?.data || uploadRes;
+        if (resData?.questionId) createdId = resData.questionId;
+        if (resData?.videoUrl) finalVideoUrl = resData.videoUrl;
+        if (resData?.scoringReady !== undefined) setScoringReady(!!resData.scoringReady);
+      }
+
+      const newQuestion: CandidateQuestionItem = {
+        id: createdId,
+        topic,
+        videoUrl: finalVideoUrl,
+        videoBlob,
+        durationSecs: recElapsed || undefined,
+        createdAt: new Date().toISOString(),
+      };
+
+      setQuestionsList(prev => [...prev, newQuestion]);
+      toast.success(`Question ${questionsList.length + 1} uploaded!`);
+
+      // Reset current form & transcriber
+      transcriberRef.current.reset();
+      setCurrentTopic('');
+      setRecordedVideoUrl(null);
+      recordedBlobRef.current = null;
+      setIsRecordingStopped(false);
+      setIsRecording(false);
+      setUploadedFile(null);
+      setUploadedUrl(null);
+      setRecElapsed(0);
+    } catch (err: any) {
+      console.error('Failed to upload candidate voice question:', err);
+      toast.error('Failed to upload question. Please retry.');
+    } finally {
+      setIsUploadingQuestion(false);
+    }
   };
 
-  const handleDeleteQuestion = (id: string) => {
-    setQuestionsList(prev => prev.filter(q => q.id !== id));
-    toast.success('Question removed.');
+  const handleDeleteQuestion = async (id: string) => {
+    try {
+      if (assessmentId) {
+        await deleteCandidateVoiceQuestion(assessmentId, id);
+      }
+      setQuestionsList(prev => prev.filter(q => q.id !== id));
+      toast.success('Question removed.');
+    } catch (err) {
+      console.warn('Failed to delete question from server:', err);
+      setQuestionsList(prev => prev.filter(q => q.id !== id));
+      toast.success('Question removed.');
+    }
   };
 
   const handleCompleteFlow = async () => {
@@ -473,7 +549,7 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
           {/* Card: Yes */}
           <button
             type="button"
-            onClick={() => setHasQuestions('yes')}
+            onClick={() => handleSelectChoice('yes')}
             className={`p-[20px_24px] rounded-[14px] border-[1.5px] text-left transition-all cursor-pointer flex items-start gap-[14px] ${hasQuestions === 'yes'
               ? 'bg-white border-[#0047CC] shadow-[0_4px_16px_rgba(0,71,204,0.1)] ring-2 ring-[#0047CC]/20'
               : 'bg-white border-[#E6E6E6] hover:border-[#0047CC]/40 hover:bg-[#FAFAFA]'
@@ -499,7 +575,7 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
           {/* Card: No */}
           <button
             type="button"
-            onClick={() => setHasQuestions('no')}
+            onClick={() => handleSelectChoice('no')}
             className={`p-[20px_24px] rounded-[14px] border-[1.5px] text-left transition-all cursor-pointer flex items-start gap-[14px] ${hasQuestions === 'no'
               ? 'bg-white border-[#0047CC] shadow-[0_4px_16px_rgba(0,71,204,0.1)] ring-2 ring-[#0047CC]/20'
               : 'bg-white border-[#E6E6E6] hover:border-[#0047CC]/40 hover:bg-[#FAFAFA]'
@@ -822,7 +898,7 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
                       <div
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
-                        onDrop={handleDrop}
+                        onDrop={handleFileDrop}
                         className={`border-[1.5px] border-dashed rounded-[12px] p-[32px_20px] text-center cursor-pointer transition-all ${isDragging ? 'border-[#0047CC] bg-[#EBF6FF]' : 'border-[#D4D4D4] bg-white hover:border-[#808080]'
                           }`}
                       >
@@ -853,9 +929,11 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
                 {/* Save question action button */}
                 <div className="flex items-center justify-between pt-[14px] border-t border-[#E6E6E6] flex-wrap gap-[10px]">
                   <div className="text-[12.5px] text-[#808080]">
-                    {(activeTab === 'live' ? recordedVideoUrl : uploadedUrl)
-                      ? '✓ Video ready to save to your list'
-                      : 'Record or upload your video before saving'}
+                    {isUploadingQuestion
+                      ? 'Uploading question to server...'
+                      : (activeTab === 'live' ? recordedVideoUrl : uploadedUrl)
+                        ? '✓ Video ready to save to your list'
+                        : 'Record or upload your video before saving'}
                   </div>
 
                   <div className="flex gap-[10px]">
@@ -864,10 +942,10 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
                       fullWidth={false}
                       pill={true}
                       onClick={handleSaveQuestion}
-                      disabled={!(activeTab === 'live' ? recordedVideoUrl : uploadedUrl)}
+                      disabled={isUploadingQuestion || !(activeTab === 'live' ? recordedVideoUrl : uploadedUrl)}
                       className="bg-[#0047CC] hover:bg-[#344DA1] text-white text-[13px] font-[600] px-[20px] py-[9px] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      + Add Question {questionsList.length + 1}
+                      {isUploadingQuestion ? 'Uploading...' : `+ Add Question ${questionsList.length + 1}`}
                     </Button>
                   </div>
                 </div>

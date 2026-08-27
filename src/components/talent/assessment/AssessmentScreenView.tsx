@@ -6,6 +6,7 @@ import FullPageSpinner from '../../common/FullPageSpinner';
 import AssessmentItemsList from './AssessmentItemsList';
 import SessionChapterRail from './SessionChapterRail';
 import SessionPebbleRail from './SessionPebbleRail';
+import ProctoringCamera from './shared/ProctoringCamera';
 import { useAssessmentScreen } from '../../../hooks/useAssessmentScreen';
 import { normalizeAssessmentItems } from '../../../utils/assessmentItems';
 import { getLikertQuestions } from '../../../utils/assessmentItems';
@@ -158,96 +159,7 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
   const blurTimerRef = useRef<any | null>(null);
   const cheatCountdownRef = useRef<any | null>(null);
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [hasCamera, setHasCamera] = useState<boolean>(false);
-  const streamRef = useRef<MediaStream | null>(null);
-
-  const triggerCheatWarning = useCallback(
-    (type: 'tab-switch' | 'paste') => {
-      setCheatType(type);
-      setShowCheatModal(true);
-      if (type === 'tab-switch') {
-        let n = 3;
-        setCheatCountdown(n);
-        cheatCountdownRef.current = setInterval(() => {
-          n--;
-          setCheatCountdown(n);
-          if (n <= 0) {
-            if (cheatCountdownRef.current) clearInterval(cheatCountdownRef.current);
-            void confirmScreen();
-          }
-        }, 1000);
-      }
-    },
-    [confirmScreen]
-  );
-
   // Tab change & paste warning listener (tab-switch enforcement disabled for now per user instruction)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      const ENABLE_ANTI_CHEAT_TAB_SWITCH = import.meta.env.VITE_ENABLE_ANTI_CHEAT_TAB_SWITCH === 'true';
-      if (!ENABLE_ANTI_CHEAT_TAB_SWITCH) return;
-      if (document.hidden && !alreadyCheated) {
-        blurTimerRef.current = setTimeout(() => {
-          void confirmScreen();
-        }, 3000);
-      } else if (!document.hidden) {
-        if (blurTimerRef.current) {
-          clearTimeout(blurTimerRef.current);
-          blurTimerRef.current = null;
-          if (!alreadyCheated) {
-            setAlreadyCheated(true);
-            triggerCheatWarning('tab-switch');
-          }
-        }
-      }
-    };
-
-    const handlePaste = (e: ClipboardEvent) => {
-      const ENABLE_PASTE_BLOCKING = import.meta.env.VITE_ENABLE_ANTI_CHEAT_PASTE === 'true';
-      if (!ENABLE_PASTE_BLOCKING) return;
-      e.preventDefault();
-      triggerCheatWarning('paste');
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('paste', handlePaste);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('paste', handlePaste);
-      if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
-      if (cheatCountdownRef.current) clearInterval(cheatCountdownRef.current);
-    };
-  }, [alreadyCheated, confirmScreen, triggerCheatWarning]);
-
-  // Proctoring camera emulator
-  useEffect(() => {
-    const startRecordingEmulation = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 320, height: 240 },
-          audio: true,
-        });
-        streamRef.current = stream;
-        setHasCamera(true);
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      } catch (err) {
-        console.warn('Proctoring camera access denied or unavailable', err);
-        setHasCamera(false);
-      }
-    };
-
-    startRecordingEmulation();
-
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-      }
-    };
-  }, []);
 
   useEffect(() => {
     if (draft?.responses) {
@@ -363,30 +275,7 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
         {/* Chapter Rail */}
         <SessionChapterRail
           activeSession={session as 1 | 2}
-          leftContent={
-            <div className="w-[130px] h-[74px] rounded-none border-[1.5px] border-white shadow-[0_4px_12px_rgba(0,0,0,0.12)] overflow-hidden bg-slate-900 flex items-center justify-center relative">
-              {hasCamera ? (
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  muted
-                  playsInline
-                  className="w-full h-full object-cover scale-x-[-1]"
-                />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-center text-white/50 bg-[#0B0F14]">
-                  <span className="text-[6px] font-extrabold tracking-wider leading-none">PROCTOR</span>
-                </div>
-              )}
-              {/* REC Indicator */}
-              <div className="absolute top-1 right-1 flex items-center justify-center bg-black/40 p-0.5 rounded-full select-none">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-600"></span>
-                </span>
-              </div>
-            </div>
-          }
+          leftContent={<ProctoringCamera />}
         />
 
         {/* Pebble Rail */}

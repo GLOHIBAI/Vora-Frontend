@@ -1,12 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../api";
 
-export const useGetPublicRoleQuery = (slug: string) => {
+export const useGetPublicRoleQuery = (slug: string, options: Record<string, any> = {}) => {
   return useQuery({
     queryKey: ["public-role", slug],
     queryFn: () =>
       apiClient.get<any>({ url: `/talent/role/${slug}`, auth: false }),
     enabled: !!slug,
+    ...options,
   });
 };
 

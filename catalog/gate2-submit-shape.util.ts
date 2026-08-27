@@ -82,17 +82,38 @@ export function formatGate2Answer(
       return String(rawAnswer ?? '');
     }
 
-    // Single best + reason / Choice + reason (jb, hotspot, allocate, highlight, etc.)
+    // Single best + reason / Choice + reason (all written-reason types per spec)
     case 'jb':
+    case 'sjt_tradeoff':
+    case 'liveui':
+    case 'livemedia':
+    case 'proofread':
+    case 'querybuild':
+    case 'audiomix':
+    case 'coverage':
+    case 'dataquality':
+    case 'editbay':
+    case 'errorbudget':
+    case 'grade':
+    case 'leveledit':
+    case 'livecrisis':
+    case 'liveedit':
+    case 'livepost':
+    case 'palette':
+    case 'position':
+    case 'shotlist':
+    case 'systemcheck':
+    case 'visual':
+    case 'visualrank':
     case 'allocate':
+    case 'nextq':
     case 'data':
     case 'dashboard':
     case 'chartread':
-    case 'hotspot':
-    case 'nextq':
+    case 'abtest':
     case 'diagnose':
     case 'visualspot':
-    case 'abtest':
+    case 'hotspot':
     case 'liveadapt':
     case 'risktriage':
     case 'orchestrate':
@@ -100,9 +121,10 @@ export function formatGate2Answer(
     case 'architect':
     case 'factcheck':
     case 'metric':
-    case 'threshold': {
+    case 'threshold':
+    case 'specialist': {
       if (typeof rawAnswer === 'object' && rawAnswer !== null && !Array.isArray(rawAnswer)) {
-        const choice = String(rawAnswer.choice ?? rawAnswer.optionId ?? rawAnswer.selectedOption ?? '').trim();
+        const choice = String(rawAnswer.choice ?? rawAnswer.optionId ?? rawAnswer.selectedOption ?? rawAnswer.selected ?? '').trim();
         const reason = String(rawAnswer.reason ?? rawAnswer.reasoning ?? '').trim();
         if (!choice) return '';
         return { choice, reason };
@@ -260,19 +282,6 @@ export function formatGate2Answer(
     case 'likert': {
       const num = Number(rawAnswer);
       return isNaN(num) ? 0 : num;
-    }
-
-    // Specialists (proofread, visual, liveui, ...): { choice: "a", reason: "..." }
-    case 'proofread':
-    case 'visual':
-    case 'liveui':
-    case 'specialist': {
-      if (typeof rawAnswer === 'object' && !Array.isArray(rawAnswer)) {
-        const choice = String(rawAnswer.choice ?? rawAnswer.optionId ?? rawAnswer.selectedOption ?? '');
-        const reason = String(rawAnswer.reason ?? rawAnswer.reasoning ?? '');
-        return { choice, reason };
-      }
-      return { choice: String(rawAnswer), reason: '' };
     }
 
     // Fallback default

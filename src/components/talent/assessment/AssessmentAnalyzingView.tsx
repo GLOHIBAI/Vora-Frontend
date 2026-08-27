@@ -1,6 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import VoraLogo from '../../common/VoraLogo';
+import RoleApplyContextBanner from '../../auth/RoleApplyContextBanner';
+import ProfileMatchPulseIcon from '../profileMatch/ProfileMatchPulseIcon';
+import ProfileMatchStepRow from '../profileMatch/ProfileMatchStepRow';
+import ProfileMatchProgressBar from '../profileMatch/ProfileMatchProgressBar';
+import { useGetPublicRoleQuery } from '../../../services/queries/talent';
+import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../../utils/roleLanding';
+import type { PublicRoleLandingData } from '../../../types/roleLanding';
+import type { ProfileMatchStepStatus } from '../../../constants/profileMatchBuilding';
+
+export type AssessmentAnalyzingStepItem = {
+  title: string;
+  subtitle?: string;
+};
 
 export type AssessmentAnalyzingStepSchedule = {
   /** Absolute ms from mount when this step index becomes active (or done if past last). */
@@ -10,125 +22,184 @@ export type AssessmentAnalyzingStepSchedule = {
 };
 
 export type AssessmentAnalyzingViewProps = {
+  roleSlug?: string;
+  role?: PublicRoleLandingData | null;
   eyebrow?: string;
-  title: string;
-  subtitle: React.ReactNode;
-  steps: string[];
+  title?: string;
+  headline?: string;
+  subtitle?: React.ReactNode;
+  steps: (string | AssessmentAnalyzingStepItem)[];
   /** Starting active step index (0-based). */
   initialStepIndex?: number;
+  /** Controlled active step index from parent component. */
+  activeStepIndex?: number;
   /** Timed advances; last entry typically sets stepIndex to steps.length. */
-  schedule: AssessmentAnalyzingStepSchedule[];
+  schedule?: AssessmentAnalyzingStepSchedule[];
   /** Optional absolute ms from mount when navigation fires. */
   redirectAtMs?: number;
   /** Path relative to /onboarding/talent/:roleSlug/ or absolute app path. */
   redirectPath?: string;
-  roleSlug: string;
+  /** Optional callback fired when complete. */
+  onComplete?: () => void;
+  /** Optional controlled percentage (0-100). */
+  progress?: number;
+  reassuranceText?: string;
   footerNote?: string;
   headerMeta?: string;
 };
 
 /**
- * Shared “working through your answers” screen styled after Stage 1 scoring view.
+ * Shared full-page scoring & analyzing view styled consistently across all stages
+ * (Stage 1, Stage 2, Stage 3, and CV profile matching).
  */
 const AssessmentAnalyzingView: React.FC<AssessmentAnalyzingViewProps> = ({
+  roleSlug = '',
+  role: initialRole,
   title,
+  headline,
   subtitle,
   steps,
   initialStepIndex = 0,
+  activeStepIndex,
   schedule,
   redirectAtMs,
   redirectPath,
-  roleSlug,
+  onComplete,
+  progress: externalProgress,
 }) => {
   const navigate = useNavigate();
-  const [stepIdx, setStepIdx] = useState(initialStepIndex);
+  const [internalStepIdx, setInternalStepIdx] = useState(initialStepIndex);
 
+  const { data: roleResponse } = useGetPublicRoleQuery(roleSlug, {
+    enabled: !initialRole && !!roleSlug,
+  });
+
+  const role: PublicRoleLandingData | null = useMemo(() => {
+    if (initialRole) return initialRole;
+    if (!roleSlug) return null;
+    const apiData = roleResponse?.data || roleResponse;
+    if (!apiData || Object.keys(apiData).length === 0) {
+      return getRoleLandingForSlug(roleSlug);
+    }
+    return mapApiResponseToRoleData(roleSlug, apiData);
+  }, [initialRole, roleSlug, roleResponse]);
+
+  const activeIdx = activeStepIndex !== undefined ? activeStepIndex : internalStepIdx;
+
+  // Handle schedule timers if schedule is passed and not externally controlled
   useEffect(() => {
+    if (!schedule || schedule.length === 0 || activeStepIndex !== undefined) return;
+
     const timers = schedule.map(({ atMs, stepIndex }) =>
-      window.setTimeout(() => setStepIdx(stepIndex), atMs),
+      window.setTimeout(() => setInternalStepIdx(stepIndex), atMs),
     );
 
+    return () => {
+      timers.forEach((id) => window.clearTimeout(id));
+    };
+  }, [schedule, activeStepIndex]);
+
+  // Handle automatic redirect timer if specified
+  useEffect(() => {
     let redirectTimer: number | null = null;
-    if (redirectAtMs && redirectAtMs > 0 && redirectPath) {
+    if (redirectAtMs && redirectAtMs > 0) {
       redirectTimer = window.setTimeout(() => {
-        const path = redirectPath.startsWith('/')
-          ? redirectPath
-          : `/onboarding/talent/${roleSlug}/${redirectPath}`;
-        navigate(path, { replace: true });
+        if (onComplete) {
+          onComplete();
+        }
+        if (redirectPath) {
+          const path = redirectPath.startsWith('/')
+            ? redirectPath
+            : `/onboarding/talent/${roleSlug}/${redirectPath}`;
+          navigate(path, { replace: true });
+        }
       }, redirectAtMs);
     }
 
     return () => {
-      timers.forEach((id) => window.clearTimeout(id));
       if (redirectTimer) window.clearTimeout(redirectTimer);
     };
-  }, [navigate, redirectAtMs, redirectPath, roleSlug, schedule]);
+  }, [navigate, redirectAtMs, redirectPath, roleSlug, onComplete]);
 
-  let currentPercent = Math.min(100, Math.round(((stepIdx + 1) / steps.length) * 100));
-  if (currentPercent >= 100 && stepIdx < steps.length) {
-    currentPercent = 95;
+  // Normalize step objects
+  const normalizedSteps: AssessmentAnalyzingStepItem[] = useMemo(() => {
+    return steps.map((s) => {
+      if (typeof s === 'string') {
+        return { title: s, subtitle: s };
+      }
+      return { title: s.title, subtitle: s.subtitle || s.title };
+    });
+  }, [steps]);
+
+  // Calculate percentage
+  let computedPercent = Math.min(100, Math.round(((activeIdx + 1) / normalizedSteps.length) * 100));
+  if (computedPercent >= 100 && activeIdx < normalizedSteps.length) {
+    computedPercent = 95;
   }
+  const currentProgress = externalProgress !== undefined ? externalProgress : computedPercent;
+
+  const displayTitle = headline || title || 'Scoring Stage...';
+  const formattedTitle = displayTitle.endsWith('...') ? displayTitle : `${displayTitle}...`;
 
   return (
-    <div className="min-h-screen bg-[#F7F7F7] flex flex-col items-center justify-center p-6 font-sans">
-      <VoraLogo size="md" to="/dashboard" />
+    <div className="min-h-screen bg-white flex flex-col font-sans">
+      {/* Top Role Context Header */}
+      {role ? (
+        <RoleApplyContextBanner role={role} />
+      ) : (
+        <div className="h-4" />
+      )}
 
-      <div className="mt-8 max-w-[460px] w-full bg-white border border-[#E6E6E6] rounded-[18px] p-8 shadow-[0_8px_30px_rgba(10,17,114,0.04)] flex flex-col">
-        {/* Loading Spinner Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <svg className="animate-spin h-6 w-6 text-[#0047CC] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          <div>
-            <h1 className="text-[17px] font-[900] text-[#1A1A1A] leading-none mb-1">{title}</h1>
-            <div className="text-[12.5px] text-[#808080] leading-tight">
-              {subtitle}
-            </div>
+      {/* Main Centered Scoring Container */}
+      <div className="flex-1 flex items-center justify-center px-4 py-10 sm:py-14">
+        <div className="w-full max-w-[520px] text-center">
+          {/* Animated Blue Pulse Radar Icon */}
+          <ProfileMatchPulseIcon />
+
+          {/* Heading */}
+          <h1 className="text-2xl sm:text-[26px] font-semibold text-[#1A1A1A] tracking-tight mb-2">
+            {formattedTitle}
+          </h1>
+
+          {/* Subtitle */}
+          <div className="text-sm text-[#808080] leading-relaxed mb-7 max-w-[420px] mx-auto">
+            {subtitle ? (
+              subtitle
+            ) : role ? (
+              <>
+                Hang tight we&apos;re reviewing your answers for{' '}
+                <strong className="text-[#0047CC] font-semibold">{role.roleTitle}</strong>.
+              </>
+            ) : (
+              "Hang tight we're reviewing your assessment profile."
+            )}
           </div>
-        </div>
 
-        {/* Steps Checklist */}
-        <div className="space-y-4 mb-6">
-          {steps.map((text, idx) => {
-            const isCompleted = idx < stepIdx;
-            const isActive = idx === stepIdx;
+          {/* Steps Checklist Rows */}
+          <div className="text-left mb-8 space-y-1">
+            {normalizedSteps.map((step, index) => {
+              const isCompleted = index < activeIdx;
+              const isRunning = index === activeIdx;
+              const status: ProfileMatchStepStatus = isCompleted
+                ? 'done'
+                : isRunning
+                  ? 'running'
+                  : 'queued';
 
-            return (
-              <div key={idx} className="flex gap-3 items-center">
-                {isCompleted ? (
-                  <div className="w-5 h-5 rounded-full bg-[#0047CC] border border-[#0047CC] flex items-center justify-center shrink-0">
-                    <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </div>
-                ) : isActive ? (
-                  <div className="w-5 h-5 rounded-full bg-[#EBF6FF] border border-[#BFDBFE] flex items-center justify-center shrink-0">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#387DFF] opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#0047CC]"></span>
-                    </span>
-                  </div>
-                ) : (
-                  <div className="w-5 h-5 rounded-full bg-white border border-[#E6E6E6] shrink-0" />
-                )}
-                <span className={`text-[13px] font-[600] leading-tight ${isActive ? 'text-[#1A1A1A] font-[700]' : isCompleted ? 'text-[#4A4A4A]' : 'text-[#ADADAD]'}`}>
-                  {text}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Scoring progress bar */}
-        <div className="mt-2 pt-4 border-t border-[#F1F5F9]">
-          <div className="w-full bg-[#E2E8F0] h-[6px] rounded-full overflow-hidden mb-2.5">
-            <div className="bg-[#0047CC] h-full transition-all duration-500" style={{ width: `${currentPercent}%` }} />
+              return (
+                <ProfileMatchStepRow
+                  key={index}
+                  title={step.title}
+                  subtitle={step.subtitle || step.title}
+                  status={status}
+                  isLast={index === normalizedSteps.length - 1}
+                />
+              );
+            })}
           </div>
-          <div className="flex justify-between text-[11px] text-[#808080] font-[700] uppercase tracking-[0.5px]">
-            <span>REVIEWING PROFILE</span>
-            <span className="tabular-nums text-[#0047CC]">{currentPercent}%</span>
-          </div>
+
+          {/* Bottom Progress Bar */}
+          <ProfileMatchProgressBar progress={currentProgress} />
         </div>
       </div>
     </div>
@@ -136,4 +207,3 @@ const AssessmentAnalyzingView: React.FC<AssessmentAnalyzingViewProps> = ({
 };
 
 export default AssessmentAnalyzingView;
-

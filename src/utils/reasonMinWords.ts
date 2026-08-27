@@ -1,11 +1,9 @@
 import { validateMinWords } from '../catalog/gate2-submit-shape.util';
+import { WRITTEN_REASON_TYPES } from './writtenReasonTypes';
 
-/** Types that always collect a written reason and default to the API's 5-word floor. */
+/** Types that always collect a written reason or long-form response. */
 const REASON_DEFAULT_MIN_WORD_TYPES = new Set([
-  'jb',
-  'compare',
-  'hotspot',
-  'highlight',
+  ...WRITTEN_REASON_TYPES,
   'probe',
   'code',
   'livecode',
@@ -17,18 +15,24 @@ const NO_REASON_TYPES = new Set([
   'numeric',
   'numeric_scale',
   'likert',
+  'likert_scale',
   'values_tradeoff',
   'sjt_values_tradeoff',
   'values_ab_pairs',
   'mcq',
   'single_choice',
   'sb',
+  'sjt_single_best',
   'ms',
+  'sjt_multi_select',
   'multi_select',
   'rank',
   'drag_rank',
   'sjt_rank',
   'sjt_rank_all',
+  'ml',
+  'most_least',
+  'sjt_most_least',
   'match',
   'cloze',
   'cat',
@@ -37,7 +41,7 @@ const NO_REASON_TYPES = new Set([
 
 /**
  * Resolve min-words for a reason field.
- * - When a reason is shown/required: use content.minWords, else default 5.
+ * - When a reason is shown/required: use content.minWords, else default 15.
  * - When reason is optional/absent: 0 (no min-words gate).
  */
 export const getReasonMinWords = (
@@ -54,9 +58,6 @@ export const getReasonMinWords = (
   const inferredShown =
     content?.requireReasoning === true ||
     content?.showReasoning === true ||
-    !!content?.reasonPrompt ||
-    !!content?.reasoningPrompt ||
-    !!content?.justifyPrompt ||
     REASON_DEFAULT_MIN_WORD_TYPES.has(typeStr);
 
   const reasonShown = options?.reasonShown ?? inferredShown;
@@ -67,15 +68,15 @@ export const getReasonMinWords = (
     const n = Number(raw);
     if (Number.isFinite(n) && n > 0) {
       // Long-form items (work sample / code / probe) can require hundreds of words.
-      // Short reason lines must not inherit those floors or Continue stays stuck.
+      // Short reason lines must not inherit arbitrary high floors.
       const isLongForm = ['work_sample', 'probe', 'code', 'livecode'].includes(typeStr);
-      if (!isLongForm && n > 30) return 5;
+      if (!isLongForm && n > 100) return 15;
       return n;
     }
-    return 5;
+    return 15;
   }
 
-  return 5;
+  return 15;
 };
 
 export const isReasonMinWordsMet = (

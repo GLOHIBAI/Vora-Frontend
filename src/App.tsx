@@ -22,6 +22,8 @@ const AssessmentToInterviewRedirect = () => {
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Signup = lazy(() => import('./pages/auth/Signup'))
 const Login = lazy(() => import('./pages/auth/Login'))
+const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'))
+const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'))
 const VerifyOTP = lazy(() => import('./pages/auth/VerifyOTP'))
 const EmployerOnboarding = lazy(() => import('./pages/employer/EmployerOnboarding'))
 const TalentOnboarding = lazy(() => import('./pages/talent/TalentOnboarding'))
@@ -198,6 +200,8 @@ const App = () => {
           <Route path="/role/:slug" element={<RoleLanding />} />
           <Route path="/role/:slug/signup" element={<RoleSignup />} />
           <Route path="/role/:slug/login" element={<Login />} />
+          <Route path="/role/:slug/forgot-password" element={<ForgotPassword />} />
+          <Route path="/role/:slug/reset-password" element={<ResetPassword />} />
           <Route path="/dashboard" element={<ProtectedDashboardLayout><Dashboard /></ProtectedDashboardLayout>} />
           <Route path="/jobs" element={<ProtectedDashboardLayout><Jobs /></ProtectedDashboardLayout>} />
           <Route path="/jobs/posted/confirmation" element={<ProtectedDashboardLayout><EmployerRoute><JobPostedConfirmation /></EmployerRoute></ProtectedDashboardLayout>} />
@@ -214,6 +218,8 @@ const App = () => {
           {/* Auth Routes */}
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/verify-email" element={<VerifyOTP />} />
           <Route path="/select-type" element={<SelectAccountType />} />
 

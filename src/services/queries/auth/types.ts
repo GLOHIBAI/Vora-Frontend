@@ -16,6 +16,28 @@ export interface VerifyOTPRequest {
   code: string;
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ForgotPasswordResponseData {
+  acknowledged: boolean;
+}
+
+export type ForgotPasswordResponse = ApiResponse<ForgotPasswordResponseData>;
+
+export interface ResetPasswordRequest {
+  email: string;
+  otp: string;
+  newPassword: string;
+}
+
+export interface ResetPasswordResponseData {
+  acknowledged: boolean;
+}
+
+export type ResetPasswordResponse = ApiResponse<ResetPasswordResponseData>;
+
 export interface ApplyContext {
   roleLink: string;
   source: string;

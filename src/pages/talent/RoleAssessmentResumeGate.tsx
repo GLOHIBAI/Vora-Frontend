@@ -7,6 +7,7 @@ import FullPageSpinner from '../../components/common/FullPageSpinner';
 import { useAuth } from '../../context/AuthContext';
 import { useGate1ResumePresentation } from '../../hooks/useGate1ResumePresentation';
 import { useGate2ResumePresentation } from '../../hooks/useGate2ResumePresentation';
+import { useGate3ResumePresentation } from '../../hooks/useGate3ResumePresentation';
 import { formatSecondsAsHms } from '../../utils/assessmentSession';
 import { isGate1ApiEnabled, resolveGate1AssessmentId } from '../../config/gate1Api';
 import { useGetPreAssessmentReadinessQuery } from '../../services/queries/talent';
@@ -74,6 +75,12 @@ const STAGE1_RULES = [
 
 const STAGE2_RULES = [
   { text: 'Each interview has its own timed window', icon: ClockIcon },
+  { text: "Don't switch tabs. Doing so auto-submits in 3 seconds", icon: StopIcon },
+  { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon },
+];
+
+const STAGE3_RULES = [
+  { text: 'Each question has a 30s think time and 1-2 min response limit', icon: ClockIcon },
   { text: "Don't switch tabs. Doing so auto-submits in 3 seconds", icon: StopIcon },
   { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon },
 ];
@@ -147,6 +154,13 @@ const RoleAssessmentResumeGate: React.FC = () => {
     locked: gate2Locked,
   } = useGate2ResumePresentation(roleSlug, currentStage === 2);
 
+  const {
+    viewModel: gate3View,
+    resumeState: gate3Resume,
+    isLoading: gate3Loading,
+    locked: gate3Locked,
+  } = useGate3ResumePresentation(roleSlug, currentStage === 3);
+
   useEffect(() => {
     if (currentStage === 1 && !assessmentId && isGate1ApiEnabled() && !gate1Loading) {
       navigate(`/onboarding/talent/${roleSlug}/interview/stage-1/intro`, { replace: true });
@@ -168,6 +182,13 @@ const RoleAssessmentResumeGate: React.FC = () => {
       navigate(`/onboarding/talent/${roleSlug}/interview/journey`, { replace: true });
     }
   }, [currentStage, gate2Locked, navigate, roleSlug]);
+
+  useEffect(() => {
+    if (currentStage === 3 && gate3Locked) {
+      toast.error('Stage 3 is still locked. Finish Stage 2 first.');
+      navigate(`/onboarding/talent/${roleSlug}/interview/journey`, { replace: true });
+    }
+  }, [currentStage, gate3Locked, navigate, roleSlug]);
 
   const stage3Config: StageConfig = useMemo(
     () => ({
@@ -271,13 +292,37 @@ const RoleAssessmentResumeGate: React.FC = () => {
       };
     }
 
+    if (currentStage === 3 && gate3View) {
+      return {
+        activeStepNum: 3,
+        welcomeText: gate3View.welcomeText,
+        pausedTimeText: gate3View.pausedTimeText,
+        positionTitle: gate3View.positionTitle,
+        positionDesc: gate3View.positionDesc,
+        crumbs: gate3View.crumbs,
+        deadlineLabel: gate3View.deadlineLabel,
+        deadlineRemainingSeconds: gate3View.deadlineRemainingSeconds,
+        deadlineTotalFormatted: gate3View.deadlineTotalFormatted,
+        deadlineHint: gate3View.deadlineHint,
+        interviewTimerLabel: gate3View.interviewTimerLabel,
+        interviewTimerValue: gate3View.interviewTimerValue,
+        completedLabel: gate3View.completedLabel,
+        completedValue: gate3View.completedValue,
+        completedSub: gate3View.completedSub,
+        resumePath: gate3View.resumePath,
+        showRegenerationNotice: false,
+        rulesList: STAGE3_RULES,
+        ctaLabel: gate3View.ctaLabel,
+      };
+    }
+
     if (currentStage === 2) {
       // No static Stage 2 leave-off — wait for gates/2/resume-state.
       return stage3Config;
     }
 
     return stage3Config;
-  }, [currentStage, gate1View, gate2View, roleSlug, stage3Config]);
+  }, [currentStage, gate1View, gate2View, gate3View, roleSlug, stage3Config]);
 
   const [timeLeft, setTimeLeft] = useState<number | null>(config.deadlineRemainingSeconds);
 
@@ -298,12 +343,16 @@ const RoleAssessmentResumeGate: React.FC = () => {
   };
 
   const handleResume = () => {
-    // Resume-state is read-only. Destination pages call POST .../gates/2/start.
     navigate(config.resumePath, {
       state:
         currentStage === 2 && gate2Resume
           ? {
               gate2Resume,
+              fromResumeGate: true,
+            }
+          : currentStage === 3 && gate3Resume
+          ? {
+              gate3Resume,
               fromResumeGate: true,
             }
           : undefined,
@@ -313,7 +362,8 @@ const RoleAssessmentResumeGate: React.FC = () => {
   const isPageLoading =
     isReadinessLoading ||
     (currentStage === 1 && gate1Loading && !gate1View) ||
-    (currentStage === 2 && (gate2Loading || (!gate2View && !gate2Locked)));
+    (currentStage === 2 && (gate2Loading || (!gate2View && !gate2Locked))) ||
+    (currentStage === 3 && (gate3Loading || (!gate3View && !gate3Locked)));
 
   if (isPageLoading) {
     return (

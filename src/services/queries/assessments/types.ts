@@ -857,6 +857,8 @@ export interface Gate3StartResponse {
   tabSwitchAutoSubmitSecs: number;
   timers: { itemLimitSecs: number };
   scoringReady: boolean;
+  /** When true the backend supports 3-step direct upload instead of multipart */
+  directUpload?: boolean;
 }
 
 export interface Gate3UploadResponse {
@@ -873,6 +875,105 @@ export interface Gate3UploadResponse {
   retakeExhausted?: boolean;
   /** Advance-hint window for the next items fetch. */
   window?: { from: number; through: number; hasMore: boolean };
+}
+
+export interface Gate3ResumeNextCall {
+  method: string;
+  path: string;
+}
+
+export interface Gate3ResumeNextCalls {
+  start?: Gate3ResumeNextCall;
+  items?: Gate3ResumeNextCall;
+  candidateVoice?: Gate3ResumeNextCall;
+  [key: string]: any;
+}
+
+export type Gate3ResumeNextStep =
+  | 'START_GATE3'
+  | 'GATE3_ITEMS'
+  | 'RESUME_ITEMS'
+  | 'CANDIDATE_VOICE'
+  | 'CANDIDATE_QUESTIONS'
+  | 'STAGE3_COMPLETE'
+  | 'GATE3_REVIEW'
+  | string;
+
+/**
+ * Response from GET /api/v1/assessments/:assessmentId/gates/3/resume-state.
+ * Welcome-back routing for Stage 3 — nextStep / nextCalls, and current prompt window.
+ */
+export interface Gate3ResumeState {
+  schemaVersion?: number;
+  assessmentId: string;
+  gate: 3 | number;
+  gateName: string;
+  gate3Complete: boolean;
+  nextStep: Gate3ResumeNextStep;
+  componentId: string | null;
+  items: Gate3Item[];
+  progress: {
+    current: number;
+    total: number;
+    answered?: number;
+    uploaded?: number;
+  };
+  window: GateWindowInfo;
+  timers?: {
+    gateLimitSecs?: number;
+    itemLimitSecs?: number;
+  } | null;
+  contentReady: boolean;
+  videoUploads: Record<string, Gate3VideoUploadInfo>;
+  modes?: string[];
+  uploadMaxMb?: number;
+  uploadFormats?: string[];
+  tabSwitchAutoSubmitSecs?: number;
+  scoringReady: boolean;
+  inProgress?: {
+    componentId?: string;
+  } | null;
+  nextCalls?: Gate3ResumeNextCalls | null;
+}
+
+/** Per-item upload metadata returned inside resume-state.videoUploads */
+export interface Gate3VideoUploadInfo {
+  transcriptStatus: 'pending' | 'ready' | 'failed' | 'skipped';
+  hasTranscript: boolean;
+  transcriptSource?: 'client_webspeech' | 'server_whisper';
+  takeCount: number;
+  [key: string]: any;
+}
+
+// ── Gate 3 Direct Upload (3-step flow) ──────────────────────────────────────
+
+export interface Gate3DirectUploadUrlResponse {
+  uploadId: string;
+  uploadUrl: string;
+  method: 'PUT' | string;
+  headers?: Record<string, string>;
+  fields?: Record<string, string>;
+}
+
+// ── Gate 3 Candidate Voice ──────────────────────────────────────────────────
+
+export interface Gate3CandidateVoiceQuestion {
+  questionId: string;
+  topic?: string;
+  videoUrl?: string;
+  durationSecs?: number;
+  createdAt: string;
+}
+
+export interface Gate3CandidateVoiceResponse {
+  candidateVoice: boolean;
+  voiceComplete: boolean;
+  scoringReady: boolean;
+  maxQuestions: number;
+  questions: Gate3CandidateVoiceQuestion[];
+  componentId?: string;
+  nextStep?: Gate3ResumeNextStep;
+  nextCalls?: Gate3ResumeNextCalls | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -924,16 +1025,18 @@ export interface Stage4Offer {
 
 export interface Stage4DecisionData {
   screen: Stage4DecisionScreen;
+  status?: string;
   employerName?: string;
   talentFirstName?: string;
   typicalWait?: string;
   startedAgo?: string;
   steps?: Stage4DecisionStep[];
   reviewers?: Stage4Reviewer[];
-  note?: string;
+  note?: { title?: string; body?: string } | string;
   alignment?: Stage4Alignment;
   rejection?: Stage4Rejection;
   offer?: Stage4Offer;
+  hireId?: string;
 }
 
 export interface Stage4DecisionResponse {
