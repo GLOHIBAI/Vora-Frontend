@@ -36,6 +36,8 @@ export interface VerifyLocationState {
   oauth?: boolean;
   otpExpiresInMinutes?: number;
   roleSlug?: string;
+  flow?: 'signup' | 'oauth' | 'reset-password';
+  isResetPassword?: boolean;
   /** UI-only flow: skip auth API calls until backend endpoints are wired. */
   mockAuth?: boolean;
 }

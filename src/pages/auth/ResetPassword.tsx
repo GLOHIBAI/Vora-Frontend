@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import Button from '../../components/common/Button';
@@ -11,10 +11,9 @@ import {
   AuthFormCard,
   AuthForm,
   AuthErrorBanner,
-  AuthOtpInputGrid,
   authFooterLinkClass,
 } from '../../components/auth/AuthPageLayout';
-import { useResetPasswordMutation, useForgotPasswordMutation } from '../../services/queries/auth';
+import { useResetPasswordMutation } from '../../services/queries/auth';
 import { useGetPublicRoleQuery } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
@@ -26,25 +25,30 @@ const ResetPassword: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { slug } = useParams<{ slug?: string }>();
-  const locationState = (location.state as { email?: string; roleSlug?: string }) || {};
+  const locationState = (location.state as { email?: string; code?: string; roleSlug?: string }) || {};
 
   const activeSlug = slug || locationState.roleSlug || '';
   const initialEmail = locationState.email || '';
+  const initialCode = locationState.code || '';
 
   const [email, setEmail] = useState(initialEmail);
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [code, setCode] = useState(initialCode);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [timer, setTimer] = useState(60);
   const [touched, setTouched] = useState({
     email: false,
-    otp: false,
     newPassword: false,
     confirmPassword: false,
   });
   const [formError, setFormError] = useState('');
 
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  // If user navigates directly without code or email, redirect to forgot-password
+  useEffect(() => {
+    if (!initialEmail || !initialCode) {
+      const forgotPath = activeSlug ? `/role/${activeSlug}/forgot-password` : '/forgot-password';
+      navigate(forgotPath, { replace: true, state: { roleSlug: activeSlug } });
+    }
+  }, [initialEmail, initialCode, activeSlug, navigate]);
 
   const { data: roleResponse, isLoading: isRoleLoading } = useGetPublicRoleQuery(activeSlug || '');
 
@@ -58,69 +62,6 @@ const ResetPassword: React.FC = () => {
   }, [roleResponse, activeSlug]);
 
   const resetPasswordMutation = useResetPasswordMutation();
-  const resendOtpMutation = useForgotPasswordMutation();
-
-  // Cooldown countdown timer for OTP resend
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTimer((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleOtpChange = (value: string, index: number) => {
-    // Only accept numeric digits
-    const cleaned = value.replace(/[^0-9]/g, '');
-    if (!cleaned && value !== '') return;
-
-    const newOtp = [...otp];
-
-    // Support paste of entire 6-digit OTP
-    if (cleaned.length > 1) {
-      const chars = cleaned.slice(0, 6).split('');
-      for (let i = 0; i < 6; i++) {
-        newOtp[i] = chars[i] || '';
-      }
-      setOtp(newOtp);
-      const nextFocus = Math.min(chars.length, 5);
-      inputRefs.current[nextFocus]?.focus();
-      return;
-    }
-
-    newOtp[index] = cleaned.slice(-1);
-    setOtp(newOtp);
-
-    if (cleaned && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleOtpKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handleResendOtp = async () => {
-    if (timer > 0 || resendOtpMutation.isPending || !email.trim()) return;
-
-    const emailErr = validateEmail(email);
-    if (emailErr) {
-      toast.error(emailErr);
-      return;
-    }
-
-    try {
-      await resendOtpMutation.mutateAsync({ email: email.trim().toLowerCase() });
-      toast.success('A fresh 6-digit code has been sent to your email!');
-      setTimer(60);
-      setOtp(['', '', '', '', '', '']);
-      inputRefs.current[0]?.focus();
-    } catch (err: unknown) {
-      const error = err as { message?: string };
-      toast.error(error?.message || 'Failed to resend code. Please try again.');
-    }
-  };
 
   const handleBlur = (field: keyof typeof touched) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
@@ -133,13 +74,10 @@ const ResetPassword: React.FC = () => {
       ? 'Passwords do not match'
       : '';
 
-  const otpCode = otp.join('');
-  const isOtpComplete = otpCode.length === 6;
-
   const isFormValid =
     email.trim() !== '' &&
     !validateEmail(email) &&
-    isOtpComplete &&
+    code.trim().length === 6 &&
     newPassword.trim() !== '' &&
     !validatePassword(newPassword) &&
     confirmPassword === newPassword;
@@ -148,15 +86,9 @@ const ResetPassword: React.FC = () => {
     e.preventDefault();
     setTouched({
       email: true,
-      otp: true,
       newPassword: true,
       confirmPassword: true,
     });
-
-    if (!isOtpComplete) {
-      setFormError('Please enter all 6 digits of the verification code.');
-      return;
-    }
 
     const passErr = validatePassword(newPassword);
     if (passErr) {
@@ -174,8 +106,8 @@ const ResetPassword: React.FC = () => {
     try {
       const res = await resetPasswordMutation.mutateAsync({
         email: email.trim().toLowerCase(),
-        otp: otpCode,
-        newPassword,
+        code: code.trim(),
+        password: newPassword,
       });
 
       const successMessage = res?.message || 'Password reset successfully! Please log in.';
@@ -189,7 +121,7 @@ const ResetPassword: React.FC = () => {
       });
     } catch (error: unknown) {
       const err = error as { message?: string; status?: number };
-      const errMsg = err?.message || 'Failed to reset password. Please check your code and try again.';
+      const errMsg = err?.message || 'Failed to reset password. Please check your verification code and try again.';
       setFormError(errMsg);
     }
   };
@@ -217,10 +149,10 @@ const ResetPassword: React.FC = () => {
         subtitle={
           email ? (
             <>
-              Enter the 6-digit code sent to <strong className="text-[#1A1A1A]">{email}</strong> and choose your new password.
+              Enter your new password below for <strong className="text-[#1A1A1A]">{email}</strong>.
             </>
           ) : (
-            'Enter the 6-digit verification code and choose your new password.'
+            'Choose your new password below.'
           )
         }
         showLogo={!role}
@@ -243,29 +175,6 @@ const ResetPassword: React.FC = () => {
               helperText={emailError}
             />
           )}
-
-          {/* 6-Digit OTP Code Grid */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-[#374151]">
-                Verification Code
-              </label>
-              <button
-                type="button"
-                onClick={handleResendOtp}
-                disabled={timer > 0 || resendOtpMutation.isPending}
-                className="text-xs font-medium text-[#0047CC] hover:text-[#0037A3] disabled:text-[#9CA3AF] disabled:cursor-not-allowed transition-colors cursor-pointer bg-transparent border-none p-0"
-              >
-                {timer > 0 ? `Resend code in ${timer}s` : 'Resend code'}
-              </button>
-            </div>
-            <AuthOtpInputGrid
-              otp={otp}
-              inputRefs={inputRefs}
-              onChange={handleOtpChange}
-              onKeyDown={handleOtpKeyDown}
-            />
-          </div>
 
           <Input
             label="New Password"
@@ -307,7 +216,7 @@ const ResetPassword: React.FC = () => {
           <p className="pt-2 text-center text-sm text-[#374151] sm:text-[0.95rem]">
             Remember your password?{' '}
             <Link to={loginPath} className={authFooterLinkClass}>
-              Back to log in
+              Login
             </Link>
           </p>
         </AuthForm>

@@ -28,8 +28,8 @@ export type ForgotPasswordResponse = ApiResponse<ForgotPasswordResponseData>;
 
 export interface ResetPasswordRequest {
   email: string;
-  otp: string;
-  newPassword: string;
+  code: string;
+  password: string;
 }
 
 export interface ResetPasswordResponseData {

@@ -231,7 +231,7 @@ export const useForgotPasswordMutation = () => {
     mutationKey: authKeys.forgotPassword(),
     mutationFn: (data: ForgotPasswordRequest) =>
       apiClient.post<ForgotPasswordResponse>({
-        url: "/auth/password/forgot",
+        url: "/auth/forgot-password",
         body: data,
         auth: false,
       }),
@@ -243,7 +243,7 @@ export const useResetPasswordMutation = () => {
     mutationKey: authKeys.resetPassword(),
     mutationFn: (data: ResetPasswordRequest) =>
       apiClient.post<ResetPasswordResponse>({
-        url: "/auth/password/reset",
+        url: "/auth/reset-password",
         body: data,
         auth: false,
       }),

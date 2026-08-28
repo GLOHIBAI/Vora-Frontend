@@ -201,6 +201,8 @@ const App = () => {
           <Route path="/role/:slug/signup" element={<RoleSignup />} />
           <Route path="/role/:slug/login" element={<Login />} />
           <Route path="/role/:slug/forgot-password" element={<ForgotPassword />} />
+          <Route path="/role/:slug/verify-email" element={<VerifyOTP />} />
+          <Route path="/role/:slug/verify-otp" element={<VerifyOTP />} />
           <Route path="/role/:slug/reset-password" element={<ResetPassword />} />
           <Route path="/dashboard" element={<ProtectedDashboardLayout><Dashboard /></ProtectedDashboardLayout>} />
           <Route path="/jobs" element={<ProtectedDashboardLayout><Jobs /></ProtectedDashboardLayout>} />
@@ -219,8 +221,9 @@ const App = () => {
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/verify-email" element={<VerifyOTP />} />
+          <Route path="/verify-otp" element={<VerifyOTP />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/select-type" element={<SelectAccountType />} />
 
           {/* Onboarding Routes */}

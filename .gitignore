@@ -33,9 +33,7 @@ dist-ssr
 # Local Dev Folders
 stage2/
 VORA_complete_flow/
-
-# Test fixture CVs (generated locally)
-docs/test-fixtures/matching-cvs/
+docs/
 
 # Local dev and diagnostic logs
 *.log

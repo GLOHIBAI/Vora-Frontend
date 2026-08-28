@@ -19,7 +19,9 @@ import {
   useResendOTPMutation,
   useOAuthVerifyMutation,
   useOAuthResendOtpMutation,
+  useForgotPasswordMutation,
 } from '../../services/queries/auth';
+import toast from 'react-hot-toast';
 import { routeAfterAuth } from '../../utils/auth';
 import { resolveOAuthNavigation } from '../../utils/oauth';
 import { useAuth } from '../../context/AuthContext';
@@ -54,6 +56,7 @@ const VerifyOTP: React.FC = () => {
   }, [response, roleSlug]);
 
   const isRoleFlow = Boolean(roleSlug);
+  const isResetFlow = state.flow === 'reset-password' || Boolean(state.isResetPassword);
 
   const resendCooldownSecs = mockAuth ? 60 : oauth ? otpExpiresInMinutes * 60 : 60;
 
@@ -62,11 +65,12 @@ const VerifyOTP: React.FC = () => {
   const [formError, setFormError] = useState('');
   const verifyMutation = useVerifyOTPMutation();
   const resendMutation = useResendOTPMutation();
+  const forgotPasswordMutation = useForgotPasswordMutation();
   const oauthVerifyMutation = useOAuthVerifyMutation();
   const oauthResendMutation = useOAuthResendOtpMutation();
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const isOAuthFlow = (oauth || !!getSetupToken()) && !mockAuth;
+  const isOAuthFlow = (oauth || !!getSetupToken()) && !mockAuth && !isResetFlow;
 
   useEffect(() => {
     if (isOAuthFlow && !getSetupToken()) {
@@ -100,16 +104,18 @@ const VerifyOTP: React.FC = () => {
   };
 
   const isComplete = otp.every((digit) => digit !== '');
-  const isPending = mockAuth
+  const isPending = mockAuth || isResetFlow
     ? false
     : isOAuthFlow
       ? oauthVerifyMutation.isPending
       : verifyMutation.isPending;
   const isResending = mockAuth
     ? false
-    : isOAuthFlow
-      ? oauthResendMutation.isPending
-      : resendMutation.isPending;
+    : isResetFlow
+      ? forgotPasswordMutation.isPending
+      : isOAuthFlow
+        ? oauthResendMutation.isPending
+        : resendMutation.isPending;
   const buttonLoading = isPending || isResending;
   const showFullPage = useFullPageLoading(isPending || isResending || isRoleLoading, buttonLoading);
 
@@ -119,6 +125,18 @@ const VerifyOTP: React.FC = () => {
 
     setFormError('');
     const code = otp.join('');
+
+    if (isResetFlow) {
+      const targetRoute = roleSlug ? `/role/${roleSlug}/reset-password` : '/reset-password';
+      navigate(targetRoute, {
+        state: {
+          email,
+          code,
+          roleSlug,
+        },
+      });
+      return;
+    }
 
     if (mockAuth) {
       if (roleSlug) saveRoleApplySlug(roleSlug);
@@ -170,12 +188,17 @@ const VerifyOTP: React.FC = () => {
     }
 
     try {
-      if (isOAuthFlow) {
+      if (isResetFlow) {
+        await forgotPasswordMutation.mutateAsync({ email: email.trim().toLowerCase() });
+        toast.success('A fresh verification code has been sent!');
+        setTimer(60);
+      } else if (isOAuthFlow) {
         await oauthResendMutation.mutateAsync();
+        setTimer(otpExpiresInMinutes * 60);
       } else {
         await resendMutation.mutateAsync({ email });
+        setTimer(60);
       }
-      setTimer(isOAuthFlow ? otpExpiresInMinutes * 60 : 60);
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     } catch (error: unknown) {
@@ -187,14 +210,17 @@ const VerifyOTP: React.FC = () => {
   const formContent = (
     <>
       <AuthPageHeader
-        title="Verify your email"
+        title={isResetFlow ? 'Verify your code' : 'Verify your email'}
         subtitle={
           <>
             We&apos;ve sent a 6-digit verification code to{' '}
             <span className="break-all font-semibold text-[#1A1A1A]">
               {email || 'your email'}
             </span>
-            . Enter the code below to verify your email.
+            .{' '}
+            {isResetFlow
+              ? 'Enter the code below to reset your password.'
+              : 'Enter the code below to verify your email.'}
           </>
         }
         showLogo={!isRoleFlow || !role}
@@ -236,7 +262,7 @@ const VerifyOTP: React.FC = () => {
             disabled={!isComplete || isPending}
             isLoading={isPending}
           >
-            Verify email
+            {isResetFlow ? 'Continue' : 'Verify email'}
           </Button>
 
 

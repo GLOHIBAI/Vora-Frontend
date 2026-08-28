@@ -65,11 +65,13 @@ const ForgotPassword: React.FC = () => {
       const successMessage = res?.message || 'If an account exists, a password reset code has been sent';
       toast.success(successMessage);
 
-      const targetRoute = activeSlug ? `/role/${activeSlug}/reset-password` : '/reset-password';
+      const targetRoute = activeSlug ? `/role/${activeSlug}/verify-email` : '/verify-email';
       navigate(targetRoute, {
         state: {
           email: cleanEmail,
           roleSlug: activeSlug,
+          flow: 'reset-password',
+          isResetPassword: true,
         },
       });
     } catch (error: unknown) {
@@ -129,7 +131,7 @@ const ForgotPassword: React.FC = () => {
           <p className="pt-2 text-center text-sm text-[#374151] sm:text-[0.95rem]">
             Remember your password?{' '}
             <Link to={loginPath} className={authFooterLinkClass}>
-              Back to log in
+              Login
             </Link>
           </p>
         </AuthForm>
