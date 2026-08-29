@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import MainLayout from './layout/MainLayout'
 import ProtectedDashboardLayout from './layout/ProtectedDashboardLayout'
+import ProtectedRoute from './components/auth/ProtectedRoute'
 import EmployerRoute from './components/auth/EmployerRoute'
 import { Toaster, toast } from 'react-hot-toast'
 import { defaultToastOptions } from './config/toastOptions'
@@ -226,12 +227,12 @@ const App = () => {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/select-type" element={<SelectAccountType />} />
 
-          {/* Onboarding Routes */}
-          <Route path="/onboarding" element={<OnboardingContainer />} />
-          <Route path="/onboarding/welcome" element={<Welcome />} />
-          <Route path="/onboarding/employer" element={<EmployerOnboarding />} />
+          {/* Onboarding Routes (Protected) */}
+          <Route path="/onboarding" element={<ProtectedRoute><OnboardingContainer /></ProtectedRoute>} />
+          <Route path="/onboarding/welcome" element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
+          <Route path="/onboarding/employer" element={<ProtectedRoute><EmployerOnboarding /></ProtectedRoute>} />
           {/* Normal Onboarding Routes */}
-          <Route path="/onboarding/talent" element={<TalentOnboarding />} />
+          <Route path="/onboarding/talent" element={<ProtectedRoute><TalentOnboarding /></ProtectedRoute>} />
 
           {/* Job-Link RoDynamic & Protected) */}
           <Route path="/onboarding/talent/:roleSlug" element={<RoleApplyRoute />}>

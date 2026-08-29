@@ -43,16 +43,7 @@ const RoleAssessmentStageTwoPartOneIntro: React.FC = () => {
 
   useEffect(() => {
     localStorage.setItem('vora_stage2_unlocked', 'true');
-    
-    // Redirect if they have already unlocked subsequent parts
-    if (hasUnlockedPart4) {
-      navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/part-4/intro`, { replace: true });
-    } else if (hasUnlockedPart3) {
-      navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/part-3/intro`, { replace: true });
-    } else if (hasUnlockedPart2) {
-      navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`, { replace: true });
-    }
-  }, [hasUnlockedPart2, hasUnlockedPart3, hasUnlockedPart4, navigate, roleSlug]);
+  }, []);
 
   const handleBegin = () => {
     toast.success('Starting Stage 2 Part 1...');

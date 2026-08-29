@@ -1,22 +1,43 @@
-import { Navigate, Outlet, useParams } from 'react-router-dom';
+import { Navigate, Outlet, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTalentOnboardingStateQuery } from '../../services/queries/onboarding';
+import { useGetRoleLinkMatchQuery, useGetRoleCvStatusQuery } from '../../services/queries/talent';
+import { parseRoleCvStatusPayload } from '../../utils/roleCvStatus';
+import {
+  resolveProfileMatchScan,
+  mapApiMatchResultToScan,
+  getPostMatchPath,
+  withRoleApplyPath,
+  isMatchResultPending,
+  resolveMatchThresholdPercent,
+} from '../../utils/profileMatchResult';
 import FullPageSpinner from '../common/FullPageSpinner';
 
 const RoleApplyRoute: React.FC = () => {
-  const { roleSlug } = useParams<{ roleSlug: string }>();
+  const { roleSlug = '' } = useParams<{ roleSlug: string }>();
   const { user } = useAuth();
-  const { data: stateData, isLoading, error } = useTalentOnboardingStateQuery(!!user);
+  const location = useLocation();
+  const hasAuthToken = !!localStorage.getItem('auth_token');
+
+  const { data: stateData, isLoading: isStateLoading, error: stateError } = useTalentOnboardingStateQuery(!!user);
+
+  const { data: cvStatusResponse, isLoading: isCvLoading } = useGetRoleCvStatusQuery(roleSlug, {
+    enabled: hasAuthToken && !!roleSlug && location.pathname.includes('/interview'),
+  });
+
+  const { data: matchResultResponse, isLoading: isMatchLoading } = useGetRoleLinkMatchQuery(roleSlug, {
+    enabled: hasAuthToken && !!roleSlug && location.pathname.includes('/interview'),
+  });
 
   if (!user) {
     return <Navigate to={`/role/${roleSlug}/login`} replace />;
   }
 
-  if (isLoading) {
+  if (isStateLoading) {
     return <FullPageSpinner />;
   }
 
-  if (error) {
+  if (stateError) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#F7F7F7] p-6 text-center">
         <div className="w-[80px] h-[80px] rounded-full bg-[#FEE2E2] flex items-center justify-center mb-6">
@@ -43,12 +64,42 @@ const RoleApplyRoute: React.FC = () => {
   const activeCvStatus = stateData?.data?.activeCv?.parseStatus || stateData?.data?.applyContext?.parseStatus;
 
   // Step 1: Ensure user has completed basic demographic onboarding (Steps 1 & 2).
-  // We treat step >= 2 as "done enough" because onboardingCompleted is optional in the
-  // API response and may come back undefined even for fully-onboarded users.
   const isOnboardingDone = onboardingCompleted || step >= 2;
   if (!isOnboardingDone) {
-    // If they haven't finished basic onboarding, bump them back to the general onboarding screen
     return <Navigate to={`/onboarding/talent?step=${step + 1}`} replace />;
+  }
+
+  // Step 2: Guard interview routes — candidate must be MATCHED to access /interview/*
+  const isInterviewRoute = location.pathname.includes('/interview');
+  if (isInterviewRoute && hasAuthToken && roleSlug) {
+    if (isCvLoading || isMatchLoading) {
+      return <FullPageSpinner message="Verifying eligibility..." />;
+    }
+
+    const cv = parseRoleCvStatusPayload(cvStatusResponse);
+    const matchPayload =
+      (matchResultResponse as { data?: unknown } | null)?.data ?? matchResultResponse;
+
+    // If CV has not been uploaded or failed
+    if (cv.cvParseFailed || (!cv.cvReadyForMatch && !cvStatusResponse)) {
+      return <Navigate to={`/onboarding/talent/${roleSlug}/cv`} replace />;
+    }
+
+    // If match is still pending/processing
+    if (isMatchResultPending(matchPayload)) {
+      return <Navigate to={`/onboarding/talent/${roleSlug}/match`} replace />;
+    }
+
+    // If match result is ready, check if candidate passed the threshold
+    if (matchPayload) {
+      const matchScan = resolveProfileMatchScan(mapApiMatchResultToScan(matchPayload));
+      const threshold = resolveMatchThresholdPercent(matchScan);
+      const postMatchPath = withRoleApplyPath(getPostMatchPath(matchScan), roleSlug);
+
+      if (matchScan.originalRoleScore < threshold || matchScan.outcome !== 'MATCHED') {
+        return <Navigate to={postMatchPath} replace />;
+      }
+    }
   }
 
   // We expose the activeCvStatus via Outlet context so child routes can do additional filtering if needed.

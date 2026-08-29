@@ -41,14 +41,19 @@ const RoleCvUpload: React.FC = () => {
       navigate('/onboarding/talent?step=1', { replace: true });
       return;
     }
-    // After hibernate/reload, prefer readiness for stage routing (checks.cvOnFile, checks.cvUploadRequired, nextStep / flowPhase)
     const hasCvOnFile = readiness?.checks?.cvOnFile === true || readiness?.cvOnFile === true;
     const cvUploadNotRequired = readiness?.checks?.cvUploadRequired === false || readiness?.cvUploadRequired === false;
-    const pastCvUploadPhase = readiness?.flowPhase && readiness.flowPhase !== 'CV_UPLOAD';
-    const isStageOrStatusAdvanced = readiness && (readiness.stage >= 1 || readiness.cvLinkedToRole || readiness.assessmentStatus === 'IN_PROGRESS' || readiness.assessmentStatus === 'COMPLETED');
 
-    if (readiness && (hasCvOnFile || cvUploadNotRequired || pastCvUploadPhase || isStageOrStatusAdvanced)) {
+    // Only jump to resume if an assessment session was actively IN_PROGRESS for this role
+    if (readiness?.assessmentStatus === 'IN_PROGRESS') {
       navigate(`/onboarding/talent/${roleSlug}/interview/resume`, { replace: true });
+      return;
+    }
+
+    // If CV is already on file and ready, proceed to match calculation for this role
+    if (hasCvOnFile && !cvUploadNotRequired) {
+      navigate(`/onboarding/talent/${roleSlug}/match`, { replace: true });
+      return;
     }
   }, [roleSlug, readiness, navigate]);
 
