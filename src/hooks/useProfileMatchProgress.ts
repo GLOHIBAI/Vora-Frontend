@@ -87,7 +87,7 @@ export const useProfileMatchProgress = ({
 
         // If step 4 or 5 is reached and CV match phase hasn't unlocked from backend yet, pause before marking done
         if (runningIndex >= 4 && !matchPhaseStarted) {
-          setHeadline("Finishing CV analysis…");
+          setHeadline("Finishing Profile analysis…");
           return prev;
         }
 

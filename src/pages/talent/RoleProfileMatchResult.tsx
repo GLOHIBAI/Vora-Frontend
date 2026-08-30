@@ -8,7 +8,7 @@ import MatchResultBreakdown from '../../components/talent/profileMatchResult/Mat
 import MatchResultAssessmentCTA from '../../components/talent/profileMatchResult/MatchResultAssessmentCTA';
 import { PROFILE_MATCH_BREAKDOWN } from '../../constants/profileMatchResult';
 import { useAuth } from '../../context/AuthContext';
-import { useGetPublicRoleQuery } from '../../services/queries/talent';
+import { useGetPublicRoleQuery, useGetPreAssessmentReadinessQuery } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
 import {
@@ -41,6 +41,18 @@ const RoleProfileMatchResult: React.FC = () => {
   );
 
   const { data: response } = useGetPublicRoleQuery(roleSlug || '');
+  const { data: readinessResponse } = useGetPreAssessmentReadinessQuery(roleSlug || '');
+  const readiness = readinessResponse?.data?.data || readinessResponse?.data || readinessResponse;
+
+  useEffect(() => {
+    if (!roleSlug || !readiness) return;
+    if (
+      readiness.assessmentStatus === 'IN_PROGRESS' ||
+      (typeof readiness.stage === 'number' && readiness.stage >= 1)
+    ) {
+      navigate(`/onboarding/talent/${roleSlug}/interview/journey`, { replace: true });
+    }
+  }, [roleSlug, readiness, navigate]);
 
   const appliedRole: PublicRoleLandingData | null = useMemo(() => {
     if (!roleSlug) return null;

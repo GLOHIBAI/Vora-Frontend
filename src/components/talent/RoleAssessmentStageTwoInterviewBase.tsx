@@ -693,7 +693,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         responses: submitPayload,
       });
 
-      toast.success('Submitted successfully.');
+      toast.success('All answers locked, saved and submitted.');
       const nextPartMap: Record<number, string> = {
         1: `/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`,
         2: `/onboarding/talent/${roleSlug}/interview/stage-2/part-3/intro`,

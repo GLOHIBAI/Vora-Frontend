@@ -23,16 +23,19 @@ const AssessmentItemsList: React.FC<AssessmentItemsListProps> = ({
   return (
     <div className="space-y-[32px]">
       {items.map((item) => {
+        const itemLocked = isLocked(item.id);
         return (
           <div
             key={item.id}
             id={`assessment-item-${item.id}`}
-            className="scroll-mt-[220px]"
+            className={`scroll-mt-[220px] transition-opacity duration-200 ${
+              itemLocked ? 'pointer-events-none opacity-85' : ''
+            }`}
           >
             <AssessmentItemRenderer
               item={item}
               value={answers[item.id]}
-              disabled={isLocked(item.id)}
+              disabled={itemLocked}
               isAnswerLocked={(subKey) => isLocked(item.id, subKey)}
               onChange={(val, subKey) => onAnswer(item.id, val, item, subKey)}
               isAdaptiveLoading={isAdaptiveLoading}

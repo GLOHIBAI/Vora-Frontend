@@ -14,6 +14,7 @@ import {
   useGetPublicRoleQuery,
   useGetRoleLinkMatchQuery,
   useGetRoleCvStatusQuery,
+  useGetPreAssessmentReadinessQuery,
 } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
@@ -57,6 +58,20 @@ const RoleProfileMatchBuilding: React.FC = () => {
   const hasAuthToken = !!localStorage.getItem('auth_token');
   const [devCvReady, setDevCvReady] = useState(false);
   const [devMatchReady, setDevMatchReady] = useState(false);
+
+  // If candidate already started/unlocked their interview, skip the scanning page directly to journey
+  const { data: readinessResponse } = useGetPreAssessmentReadinessQuery(roleSlug || '');
+  const readiness = readinessResponse?.data?.data || readinessResponse?.data || readinessResponse;
+
+  useEffect(() => {
+    if (!roleSlug || !readiness || !hasAuthToken) return;
+    if (
+      readiness.assessmentStatus === 'IN_PROGRESS' ||
+      (typeof readiness.stage === 'number' && readiness.stage >= 1)
+    ) {
+      navigate(`/onboarding/talent/${roleSlug}/interview/journey`, { replace: true });
+    }
+  }, [roleSlug, readiness, hasAuthToken, navigate]);
 
   useEffect(() => {
     if (hasAuthToken) return;

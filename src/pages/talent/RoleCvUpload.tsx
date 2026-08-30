@@ -44,9 +44,12 @@ const RoleCvUpload: React.FC = () => {
     const hasCvOnFile = readiness?.checks?.cvOnFile === true || readiness?.cvOnFile === true;
     const cvUploadNotRequired = readiness?.checks?.cvUploadRequired === false || readiness?.cvUploadRequired === false;
 
-    // Only jump to resume if an assessment session was actively IN_PROGRESS for this role
-    if (readiness?.assessmentStatus === 'IN_PROGRESS') {
-      navigate(`/onboarding/talent/${roleSlug}/interview/resume`, { replace: true });
+    // If candidate already started/unlocked their assessment, jump straight to journey
+    if (
+      readiness?.assessmentStatus === 'IN_PROGRESS' ||
+      (typeof readiness?.stage === 'number' && readiness.stage >= 1)
+    ) {
+      navigate(`/onboarding/talent/${roleSlug}/interview/journey`, { replace: true });
       return;
     }
 
