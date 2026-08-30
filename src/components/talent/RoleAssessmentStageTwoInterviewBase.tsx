@@ -18,7 +18,8 @@ import {
 import { getActiveAssessmentId } from '../../utils/assessmentSession';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
 import { isItemAnswerComplete } from '../../utils/assessmentValidation';
-import { getReasonMinWords, extractReasonText } from '../../utils/reasonMinWords';
+import { getReasonMinWords, extractReasonText, hasReasonField } from '../../utils/reasonMinWords';
+import { isWrittenReasonType } from '../../utils/writtenReasonTypes';
 import { normalizeAssessmentItems } from '../../utils/assessmentItems';
 import { unwrapAssessmentData } from '../../utils/assessmentSession';
 import { gate2PillarStartPath, gate2PillarIntroPath } from '../../utils/stage2Flow';
@@ -505,7 +506,9 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   };
 
   const validateWindowMinWords = (targetItems: AssessmentItem[], currentAnswers: Record<string, any>): boolean => {
-    for (const item of targetItems) {
+    for (let i = 0; i < targetItems.length; i++) {
+      const item = targetItems[i];
+      const qNum = windowInfo.from ? windowInfo.from + i : i + 1;
       const typeStr = String(item.type ?? '').toLowerCase().trim();
       const minWords = getReasonMinWords(item?.content as any, typeStr);
       const maxWords = Number(item?.content?.maxWords) > 0 ? Number(item.content.maxWords) : 300;
@@ -514,19 +517,38 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       const reason = extractReasonText(val);
       const wordCount = reason ? reason.trim().split(/\s+/).filter(Boolean).length : 0;
 
+      const needsReason =
+        isWrittenReasonType(typeStr) ||
+        hasReasonField(item.content as any) ||
+        minWords > 0 ||
+        Boolean(item.content?.whyThisMatters);
+
+      if (needsReason && (!reason || reason.trim().length === 0)) {
+        toast.error(`Please write your explanation for Question ${qNum} before continuing.`);
+        const el = document.getElementById(`assessment-item-${item.id}`);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const focusable = el?.querySelector('textarea:not([disabled]), input:not([disabled])') as HTMLElement | null;
+        setTimeout(() => focusable?.focus(), 300);
+        return false;
+      }
+
       if (minWords > 0) {
         if (!validateMinWords(reason, minWords)) {
-          toast.error(`Please provide at least ${minWords} words for your explanation.`);
+          toast.error(`Please provide at least ${minWords} words for your explanation in Question ${qNum}.`);
           const el = document.getElementById(`assessment-item-${item.id}`);
           el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const focusable = el?.querySelector('textarea:not([disabled]), input:not([disabled])') as HTMLElement | null;
+          setTimeout(() => focusable?.focus(), 300);
           return false;
         }
       }
 
       if (wordCount > maxWords) {
-        toast.error(`Your response is too long (${wordCount} words). Maximum allowed is ${maxWords} words.`);
+        toast.error(`Your response for Question ${qNum} is too long (${wordCount} words). Maximum allowed is ${maxWords} words.`);
         const el = document.getElementById(`assessment-item-${item.id}`);
         el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const focusable = el?.querySelector('textarea:not([disabled]), input:not([disabled])') as HTMLElement | null;
+        setTimeout(() => focusable?.focus(), 300);
         return false;
       }
     }
@@ -799,7 +821,11 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     const first = incompleteItems[0];
     if (!first) return;
     const el = document.getElementById(`assessment-item-${first.id}`);
-    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const focusable = el.querySelector('textarea:not([disabled]), input:not([disabled])') as HTMLElement | null;
+      setTimeout(() => focusable?.focus(), 300);
+    }
   };
 
   const isHasMoreWindows = useMemo(() => {
@@ -1282,20 +1308,54 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
               onClick={() => {
                 if (isSubmitting) return;
                 if (!isAllAnswered) {
-                  const unselected = activeDisplayedItems.find((item) => {
-                    const val = answers[item.id];
-                    if (val === undefined || val === null || val === '') return true;
-                    if (typeof val === 'object' && !Array.isArray(val)) {
-                      const choice = (val as any)?.choice || (val as any)?.optionId || (val as any)?.most;
-                      if (!choice) return true;
+                  const firstIncompleteIdx = activeDisplayedItems.findIndex(
+                    (item) => !isItemAnswerComplete(item, answers[item.id])
+                  );
+                  const firstIncomplete = firstIncompleteIdx >= 0 ? activeDisplayedItems[firstIncompleteIdx] : null;
+                  const qNum = firstIncompleteIdx >= 0 ? (windowInfo.from ? windowInfo.from + firstIncompleteIdx : firstIncompleteIdx + 1) : 1;
+
+                  if (firstIncomplete) {
+                    const val = answers[firstIncomplete.id];
+                    const typeStr = String(firstIncomplete.type ?? '').toLowerCase().trim();
+                    const reason = extractReasonText(val);
+                    const minWords = getReasonMinWords(firstIncomplete.content as any, typeStr);
+
+                    // Check if choice exists
+                    const hasChoice =
+                      typeof val === 'string'
+                        ? val.trim().length > 0
+                        : typeof val === 'object' && val !== null && !Array.isArray(val)
+                          ? Boolean((val as any).choice || (val as any).optionId || (val as any).selected || (val as any).selectedOption)
+                          : false;
+
+                    const needsReason =
+                      isWrittenReasonType(typeStr) ||
+                      hasReasonField(firstIncomplete.content as any) ||
+                      minWords > 0 ||
+                      Boolean(firstIncomplete.content?.whyThisMatters);
+
+                    if (hasChoice && needsReason && (!reason || reason.trim().length === 0)) {
+                      toast.error(`Please write your explanation for Question ${qNum} before continuing.`);
+                    } else if (hasChoice && minWords > 0 && !validateMinWords(reason, minWords)) {
+                      toast.error(`Please provide at least ${minWords} words for your explanation in Question ${qNum}.`);
+                    } else if (!hasChoice) {
+                      toast.error(`Please select your answer for Question ${qNum} before continuing.`);
+                    } else {
+                      toast.error(`Please make sure Question ${qNum} is fully answered before continuing.`);
                     }
-                    return false;
-                  });
-                  if (unselected) {
-                    toast.error('Please pick an option before continuing.');
+
+                    const el = document.getElementById(`assessment-item-${firstIncomplete.id}`);
+                    if (el) {
+                      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      const focusable = el.querySelector('textarea:not([disabled]), input:not([disabled])') as HTMLElement | null;
+                      setTimeout(() => focusable?.focus(), 300);
+                    }
+                  } else {
+                    toast.error('Please make sure all questions on this page are fully answered before continuing.');
+                    requestAnimationFrame(() => scrollToFirstIncomplete());
                   }
+
                   setShowContinueValidation(true);
-                  requestAnimationFrame(() => scrollToFirstIncomplete());
                   return;
                 }
                 if (isHasMoreWindows) {

@@ -444,7 +444,6 @@ export const RoleAssessmentStageFourDecision: React.FC = () => {
 
         <div className="max-w-[780px] mx-auto relative z-10">
           <div className="inline-flex items-center gap-[8px] bg-white/[0.14] border border-white/[0.24] rounded-full p-[6px_15px] backdrop-blur-[6px] mb-[18px]">
-            <span className="w-[7px] h-[7px] rounded-full bg-[#38D68A] animate-ping" />
             <span className="text-[11px] font-[800] tracking-[0.7px] uppercase">Hiring team is reviewing right now</span>
           </div>
 
@@ -457,7 +456,7 @@ export const RoleAssessmentStageFourDecision: React.FC = () => {
           </h1>
 
           <p className="text-[15px] text-white/85 leading-[1.65] max-w-[520px] mx-auto mb-[26px]">
-            Your assessment answers are in their hands. The hiring panel has opened your dossier and is going through your profile and video responses.
+            Your interview answers are in their hands. The hiring panel has opened your dossier and is going through your profile and video responses.
           </p>
 
           <div className="inline-flex items-center gap-[12px] bg-white/[0.16] border border-white/[0.28] rounded-[14px] p-[10px_20px] backdrop-blur-[8px]">

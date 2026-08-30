@@ -162,10 +162,10 @@ const RoleAssessmentStageTwoAnalyzing: React.FC = () => {
       title="Scoring Stage 2"
       subtitle="We're reviewing your full Stage 2 profile."
       steps={[
-        'Knowledge interviews (Part 1) cross-checked',
-        'Expertise interviews (Part 2) reviewed',
-        'Reasoning patterns (Part 3) read against role demands',
-        'Written simulations (Part 4) scored for clarity and tone',
+        'Knowledge interviews cross-checked',
+        'Expertise interviews reviewed',
+        'Reasoning patterns read against role demands',
+        'Written simulations scored for clarity and tone',
         'Performing response consistency & integrity checks',
       ]}
       initialStepIndex={0}
