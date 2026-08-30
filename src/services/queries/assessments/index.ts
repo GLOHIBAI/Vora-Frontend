@@ -755,28 +755,82 @@ export const submitComponentResponses = async (
   return res?.data || res;
 };
 
-// ── Gate 3 Direct Upload (3-step flow) ──────────────────────────────────────
+// ── Gate 3 Direct Upload (3-step Cloudinary flow) ──────────────────────────
 
 /**
- * POST /api/v1/assessments/:assessmentId/gates/3/items/:itemId/upload-url
- * Step 1: Request a pre-signed upload URL for direct upload.
+ * Helper to upload directly to Cloudinary using signed fields & FormData.
+ * Falls back to PUT pre-signed URL if no fields provided.
+ */
+export const uploadDirectToCloudinary = async (
+  uploadUrl: string,
+  file: Blob | File,
+  fileName = 'recording.webm',
+  fields?: Record<string, any>,
+): Promise<any> => {
+  if (fields && Object.keys(fields).length > 0) {
+    const formData = new FormData();
+    Object.entries(fields).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        formData.append(key, String(value));
+      }
+    });
+    formData.append('file', file, fileName);
+
+    const cloudRes = await fetch(uploadUrl, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!cloudRes.ok) {
+      throw new Error(`Direct Cloudinary upload failed with HTTP status ${cloudRes.status}`);
+    }
+    return await cloudRes.json().catch(() => ({}));
+  } else {
+    // S3 / GCS pre-signed URL PUT fallback
+    const rawType = file.type || 'video/webm';
+    const contentType = rawType.split(';')[0].trim().toLowerCase() || 'video/webm';
+    const cloudRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': contentType },
+      body: file,
+    });
+    if (!cloudRes.ok) {
+      throw new Error(`Direct storage upload failed with HTTP status ${cloudRes.status}`);
+    }
+    return {};
+  }
+};
+
+/**
+ * POST /api/v1/assessments/:assessmentId/gates/3/items/:itemId/video/upload-url
+ * Step 1: Request a pre-signed Cloudinary upload URL & signature for direct upload.
  */
 export const requestGate3UploadUrl = async (
   assessmentId: string,
   itemId: string,
   opts: { contentType: string; fileName?: string },
 ): Promise<import('./types').Gate3DirectUploadUrlResponse> => {
-  const res = await apiClient.post<any>({
-    url: `/assessments/${assessmentId}/gates/3/items/${itemId}/upload-url`,
-    body: { contentType: opts.contentType, fileName: opts.fileName },
-    auth: true,
-  });
-  return (res?.data || res) as import('./types').Gate3DirectUploadUrlResponse;
+  let res: any;
+  try {
+    res = await apiClient.post<any>({
+      url: `/assessments/${assessmentId}/gates/3/items/${itemId}/video/upload-url`,
+      body: { contentType: opts.contentType, fileName: opts.fileName || 'response.webm' },
+      auth: true,
+    });
+  } catch {
+    // Fallback to non-/video path if backend route is mounted at root item level
+    res = await apiClient.post<any>({
+      url: `/assessments/${assessmentId}/gates/3/items/${itemId}/upload-url`,
+      body: { contentType: opts.contentType, fileName: opts.fileName || 'response.webm' },
+      auth: true,
+    });
+  }
+  const data = res?.data || res;
+  return data as import('./types').Gate3DirectUploadUrlResponse;
 };
 
 /**
- * POST /api/v1/assessments/:assessmentId/gates/3/items/:itemId/complete
- * Step 3: Confirm the direct upload and optionally attach transcript.
+ * POST /api/v1/assessments/:assessmentId/gates/3/items/:itemId/video/complete
+ * Step 3: Confirm the direct upload and attach raw WebSpeech transcript.
  */
 export const completeGate3DirectUpload = async (
   assessmentId: string,
@@ -786,15 +840,60 @@ export const completeGate3DirectUpload = async (
   const body: Record<string, any> = { uploadId: opts.uploadId };
   if (opts.transcript?.trim()) body.transcript = opts.transcript.trim();
 
-  const res = await apiClient.post<any>({
-    url: `/assessments/${assessmentId}/gates/3/items/${itemId}/complete`,
-    body,
-    auth: true,
-  });
+  let res: any;
+  try {
+    res = await apiClient.post<any>({
+      url: `/assessments/${assessmentId}/gates/3/items/${itemId}/video/complete`,
+      body,
+      auth: true,
+    });
+  } catch {
+    // Fallback to root complete route
+    res = await apiClient.post<any>({
+      url: `/assessments/${assessmentId}/gates/3/items/${itemId}/complete`,
+      body,
+      auth: true,
+    });
+  }
   return (res?.data || res) as import('./types').Gate3UploadResponse;
 };
 
 // ── Gate 3 Candidate Voice ──────────────────────────────────────────────────
+
+/**
+ * POST /api/v1/assessments/:assessmentId/gates/3/candidate-voice/questions/upload-url
+ * Step 1: Request signed upload URL for candidate inquiry video.
+ */
+export const requestCandidateVoiceUploadUrl = async (
+  assessmentId: string,
+  opts: { contentType: string; fileName?: string },
+): Promise<import('./types').Gate3DirectUploadUrlResponse> => {
+  const res = await apiClient.post<any>({
+    url: `/assessments/${assessmentId}/gates/3/candidate-voice/questions/upload-url`,
+    body: { contentType: opts.contentType, fileName: opts.fileName || 'question.webm' },
+    auth: true,
+  });
+  return (res?.data || res) as import('./types').Gate3DirectUploadUrlResponse;
+};
+
+/**
+ * POST /api/v1/assessments/:assessmentId/gates/3/candidate-voice/questions/complete
+ * Step 3: Confirm candidate inquiry video upload with topic.
+ */
+export const completeCandidateVoiceDirectUpload = async (
+  assessmentId: string,
+  opts: { uploadId: string; topic?: string },
+): Promise<import('./types').Gate3CandidateVoiceQuestion> => {
+  const body: Record<string, any> = { uploadId: opts.uploadId };
+  if (opts.topic?.trim()) body.topic = opts.topic.trim();
+
+  const res = await apiClient.post<any>({
+    url: `/assessments/${assessmentId}/gates/3/candidate-voice/questions/complete`,
+    body,
+    auth: true,
+  });
+  return (res?.data || res) as import('./types').Gate3CandidateVoiceQuestion;
+};
 
 /**
  * GET /api/v1/assessments/:assessmentId/gates/3/candidate-voice

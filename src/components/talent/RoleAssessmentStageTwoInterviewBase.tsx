@@ -871,6 +871,30 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           from: nextFrom,
           through: nextThrough,
         });
+
+        // Graceful handling of contentReady === false: poll every 2.5s until generated
+        const initialUnwrapped = unwrapAssessmentData<Record<string, any>>(res) ?? (res as Record<string, any>);
+        if (
+          initialUnwrapped?.contentReady === false &&
+          (!initialUnwrapped?.items || initialUnwrapped.items.length === 0)
+        ) {
+          const pollStartTime = Date.now();
+          while (Date.now() - pollStartTime < 45000) {
+            await new Promise((r) => setTimeout(r, 2500));
+            const pollRes = await fetchGate2PillarItems(activeAssessmentId, pillar, {
+              from: nextFrom,
+              through: nextThrough,
+            });
+            const pollUnwrapped = unwrapAssessmentData<Record<string, any>>(pollRes) ?? (pollRes as Record<string, any>);
+            if (
+              pollUnwrapped?.contentReady === true ||
+              (Array.isArray(pollUnwrapped?.items) && pollUnwrapped.items.length > 0)
+            ) {
+              res = pollRes;
+              break;
+            }
+          }
+        }
       } catch (fetchErr: any) {
         const rawMsg =
           fetchErr?.response?.data?.message ||
@@ -941,7 +965,11 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           }
 
           setShowContinueValidation(true);
-          toast.error('Please make sure all questions on this page are fully answered before continuing.');
+          const guidanceMsg =
+            (payload as any)?.routing?.guidance ||
+            (res as any)?.data?.routing?.guidance ||
+            'Please complete all questions before moving forward.';
+          toast.error(guidanceMsg);
           setApiLoading(false);
           setIsSubmitting(false);
           return;

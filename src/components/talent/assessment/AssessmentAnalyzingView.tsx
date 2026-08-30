@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import RoleApplyContextBanner from '../../auth/RoleApplyContextBanner';
-import ProfileMatchPulseIcon from '../profileMatch/ProfileMatchPulseIcon';
+import AssessmentScoringPulseIcon from './AssessmentScoringPulseIcon';
 import ProfileMatchStepRow from '../profileMatch/ProfileMatchStepRow';
 import ProfileMatchProgressBar from '../profileMatch/ProfileMatchProgressBar';
 import { useGetPublicRoleQuery } from '../../../services/queries/talent';
@@ -153,8 +153,8 @@ const AssessmentAnalyzingView: React.FC<AssessmentAnalyzingViewProps> = ({
       {/* Main Centered Scoring Container */}
       <div className="flex-1 flex items-center justify-center px-4 py-10 sm:py-14">
         <div className="w-full max-w-[520px] text-center">
-          {/* Animated Blue Pulse Radar Icon */}
-          <ProfileMatchPulseIcon />
+          {/* Animated Blue Pulse AI Scoring Icon */}
+          <AssessmentScoringPulseIcon />
 
           {/* Heading */}
           <h1 className="text-2xl sm:text-[26px] font-semibold text-[#1A1A1A] tracking-tight mb-2">

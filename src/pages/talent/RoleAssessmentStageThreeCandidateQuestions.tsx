@@ -10,6 +10,9 @@ import {
   fetchGate3CandidateVoice,
   submitGate3CandidateVoiceChoice,
   uploadCandidateVoiceQuestion,
+  requestCandidateVoiceUploadUrl,
+  uploadDirectToCloudinary,
+  completeCandidateVoiceDirectUpload,
   deleteCandidateVoiceQuestion,
 } from '../../services/queries/assessments';
 import { useGetPublicRoleQuery } from '../../services/queries/talent';
@@ -366,11 +369,34 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
       let finalVideoUrl = videoUrl;
 
       if (assessmentId) {
-        const uploadRes: any = await uploadCandidateVoiceQuestion(assessmentId, videoBlob, topic);
-        const resData = uploadRes?.data || uploadRes;
-        if (resData?.questionId) createdId = resData.questionId;
-        if (resData?.videoUrl) finalVideoUrl = resData.videoUrl;
-        if (resData?.scoringReady !== undefined) setScoringReady(!!resData.scoringReady);
+        try {
+          // Step 1: Request signed upload URL
+          const rawType = videoBlob.type || 'video/webm';
+          const contentType = rawType.split(';')[0].trim().toLowerCase() || 'video/webm';
+          const ext = contentType.includes('mp4') ? 'mp4' : 'webm';
+          const fileName = `question.${ext}`;
+
+          const urlRes = await requestCandidateVoiceUploadUrl(assessmentId, { contentType, fileName });
+          
+          // Step 2: Upload directly to Cloudinary
+          await uploadDirectToCloudinary(urlRes.uploadUrl, videoBlob, fileName, urlRes.fields);
+
+          // Step 3: Complete upload with backend
+          const completeRes = await completeCandidateVoiceDirectUpload(assessmentId, {
+            uploadId: urlRes.uploadId,
+            topic,
+          });
+          const resData = (completeRes as any)?.data || completeRes;
+          if (resData?.questionId) createdId = resData.questionId;
+          if (resData?.videoUrl) finalVideoUrl = resData.videoUrl;
+        } catch (directErr) {
+          console.warn('Direct upload failed, falling back to proxy upload:', directErr);
+          const uploadRes: any = await uploadCandidateVoiceQuestion(assessmentId, videoBlob, topic);
+          const resData = uploadRes?.data || uploadRes;
+          if (resData?.questionId) createdId = resData.questionId;
+          if (resData?.videoUrl) finalVideoUrl = resData.videoUrl;
+          if (resData?.scoringReady !== undefined) setScoringReady(!!resData.scoringReady);
+        }
       }
 
       const newQuestion: CandidateQuestionItem = {

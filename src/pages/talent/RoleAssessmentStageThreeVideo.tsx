@@ -11,6 +11,7 @@ import {
   fetchGate3ResumeState,
   uploadGate3Video,
   requestGate3UploadUrl,
+  uploadDirectToCloudinary,
   completeGate3DirectUpload,
   submitComponentResponses,
 } from '../../services/queries/assessments';
@@ -698,16 +699,15 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
           const transcript = transcriberRef.current.getTranscript();
 
           if (useDirectUpload) {
-            // 3-step direct upload: get URL → PUT to storage → POST complete
+            // 3-step direct Cloudinary upload: get signed URL & fields → POST directly to Cloudinary → POST complete
             const rawType = videoPayload.type || 'video/webm';
             const contentType = rawType.split(';')[0].trim().toLowerCase() || 'video/webm';
-            const urlRes = await requestGate3UploadUrl(assessmentId, currentItemId, { contentType });
-            // Step 2: PUT directly to pre-signed URL
-            await fetch(urlRes.uploadUrl, {
-              method: urlRes.method || 'PUT',
-              headers: { 'Content-Type': contentType, ...(urlRes.headers || {}) },
-              body: videoPayload,
-            });
+            const ext = contentType.includes('mp4') ? 'mp4' : 'webm';
+            const fileName = `response.${ext}`;
+
+            const urlRes = await requestGate3UploadUrl(assessmentId, currentItemId, { contentType, fileName });
+            await uploadDirectToCloudinary(urlRes.uploadUrl, videoPayload, fileName, urlRes.fields);
+
             // Step 3: Confirm completion
             uploadRes = await completeGate3DirectUpload(assessmentId, currentItemId, {
               uploadId: urlRes.uploadId,
