@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import AssessmentHeader from '../../components/talent/AssessmentHeader';
 import StageRail from '../../components/talent/StageRail';
 import { useAuth } from '../../context/AuthContext';
+import { getCandidateFirstName } from '../../utils/userName';
 
 import { useGetPublicRoleQuery } from '../../services/queries/talent';
 
@@ -20,10 +21,7 @@ const RoleAssessmentStageThreeComplete: React.FC = () => {
   const roleData = roleResponse?.data || roleResponse;
   const companyName = roleData?.companyName || 'the hiring team';
 
-  const rawFirstName = user?.firstName?.trim() || '';
-  const firstName = rawFirstName && !rawFirstName.includes('-') && !/\d/.test(rawFirstName)
-    ? rawFirstName
-    : '';
+  const firstName = getCandidateFirstName(user, '');
 
   const handleSeeProgress = () => {
     navigate(`/onboarding/talent/${roleSlug}/interview/stage-4/decision`);

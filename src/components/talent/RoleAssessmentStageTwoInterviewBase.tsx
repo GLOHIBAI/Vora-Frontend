@@ -1086,24 +1086,17 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
   const progressMeta = useMemo(() => {
     const totalQuestions = pillarProgress.total || apiScreenData?.items.length || 0;
-    const answeredInCurrentWindow = activeDisplayedItems.filter((item) =>
-      isItemAnswerComplete(item, answers[item.id]),
-    ).length;
-    const totalCompletedBeforeWindow = Math.max(0, windowInfo.from - 1);
-    const totalAnswered = totalCompletedBeforeWindow + answeredInCurrentWindow;
-    const currentQNum = totalQuestions > 0
-      ? Math.min(Math.max(1, totalAnswered + 1), totalQuestions)
-      : 1;
+    const fromQ = Math.max(1, windowInfo.from || 1);
     const totalSessions = Math.max(1, Math.ceil(totalQuestions / QUESTIONS_PER_SESSION));
     const currentSession = Math.min(
-      Math.max(1, Math.ceil(currentQNum / QUESTIONS_PER_SESSION)),
+      Math.max(1, Math.ceil(fromQ / QUESTIONS_PER_SESSION)),
       totalSessions,
     );
     const completedSessions = Math.max(0, currentSession - 1);
 
     return {
       totalQuestions,
-      currentQNum,
+      currentQNum: fromQ,
       totalSessions,
       currentSession,
       completedSessions,
@@ -1111,8 +1104,6 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   }, [
     pillarProgress.total,
     apiScreenData?.items.length,
-    activeDisplayedItems,
-    answers,
     windowInfo.from,
   ]);
 

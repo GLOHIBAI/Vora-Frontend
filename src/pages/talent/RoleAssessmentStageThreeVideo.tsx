@@ -542,7 +542,19 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
         }
       }
 
-      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      let mediaRecorder: MediaRecorder;
+      const recorderOptions: MediaRecorderOptions = {
+        mimeType: mimeType || undefined,
+        videoBitsPerSecond: 1000000, // 1.0 Mbps HD interview video
+        audioBitsPerSecond: 64000,   // 64 kbps clear speech
+      };
+
+      try {
+        mediaRecorder = new MediaRecorder(stream, recorderOptions);
+      } catch {
+        mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      }
+
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) {
@@ -560,7 +572,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
         setIsRecording(false);
       };
 
-      mediaRecorder.start();
+      mediaRecorder.start(1000);
       setIsRecording(true);
       setTakesCount(prev => prev + 1);
       transcriberRef.current.start();

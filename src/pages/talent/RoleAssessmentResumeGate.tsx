@@ -11,6 +11,7 @@ import { useGate3ResumePresentation } from '../../hooks/useGate3ResumePresentati
 import { formatSecondsAsHms } from '../../utils/assessmentSession';
 import { isGate1ApiEnabled, resolveGate1AssessmentId } from '../../config/gate1Api';
 import { useGetPreAssessmentReadinessQuery } from '../../services/queries/talent';
+import { getCandidateFirstName, getCandidateInitials } from '../../utils/userName';
 
 const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -44,6 +45,33 @@ const StopIcon: React.FC<{ className?: string }> = ({ className }) => (
     <path d="M9 9h6v6H9z"/>
   </svg>
 );
+
+const BulletShieldIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+  </svg>
+);
+
+const BulletTagIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+    <line x1="7" y1="7" x2="7.01" y2="7"/>
+  </svg>
+);
+
+const BulletClockIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <circle cx="12" cy="12" r="9"/>
+    <polyline points="12 7 12 12 16 14"/>
+  </svg>
+);
+
+const BULLET_POINTS = [
+  { text: 'Complete questions in order — locked once answered', icon: BulletShieldIcon },
+  { text: 'Single question per screen for complete focus', icon: BulletTagIcon },
+  { text: 'Timed per question — submit before timer ends', icon: BulletClockIcon },
+  { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon },
+];
 
 interface StageConfig {
   activeStepNum: number;
@@ -89,7 +117,7 @@ const RoleAssessmentResumeGate: React.FC = () => {
   const navigate = useNavigate();
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
   const { user } = useAuth();
-  const firstName = user?.firstName || 'there';
+  const firstName = useMemo(() => getCandidateFirstName(user, 'there'), [user]);
 
   const {
     viewModel: gate1View,
@@ -100,13 +128,7 @@ const RoleAssessmentResumeGate: React.FC = () => {
   const assessmentId = resolveGate1AssessmentId();
 
   const avatarText = useMemo(() => {
-    if (user?.firstName && user?.lastName) {
-      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
-    }
-    if (user?.firstName) {
-      return user.firstName.substring(0, 2).toUpperCase();
-    }
-    return 'AO';
+    return getCandidateInitials(user, 'AO');
   }, [user]);
 
   const { data: readinessResponse, isLoading: isReadinessLoading } = useGetPreAssessmentReadinessQuery(roleSlug);

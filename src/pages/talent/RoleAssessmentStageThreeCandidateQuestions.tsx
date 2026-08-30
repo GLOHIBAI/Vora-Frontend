@@ -255,8 +255,23 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
 
     try {
       const mimeTypes = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'];
-      let selectedMime = mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || '';
-      const recorder = new MediaRecorder(stream, selectedMime ? { mimeType: selectedMime } : undefined);
+      let selectedMime = '';
+      if (typeof MediaRecorder !== 'undefined') {
+        selectedMime = mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || '';
+      }
+
+      let recorder: MediaRecorder;
+      const recorderOptions: MediaRecorderOptions = {
+        mimeType: selectedMime || undefined,
+        videoBitsPerSecond: 1000000, // 1.0 Mbps HD video
+        audioBitsPerSecond: 64000,   // 64 kbps speech audio
+      };
+
+      try {
+        recorder = new MediaRecorder(stream, recorderOptions);
+      } catch {
+        recorder = new MediaRecorder(stream, selectedMime ? { mimeType: selectedMime } : undefined);
+      }
 
       recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) {

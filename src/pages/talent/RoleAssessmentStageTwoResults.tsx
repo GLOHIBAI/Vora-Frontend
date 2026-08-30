@@ -6,6 +6,7 @@ import StageRail from '../../components/talent/StageRail';
 import { useStartAssessmentScreenMutation, useGateVerdictQuery, useAssessmentGatesProgressQuery } from '../../services/queries/assessments';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
 import { getActiveAssessmentId, unwrapAssessmentData } from '../../utils/assessmentSession';
+import { getCandidateFirstName } from '../../utils/userName';
 import type { GateVerdictResponse } from '../../services/queries/assessments/types';
 import FullPageSpinner from '../../components/common/FullPageSpinner';
 
@@ -65,7 +66,7 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
     return <FullPageSpinner message="Retrieving your interview results..." />;
   }
 
-  const firstName = user?.firstName || verdict?.talent?.firstName || 'Candidate';
+  const firstName = getCandidateFirstName(user, verdict?.talent?.firstName || 'Candidate');
   const rollupScore = (verdict as any)?.rollup?.score;
   const compositeScore = verdict?.score ?? rollupScore ?? gate2Progress?.score ?? 0;
   const passThreshold = verdict?.threshold ?? 80;
@@ -275,15 +276,24 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
                 <div className="text-[14px] font-[900] text-white">Record · Upload</div>
               </div>
             </div>
-            <button 
-              onClick={handleOpenStageThree}
-              className="bg-white text-[#0047CC] border-none rounded-[10px] p-[14px_28px] text-[14px] font-[800] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_6px_18px_rgba(0,0,0,0.18)] hover:-translate-y-[2px] hover:shadow-[0_10px_26px_rgba(0,0,0,0.24)] transition-all"
-            >
-              Open Stage 3
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M3 8h10M9 4l4 4-4 4"/>
-              </svg>
-            </button>
+            <div className="flex items-center gap-[12px] flex-wrap">
+              <button 
+                onClick={handleOpenStageThree}
+                className="bg-white text-[#0047CC] border-none rounded-[10px] p-[14px_28px] text-[14px] font-[800] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_6px_18px_rgba(0,0,0,0.18)] hover:-translate-y-[2px] hover:shadow-[0_10px_26px_rgba(0,0,0,0.24)] transition-all"
+              >
+                Open Stage 3
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M3 8h10M9 4l4 4-4 4"/>
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(`/onboarding/talent/${roleSlug}/interview/journey`)}
+                className="bg-white/12 text-white border border-white/24 hover:bg-white/20 rounded-[10px] p-[14px_24px] text-[14px] font-[700] cursor-pointer transition-all backdrop-blur-[6px]"
+              >
+                Return to journey
+              </button>
+            </div>
           </div>
         </div>
       </main>

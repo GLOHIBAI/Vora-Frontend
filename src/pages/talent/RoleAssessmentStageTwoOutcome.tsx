@@ -6,6 +6,7 @@ import StageRail from '../../components/talent/StageRail';
 import { useGateVerdictQuery } from '../../services/queries/assessments';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
 import { getActiveAssessmentId, unwrapAssessmentData } from '../../utils/assessmentSession';
+import { getCandidateFirstName } from '../../utils/userName';
 import type { GateVerdictResponse } from '../../services/queries/assessments/types';
 import FullPageSpinner from '../../components/common/FullPageSpinner';
 
@@ -90,7 +91,7 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
 
   const vData: any = (verdict as any)?.data || verdict || (verdictRaw as any)?.data || verdictRaw || {};
 
-  const firstName = user?.firstName || vData?.talent?.firstName || 'Candidate';
+  const firstName = getCandidateFirstName(user, vData?.talent?.firstName || 'Candidate');
   const roleTitle = vData?.role?.roleTitle || 'Role';
   const employerName = vData?.role?.employerName || 'Vora AI';
   const score = vData?.score ?? 0;

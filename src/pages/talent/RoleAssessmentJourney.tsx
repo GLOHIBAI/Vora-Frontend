@@ -18,6 +18,7 @@ import {
 import { resolveGate1AssessmentId, isGate1ApiEnabled } from '../../config/gate1Api';
 import { setActiveAssessmentId } from '../../utils/assessmentSession';
 import FullPageSpinner from '../../components/common/FullPageSpinner';
+import { getCandidateFirstName, getCandidateInitials } from '../../utils/userName';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -123,8 +124,13 @@ const RoleAssessmentJourney: React.FC = () => {
     }
   }, [roleSlug]);
 
-  const firstName =
-    locationState?.firstName || user?.firstName || 'there';
+  const firstName = useMemo(() => {
+    return getCandidateFirstName(user, locationState?.firstName || 'there');
+  }, [user, locationState?.firstName]);
+
+  const avatarInitials = useMemo(() => {
+    return getCandidateInitials(user, 'AO');
+  }, [user]);
 
   const { data: response, isLoading: isRoleLoading } = useGetPublicRoleQuery(roleSlug || '');
 
@@ -364,7 +370,7 @@ const RoleAssessmentJourney: React.FC = () => {
             {roleTitle} · {companyName}
           </div>
           <div className="w-[34px] h-[34px] rounded-full bg-gradient-to-br from-[#0047CC] to-[#387DFF] flex items-center justify-center text-[11px] text-white font-[800]">
-            AO
+            {avatarInitials}
           </div>
         </div>
       </header>

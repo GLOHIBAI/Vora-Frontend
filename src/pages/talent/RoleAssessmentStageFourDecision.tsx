@@ -12,6 +12,7 @@ import {
 } from '../../services/queries/assessments';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
 import { getActiveAssessmentId } from '../../utils/assessmentSession';
+import { getCandidateFirstName } from '../../utils/userName';
 import type {
   Stage4DecisionData,
   Stage4AlignmentSlot,
@@ -83,10 +84,7 @@ export const RoleAssessmentStageFourDecision: React.FC = () => {
 
   const screen = decisionData?.screen || 'awaiting_employer';
   const employerName = decisionData?.employerName || defaultCompanyName;
-  const rawFirstName = decisionData?.talentFirstName || user?.firstName || '';
-  const firstName = rawFirstName && !rawFirstName.includes('-') && !/\d/.test(rawFirstName)
-    ? rawFirstName
-    : '';
+  const firstName = getCandidateFirstName(user, decisionData?.talentFirstName || '');
 
   // Alignment slot selection state
   const [selectedSlotId, setSelectedSlotId] = useState<string>('');

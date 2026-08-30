@@ -5,6 +5,7 @@ import AssessmentHeader from '../../components/talent/AssessmentHeader';
 import StageRail from '../../components/talent/StageRail';
 import Button from '../../components/common/Button';
 import { useAuth } from '../../context/AuthContext';
+import { getCandidateFirstName } from '../../utils/userName';
 
 const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -40,7 +41,7 @@ const RoleAssessmentStageFourReview: React.FC = () => {
   const navigate = useNavigate();
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
   const { user } = useAuth();
-  const firstName = user?.firstName || 'there';
+  const firstName = getCandidateFirstName(user, 'there');
 
   // State: timer started mins ago
   const [startedMins, setStartedMins] = useState<number>(38);
