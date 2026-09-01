@@ -45,11 +45,7 @@ const RoleAssessmentSessionTwoInfo: React.FC = () => {
   const companyName = roleMeta?.companyName ?? 'the employer';
 
   const handleStart = () => {
-    if (isGate1ApiEnabled()) {
-      navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
-    } else {
-      navigate(`/onboarding/talent/${roleSlug}/interview/session-2/situational`);
-    }
+    navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
   };
 
   return (

@@ -113,11 +113,7 @@ const RoleAssessmentSessionInfo: React.FC = () => {
         if (storedId) {
           setActiveAssessmentId(storedId);
         }
-        if (isGate1ApiEnabled()) {
-          navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
-        } else {
-          navigate(`/onboarding/talent/${roleSlug}/interview/session-1/psychometric`);
-        }
+        navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
         return;
       }
 
@@ -128,11 +124,7 @@ const RoleAssessmentSessionInfo: React.FC = () => {
         setActiveAssessmentId(assessmentId);
       }
 
-      if (isGate1ApiEnabled()) {
-        navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`, { state: { startFresh: true } });
-      } else {
-        navigate(`/onboarding/talent/${roleSlug}/interview/session-1/psychometric`);
-      }
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`, { state: { startFresh: true } });
     } catch (err: any) {
       console.error('Failed to begin assessment:', err);
       const errMsg = err?.message || '';
@@ -141,11 +133,7 @@ const RoleAssessmentSessionInfo: React.FC = () => {
         if (assessmentId) {
           setActiveAssessmentId(assessmentId);
         }
-        if (isGate1ApiEnabled()) {
-          navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
-        } else {
-          navigate(`/onboarding/talent/${roleSlug}/interview/session-1/psychometric`);
-        }
+        navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
       } else {
         toast.error(errMsg || 'Failed to start assessment. Please try again.');
       }

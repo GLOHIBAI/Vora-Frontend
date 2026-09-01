@@ -136,9 +136,7 @@ const buildViewModel = (
     completedValue: `${completedScreens} / ${totalScreens}`,
     completedSub: 'screens in Stage 1',
     showRegenerationNotice: hasInProgress,
-    resumePath: isGate1ApiEnabled()
-      ? `/onboarding/talent/${roleSlug}/interview/stage-1`
-      : `/onboarding/talent/${roleSlug}/interview/session-1/situational`,
+    resumePath: `/onboarding/talent/${roleSlug}/interview/stage-1`,
   };
 };
 

@@ -278,9 +278,7 @@ const RoleAssessmentResumeGate: React.FC = () => {
         completedLabel: 'Completed so far',
         completedValue: '—',
         completedSub: 'screens in Stage 1',
-        resumePath: isGate1ApiEnabled()
-          ? `/onboarding/talent/${roleSlug}/interview/stage-1`
-          : `/onboarding/talent/${roleSlug}/interview/session-1/situational`,
+        resumePath: `/onboarding/talent/${roleSlug}/interview/stage-1`,
         showRegenerationNotice: false,
         rulesList: STAGE1_RULES,
       };

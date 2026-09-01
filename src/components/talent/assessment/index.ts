@@ -4,12 +4,6 @@ export { default as AssessmentItemsList } from './AssessmentItemsList';
 export { default as AssessmentItemRenderer } from './AssessmentItemRenderer';
 export type { AssessmentItemRendererProps } from './shared/types';
 export { ASSESSMENT_ITEM_COMPONENTS, resolveAssessmentItemComponent } from './items/registry';
-export { default as MockAssessmentScreenView } from './MockAssessmentScreenView';
-export type {
-  MockAssessmentScreenViewProps,
-  MockAssessmentScreenChrome,
-  MockAssessmentScreenIntro,
-} from './MockAssessmentScreenView';
 export { default as SessionChapterRail } from './SessionChapterRail';
 export { default as SessionPebbleRail } from './SessionPebbleRail';
 export { default as AssessmentReviewShell } from './AssessmentReviewShell';
