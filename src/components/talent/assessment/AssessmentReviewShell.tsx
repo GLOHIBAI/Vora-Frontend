@@ -144,7 +144,7 @@ const AssessmentReviewShell: React.FC<AssessmentReviewShellProps> = ({
               )}
             </div>
 
-            <div className="bg-[#EBF6FF] rounded-[10px] p-[11px_14px] flex gap-2.5 items-start mb-8 text-[12.5px] text-[#182348] leading-[1.5]">
+            <div className="bg-[#EBF6FF] border border-[#387DFF] rounded-[10px] p-[11px_14px] flex gap-2.5 items-start mb-8 text-[12.5px] text-[#182348] leading-[1.5]">
               <InfoIcon className="w-[15px] h-[15px] text-[#0047CC] shrink-0 mt-0.5" />
               <div>{nextNote}</div>
             </div>
@@ -164,7 +164,11 @@ const AssessmentReviewShell: React.FC<AssessmentReviewShellProps> = ({
             type="button"
             disabled={isLoading || submitDisabled}
             onClick={onSubmit}
-            className="bg-[#0047CC] text-white border-none rounded-xl p-[12px_24px] text-[14px] font-[700] cursor-pointer inline-flex items-center justify-center gap-2.5 transition-all shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] disabled:bg-[#E6E6E6] disabled:text-white disabled:cursor-not-allowed disabled:shadow-none w-full sm:w-auto"
+            className={`border-none rounded-xl p-[12px_24px] text-[14px] font-[700] inline-flex items-center justify-center gap-2.5 transition-all w-full sm:w-auto ${
+              isLoading || submitDisabled
+                ? 'bg-[#E6E6E6] text-white cursor-not-allowed shadow-none'
+                : 'bg-[#0047CC] text-white cursor-pointer shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1]'
+            }`}
           >
             {submitLabel}
           </button>

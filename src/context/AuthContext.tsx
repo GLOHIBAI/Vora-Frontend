@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import type { ReactNode } from 'react';
 import type { User, AuthContextType } from '../types';
 import { SETUP_TOKEN_KEY, clearSetupToken as clearStoredSetupToken } from '../utils/oauth';
+import { isEmailLike } from '../utils/userName';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -61,9 +62,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [logout]);
 
   const login = useCallback((userData: User, token?: string) => {
-    setUser(userData);
-    localStorage.setItem('vora_user', JSON.stringify(userData));
-    localStorage.setItem('vora_role', userData.role);
+    let finalUserData = userData;
+    try {
+      const stored = localStorage.getItem('vora_user');
+      const candidateFn = localStorage.getItem('candidate_first_name') || localStorage.getItem('user_first_name');
+      const incomingHasNoRealName = !userData.firstName || isEmailLike(userData.firstName);
+
+      if (incomingHasNoRealName) {
+        if (candidateFn && !isEmailLike(candidateFn)) {
+          finalUserData = {
+            ...userData,
+            firstName: candidateFn,
+          };
+        } else if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed?.firstName && !isEmailLike(parsed.firstName)) {
+            finalUserData = {
+              ...userData,
+              firstName: parsed.firstName,
+              lastName: parsed.lastName || userData.lastName,
+            };
+          }
+        }
+      }
+    } catch {}
+
+    if (finalUserData.firstName && !isEmailLike(finalUserData.firstName)) {
+      try {
+        localStorage.setItem('candidate_first_name', finalUserData.firstName);
+        localStorage.setItem('user_first_name', finalUserData.firstName);
+      } catch {}
+    }
+
+    setUser(finalUserData);
+    localStorage.setItem('vora_user', JSON.stringify(finalUserData));
+    localStorage.setItem('vora_role', finalUserData.role);
     if (token) {
       localStorage.setItem('auth_token', token);
       clearStoredSetupToken();
@@ -74,7 +107,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const updateUser = useCallback((updates: Partial<User>) => {
     setUser(prevUser => {
       if (!prevUser) return null;
-      const updatedUser = { ...prevUser, ...updates };
+
+      let safeUpdates = { ...updates };
+      // Prevent null, undefined, empty, or email-like firstName from wiping an existing real name
+      if (
+        updates.firstName === undefined ||
+        updates.firstName === null ||
+        updates.firstName === '' ||
+        isEmailLike(updates.firstName)
+      ) {
+        if (prevUser.firstName && !isEmailLike(prevUser.firstName)) {
+          safeUpdates.firstName = prevUser.firstName;
+        }
+      }
+
+      const updatedUser = { ...prevUser, ...safeUpdates };
+
+      if (updatedUser.firstName && !isEmailLike(updatedUser.firstName)) {
+        try {
+          localStorage.setItem('candidate_first_name', updatedUser.firstName);
+          localStorage.setItem('user_first_name', updatedUser.firstName);
+        } catch {}
+      }
+
       localStorage.setItem('vora_user', JSON.stringify(updatedUser));
       return updatedUser;
     });

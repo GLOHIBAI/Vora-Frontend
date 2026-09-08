@@ -19,7 +19,7 @@ const MatchBlockedAlternatives: React.FC<MatchBlockedAlternativesProps> = ({
       </h2>
       <p className="text-sm text-[#808080] leading-relaxed mb-[18px]">
         VORA found these roles in the same scan. Your profile scored {matchThreshold}%+ on each, and
-        your work rights cover them. You can go straight to assessment on any of these.
+        your work rights cover them. You can go straight to interview on any of these.
       </p>
 
       <div className="flex flex-col gap-3">

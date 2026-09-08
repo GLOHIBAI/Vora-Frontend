@@ -9,6 +9,7 @@ import { getActiveAssessmentId, unwrapAssessmentData } from '../../utils/assessm
 import { getCandidateFirstName } from '../../utils/userName';
 import type { GateVerdictResponse } from '../../services/queries/assessments/types';
 import FullPageSpinner from '../../components/common/FullPageSpinner';
+import EvidenceMap from '../../components/talent/assessment/shared/EvidenceMap';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -51,6 +52,9 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
   const progressEntries = unwrapAssessmentData<any[]>(progressRaw) || [];
   const gate2Progress = Array.isArray(progressEntries) ? progressEntries.find((e) => String(e.gate) === '2') : null;
 
+  const startGate3 = useStartAssessmentScreenMutation(3);
+  const [isStartingGate3, setIsStartingGate3] = useState(false);
+
   React.useEffect(() => {
     if (!assessmentId && roleSlug) {
       navigate(`/onboarding/talent/${roleSlug}`, { replace: true });
@@ -79,9 +83,6 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
   const strengths = verdict?.strengths || [];
   const nextStage = verdict?.nextStage;
 
-  const startGate3 = useStartAssessmentScreenMutation(3);
-  const [isStartingGate3, setIsStartingGate3] = useState(false);
-
   const handleOpenStageThree = async () => {
     setIsStartingGate3(true);
     try {
@@ -97,7 +98,7 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
       localStorage.setItem('vora_stage2_completed', 'true');
       localStorage.setItem('vora_stage3_unlocked', 'true');
       setIsStartingGate3(false);
-      navigate(`/onboarding/talent/${roleSlug}/interview/journey`);
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-3`);
     }
   };
 
@@ -249,6 +250,9 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
           </div>
         ) : null}
 
+        {/* Evidence Map */}
+        <EvidenceMap evidenceMap={verdict?.evidenceMap} className="mb-[22px]" />
+
         {/* Next Card */}
         <div className="bg-gradient-to-br from-[#182348] to-[#0047CC] text-white rounded-[18px] p-[30px_32px] relative overflow-hidden shadow-[0_12px_36px_rgba(0,71,204,0.18)]">
           <div className="absolute top-[-60px] right-[-60px] w-[200px] h-[200px] rounded-full bg-white/[0.05]" />
@@ -279,9 +283,10 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
             <div className="flex items-center gap-[12px] flex-wrap">
               <button 
                 onClick={handleOpenStageThree}
-                className="bg-white text-[#0047CC] border-none rounded-[10px] p-[14px_28px] text-[14px] font-[800] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_6px_18px_rgba(0,0,0,0.18)] hover:-translate-y-[2px] hover:shadow-[0_10px_26px_rgba(0,0,0,0.24)] transition-all"
+                disabled={isStartingGate3}
+                className="bg-white text-[#0047CC] border-none rounded-[10px] p-[14px_28px] text-[14px] font-[800] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_6px_18px_rgba(0,0,0,0.18)] hover:-translate-y-[2px] hover:shadow-[0_10px_26px_rgba(0,0,0,0.24)] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Open Stage 3
+                {isStartingGate3 ? 'Opening Stage 3...' : 'Open Stage 3'}
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <path d="M3 8h10M9 4l4 4-4 4"/>
                 </svg>

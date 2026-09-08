@@ -34,7 +34,7 @@ export interface AssessmentScreenViewProps {
   companyName?: string;
   roleTitle?: string;
   onSaveExit: () => void;
-  onScreenComplete: () => void;
+  onScreenComplete: () => void | Promise<void>;
 }
 
 interface ScreenMeta {
@@ -219,7 +219,7 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
     const hardcoded = SCREEN_METADATA_MAP[screenData.screenKey];
     const firstItem = items[0];
     return {
-      title: firstItem?.screenTitle || firstItem?.title || hardcoded?.title || screenLabel || 'Assessment',
+      title: firstItem?.screenTitle || firstItem?.title || hardcoded?.title || screenLabel || 'Interview',
       subtitle: firstItem?.screenSubtitle || (firstItem?.content as any)?.instruction || hardcoded?.subtitle || 'Answer the questions to the best of your ability. Pause and resume anytime.',
       whyMatters: firstItem?.whyThisMatters || hardcoded?.whyMatters || 'Senior officers lead under uncertainty. The team uses this to understand the working style you would bring to the role.'
     };
@@ -285,7 +285,7 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
       {/* Main Content */}
       <main className="max-w-[780px] mx-auto p-[156px_28px_110px] w-full flex-1">
         <div className="mb-8">
-          <div className="inline-flex items-center gap-[7px] bg-[#EBF6FF] text-[#0047CC] text-[10.5px] font-[800] tracking-[0.7px] uppercase p-[5px_12px] rounded-full mb-3.5">
+          <div className="inline-flex items-center gap-[7px] bg-transparent border border-[#387DFF] text-[#0047CC] text-[10.5px] font-[800] tracking-[0.7px] uppercase p-[5px_12px] rounded-full mb-3.5">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-[12.5px] h-[12.5px] shrink-0">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
@@ -300,7 +300,7 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
         </div>
 
         {/* Why Mini block */}
-        <div className="bg-[#EBF6FF] rounded-[10px] p-[11px_14px] flex gap-2.5 items-start mb-8 text-[12.5px] text-[#182348] leading-[1.5]">
+        <div className="bg-[#EBF6FF] border border-[#387DFF] rounded-[10px] p-[11px_14px] flex gap-2.5 items-start mb-8 text-[12.5px] text-[#182348] leading-[1.5]">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-[15px] h-[15px] text-[#0047CC] shrink-0 mt-0.5">
             <circle cx="12" cy="12" r="10"/>
             <path d="M12 8v4M12 16h.01" strokeLinecap="round"/>
@@ -331,7 +331,11 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
           <button 
             type="button"
             disabled={isSaving || isSubmitting || isAdaptiveLoading}
-            className="flex-1 sm:flex-initial bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-xl py-2.5 sm:py-[11px] px-3 sm:px-[18px] text-[12px] sm:text-[13.5px] font-[700] cursor-pointer transition-all hover:border-[#ADADAD] whitespace-nowrap text-center justify-center flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className={`flex-1 sm:flex-initial bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-xl py-2.5 sm:py-[11px] px-3 sm:px-[18px] text-[12px] sm:text-[13.5px] font-[700] transition-all hover:border-[#ADADAD] whitespace-nowrap text-center justify-center flex items-center ${
+              isSaving || isSubmitting || isAdaptiveLoading
+                ? 'cursor-not-allowed opacity-50'
+                : 'cursor-pointer'
+            }`}
             onClick={async () => {
               try {
                 await saveCurrentDraft();
@@ -346,7 +350,13 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
           <button 
             type="button" 
             disabled={!isScreenComplete || isSubmitting || isAdaptiveLoading || isSaving}
-            className="flex-1 sm:flex-initial bg-[#0047CC] text-white border-none rounded-xl py-2.5 sm:py-[12px] px-4 sm:px-[24px] text-[12.5px] sm:text-[14px] font-[700] cursor-pointer inline-flex items-center justify-center gap-2.5 transition-all shadow-[0_4px_14px_rgba(0,71,204,0.28)] whitespace-nowrap hover:bg-[#344DA1] hover:-translate-y-[1px] disabled:bg-[#E6E6E6] disabled:text-white disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none" 
+            className={`flex-1 sm:flex-initial border-none rounded-xl py-2.5 sm:py-[12px] px-4 sm:px-[24px] text-[12.5px] sm:text-[14px] font-[700] inline-flex items-center justify-center gap-2.5 transition-all whitespace-nowrap ${
+              isSubmitting || isSaving || isAdaptiveLoading
+                ? 'bg-[#E6E6E6] text-white shadow-none cursor-not-allowed'
+                : !isScreenComplete
+                ? 'bg-[#E6E6E6] text-white shadow-none cursor-not-allowed'
+                : 'bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] cursor-pointer hover:bg-[#344DA1] hover:-translate-y-[1px]'
+            }`}
             onClick={() => void confirmScreen()}
           >
             {isSubmitting
@@ -374,7 +384,7 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
             </h3>
             <p className="text-[14px] text-[#4A4A4A] leading-[1.6] mb-[18px] font-sans">
               {cheatType === 'tab-switch'
-                ? 'Leaving or changing tabs is strictly prohibited during this assessment. Your assessment screen will auto-submit in:'
+                ? 'Leaving or changing tabs is strictly prohibited during this interview. Your interview screen will auto-submit in:'
                 : 'Pasting content is not permitted. Please type your responses directly.'}
             </p>
             {cheatType === 'tab-switch' && (

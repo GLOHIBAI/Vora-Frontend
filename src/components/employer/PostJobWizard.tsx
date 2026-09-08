@@ -2210,7 +2210,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                           <MultiSelect
                             label={
                               <div className="flex items-center gap-1">
-                                <span>Pre-assessment submission required from candidates</span>
+                                <span>Pre-interview submission required from candidates</span>
                               </div>
                             }
                             groups={PRE_ASSESSMENT_GROUPS}
@@ -2221,7 +2221,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                           />
                           <div className="p-3 bg-white border border-[#BDD9FF] rounded-lg mt-2">
                             <p className="text-xs text-[#1e3a8a] leading-relaxed">
-                              <strong>How this works:</strong> After a candidate clears the geopolitical and match threshold filter, but before their assessment begins, VORA prompts them to upload the material(s) you specify here. VORA's assessment engine then generates deep, role-specific questions drawn directly from what they submitted. A candidate who did not produce the work cannot answer convincingly. Any significant gap between the sophistication of the submission and the quality of the answers is flagged in their report. At least one pre-assessment submission type must be requested.
+                              <strong>How this works:</strong> After a candidate clears the geopolitical and match threshold filter, but before their interview begins, VORA prompts them to upload the material(s) you specify here. VORA's interview engine then generates deep, role-specific questions drawn directly from what they submitted. A candidate who did not produce the work cannot answer convincingly. Any significant gap between the sophistication of the submission and the quality of the answers is flagged in their report. At least one pre-interview submission type must be requested.
                             </p>
                           </div>
                           <p className="text-[11px] text-[#808080] leading-relaxed pt-1">
@@ -2605,7 +2605,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                         {compType === 'unp' && (
                           <div className="space-y-4.5 mt-6 animate-in slide-in-from-top-2 duration-300">
                             <AlertBanner variant="blue" className="!text-xs">
-                              <strong>Flat listing fee applies.</strong> For unpaid placements, volunteer roles, academic observerships, and similar arrangements, VORA charges a flat listing and matching fee â€” <strong>USD 50 for LMIC employers</strong> or <strong>USD 500 for other regions</strong>. No escrow is held. Payment is processed on go-live. This covers the full matching and assessment process regardless of outcome.
+                              <strong>Flat listing fee applies.</strong> For unpaid placements, volunteer roles, academic observerships, and similar arrangements, VORA charges a flat listing and matching fee — <strong>USD 50 for LMIC employers</strong> or <strong>USD 500 for other regions</strong>. No escrow is held. Payment is processed on go-live. This covers the full matching and interview process regardless of outcome.
                             </AlertBanner>
 
                             <Input

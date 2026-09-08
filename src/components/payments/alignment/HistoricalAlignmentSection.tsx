@@ -18,7 +18,7 @@ const HistoricalAlignmentSection: React.FC = () => {
     <div className="pt-4 border-t border-[#E6E6E6]">
       <Subheading className="text-base mb-1">Historical Alignment Sessions</Subheading>
       <p className="text-xs text-[#808080] mb-4">
-        Past decisions, outcomes, refunds, forfeitures, and flags, with full assessment detail
+        Past decisions, outcomes, refunds, forfeitures, and flags, with full interview detail
       </p>
       {HISTORICAL_ALIGNMENT_SESSIONS.map((session) => (
         <HistoricalAlignmentCard

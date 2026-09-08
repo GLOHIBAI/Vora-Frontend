@@ -18,7 +18,7 @@ const MatchAssessmentCta: React.FC<MatchAssessmentCtaProps> = ({ pills, onStart 
         Ready to lock in your spot?
       </SectionTitle>
       <p className="text-[13px] font-normal text-[#4A4A4A] leading-relaxed mb-4">
-        Complete the 3-part assessment and let your score do the talking. Takes 30,40 minutes.
+        Complete the 3-part interview and let your score do the talking. Takes 30-40 minutes.
       </p>
       <div className="flex flex-wrap gap-2">
         {pills.map((label) => (

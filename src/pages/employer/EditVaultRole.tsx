@@ -347,7 +347,7 @@ const EditVaultRole: React.FC = () => {
               <Input
                 label={
                   <span>
-                    Pre-assessment submission required{' '}
+                    Pre-interview submission required{' '}
                     <span className="text-[11px] text-[#808080] font-normal italic">(optional)</span>
                   </span>
                 }

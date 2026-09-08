@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import AuthTopNav from '../../components/auth/AuthTopNav';
 import RoleApplyContextBanner from '../../components/auth/RoleApplyContextBanner';
 import SignupForm from '../../components/auth/SignupForm';
+import AuthHeroRoleVideo from '../../components/auth/AuthHeroRoleVideo';
 import {
   AuthPageShell,
   AuthPageHeader,
@@ -34,7 +35,18 @@ const RoleSignup: React.FC = () => {
       <AuthTopNav logoTo={slug ? `/role/${slug}` : '/signup'} loginTo={slug ? `/role/${slug}/login` : '/login'} />
       <RoleApplyContextBanner role={role} />
 
-      <AuthPageShell loading={showFullPage} centered={false} className="flex-1 !min-h-0">
+      <AuthPageShell
+        loading={showFullPage}
+        centered={false}
+        className="flex-1 !min-h-0"
+        heroContent={
+          <AuthHeroRoleVideo
+            roleType="Talent"
+            roleTitle={role.roleTitle}
+            companyName={role.companyName}
+          />
+        }
+      >
         <AuthPageHeader
           title="Start your journey in global health"
           subtitle="Create your free account. VORA builds your profile from your CV and onboarding details, then instantly checks if you match this role, and hundreds of others."

@@ -126,7 +126,7 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
     if (!assessmentId || (!startFresh && (!resumeFetched || resumeLoading))) return;
     if (!resumeState) {
       setError(
-        "Could not load your assessment progress. Return to the journey and try again.",
+        "Could not load your interview progress. Return to the journey and try again.",
       );
     }
   }, [assessmentId, resumeFetched, resumeLoading, resumeState, startFresh]);
@@ -134,7 +134,7 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
   useEffect(() => {
     if (!assessmentId) {
       setError(
-        "No active assessment. Return to the journey and begin Stage 1.",
+        "No active interview. Return to the journey and begin Stage 1.",
       );
       return;
     }
@@ -142,11 +142,12 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
     if (resumeState.gate1Complete) return;
 
     const screenKey = resolveGate1StartScreenKey(resumeState);
-    // Key on screen only — do not include componentId. After startFresh boot,
-    // resume loads a real componentId and would otherwise re-POST /start.
-    const bootKey = `${bootToken}:${screenKey}`;
 
-    if (bootedKeyRef.current === bootKey) return;
+    // If current screenData already matches the target screenKey, don't re-start
+    if (screenData?.screenKey === screenKey) return;
+    if (bootedKeyRef.current === screenKey) return;
+
+    const bootKey = screenKey;
 
     const applyPayload = (payload: AssessmentGateStartResponse) => {
       if (bootedKeyRef.current === bootKey) return;
@@ -180,7 +181,7 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
             bootedKeyRef.current = null;
             if (recoverAttemptsRef.current >= 20) {
               setIsGenerating(false);
-              setError("Assessment question generation is taking longer than expected. The queue worker may be stuck.");
+              setError("Interview question generation is taking longer than expected. The queue worker may be stuck.");
               return null;
             }
             recoverAttemptsRef.current += 1;
@@ -196,7 +197,7 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
 
           const message = getApiErrorMessage(
             err,
-            "Could not start this assessment screen. Please try again.",
+            "Could not start this interview screen. Please try again.",
           );
           const status = (err as ApiError).status;
 

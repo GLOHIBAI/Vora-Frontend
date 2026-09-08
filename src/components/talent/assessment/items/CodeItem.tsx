@@ -23,14 +23,22 @@ const CodeItem: React.FC<AssessmentItemRendererProps> = ({
 
   const currentAnswer =
     typeof value === 'object' && value !== null && !Array.isArray(value)
-      ? String((value as any).code ?? (value as any).reasoning ?? (value as any).reason ?? '')
+      ? String((value as any).findings ?? (value as any).reason ?? (value as any).reasoning ?? (value as any).code ?? '')
       : typeof value === 'string'
       ? value
       : '';
 
   const handleTextChange = (text: string) => {
+    const rawText = text.trim();
+    const cleanFindings = rawText.replace(/^findings:\s*/i, '').trim();
+    const finalFindings = cleanFindings || rawText;
+
     onChange({
-      code: text,
+      code: starterCode ? starterCode : finalFindings,
+      findings: finalFindings,
+      reason: finalFindings,
+      reasoning: finalFindings,
+      solution: finalFindings,
       stdout: 'ok',
     });
   };
@@ -81,7 +89,7 @@ const CodeItem: React.FC<AssessmentItemRendererProps> = ({
       )}
 
       {visibleTests.length > 0 && (
-        <div className="mb-5 bg-[#EBF6FF] border border-[#387DFF]/25 rounded-[14px] p-4 space-y-2">
+        <div className="mb-5 bg-transparent border border-[#387DFF] rounded-[14px] p-4 space-y-2">
           <div className="text-[11px] font-[800] text-[#0047CC] uppercase tracking-[0.6px]">
             Visible Tests & Requirements
           </div>
@@ -102,7 +110,7 @@ const CodeItem: React.FC<AssessmentItemRendererProps> = ({
       )}
 
       <ReasonTextarea
-        label={String(content.reasonPrompt || content.reasoningPrompt || 'YOUR CODE REVIEW FINDINGS & SOLUTION')}
+        label={String(content.findingsPrompt || content.reasonPrompt || content.reasoningPrompt || 'YOUR CODE REVIEW FINDINGS & SOLUTION')}
         value={currentAnswer}
         onChange={handleTextChange}
         disabled={disabled}

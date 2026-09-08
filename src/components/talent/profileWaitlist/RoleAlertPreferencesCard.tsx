@@ -64,7 +64,7 @@ const RoleAlertPreferencesCard: React.FC<RoleAlertPreferencesCardProps> = ({
     </h3>
     <p className="text-sm text-[#4A4A4A] leading-relaxed mb-2.5">
       Tell us what you are looking for. The moment a role is posted that matches your full profile at{' '}
-      {matchThreshold}% or above, you will be notified instantly and can go straight into assessment, no
+      {matchThreshold}% or above, you will be notified instantly and can go straight into interview, no
       re-uploading, no re-onboarding.
     </p>
 

@@ -8,6 +8,7 @@ import FullPageSpinner from '../../components/common/FullPageSpinner';
 import { useStage2PillarIntroQuery } from '../../services/queries/assessments';
 import { getActiveAssessmentId } from '../../utils/assessmentSession';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
+import { navigateGate2Authoritative } from '../../utils/stage2Flow';
 
 const LockIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -35,6 +36,46 @@ const RoleAssessmentStageTwoPartTwoIntro: React.FC = () => {
     localStorage.setItem('vora_stage2_part3_unlocked', 'true');
   }, []);
 
+  const [isSyncing, setIsSyncing] = React.useState(false);
+
+  const errorMsg =
+    (error as { data?: { message?: string }; message?: string })?.data?.message ||
+    (error as { message?: string })?.message ||
+    '';
+  const isOutOfSync =
+    errorMsg.includes('not available yet') ||
+    errorMsg.includes('Complete') ||
+    errorMsg.includes('resume-state');
+
+  const handleSyncOrRetry = async () => {
+    if (isOutOfSync && activeAssessmentId && roleSlug) {
+      setIsSyncing(true);
+      const navigated = await navigateGate2Authoritative(
+        activeAssessmentId,
+        roleSlug,
+        navigate,
+        `/onboarding/talent/${roleSlug}/interview/journey`
+      );
+      if (!navigated) {
+        setIsSyncing(false);
+        void refetch();
+      }
+    } else {
+      void refetch();
+    }
+  };
+
+  React.useEffect(() => {
+    if (isError && isOutOfSync && activeAssessmentId && roleSlug) {
+      void navigateGate2Authoritative(
+        activeAssessmentId,
+        roleSlug,
+        navigate,
+        `/onboarding/talent/${roleSlug}/interview/journey`
+      );
+    }
+  }, [isError, isOutOfSync, activeAssessmentId, roleSlug, navigate]);
+
   const handleBegin = () => {
     toast.success('Starting Stage 2 Part 3...');
     navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/part-3/interview-1`);
@@ -44,7 +85,7 @@ const RoleAssessmentStageTwoPartTwoIntro: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex items-center justify-center p-6">
         <div className="bg-white border border-[#E6E6E6] rounded-[18px] max-w-[440px] w-full p-[30px] text-center">
-          <h2 className="text-[18px] font-[900] mb-2">Assessment not found</h2>
+          <h2 className="text-[18px] font-[900] mb-2">Interview not found</h2>
           <p className="text-[14px] text-[#4A4A4A] leading-[1.6] mb-5">
             Start or resume Stage 2 from your journey so we can load this part intro.
           </p>
@@ -68,19 +109,22 @@ const RoleAssessmentStageTwoPartTwoIntro: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex items-center justify-center p-6">
         <div className="bg-white border border-[#E6E6E6] rounded-[18px] max-w-[440px] w-full p-[30px] text-center">
-          <h2 className="text-[18px] font-[900] mb-2">Could not load Part 3 intro</h2>
+          <h2 className="text-[18px] font-[900] mb-2">
+            {isOutOfSync ? 'Syncing Interview Progress' : 'Could not load Part 3 intro'}
+          </h2>
           <p className="text-[14px] text-[#4A4A4A] leading-[1.6] mb-5">
-            {(error as { data?: { message?: string }; message?: string })?.data?.message ||
-              (error as { message?: string })?.message ||
-              'The Stage 2 pillar intro endpoint did not return content.'}
+            {isOutOfSync
+              ? "Your interview is on an earlier section. Directing you to your active question..."
+              : errorMsg || 'The Stage 2 pillar intro endpoint did not return content.'}
           </p>
           <div className="flex gap-2 justify-center">
             <button
               type="button"
-              onClick={() => void refetch()}
-              className="bg-[#0047CC] text-white border-none rounded-[10px] p-[12px_20px] text-[13.5px] font-[700] cursor-pointer font-sans"
+              disabled={isSyncing}
+              onClick={handleSyncOrRetry}
+              className="bg-[#0047CC] text-white border-none rounded-[10px] p-[12px_20px] text-[13.5px] font-[700] cursor-pointer font-sans disabled:opacity-50"
             >
-              Try again
+              {isSyncing ? 'Syncing...' : isOutOfSync ? 'Resume Current Section' : 'Try again'}
             </button>
             <button
               type="button"

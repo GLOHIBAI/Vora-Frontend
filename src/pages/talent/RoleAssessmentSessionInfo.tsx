@@ -104,7 +104,7 @@ const RoleAssessmentSessionInfo: React.FC = () => {
 
   const beginAssessment = useBeginAssessmentMutation();
 
-  const handleStart = async () => {
+  const handleStartApi = async () => {
     try {
       const storedId = getActiveAssessmentId() || readiness?.assessmentId;
       const status = readiness?.assessmentStatus;
@@ -113,11 +113,7 @@ const RoleAssessmentSessionInfo: React.FC = () => {
         if (storedId) {
           setActiveAssessmentId(storedId);
         }
-        if (isGate1ApiEnabled()) {
-          navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
-        } else {
-          navigate(`/onboarding/talent/${roleSlug}/interview/session-1/psychometric`);
-        }
+        navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
         return;
       }
 
@@ -128,11 +124,7 @@ const RoleAssessmentSessionInfo: React.FC = () => {
         setActiveAssessmentId(assessmentId);
       }
 
-      if (isGate1ApiEnabled()) {
-        navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`, { state: { startFresh: true } });
-      } else {
-        navigate(`/onboarding/talent/${roleSlug}/interview/session-1/psychometric`);
-      }
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`, { state: { startFresh: true } });
     } catch (err: any) {
       console.error('Failed to begin assessment:', err);
       const errMsg = err?.message || '';
@@ -141,15 +133,19 @@ const RoleAssessmentSessionInfo: React.FC = () => {
         if (assessmentId) {
           setActiveAssessmentId(assessmentId);
         }
-        if (isGate1ApiEnabled()) {
-          navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
-        } else {
-          navigate(`/onboarding/talent/${roleSlug}/interview/session-1/psychometric`);
-        }
+        navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
       } else {
-        toast.error(errMsg || 'Failed to start assessment. Please try again.');
+        toast.error(errMsg || 'Failed to start interview. Please try again.');
       }
     }
+  };
+
+  const handleStart = () => {
+    if (isGate1ApiEnabled()) {
+      handleStartApi();
+      return;
+    }
+    navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
   };
 
   if (isRoleLoading || isReadinessLoading) {
@@ -182,8 +178,8 @@ const RoleAssessmentSessionInfo: React.FC = () => {
         </div>
         <div className="w-[36px] h-[2px] bg-[#E6E6E6] rounded-[2px]"></div>
         <div className="flex items-center gap-[7px]">
-          <div className="w-[18px] h-[18px] rounded-full bg-[#E6E6E6] flex items-center justify-center text-[9px] font-[800] text-white">2</div>
-          <div className="text-[11.5px] font-[700] text-[#ADADAD]">Your instincts</div>
+          <div className="w-[18px] h-[18px] rounded-full bg-[#E6E6E6] flex items-center justify-center text-[9px] font-[800] text-[#808080]">2</div>
+          <div className="text-[11.5px] font-[700] text-[#808080]">Your instincts</div>
         </div>
       </div>
 
@@ -195,7 +191,7 @@ const RoleAssessmentSessionInfo: React.FC = () => {
             <div className="bg-[#FEF2F2] border border-[#FECACA] text-[#991B1B] rounded-xl p-4 text-left text-[13px] leading-[1.6] mb-5 flex gap-3 items-start animate-[fadeUp_0.4s_ease]">
               <LockClosedIcon className="w-5 h-5 text-[#DC2626] shrink-0 mt-0.5" />
               <div>
-                <strong className="font-[800]">Assessment Locked:</strong> Your previous assessment is locked. Please submit a new CV on your profile to request a reset.
+                <strong className="font-[800]">Interview Locked:</strong> Your previous interview is locked. Please submit a new CV on your profile to request a reset.
               </div>
             </div>
           )}

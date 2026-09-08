@@ -67,7 +67,13 @@ const RoleApplyRoute: React.FC = () => {
   // Step 1: Ensure user has completed basic demographic onboarding (Steps 1 & 2).
   const isOnboardingDone = onboardingCompleted || step >= 2;
   if (!isOnboardingDone) {
-    return <Navigate to={`/onboarding/talent?step=${step + 1}`} replace />;
+    return (
+      <Navigate
+        to={`/onboarding/talent?step=${step + 1}${roleSlug ? `&role=${encodeURIComponent(roleSlug)}` : ''}`}
+        state={{ roleSlug }}
+        replace
+      />
+    );
   }
 
   // Step 2: Guard interview routes — candidate must be MATCHED to access /interview/*

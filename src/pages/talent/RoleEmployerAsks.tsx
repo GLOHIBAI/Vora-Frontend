@@ -421,10 +421,10 @@ const RoleEmployerAsks: React.FC = () => {
           referencesStage4: consents.references
         }
       });
-      toast.success("Pre-assessment finalized successfully!");
+      toast.success("Pre-interview finalized successfully!");
       navigate(`/onboarding/talent/${roleSlug}/interview/journey`);
     } catch (err: any) {
-      toast.error(err?.message || "Failed to finalize pre-assessment");
+      toast.error(err?.message || "Failed to finalize pre-interview");
       setIsSubmitting(false);
     }
   };
@@ -1053,8 +1053,8 @@ const RoleEmployerAsks: React.FC = () => {
             type="button"
             disabled={!canSubmit || isSubmitting}
             onClick={handleSubmit}
-            className={`flex-1 sm:flex-initial rounded-xl px-4 sm:px-[26px] py-2.5 sm:py-[13px] text-xs sm:text-[14px] font-[700] cursor-pointer font-sans inline-flex items-center justify-center gap-[8px] transition-all border-none whitespace-nowrap shrink-0 ${(canSubmit && !isSubmitting)
-                ? 'bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px]'
+            className={`flex-1 sm:flex-initial rounded-xl px-4 sm:px-[26px] py-2.5 sm:py-[13px] text-xs sm:text-[14px] font-[700] font-sans inline-flex items-center justify-center gap-[8px] transition-all border-none whitespace-nowrap shrink-0 ${(canSubmit && !isSubmitting)
+                ? 'bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px] cursor-pointer'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
               }`}
           >

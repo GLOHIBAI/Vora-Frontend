@@ -95,7 +95,7 @@ const RoleLanding: React.FC = () => {
             </RoleDetailCard>
 
             {role.assessmentItems && role.assessmentItems.length > 0 && (
-              <RoleDetailCard title="How VORA assesses you">
+              <RoleDetailCard title="How VORA interviews you">
                 <RoleBulletList items={role.assessmentItems} />
                 <AlertBanner variant="blue" className="mt-3 !text-xs !rounded-lg" showIcon={false}>
                   <p className="font-semibold mb-1">Free to apply</p>

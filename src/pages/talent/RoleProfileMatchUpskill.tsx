@@ -1,7 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import DashboardLayout from '../../layout/DashboardLayout';
-import Button from '../../components/common/Button';
 import { buildUserDisplayName } from '../../components/talent/profileMatch/RoleApplyAppShell';
 import MatchDevelopmentPanel from '../../components/talent/profileMatchUpskill/MatchDevelopmentPanel';
 import { useAuth } from '../../context/AuthContext';
@@ -86,12 +85,6 @@ const RoleProfileMatchUpskill: React.FC = () => {
   const displayName = buildUserDisplayName(firstName, lastName);
   const welcomeName = firstName.trim() || displayName.split(' ')[0] || 'there';
 
-  const handleReuploadCv = () => {
-    navigate(`/onboarding/talent/${roleSlug}/cv`, {
-      state: { firstName },
-    });
-  };
-
   return (
     <DashboardLayout>
       <div className="-mx-4 lg:-mx-8 -mt-6 mb-6">
@@ -113,24 +106,6 @@ const RoleProfileMatchUpskill: React.FC = () => {
           matchThreshold={matchThreshold}
           summary={summary}
         />
-
-        <div className="bg-white border border-[#E6E6E6] rounded-[10px] p-5 sm:px-6 flex flex-col sm:flex-row items-center gap-4">
-          <div className="flex-1 text-center sm:text-left">
-            <div className="text-sm font-medium text-[#1A1A1A] mb-1">Updated your CV or experience?</div>
-            <div className="text-[13px] text-[#808080] leading-relaxed">
-              Re-upload your CV and we&apos;ll re-run the match for {roleTitle}.
-            </div>
-          </div>
-          <Button
-            type="button"
-            variant="primary"
-            fullWidth={false}
-            className="shrink-0 whitespace-nowrap"
-            onClick={handleReuploadCv}
-          >
-            Re-upload CV
-          </Button>
-        </div>
       </div>
     </DashboardLayout>
   );

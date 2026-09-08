@@ -36,8 +36,8 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
       disabled={disabled || isGoogleLoading || (!roleSlug && !isConfigured)}
       isLoading={isGoogleLoading && !roleSlug}
     >
-      <GoogleIcon />
-      <span className="truncate">{label}</span>
+      <GoogleIcon size={18} />
+      <span className="whitespace-nowrap">{label}</span>
     </Button>
   );
 };

@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   MenuIcon,
   CloseIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  LogOutIcon,
 } from '../components/common/Icons';
 import { useAuth } from '../context/AuthContext';
+import { useLogoutMutation } from '../services/queries/auth';
+import { useEmployerProfileSettingsQuery } from '../services/queries/employer';
 import { useTalentOnboardingStateQuery, useMentorOnboardingStateQuery, useGetTalentProfileQuery, useGetMentorProfileQuery, useEmployerOnboardingStateQuery } from '../services/queries/onboarding';
 
 import { 
@@ -46,6 +49,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   });
 
   const { user, updateUser } = useAuth();
+  const logoutMutation = useLogoutMutation();
   
   const isTalent = user?.role?.toLowerCase() === 'talent';
   const isMentor = user?.role?.toLowerCase() === 'mentor';
@@ -69,6 +73,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { data: mentorProfile } = useGetMentorProfileQuery(!!user && isMentor);
   const { data: mentorState } = useMentorOnboardingStateQuery(!!user && isMentor);
   const { data: employerState } = useEmployerOnboardingStateQuery(!!user && isEmployer);
+  const { data: employerProfile } = useEmployerProfileSettingsQuery({ enabled: !!user && isEmployer });
 
   useEffect(() => {
     if (user && isEmployer && employerState?.data) {
@@ -109,31 +114,44 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     }
   }, [user, isMentor, mentorState, navigate, location.pathname]);
 
+  const hasSyncedTalentRef = useRef(false);
+  const hasSyncedMentorRef = useRef(false);
+  const hasSyncedEmployerRef = useRef(false);
+
   useEffect(() => {
-    if (user && isTalent) {
+    if (user && isTalent && !hasSyncedTalentRef.current) {
       if (talentProfile?.data) {
         const { firstName, lastName } = talentProfile.data;
-        if (firstName && (user.firstName !== firstName || user.lastName !== lastName)) {
-          updateUser({ firstName, lastName });
-          return;
+        if (firstName) {
+          hasSyncedTalentRef.current = true;
+          if (user.firstName !== firstName || user.lastName !== lastName) {
+            updateUser({ firstName, lastName });
+            return;
+          }
         }
       }
       if (talentState?.data?.fields) {
         const { firstName, lastName } = talentState.data.fields;
-        if (firstName && (user.firstName !== firstName || user.lastName !== lastName)) {
-          updateUser({ firstName, lastName });
+        if (firstName) {
+          hasSyncedTalentRef.current = true;
+          if (user.firstName !== firstName || user.lastName !== lastName) {
+            updateUser({ firstName, lastName });
+          }
         }
       }
     }
   }, [talentProfile, talentState, isTalent, user, updateUser]);
 
   useEffect(() => {
-    if (user && isMentor) {
+    if (user && isMentor && !hasSyncedMentorRef.current) {
       if (mentorProfile?.data) {
         const { firstName, lastName } = mentorProfile.data;
-        if (firstName && (user.firstName !== firstName || user.lastName !== lastName)) {
-          updateUser({ firstName, lastName });
-          return;
+        if (firstName) {
+          hasSyncedMentorRef.current = true;
+          if (user.firstName !== firstName || user.lastName !== lastName) {
+            updateUser({ firstName, lastName });
+            return;
+          }
         }
       }
       const mentorOnboardingFields = normalizeMentorOnboardingState(mentorState?.data)?.fields;
@@ -146,21 +164,35 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           typeof mentorOnboardingFields.lastName === 'string'
             ? mentorOnboardingFields.lastName
             : undefined;
-        if (firstName && (user.firstName !== firstName || user.lastName !== lastName)) {
-          updateUser({ firstName, lastName: lastName ?? '' });
+        if (firstName) {
+          hasSyncedMentorRef.current = true;
+          if (user.firstName !== firstName || user.lastName !== lastName) {
+            updateUser({ firstName, lastName: lastName ?? '' });
+          }
         }
       }
     }
   }, [mentorProfile, mentorState, isMentor, user, updateUser]);
 
   useEffect(() => {
-    if (user && isEmployer && employerState?.data?.fields?.organisationName) {
+    if (user && isEmployer && employerProfile && !hasSyncedEmployerRef.current) {
+      const firstName = employerProfile.firstName;
+      const lastName = employerProfile.lastName;
+      if (firstName) {
+        hasSyncedEmployerRef.current = true;
+        if (user.firstName !== firstName || user.lastName !== lastName) {
+          updateUser({ firstName, lastName: lastName ?? '' });
+          return;
+        }
+      }
+    }
+    if (user && isEmployer && !user.firstName && !user.lastName && employerState?.data?.fields?.organisationName) {
       const orgName = employerState.data.fields.organisationName;
-      if (orgName && user.firstName !== orgName) {
+      if (orgName) {
         updateUser({ firstName: orgName, lastName: '' });
       }
     }
-  }, [employerState, isEmployer, user, updateUser]);
+  }, [employerProfile, employerState, isEmployer, user, updateUser]);
 
   if (!user) return null;
 
@@ -293,18 +325,40 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           </nav>
 
           {/* User Profile Bottom Section */}
-          <div className="p-5 mt-auto border-t border-[#E6E6E6] group-data-[nav-collapsed=true]/sidebar:lg:p-3">
-            <div
-              className="flex items-center gap-3 cursor-pointer group group-data-[nav-collapsed=true]/sidebar:lg:justify-center group-data-[nav-collapsed=true]/sidebar:lg:gap-0"
-              title={isNavCollapsed ? fullName : undefined}
-            >
-              <div className="w-9 h-9 rounded-full bg-[#0047CC] flex items-center justify-center text-white font-bold text-[13px] shrink-0 uppercase tracking-tight">
-                {initials}
-              </div>
-              <div className="flex-1 min-w-0 group-data-[nav-collapsed=true]/sidebar:lg:hidden">
-                <p className="text-[13px] font-bold text-[#1A1A1A] truncate">{fullName}</p>
-                <p className="text-[11px] text-[#808080] font-medium truncate">{roleLabel}</p>
-              </div>
+          <div className="p-4 mt-auto border-t border-[#E6E6E6] group-data-[nav-collapsed=true]/sidebar:lg:p-3">
+            <div className="flex items-center justify-between gap-3 group-data-[nav-collapsed=true]/sidebar:lg:flex-col group-data-[nav-collapsed=true]/sidebar:lg:gap-2">
+              <Link
+                to="/settings"
+                className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity cursor-pointer group-data-[nav-collapsed=true]/sidebar:lg:justify-center group-data-[nav-collapsed=true]/sidebar:lg:gap-0"
+                title={isNavCollapsed ? `${fullName} (Settings)` : 'Manage settings'}
+              >
+                {employerProfile?.photoUrl ? (
+                  <img
+                    src={employerProfile.photoUrl}
+                    alt={fullName}
+                    className="w-9 h-9 rounded-full object-cover shrink-0 shadow-xs border border-gray-200"
+                  />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-[#0047CC] flex items-center justify-center text-white font-bold text-[13px] shrink-0 uppercase tracking-tight shadow-xs">
+                    {initials}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0 group-data-[nav-collapsed=true]/sidebar:lg:hidden">
+                  <p className="text-[13px] font-bold text-[#1A1A1A] truncate leading-tight">{fullName}</p>
+                  <p className="text-[11px] text-[#808080] font-medium truncate">{roleLabel}</p>
+                </div>
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => logoutMutation.mutate()}
+                disabled={logoutMutation.isPending}
+                title="Log out of this device"
+                aria-label="Log out"
+                className="p-2 text-gray-400 hover:text-[#DC2626] hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+              >
+                <LogOutIcon size={18} />
+              </button>
             </div>
           </div>
         </div>

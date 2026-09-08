@@ -81,7 +81,7 @@ const TalentDashboard: React.FC = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <span className="text-[10px] font-[800] uppercase tracking-wider text-white/70">
-                  Active Assessment Journey
+                  Active Interview Journey
                 </span>
                 <h2 className="text-[18px] font-bold mt-1">
                   {appliedRole.roleTitle}
@@ -123,7 +123,7 @@ const TalentDashboard: React.FC = () => {
         </div>
         
         <StatCard 
-          title="Assessment Grade" 
+          title="Interview Grade" 
           value="--" 
           linkText="Upload CV to unlock Grade."
         />

@@ -9,7 +9,7 @@ const MatchEligibilityBanner: React.FC = () => (
       </p>
       <p className="text-[13px] text-[#1D871D] leading-relaxed">
         VORA verified your nationality, country of residence, and right-to-work status against this
-        role&apos;s requirements. You are fully cleared to proceed to assessment.
+        role&apos;s requirements. You are fully cleared to proceed to interview.
       </p>
     </div>
   </div>

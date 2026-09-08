@@ -11,6 +11,7 @@ import { resolveGate1AssessmentId } from '../../config/gate1Api';
 import { unwrapAssessmentData } from '../../utils/assessmentSession';
 import type { GateVerdictResponse } from '../../services/queries/assessments/types';
 import FullPageSpinner from '../../components/common/FullPageSpinner';
+import EvidenceMap from '../../components/talent/assessment/shared/EvidenceMap';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -258,14 +259,6 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
         <div className="absolute bottom-[-100px] left-[-60px] w-[300px] h-[300px] rounded-full bg-white/5" />
         
         <div className="relative z-10 max-w-[780px] mx-auto text-center">
-          {/* Check Ring */}
-          <div className="w-[92px] h-[92px] rounded-full mx-auto mb-[22px] flex items-center justify-center bg-white/10 border-2 border-white/30 backdrop-blur-[8px] relative check-ring-pulse">
-            <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-            <div className="absolute -inset-[6px] border-[1.5px] border-dashed border-white/30 rounded-full dashed-spin" />
-          </div>
-
           <div className="inline-flex items-center gap-[7px] bg-white/15 border border-white/25 rounded-[100px] p-[5px_13px] mb-[14px]">
             <span className="text-[11px] font-[800] tracking-[0.7px] color-white uppercase">Stage 1 cleared</span>
           </div>
@@ -421,6 +414,9 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
           </div>
         </div>
 
+        {/* Evidence Map */}
+        <EvidenceMap evidenceMap={verdict?.evidenceMap} className="mb-[28px]" />
+
         {/* Gate Card (Stage 2 Unlock/Locked) */}
         <div className="bg-gradient-to-br from-[#EBF6FF] to-[#F8FBFF] border-[1.5px] border-[#EBF6FF] rounded-[18px] p-[26px_28px] text-center mb-[18px] relative overflow-hidden">
           <div className="absolute top-[-40px] right-[-40px] w-[140px] h-[140px] rounded-full bg-[#0047CC]/5" />
@@ -428,12 +424,12 @@ const RoleAssessmentSessionTwoResults: React.FC = () => {
             {isLocked ? `Stage ${verdict?.nextStage?.gate ?? 2} is Locked` : `Stage ${verdict?.nextStage?.gate ?? 2} is now open`}
           </div>
           <h3 className="text-[20px] font-[900] text-[#182348] tracking-[-0.3px] mb-[8px] leading-[1.3] relative z-10">
-            {isLocked ? "Assessment locked or failed" : `Ready to show us your ${verdict?.nextStage?.label?.toLowerCase() || 'professional'} side?`}
+            {isLocked ? "Interview locked or failed" : `Ready to show us your ${verdict?.nextStage?.label?.toLowerCase() || 'professional'} side?`}
           </h3>
           <p className="text-[14px] text-[#4A4A4A] leading-[1.6] mb-[20px] max-w-[520px] mx-auto relative z-10">
             {isLocked ? (
               <span className="text-[#DC2626] font-[600]">
-                Your assessment status for this role is closed or failed. Progression to Stage 2 is disabled.
+                Your interview status for this role is closed or failed. Progression to Stage 2 is disabled.
               </span>
             ) : (
               `The next stage goes into the specific work itself. It's longer and the questions are tied directly to what a ${verdict?.role?.roleTitle || readiness?.roleTitle || 'team member'} at ${verdict?.role?.employerName || readiness?.employerName || 'this company'} actually does day to day. You have ${verdict?.nextStage?.windowHours ?? 72} hours from now to complete it.`

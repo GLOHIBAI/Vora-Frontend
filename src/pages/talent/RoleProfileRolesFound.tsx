@@ -136,7 +136,7 @@ const RoleProfileRolesFound: React.FC = () => {
         </h2>
         <p className="text-[14px] font-medium text-[#4A5568] mb-6">
           Your profile matched these at {summary.matchThreshold}%+. View the JD, then go straight
-          to assessment.
+          to interview.
         </p>
 
         {matchedRoles.length > 0 ? (

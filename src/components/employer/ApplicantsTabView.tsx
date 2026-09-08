@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   UsersIcon, 
   CheckIcon, 
@@ -7,10 +8,18 @@ import {
   PlayIcon,
   LocationIcon
 } from '../common/Icons';
-import { SAMPLE_APPLICANTS } from '../../constants/mockData';
 import Tag from '../common/Tag';
+import Spinner from '../common/Spinner';
+import type { 
+  EmployerApplicantsResponse, 
+  EmployerApplicant,
+  EmployerTestResultSection,
+  EmployerTestResultItem 
+} from '../../services/queries/employer/types';
 
 interface ApplicantsTabViewProps {
+  data?: EmployerApplicantsResponse;
+  isLoading?: boolean;
   onHire: (applicant: any) => void;
 }
 
@@ -32,7 +41,7 @@ const AccordionItem: React.FC<{
           <Icon size={18} />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[16px] font-medium text-gray-900  tracking-tight">{title}</span>
+          <span className="text-[16px] font-medium text-gray-900 tracking-tight">{title}</span>
           {count !== undefined && (
             <span className="bg-[#F7F7F7] text-gray-500 text-[11px] font-medium px-2 py-0.5 rounded-full border border-gray-200">
               {count}
@@ -55,39 +64,235 @@ const AccordionItem: React.FC<{
   </div>
 );
 
-const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ onHire }) => {
+const getApplicantStatusVariant = (status?: string): any => {
+  const s = status?.toUpperCase();
+  if (s === 'PENDING_REVIEW' || s === 'PENDING') return 'gray';
+  if (s === 'UNDER_REVIEW' || s === 'IN_PROGRESS') return 'yellow';
+  if (['HIRED', 'PASSED'].includes(s || '')) return 'green';
+  if (['REJECTED', 'FAILED'].includes(s || '')) return 'red';
+  return 'gray';
+};
+
+const formatQualification = (q?: string): string => {
+  if (!q) return '—';
+  if (q === 'SENIOR_LEVEL') return 'Senior level';
+  if (q === 'MID_LEVEL') return 'Mid level';
+  if (q === 'ENTRY_LEVEL') return 'Entry level';
+  if (q === 'STUDENT_GRADUATE') return 'Student / Graduate';
+  return q.replace(/_/g, ' ');
+};
+
+const TestResultsTable: React.FC<{
+  sectionName: string;
+  section?: EmployerTestResultSection;
+  onOpenDossier: (assessmentId: string) => void;
+}> = ({ sectionName, section, onOpenDossier }) => {
+  if (section?.available === false) {
+    return (
+      <p className="py-8 text-center text-[13px] font-medium text-gray-400">
+        {sectionName} interview is not required for this role
+      </p>
+    );
+  }
+
+  const items: EmployerTestResultItem[] = section?.items ?? [];
+  if (items.length === 0) {
+    return (
+      <p className="py-8 text-center text-[13px] font-medium text-gray-400">
+        No {sectionName.toLowerCase()} data available yet
+      </p>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto -mx-6 px-6">
+      <table className="w-full text-left">
+        <thead>
+          <tr className="text-[10px] font-medium text-gray-400 uppercase tracking-widest border-b border-gray-50">
+            <th className="pb-4 font-medium">Applicant ID</th>
+            <th className="pb-4 font-medium text-center">Status</th>
+            <th className="pb-4 font-medium text-center">Score</th>
+            <th className="pb-4 font-medium text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-50">
+          {items.map((item, i) => {
+            const score = item.score;
+            return (
+              <tr key={i} className="group hover:bg-gray-50/50 transition-colors">
+                <td className="py-4 text-[14px] font-medium text-gray-900">
+                  {item.applicantCode || '—'}
+                </td>
+                <td className="py-4 text-center">
+                  <Tag 
+                    label={item.status || 'PENDING'} 
+                    variant={getApplicantStatusVariant(item.status)}
+                    className="mx-auto min-w-[90px] justify-center"
+                  />
+                </td>
+                <td className="py-4 text-center">
+                  {score != null ? (
+                    <span className="text-[13px] font-semibold text-gray-800">{score}%</span>
+                  ) : (
+                    <span className="text-gray-300">—</span>
+                  )}
+                </td>
+                <td className="py-4 text-right">
+                  {item.assessmentId ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenDossier(item.assessmentId!);
+                      }}
+                      className="px-3 py-1.5 text-[12px] font-medium text-[#0047CC] hover:bg-blue-50 rounded-lg transition-colors cursor-pointer border border-[#0047CC]/20 bg-transparent"
+                    >
+                      Dossier
+                    </button>
+                  ) : (
+                    <span className="text-gray-300 text-[12px]">—</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ data, isLoading, onHire }) => {
+  const navigate = useNavigate();
   const [openSection, setOpenSection] = useState<string | null>('Overview');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const toggleSection = (section: string) => {
     setOpenSection(openSection === section ? null : section);
   };
 
-  const topCandidates = SAMPLE_APPLICANTS.filter(a => a.status === 'Passed').sort((a, b) => (b.overall || 0) - (a.overall || 0)).slice(0, 3);
+  const metrics = data?.metrics;
+  const applicants = data?.applicants ?? [];
+  const geo = data?.geoDistribution;
+  const recommendation = data?.recommendation;
+  const topCandidates = recommendation?.topCandidates ?? [];
+
+  const totalPages = Math.max(1, Math.ceil(applicants.length / PAGE_SIZE));
+  const paginatedApplicants = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return applicants.slice(start, start + PAGE_SIZE);
+  }, [applicants, currentPage]);
+
+  if (isLoading) {
+    return (
+      <div className="py-20 flex flex-col items-center justify-center gap-3">
+        <Spinner size={28} className="text-[#0047CC]" />
+        <p className="text-[13px] font-medium text-gray-500">Loading applicants…</p>
+      </div>
+    );
+  }
+
+
+  // Helper resolvers for metrics
+  const getMetricCount = (val: any): string => {
+    if (val === undefined || val === null) return '0';
+    if (typeof val === 'object' && val !== null) {
+      return val.count !== undefined && val.count !== null ? String(val.count) : '0';
+    }
+    return String(val);
+  };
+
+  const getMetricSub = (val: any, fallbackSub?: string): string => {
+    if (typeof val === 'object' && val !== null && val.subtitle !== undefined) {
+      return val.subtitle ?? '—';
+    }
+    return fallbackSub || '—';
+  };
+
+  const getTopCandidateCode = (top: any): string => {
+    if (!top) return '—';
+    if (typeof top === 'object') {
+      return top.applicantCode ?? '—';
+    }
+    return typeof top === 'string' ? top : '—';
+  };
+
+  const getTopCandidateSub = (top: any): string => {
+    if (typeof top === 'object' && top !== null) {
+      return top.subtitle ?? (top.overallScore != null ? `Overall score ${top.overallScore}%` : '—');
+    }
+    return '—';
+  };
+
+  // Stats cards driven by API metrics
+  const statCards = metrics ? [
+    { 
+      label: 'TOTAL MATCHED', 
+      value: getMetricCount(metrics.totalMatched), 
+      sub: getMetricSub(metrics.totalMatched, 'Across pool'), 
+      icon: UsersIcon, 
+      color: 'text-gray-900' 
+    },
+    { 
+      label: 'PASSED ALL INTERVIEWS', 
+      value: getMetricCount(metrics.passedAllTests), 
+      sub: getMetricSub(metrics.passedAllTests, 'Ready for review'), 
+      icon: CheckIcon, 
+      color: 'text-green-600' 
+    },
+    { 
+      label: 'DID NOT MEET THRESHOLD', 
+      value: getMetricCount(metrics.didNotMeetThreshold), 
+      sub: getMetricSub(metrics.didNotMeetThreshold, 'Below score threshold'), 
+      icon: AlertTriangleIcon, 
+      color: 'text-red-600' 
+    },
+    { 
+      label: 'TOP CANDIDATE', 
+      value: getTopCandidateCode(metrics.topCandidate), 
+      sub: getTopCandidateSub(metrics.topCandidate), 
+      icon: CheckIcon, 
+      color: 'text-[#0047CC]' 
+    }
+  ] : [];
+
+  // Geo countries
+  const geoCountries = geo?.topCountries ?? [];
+  const totalApplicants = applicants.length || Number(getMetricCount(metrics?.totalMatched)) || 0;
+
+  const handleOpenDossier = (applicant: EmployerApplicant) => {
+    if (applicant.assessmentId) {
+      navigate(`/assessments/${applicant.assessmentId}/employer-report`);
+    } else {
+      onHire(applicant);
+    }
+  };
+
+  const handleOpenDossierById = (assessmentId: string) => {
+    navigate(`/assessments/${assessmentId}/employer-report`);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-7xl mx-auto">
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'TOTAL MATCHED', value: '8', sub: 'Across 8 countries', icon: UsersIcon, color: 'text-gray-900' },
-          { label: 'PASSED ALL TESTS', value: '5', sub: 'Ready for review', icon: CheckIcon, color: 'text-green-600' },
-          { label: 'DID NOT MEET THRESHOLD', value: '3', sub: 'Recommended for dev.', icon: AlertTriangleIcon, color: 'text-red-600' },
-          { label: 'TOP CANDIDATE', value: 'APP-VORA-008', sub: 'Overall score 92%', icon: CheckIcon, color: 'text-[#0047CC]' }
-        ].map((stat, i) => (
-          <div key={i} className="bg-white border border-gray-100 rounded-[14px] p-5 shadow-sm">
-            <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mb-3">{stat.label}</p>
-            <p className={`text-[24px] font-medium ${stat.color} leading-none mb-1`}>{stat.value}</p>
-            <p className="text-[11px] font-medium text-gray-400">{stat.sub}</p>
-          </div>
-        ))}
-      </div>
+      {statCards.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {statCards.map((stat, i) => (
+            <div key={i} className="bg-white border border-gray-100 rounded-[14px] p-5 shadow-sm">
+              <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mb-3">{stat.label}</p>
+              <p className={`text-[24px] font-medium ${stat.color} leading-none mb-1`}>{stat.value}</p>
+              <p className="text-[11px] font-medium text-gray-400">{stat.sub}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="space-y-4">
         {/* Candidate Pool Overview */}
         <AccordionItem 
           title="Candidate Pool Overview" 
           icon={UsersIcon} 
-          count={SAMPLE_APPLICANTS.length}
+          count={applicants.length}
           isOpen={openSection === 'Overview'} 
           onToggle={() => toggleSection('Overview')}
         >
@@ -101,27 +306,32 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ onHire }) => {
                   <div className="text-center">
                     <LocationIcon size={32} className="text-gray-300 mx-auto mb-2" />
                     <p className="text-[12px] font-medium text-gray-400">Interactive Map Visualization</p>
+                    {geo?.countryCodes && geo.countryCodes.length > 0 && (
+                      <p className="text-[11px] text-gray-400 mt-1">Countries: {geo.countryCodes.join(', ')}</p>
+                    )}
                   </div>
                 </div>
               </div>
               <div className="space-y-4">
                 <h4 className="text-[13px] font-medium text-gray-900 uppercase tracking-tight">Top Countries</h4>
                 <div className="space-y-3">
-                  {[
-                    { name: 'Nigeria', count: 3, percentage: 37 },
-                    { name: 'Kenya', count: 2, percentage: 25 },
-                    { name: 'Ethiopia', count: 1, percentage: 12 },
-                  ].map((c, i) => (
-                    <div key={i} className="space-y-1">
-                      <div className="flex justify-between text-[12px] font-medium">
-                        <span className="text-gray-700">{c.name}</span>
-                        <span className="text-gray-400">{c.count} app(s)</span>
+                  {geoCountries.map((c, i) => {
+                    const pct = totalApplicants > 0 ? Math.round((c.count / totalApplicants) * 100) : 0;
+                    return (
+                      <div key={i} className="space-y-1">
+                        <div className="flex justify-between text-[12px] font-medium">
+                          <span className="text-gray-700">{c.country}</span>
+                          <span className="text-gray-400">{c.count} app(s)</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-[#0047CC]" style={{ width: `${pct}%` }} />
+                        </div>
                       </div>
-                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-[#0047CC]" style={{ width: `${c.percentage}%` }} />
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
+                  {geoCountries.length === 0 && (
+                    <p className="text-[12px] font-medium text-gray-400">No data available</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -135,185 +345,151 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ onHire }) => {
                     <th className="pb-4 font-medium">Location</th>
                     <th className="pb-4 font-medium">Specialization</th>
                     <th className="pb-4 font-medium">Applied On</th>
+                    <th className="pb-4 font-medium text-center">Score</th>
                     <th className="pb-4 font-medium text-center">Overall Status</th>
+                    <th className="pb-4 font-medium text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {SAMPLE_APPLICANTS.map((applicant, i) => (
-                    <tr key={i} className="group hover:bg-gray-50/50 transition-colors">
-                      <td className="py-4">
-                        <span className="text-[14px] font-medium text-gray-900 group-hover:text-[#0047CC] transition-colors">{applicant.id}</span>
-                      </td>
-                      <td className="py-4 text-[13px] font-medium text-gray-500">{applicant.academicLevel}</td>
-                      <td className="py-4 text-[13px] font-medium text-gray-500">{applicant.location}</td>
-                      <td className="py-4 text-[13px] font-medium text-gray-500">{applicant.course}</td>
-                      <td className="py-4 text-[13px] font-medium text-gray-500">{applicant.dateApplied}</td>
-                      <td className="py-4 text-center">
-                        <Tag 
-                          label={applicant.status} 
-                          variant={
-                            applicant.status.toLowerCase() === 'pending review' ? 'gray' : 
-                            applicant.status.toLowerCase() === 'under review' ? 'yellow' : 
-                            ['hired', 'passed'].includes(applicant.status.toLowerCase()) ? 'green' : 
-                            ['rejected', 'failed'].includes(applicant.status.toLowerCase()) ? 'red' : 'gray'
-                          } 
-                          className="mx-auto min-w-[110px] justify-center"
-                        />
+                  {paginatedApplicants.map((applicant: EmployerApplicant, i: number) => {
+                    const statusLabel = applicant.overallStatusLabel || applicant.overallStatus || applicant.status || '—';
+                    const score = applicant.overallScore ?? applicant.overall;
+                    const location = applicant.location || applicant.country || '—';
+                    return (
+                      <tr 
+                        key={i} 
+                        onClick={() => handleOpenDossier(applicant)}
+                        className="group hover:bg-gray-50/50 transition-colors cursor-pointer"
+                      >
+                        <td className="py-4">
+                          <span className="text-[14px] font-medium text-gray-900 group-hover:text-[#0047CC] transition-colors">
+                            {applicant.applicantCode}
+                          </span>
+                        </td>
+                        <td className="py-4 text-[13px] font-medium text-gray-500">{formatQualification(applicant.qualification)}</td>
+                        <td className="py-4 text-[13px] font-medium text-gray-500">{location}</td>
+                        <td className="py-4 text-[13px] font-medium text-gray-500">{applicant.specialization || '—'}</td>
+                        <td className="py-4 text-[13px] font-medium text-gray-400">{applicant.appliedOn || '—'}</td>
+                        <td className="py-4 text-center">
+                          {score != null ? (
+                            <span className="text-[13px] font-semibold text-gray-800">{score}%</span>
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </td>
+                        <td className="py-4 text-center">
+                          <Tag 
+                            label={statusLabel} 
+                            variant={getApplicantStatusVariant(applicant.overallStatus || applicant.status)}
+                            className="mx-auto min-w-[110px] justify-center"
+                          />
+                        </td>
+                        <td className="py-4 text-right">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenDossier(applicant);
+                            }}
+                            className="px-3 py-1.5 text-[12px] font-medium text-[#0047CC] hover:bg-blue-50 rounded-lg transition-colors cursor-pointer border border-[#0047CC]/20 bg-transparent"
+                          >
+                            Dossier
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {applicants.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-[13px] font-medium text-gray-400">
+                        No applicants yet
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
+
+              {/* Pagination controls for large applicant lists */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-5 border-t border-gray-100 mt-2">
+                  <span className="text-[12px] font-medium text-gray-500">
+                    Showing {(currentPage - 1) * PAGE_SIZE + 1} to {Math.min(currentPage * PAGE_SIZE, applicants.length)} of {applicants.length} applicants
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={currentPage === 1}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentPage((p) => Math.max(1, p - 1));
+                      }}
+                      className="px-3 py-1 text-[12px] font-medium rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-[12px] font-medium text-gray-600 px-2">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={currentPage === totalPages}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentPage((p) => Math.min(totalPages, p + 1));
+                      }}
+                      className="px-3 py-1 text-[12px] font-medium rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </AccordionItem>
 
-        {/* Psychometric Test Results */}
+        {/* Psychometric Interview Results */}
         <AccordionItem 
-          title="Psychometric Test Results" 
+          title="Psychometric Interview Results" 
           icon={CheckIcon} 
+          count={data?.testResults?.psychometric?.passedCount}
           isOpen={openSection === 'Psychometric'} 
           onToggle={() => toggleSection('Psychometric')}
         >
-          <div className="overflow-x-auto -mx-6 px-6">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="text-[10px] font-medium text-gray-400 uppercase tracking-widest border-b border-gray-50">
-                  <th className="pb-4 font-medium">Applicant ID</th>
-                  <th className="pb-4 font-medium">Critical Thinking</th>
-                  <th className="pb-4 font-medium">Numerical Reasoning</th>
-                  <th className="pb-4 font-medium">Verbal Reasoning</th>
-                  <th className="pb-4 font-medium text-right">Final Score</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {SAMPLE_APPLICANTS.map((applicant, i) => (
-                  <tr key={i} className="group">
-                    <td className="py-4 text-[14px] font-medium text-gray-900">{applicant.id}</td>
-                    <td className="py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-blue-400" style={{ width: `${applicant.psych || 0}%` }} />
-                        </div>
-                        <span className="text-[12px] font-medium text-gray-500">{applicant.psych || 0}%</span>
-                      </div>
-                    </td>
-                    <td className="py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-indigo-400" style={{ width: `${(applicant.psych || 0) - 5}%` }} />
-                        </div>
-                        <span className="text-[12px] font-medium text-gray-500">{(applicant.psych || 0) - 5}%</span>
-                      </div>
-                    </td>
-                    <td className="py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-purple-400" style={{ width: `${(applicant.psych || 0) + 2}%` }} />
-                        </div>
-                        <span className="text-[12px] font-medium text-gray-500">{(applicant.psych || 0) + 2}%</span>
-                      </div>
-                    </td>
-                    <td className="py-4 text-right">
-                      <span className={`text-[14px] font-medium ${applicant.psych && applicant.psych > 70 ? 'text-green-600' : 'text-red-600'}`}>
-                        {applicant.psych || '--'}%
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <TestResultsTable 
+            sectionName="Psychometric" 
+            section={data?.testResults?.psychometric} 
+            onOpenDossier={handleOpenDossierById}
+          />
         </AccordionItem>
 
         {/* Situational Judgement Results */}
         <AccordionItem 
-          title="Situational Judgement Test Results" 
+          title="Situational Judgement Interview Results" 
           icon={AlertTriangleIcon} 
+          count={data?.testResults?.situationalJudgement?.passedCount}
           isOpen={openSection === 'SJT'} 
           onToggle={() => toggleSection('SJT')}
         >
-          <div className="overflow-x-auto -mx-6 px-6">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="text-[10px] font-medium text-gray-400 uppercase tracking-widest border-b border-gray-50">
-                  <th className="pb-4 font-medium">Applicant ID</th>
-                  <th className="pb-4 font-medium">Field Safety</th>
-                  <th className="pb-4 font-medium">Ethical Decision Making</th>
-                  <th className="pb-4 font-medium">Crisis Management</th>
-                  <th className="pb-4 font-medium text-right">Final Score</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {SAMPLE_APPLICANTS.map((applicant, i) => (
-                  <tr key={i} className="group">
-                    <td className="py-4 text-[14px] font-medium text-gray-900">{applicant.id}</td>
-                    <td className="py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-orange-400" style={{ width: `${applicant.sjt || 0}%` }} />
-                        </div>
-                        <span className="text-[12px] font-medium text-gray-500">{applicant.sjt || 0}%</span>
-                      </div>
-                    </td>
-                    <td className="py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-amber-400" style={{ width: `${(applicant.sjt || 0) + 4}%` }} />
-                        </div>
-                        <span className="text-[12px] font-medium text-gray-500">{(applicant.sjt || 0) + 4}%</span>
-                      </div>
-                    </td>
-                    <td className="py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-yellow-400" style={{ width: `${(applicant.sjt || 0) - 2}%` }} />
-                        </div>
-                        <span className="text-[12px] font-medium text-gray-500">{(applicant.sjt || 0) - 2}%</span>
-                      </div>
-                    </td>
-                    <td className="py-4 text-right">
-                      <span className={`text-[14px] font-medium ${applicant.sjt && applicant.sjt > 70 ? 'text-green-600' : 'text-red-600'}`}>
-                        {applicant.sjt || '--'}%
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <TestResultsTable 
+            sectionName="Situational Judgement" 
+            section={data?.testResults?.situationalJudgement} 
+            onOpenDossier={handleOpenDossierById}
+          />
         </AccordionItem>
 
         {/* Video Interview Results */}
         <AccordionItem 
-          title="Video Interview/Test Results" 
+          title="Video Interview Results" 
           icon={PlayIcon} 
+          count={data?.testResults?.video?.passedCount}
           isOpen={openSection === 'Video'} 
           onToggle={() => toggleSection('Video')}
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {SAMPLE_APPLICANTS.filter(a => a.videoUrl).map((applicant, i) => (
-              <div key={i} className="group relative">
-                <div className="aspect-video bg-gray-900 rounded-2xl overflow-hidden relative border border-gray-100 shadow-sm">
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors z-10" />
-                  <div className="absolute inset-0 flex items-center justify-center z-20">
-                    <button className="bg-white/90 p-3 rounded-full text-[#0047CC] hover:scale-110 transition-transform shadow-lg cursor-pointer border-none">
-                      <PlayIcon size={20} />
-                    </button>
-                  </div>
-                  <div className="absolute bottom-4 left-4 right-4 z-20 flex justify-between items-end">
-                    <div>
-                      <p className="text-white text-[12px] font-medium tracking-tight">{applicant.id}</p>
-                      <p className="text-white/70 text-[10px] font-medium uppercase tracking-widest">Video Response</p>
-                    </div>
-                    <div className="bg-green-500 text-white text-[11px] font-medium px-2 py-0.5 rounded-lg shadow-md">
-                      {applicant.video}%
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <TestResultsTable 
+            sectionName="Video Interview" 
+            section={data?.testResults?.video} 
+            onOpenDossier={handleOpenDossierById}
+          />
         </AccordionItem>
       </div>
 
@@ -322,41 +498,61 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ onHire }) => {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-[18px] font-medium text-[#0047CC] tracking-tight">VORA AI Recommendation</h3>
-            <p className="text-[13px] font-medium text-[#387DFF]/70">Top 3 candidates based on cross-sectional performance metrics</p>
+            <p className="text-[13px] font-medium text-[#387DFF]/70">
+              {recommendation?.subtitle || 'Top candidates based on cross-sectional performance metrics'}
+            </p>
           </div>
-          <Tag label="AUTO-GENERATED" variant="blue" />
+          {recommendation?.autoGenerated && (
+            <Tag label="AUTO-GENERATED" variant="blue" />
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {topCandidates.map((candidate, i) => (
-            <div key={i} className="bg-white p-6 rounded-xl border border-[#387DFF]/10 shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-3">
-                <div className="text-[24px] font-medium text-[#0047CC]/10 group-hover:text-[#0047CC]/20 transition-colors">#{i + 1}</div>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-[14px] font-medium text-gray-900">{candidate.id}</p>
-                  <p className="text-[12px] font-medium text-gray-400">{candidate.location}</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex-1 space-y-1">
-                    <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">Overall Fit</p>
-                    <div className="h-2 bg-gray-50 rounded-full overflow-hidden">
-                      <div className="h-full bg-green-500" style={{ width: `${candidate.overall}%` }} />
-                    </div>
+        {topCandidates.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {topCandidates.map((candidate, i) => {
+              const score = candidate.overallScore ?? candidate.score;
+              return (
+                <div key={i} className="bg-white p-6 rounded-xl border border-[#387DFF]/10 shadow-sm relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-3">
+                    <div className="text-[24px] font-medium text-[#0047CC]/10 group-hover:text-[#0047CC]/20 transition-colors">#{i + 1}</div>
                   </div>
-                  <span className="text-[18px] font-medium text-green-600">{candidate.overall}%</span>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-[14px] font-medium text-gray-900">{candidate.applicantCode}</p>
+                      {candidate.reason && <p className="text-[12px] font-medium text-gray-400">{candidate.reason}</p>}
+                    </div>
+                    {score != null && (
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1 space-y-1">
+                          <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">Overall Fit</p>
+                          <div className="h-2 bg-gray-50 rounded-full overflow-hidden">
+                            <div className="h-full bg-green-500" style={{ width: `${score}%` }} />
+                          </div>
+                        </div>
+                        <span className="text-[18px] font-medium text-green-600">{score}%</span>
+                      </div>
+                    )}
+                    <button 
+                      onClick={() => onHire(candidate)}
+                      className="w-full py-2.5 bg-[#0047CC] text-white rounded-xl text-[13px] font-medium hover:bg-[#387DFF] transition-all shadow-md active:scale-95 cursor-pointer border-none"
+                    >
+                      Hire Now
+                    </button>
+                  </div>
                 </div>
-                <button 
-                  onClick={() => onHire(candidate)}
-                  className="w-full py-2.5 bg-[#0047CC] text-white rounded-xl text-[13px] font-medium hover:bg-[#387DFF] transition-all shadow-md active:scale-95 cursor-pointer border-none"
-                >
-                  Hire Now
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="py-8 text-center bg-gray-50/60 rounded-xl border border-dashed border-gray-200">
+            <p className="text-[13px] font-medium text-gray-500">
+              No scored candidates yet.
+            </p>
+            <p className="text-[11px] text-gray-400 mt-1">
+              AI recommendations will populate here automatically once candidates complete and score their interviews.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

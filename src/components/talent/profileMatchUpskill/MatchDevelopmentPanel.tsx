@@ -111,9 +111,9 @@ const MatchDevelopmentPanel: React.FC<MatchDevelopmentPanelProps> = ({
             ) : null}
           </>
         ) : (
-          <div className="bg-[#FFFBEB] border border-[#FDE68A] rounded-xl p-5">
-            <div className="text-sm font-bold text-[#92400E] mb-1.5">Self-directed study</div>
-            <p className="text-[13px] text-[#78350F] leading-relaxed">
+          <div className="bg-transparent border border-[#BFDBFE] rounded-xl p-5">
+            <div className="text-sm font-bold text-[#0047CC] mb-1.5">Self-directed study</div>
+            <p className="text-[13px] text-[#4A4A4A] leading-relaxed">
               There aren&apos;t any mentors or courses for this role on the platform yet. Use the
               focus areas above to guide your own upskilling, then reapply once you&apos;ve built
               the experience.

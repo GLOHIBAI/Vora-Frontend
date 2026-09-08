@@ -50,7 +50,7 @@ const WorkSampleItem: React.FC<AssessmentItemRendererProps> = ({
       )}
 
       {requirements.length > 0 && (
-        <div className="mb-5 bg-[#EBF6FF] border border-[#387DFF]/25 rounded-[14px] p-4 space-y-2">
+        <div className="mb-5 bg-transparent border border-[#387DFF] rounded-[14px] p-4 space-y-2">
           <div className="text-[11px] font-[800] text-[#0047CC] uppercase tracking-[0.6px]">
             Requirements
           </div>

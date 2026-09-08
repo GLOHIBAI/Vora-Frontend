@@ -1,10 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import AssessmentReviewShell, {
   type AssessmentReviewListItem,
 } from '../../components/talent/assessment/AssessmentReviewShell';
-import { useReviewSummaryQuery, useSubmitGateMutation, useStartAssessmentScreenMutation } from '../../services/queries/assessments';
+import {
+  useReviewSummaryQuery,
+  useSubmitGateMutation,
+  useStartAssessmentScreenMutation,
+  markComponentSubmitted,
+} from '../../services/queries/assessments';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
 import { parseReviewSummaryEntries, unwrapAssessmentData } from '../../utils/assessmentSession';
 
@@ -36,6 +41,13 @@ const RoleAssessmentGate1Review: React.FC = () => {
   });
   const reviewData = unwrapAssessmentData<Record<string, unknown>>(reviewRaw) ?? {};
   const entries = parseReviewSummaryEntries(reviewRaw);
+
+  useEffect(() => {
+    entries.forEach((e) => {
+      if (e.componentId) markComponentSubmitted(e.componentId);
+    });
+  }, [entries]);
+
   const startGateSession = useStartAssessmentScreenMutation(1);
   const [revisitLoading, setRevisitLoading] = useState<string | null>(null);
 
@@ -46,10 +58,17 @@ const RoleAssessmentGate1Review: React.FC = () => {
   const handleRevisit = async (screenKey: string) => {
     setRevisitLoading(screenKey);
     try {
-      await startGateSession.mutateAsync({
+      const res = await startGateSession.mutateAsync({
         assessmentId,
         body: { screen: screenKey },
       });
+      const data = (res as any)?.data || res;
+      if (
+        data?.componentId &&
+        (data?.alreadySubmitted || (data?.status && data.status !== 'IN_PROGRESS'))
+      ) {
+        markComponentSubmitted(data.componentId);
+      }
       navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
     } catch (err) {
       console.error(err);

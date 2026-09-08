@@ -34,6 +34,7 @@ dist-ssr
 stage2/
 VORA_complete_flow/
 docs/
+public/videos/
 
 # Local dev and diagnostic logs
 *.log

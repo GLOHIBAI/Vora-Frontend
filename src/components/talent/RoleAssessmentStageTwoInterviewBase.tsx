@@ -14,6 +14,9 @@ import {
   useSubmitAssessmentScreenMutation,
   useAssessmentDraftQuery,
   fetchGate2PillarItems,
+  markComponentSubmitted,
+  unmarkComponentSubmitted,
+  isComponentSubmitted,
 } from '../../services/queries/assessments';
 import { getActiveAssessmentId } from '../../utils/assessmentSession';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
@@ -22,7 +25,7 @@ import { getReasonMinWords, extractReasonText, hasReasonField } from '../../util
 import { isWrittenReasonType } from '../../utils/writtenReasonTypes';
 import { normalizeAssessmentItems } from '../../utils/assessmentItems';
 import { unwrapAssessmentData } from '../../utils/assessmentSession';
-import { gate2PillarStartPath, gate2PillarIntroPath } from '../../utils/stage2Flow';
+import { gate2PillarStartPath, gate2PillarIntroPath, navigateGate2Authoritative } from '../../utils/stage2Flow';
 import type {
   AssessmentGateStartResponse,
   AssessmentItem,
@@ -48,6 +51,40 @@ const applyGate2ScreenPayload = (raw: unknown) => {
     window: (data.window || (data.data && typeof data.data === 'object' ? data.data.window : undefined)) as GateWindowInfo | undefined,
     progress: data.progress || (data.data && typeof data.data === 'object' ? data.data.progress : undefined),
   };
+};
+
+const resolveNextPillarRoute = (
+  roleSlug: string,
+  resData: any,
+  currentPart: number,
+): string => {
+  const payload = resData?.data || resData;
+  const nextStep = payload?.nextStep;
+  const nextPillar = payload?.nextPillar;
+  const isGate2Complete =
+    nextStep === 'GATE2_COMPLETE' ||
+    payload?.gate2Complete === true ||
+    payload?.pillarCompleted && currentPart >= 4;
+
+  if (isGate2Complete || currentPart >= 4) {
+    return `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`;
+  }
+
+  if (nextPillar) {
+    if (nextStep === 'START_PILLAR') {
+      const startPath = gate2PillarStartPath(roleSlug, nextPillar);
+      if (startPath) return startPath;
+    }
+    const introPath = gate2PillarIntroPath(roleSlug, nextPillar);
+    if (introPath) return introPath;
+  }
+
+  // Fallback sequential progression
+  const nextPart = currentPart + 1;
+  if (nextPart > 4) {
+    return `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`;
+  }
+  return `/onboarding/talent/${roleSlug}/interview/stage-2/part-${nextPart}/intro`;
 };
 
 const QUESTIONS_PER_SESSION = 4;
@@ -159,7 +196,7 @@ const pollResumeStateUntilReady = async (
   }
 
   throw new Error(
-    'Assessment question generation is taking longer than expected. The queue worker may be stuck.'
+    'Interview question generation is taking longer than expected. The queue worker may be stuck.'
   );
 };
 
@@ -241,14 +278,14 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       apiScreenData?.componentId ||
       (apiScreenData as any)?.component_id ||
       (apiScreenData as any)?.data?.componentId ||
-      `g2-${pillar}`
+      null
     );
-  }, [apiScreenData, pillar]);
+  }, [apiScreenData]);
 
   useEffect(() => {
     if (!activeAssessmentId) {
       setApiLoading(false);
-      setApiError('No active assessment. Return to the journey and begin Stage 2.');
+      setApiError('No active interview. Return to the journey and begin Stage 2.');
       return;
     }
 
@@ -320,6 +357,24 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         if (payload) {
           const { data, items, window, progress } = payload;
           setApiScreenData(data);
+          const rawStatus = String(data?.status || '').toUpperCase();
+          const isSubmittedOrDone =
+            data?.alreadySubmitted === true ||
+            rawStatus === 'COMPLETED' ||
+            rawStatus === 'SUBMITTED' ||
+            rawStatus === 'CLOSED' ||
+            (rawStatus && rawStatus !== 'IN_PROGRESS') ||
+            Boolean(data?.submittedAt) ||
+            Boolean(data?.completedAt);
+
+          if (data?.componentId && isSubmittedOrDone) {
+            markComponentSubmitted(data.componentId);
+            await navigateGate2Authoritative(activeAssessmentId, roleSlug, navigate);
+            return;
+          }
+          if (data?.componentId && !isSubmittedOrDone) {
+            unmarkComponentSubmitted(data.componentId);
+          }
           setActiveItems(items);
           if (window) {
             setWindowInfo(window);
@@ -333,12 +388,38 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
           const initialResponses = data.responses || (res as any)?.responses || (res as any)?.data?.responses;
           if (initialResponses && typeof initialResponses === 'object') {
+            const unansweredSeq =
+              (payload as any)?.routing?.unansweredSequence ||
+              (res as any)?.data?.routing?.unansweredSequence ||
+              (data as any)?.routing?.unansweredSequence;
             for (const [key, val] of Object.entries(initialResponses)) {
               if (val !== undefined && val !== null) {
-                lockedResponsesRef.current[key] = val;
+                const item = items.find((i) => i.id === key);
+                if (!unansweredSeq || (item as any)?.sequence !== unansweredSeq) {
+                  lockedResponsesRef.current[key] = val;
+                }
               }
             }
-            setAnswers((prev: any) => ({ ...initialResponses, ...prev }));
+
+            // Auto-heal any code responses where findings or reason is missing
+            const healedResponses = { ...initialResponses };
+            for (const item of items) {
+              const itemType = String(item.type ?? '').toLowerCase();
+              if (itemType === 'code' || itemType === 'livecode') {
+                const resp = healedResponses[item.id];
+                if (resp && typeof resp === 'object' && !resp.findings) {
+                  const text = resp.code || resp.reason || resp.solution || '';
+                  healedResponses[item.id] = {
+                    ...resp,
+                    findings: text,
+                    reason: text,
+                    reasoning: text,
+                    solution: text,
+                  };
+                }
+              }
+            }
+            setAnswers((prev: any) => ({ ...healedResponses, ...prev }));
           }
 
           if (data?.questionsRegenerated) {
@@ -348,7 +429,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           return;
         }
 
-        setApiError('Assessment question generation is taking longer than expected. The queue worker may be stuck.');
+        setApiError('Interview question generation is taking longer than expected. The queue worker may be stuck.');
         setApiLoading(false);
       } catch (err: any) {
         if (cancelled) return;
@@ -425,7 +506,10 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       setSecondsLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          handleSubmit('time-up');
+          const ENABLE_TIMER_EXPIRY = import.meta.env.VITE_ENABLE_TIMER_EXPIRY === 'true';
+          if (ENABLE_TIMER_EXPIRY) {
+            handleSubmit('time-up');
+          }
           return 0;
         }
         return prev - 1;
@@ -445,7 +529,12 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         blurTimerRef.current = setTimeout(async () => {
           try {
             // Flush draft answers for current window silently
-            if (activeAssessmentId && apiScreenData?.componentId && Object.keys(answers).length > 0) {
+            if (
+              activeAssessmentId &&
+              apiScreenData?.componentId &&
+              !isComponentSubmitted(apiScreenData.componentId) &&
+              Object.keys(answers).length > 0
+            ) {
               const draftPayload = buildUnlockedDraftPayload(answers);
               if (Object.keys(draftPayload).length > 0) {
                 await safeSaveDraft(draftPayload).catch(() => { });
@@ -471,6 +560,9 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   }, [activeAssessmentId, apiScreenData, answers, savedForLater]);
 
   const handleAnswer = async (itemId: string, value: any, item: any, subKey?: string) => {
+    if (lockedResponsesRef.current[itemId]) {
+      return;
+    }
     await recordAnswer(itemId, value, item, subKey);
   };
 
@@ -568,7 +660,10 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     });
 
     for (const [itemId, val] of Object.entries(rawAnswers)) {
-      if (val !== undefined && val !== null && val !== '' && lockedResponsesRef.current[itemId] !== true) {
+      if (!itemId || !itemId.trim()) continue;
+      if (lockedResponsesRef.current[itemId]) continue;
+      if (val !== undefined && val !== null && val !== '') {
+        if (typeof val === 'object' && !Array.isArray(val) && Object.keys(val).length === 0) continue;
         const item = itemMap.get(itemId);
         // Only include in draft PATCH payload when complete (prevents partial then complete 400 locked errors)
         if (!item || isItemAnswerComplete(item, val)) {
@@ -579,19 +674,25 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     return sanitizeAnswers(unlocked, itemsForTypes);
   };
 
-  const safeSaveDraft = async (unlockedPayload: Record<string, any>) => {
+  const safeSaveDraft = async (unlockedPayload: Record<string, any>): Promise<{ alreadySubmitted?: boolean } | void> => {
     const compId = activeComponentId;
-    if (!compId || !activeAssessmentId) return;
+    if (!compId || !activeAssessmentId) {
+      return;
+    }
 
     // Filter out items already locked on the server to avoid 400 errors
     const validPayload: Record<string, any> = {};
     for (const [key, val] of Object.entries(unlockedPayload)) {
-      if (lockedResponsesRef.current[key] !== true && val !== undefined && val !== null && val !== '') {
+      if (!key || !key.trim()) continue;
+      if (!lockedResponsesRef.current[key] && val !== undefined && val !== null && val !== '') {
+        if (typeof val === 'object' && !Array.isArray(val) && Object.keys(val).length === 0) continue;
         validPayload[key] = val;
       }
     }
 
     if (Object.keys(validPayload).length === 0) return;
+
+    let isAlreadySubmitted = false;
 
     const savePromise = (async () => {
       try {
@@ -601,16 +702,22 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           responses: validPayload,
         });
 
+        if (isComponentSubmitted(compId)) {
+          isAlreadySubmitted = true;
+          return;
+        }
+
         // Mark all saved keys as locked locally so subsequent patches don't re-send them
         Object.keys(validPayload).forEach((k) => {
-          lockedResponsesRef.current[k] = true;
+          lockedResponsesRef.current[k] = validPayload[k] ?? true;
         });
 
         const respObj = (saveRes as any)?.responses || (saveRes as any)?.data?.responses;
         if (respObj && typeof respObj === 'object') {
           Object.keys(respObj).forEach((k) => {
-            lockedResponsesRef.current[k] = true;
+            lockedResponsesRef.current[k] = respObj[k] ?? true;
           });
+          setAnswers((prev: any) => ({ ...prev, ...respObj }));
         }
       } catch (err: any) {
         const rawMsg =
@@ -622,10 +729,17 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         const errMessage = String(rawMsg);
         const lowerMsg = errMessage.toLowerCase();
         if (
-          lowerMsg.includes('locked') ||
-          lowerMsg.includes('cannot be changed') ||
           lowerMsg.includes('already been submitted') ||
           lowerMsg.includes('already submitted') ||
+          lowerMsg.includes('completed')
+        ) {
+          markComponentSubmitted(compId);
+          isAlreadySubmitted = true;
+          return;
+        }
+        if (
+          lowerMsg.includes('locked') ||
+          lowerMsg.includes('cannot be changed') ||
           lowerMsg.includes('time limit') ||
           lowerMsg.includes('ended')
         ) {
@@ -645,6 +759,9 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     inFlightDraftSaveRef.current = savePromise;
     try {
       await savePromise;
+      if (isAlreadySubmitted || isComponentSubmitted(compId)) {
+        return { alreadySubmitted: true };
+      }
     } finally {
       if (inFlightDraftSaveRef.current === savePromise) {
         inFlightDraftSaveRef.current = null;
@@ -655,9 +772,11 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   const buildCurrentWindowDraftPayload = () => {
     const windowAnswers: Record<string, any> = {};
     for (const item of activeDisplayedItems) {
-      if (lockedResponsesRef.current[item.id] === true) continue;
+      if (!item?.id || !item.id.trim()) continue;
+      if (lockedResponsesRef.current[item.id]) continue;
       const val = answers[item.id];
       if (val !== undefined && val !== null && val !== '' && isItemAnswerComplete(item, val)) {
+        if (typeof val === 'object' && !Array.isArray(val) && Object.keys(val).length === 0) continue;
         windowAnswers[item.id] = val;
       }
     }
@@ -666,6 +785,11 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
   const handleSubmit = async (reason?: string) => {
     if (isSubmitting) return;
+
+    if (blurTimerRef.current) {
+      clearTimeout(blurTimerRef.current);
+      blurTimerRef.current = null;
+    }
 
     // Enforce window pagination: if there are remaining windows, continue rather than multi-submitting prematurely
     if (isHasMoreWindows) {
@@ -680,7 +804,14 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
     const compId = activeComponentId;
     if (!activeAssessmentId || !compId) {
-      toast.error('Assessment is not ready. Please reload and try again.');
+      toast.error('Interview is not ready. Please reload and try again.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (isComponentSubmitted(compId)) {
+      const targetPath = resolveNextPillarRoute(roleSlug, {}, partNumber);
+      navigate(targetPath, { replace: true });
       setIsSubmitting(false);
       return;
     }
@@ -690,39 +821,28 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         await inFlightDraftSaveRef.current.catch(() => { });
       }
 
-      const payloadResponses = sanitizeAnswers(answers);
-      if (Object.keys(payloadResponses).length === 0) {
-        toast.error('Please complete your answers before submitting.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Hard gate: draft of unlocked answers must succeed before final submit.
-      const unlockedDraft = buildUnlockedDraftPayload(answers);
-      await safeSaveDraft(unlockedDraft);
-
-      // For submit, also exclude locked items to avoid 400 "locked" errors
-      const submitPayload: Record<string, any> = {};
-      for (const [key, val] of Object.entries(unlockedDraft)) {
-        if (lockedResponsesRef.current[key] !== true && val !== undefined && val !== null && val !== '') {
-          submitPayload[key] = val;
+      // Step 1: Ensure any newly answered unlocked items are drafted first via PATCH (if not submitted)
+      if (!isComponentSubmitted(compId)) {
+        const unlockedDraft = buildUnlockedDraftPayload(answers);
+        if (Object.keys(unlockedDraft).length > 0) {
+          await safeSaveDraft(unlockedDraft);
         }
       }
 
-      await submitScreenMutation.mutateAsync({
+      // Step 2: Final submit.
+      // Per backend contract: Once answers are saved via PATCH, they are immutable on the component.
+      // Backend automatically merges stored drafts with the submit body.
+      // Calling submit with responses: {} prevents "answer is locked and cannot be changed" rejections.
+      const submitRes = await submitScreenMutation.mutateAsync({
         assessmentId: activeAssessmentId,
         componentId: compId,
-        responses: submitPayload,
+        responses: {},
       });
 
+      markComponentSubmitted(compId);
       toast.success('All answers locked, saved and submitted.');
-      const nextPartMap: Record<number, string> = {
-        1: `/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`,
-        2: `/onboarding/talent/${roleSlug}/interview/stage-2/part-3/intro`,
-        3: `/onboarding/talent/${roleSlug}/interview/stage-2/part-4/intro`,
-        4: `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`,
-      };
-      const targetPath = nextPartMap[partNumber] || `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`;
+      const resData = (submitRes as any)?.data || submitRes;
+      const targetPath = resolveNextPillarRoute(roleSlug, resData, partNumber);
       navigate(targetPath);
     } catch (err: any) {
       console.error('Failed to submit assessment:', err);
@@ -734,21 +854,33 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         '';
 
       const lower = serverMsg.toLowerCase();
+      if (lower.includes('locked') || lower.includes('cannot be changed')) {
+        try {
+          // Recovery: Re-attempt submit with empty responses so backend uses previously locked drafts
+          const retryRes = await submitScreenMutation.mutateAsync({
+            assessmentId: activeAssessmentId,
+            componentId: compId,
+            responses: {},
+          });
+          markComponentSubmitted(compId);
+          toast.success('All answers locked, saved and submitted.');
+          const resData = (retryRes as any)?.data || retryRes;
+          const targetPath = resolveNextPillarRoute(roleSlug, resData, partNumber);
+          navigate(targetPath);
+          return;
+        } catch (retryErr: any) {
+          console.warn('Retry submit with empty responses failed:', retryErr);
+        }
+      }
+
       if (
         lower.includes('already submitted') ||
         lower.includes('already been submitted') ||
         lower.includes('completed') ||
-        lower.includes('time limit') ||
-        lower.includes('locked') ||
-        lower.includes('cannot be changed')
+        lower.includes('time limit')
       ) {
-        const nextPartMap: Record<number, string> = {
-          1: `/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`,
-          2: `/onboarding/talent/${roleSlug}/interview/stage-2/part-3/intro`,
-          3: `/onboarding/talent/${roleSlug}/interview/stage-2/part-4/intro`,
-          4: `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`,
-        };
-        const targetPath = nextPartMap[partNumber] || `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`;
+        markComponentSubmitted(compId);
+        const targetPath = resolveNextPillarRoute(roleSlug, err?.response?.data || err?.data, partNumber);
         navigate(targetPath, { replace: true });
         return;
       }
@@ -854,24 +986,31 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
   const handleContinueNextWindow = async () => {
     if (isSubmitting) return;
+
+    if (blurTimerRef.current) {
+      clearTimeout(blurTimerRef.current);
+      blurTimerRef.current = null;
+    }
+
     setIsSubmitting(true);
     setApiLoading(true);
     try {
       const compId = activeComponentId;
       if (!activeAssessmentId || !compId) {
-        toast.error('Assessment is not ready. Please reload and try again.');
+        toast.error('Interview is not ready. Please reload and try again.');
         setApiLoading(false);
         setIsSubmitting(false);
         return;
       }
 
-      const hasAnsweredCurrentWindow = activeDisplayedItems.every((item) => {
-        const val = answers[item.id];
-        return val !== undefined && val !== null && val !== '';
-      });
+      // Rule 5: Ensure window 1-4 is 100% complete before requesting window 5-8
+      const incompleteInWindow = activeDisplayedItems.filter(
+        (item) => !isItemAnswerComplete(item, answers[item.id]),
+      );
 
-      if (!hasAnsweredCurrentWindow) {
-        toast.error('Please answer the questions on this page before continuing.');
+      if (incompleteInWindow.length > 0) {
+        toast.error('Please answer all questions on this page before continuing.');
+        scrollToFirstIncomplete();
         setApiLoading(false);
         setIsSubmitting(false);
         return;
@@ -886,7 +1025,11 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       const payloadResponses = buildCurrentWindowDraftPayload();
 
       // Hard gate: never show the next window unless draft save of unlocked answers succeeds.
-      await safeSaveDraft(payloadResponses);
+      const draftResult = await safeSaveDraft(payloadResponses);
+      if (draftResult?.alreadySubmitted) {
+        await navigateGate2Authoritative(activeAssessmentId, roleSlug, navigate);
+        return;
+      }
 
       const nextFrom = windowInfo.through + 1;
       const nextThrough = windowInfo.through + 4;
@@ -900,10 +1043,12 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
         // Graceful handling of contentReady === false: poll every 2.5s until generated
         const initialUnwrapped = unwrapAssessmentData<Record<string, any>>(res) ?? (res as Record<string, any>);
-        if (
-          initialUnwrapped?.contentReady === false &&
-          (!initialUnwrapped?.items || initialUnwrapped.items.length === 0)
-        ) {
+        const isContentWarming =
+          initialUnwrapped?.contentReady === false ||
+          initialUnwrapped?.content_ready === false ||
+          (!initialUnwrapped?.items || initialUnwrapped.items.length === 0);
+
+        if (isContentWarming) {
           const pollStartTime = Date.now();
           while (Date.now() - pollStartTime < 45000) {
             await new Promise((r) => setTimeout(r, 2500));
@@ -912,9 +1057,10 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
               through: nextThrough,
             });
             const pollUnwrapped = unwrapAssessmentData<Record<string, any>>(pollRes) ?? (pollRes as Record<string, any>);
+            const pollItems = normalizeAssessmentItems(pollUnwrapped?.items || pollUnwrapped?.data?.items);
             if (
-              pollUnwrapped?.contentReady === true ||
-              (Array.isArray(pollUnwrapped?.items) && pollUnwrapped.items.length > 0)
+              (pollUnwrapped?.contentReady === true || pollUnwrapped?.content_ready === true) &&
+              pollItems.length > 0
             ) {
               res = pollRes;
               break;
@@ -937,40 +1083,52 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           lowerMsg.includes('locked') ||
           lowerMsg.includes('cannot be changed')
         ) {
-          const nextPartMap: Record<number, string> = {
-            1: `/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`,
-            2: `/onboarding/talent/${roleSlug}/interview/stage-2/part-3/intro`,
-            3: `/onboarding/talent/${roleSlug}/interview/stage-2/part-4/intro`,
-            4: `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`,
-          };
-          const targetPath = nextPartMap[partNumber] || `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`;
+          const targetPath = resolveNextPillarRoute(roleSlug, fetchErr?.response?.data, partNumber);
           navigate(targetPath, { replace: true });
           return;
         }
         throw fetchErr;
       }
 
-      const payload = applyGate2ScreenPayload(res);
-      const nextItems = payload?.items || [];
-      const nextWindow = payload?.window;
-      const nextProgress = payload?.progress;
+      let payload = applyGate2ScreenPayload(res);
+      let nextItems = payload?.items || [];
+      let nextWindow = payload?.window;
+      let nextProgress = payload?.progress;
+
+      const routingInfo = (payload as any)?.routing || (res as any)?.data?.routing || (res as any)?.routing;
+      const unansweredSeq = routingInfo?.unansweredSequence;
 
       const fetchedResponses = (res as any)?.responses || (res as any)?.data?.responses || payload?.data?.responses;
       if (fetchedResponses && typeof fetchedResponses === 'object') {
         for (const [key, val] of Object.entries(fetchedResponses)) {
           if (val !== undefined && val !== null) {
-            lockedResponsesRef.current[key] = val;
+            const item = activeDisplayedItems.find((i) => i.id === key);
+            if (!unansweredSeq || (item as any)?.sequence !== unansweredSeq) {
+              lockedResponsesRef.current[key] = val;
+            }
           }
         }
       }
 
       if (nextItems.length > 0) {
-        // If the backend clamped and returned the same window items (because some item wasn't marked stored/answered on server):
+        // If the backend clamped and returned the same window items:
         const isSameWindowReturned =
           (nextWindow && nextWindow.from <= windowInfo.from) ||
           nextItems.every((ni) => activeDisplayedItems.some((ai) => ai.id === ni.id));
 
         if (isSameWindowReturned) {
+          // If backend indicates it is already completed, auto-advance to next section
+          if (
+            (payload as any)?.data?.alreadySubmitted ||
+            (res as any)?.data?.alreadySubmitted ||
+            (payload as any)?.data?.status === 'completed'
+          ) {
+            const targetPath = resolveNextPillarRoute(roleSlug, res?.data || res, partNumber);
+            toast.success('Pillar completed! Moving to the next section.');
+            navigate(targetPath, { replace: true });
+            return;
+          }
+
           // If the backend says all items are answered, this pillar is actually complete —
           // the clamp happened because there are no NEW items to advance to.
           const answeredAll =
@@ -978,27 +1136,74 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
             (pillarProgress.total > 0 && pillarProgress.answered >= pillarProgress.total);
 
           if (answeredAll) {
-            const nextPartMap: Record<number, string> = {
-              1: `/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`,
-              2: `/onboarding/talent/${roleSlug}/interview/stage-2/part-3/intro`,
-              3: `/onboarding/talent/${roleSlug}/interview/stage-2/part-4/intro`,
-              4: `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`,
-            };
-            const targetPath = nextPartMap[partNumber] || `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`;
+            const targetPath = resolveNextPillarRoute(roleSlug, res?.data || res, partNumber);
             toast.success('All questions answered! Moving to the next section.');
             navigate(targetPath, { replace: true });
             return;
           }
 
-          setShowContinueValidation(true);
-          const guidanceMsg =
-            (payload as any)?.routing?.guidance ||
-            (res as any)?.data?.routing?.guidance ||
-            'Please complete all questions before moving forward.';
-          toast.error(guidanceMsg);
-          setApiLoading(false);
-          setIsSubmitting(false);
-          return;
+          // Backend handoff: Trust progress.current, not "re-answer the last question".
+          // If routing.reason === "PREVIOUS_SCREEN_INCOMPLETE" and that sequence is already in responses,
+          // treat as stale/misleading: poll for next window rather than unlocking for a re-click.
+          const routingReason = String(routingInfo?.reason || '').toUpperCase();
+          const unansweredItem = unansweredSeq
+            ? activeDisplayedItems.find((item: any) => item.sequence === unansweredSeq)
+            : null;
+          const isUnansweredSeqAlreadySaved = Boolean(
+            unansweredItem &&
+            fetchedResponses &&
+            fetchedResponses[unansweredItem.id] !== undefined &&
+            fetchedResponses[unansweredItem.id] !== null &&
+            fetchedResponses[unansweredItem.id] !== '',
+          );
+
+          if (
+            routingReason === 'PREVIOUS_SCREEN_INCOMPLETE' &&
+            isUnansweredSeqAlreadySaved
+          ) {
+            const pollStartTime = Date.now();
+            let pollAdvanced = false;
+            while (Date.now() - pollStartTime < 30000) {
+              await new Promise((r) => setTimeout(r, 2500));
+              const retryRes = await fetchGate2PillarItems(activeAssessmentId, pillar, {
+                from: nextFrom,
+                through: nextThrough,
+              });
+              const retryPayload = applyGate2ScreenPayload(retryRes);
+              if (
+                retryPayload &&
+                retryPayload.items.length > 0 &&
+                !retryPayload.items.every((ni) => activeDisplayedItems.some((ai) => ai.id === ni.id))
+              ) {
+                payload = retryPayload;
+                nextItems = retryPayload.items;
+                nextWindow = retryPayload.window;
+                nextProgress = retryPayload.progress;
+                pollAdvanced = true;
+                break;
+              }
+            }
+
+            if (!pollAdvanced) {
+              setApiLoading(false);
+              setIsSubmitting(false);
+              toast('Next questions are warming. Please tap Continue again in a few seconds.', { icon: '⏳' });
+              return;
+            }
+          } else {
+            setShowContinueValidation(true);
+            const guidanceMsg =
+              routingInfo?.guidance ||
+              'Complete all questions in window 1–4 before advancing.';
+            toast.error(guidanceMsg);
+            if (unansweredItem) {
+              const el = document.getElementById(`assessment-item-${unansweredItem.id}`);
+              el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            setApiLoading(false);
+            setIsSubmitting(false);
+            return;
+          }
         }
 
         setShowContinueValidation(false);
@@ -1079,6 +1284,8 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   }, [apiScreenData]);
 
   const timerChipClass = () => {
+    const ENABLE_TIMER_EXPIRY = import.meta.env.VITE_ENABLE_TIMER_EXPIRY === 'true';
+    if (!ENABLE_TIMER_EXPIRY) return 'timer-chip';
     if (secondsLeft <= 60) return 'timer-chip warn';
     if (secondsLeft <= 180) return 'timer-chip caution';
     return 'timer-chip';
@@ -1245,7 +1452,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
                 paddingBottom: FIXED_FOOTER_OFFSET_PX,
               }}
             >
-              <div className="inline-flex items-center gap-[7px] bg-[#EBF6FF] text-[#0047CC] text-[11px] font-[800] tracking-[0.7px] uppercase px-[12px] py-[5px] rounded-full mb-[14px]">
+              <div className="inline-flex items-center gap-[7px] bg-transparent border border-[#387DFF] text-[#0047CC] text-[11px] font-[800] tracking-[0.7px] uppercase px-[12px] py-[5px] rounded-full mb-[14px]">
                 {currentHeaderItem?.eyebrow || `Part ${partNumber} · Knowledge`}
               </div>
               <h1 className="text-[22px] font-[900] text-[#1A1A1A] tracking-[-0.3px] leading-[1.3] mb-[8px]">
@@ -1256,7 +1463,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
               </p>
 
               {/* Why matters component */}
-              <div className="bg-[#EBF6FF] rounded-[8px] p-[12px_14px] flex gap-[10px] mb-[22px]">
+              <div className="bg-[#EBF6FF] border border-[#387DFF] rounded-[8px] p-[12px_14px] flex gap-[10px] mb-[22px]">
                 <InfoIcon className="w-[16px] h-[16px] text-[#0047CC] shrink-0 mt-[1px]" />
                 <p className="text-[12.5px] text-[#182348] leading-[1.5]">
                   <strong className="font-[800]">Why this matters · </strong>
@@ -1290,7 +1497,8 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
             <button
               onClick={() => setShowSaveModal(true)}
               disabled={isSubmitting}
-              className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] font-sans disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] font-sans transition-all ${isSubmitting ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-[#F7F7F7]'
+                }`}
             >
               Save and finish later
             </button>
@@ -1357,9 +1565,11 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
               }}
               disabled={isSubmitting}
               aria-disabled={!isAllAnswered || isSubmitting}
-              className={`border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] inline-flex items-center gap-[8px] font-sans ${!isAllAnswered || isSubmitting
-                ? 'bg-[#E6E6E6] text-white shadow-none cursor-pointer'
-                : 'bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] cursor-pointer hover:bg-[#344DA1]'
+              className={`border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] inline-flex items-center gap-[8px] font-sans transition-all ${isSubmitting
+                  ? 'bg-[#E6E6E6] text-white shadow-none cursor-not-allowed'
+                  : !isAllAnswered
+                    ? 'bg-[#E6E6E6] text-white shadow-none cursor-pointer'
+                    : 'bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] cursor-pointer hover:bg-[#344DA1]'
                 }`}
             >
               {isSubmitting ? (
@@ -1396,14 +1606,18 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
                 <button
                   onClick={() => setShowSaveModal(false)}
                   disabled={isSubmitting}
-                  className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] font-sans disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] font-sans transition-all ${isSubmitting ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-[#F7F7F7]'
+                    }`}
                 >
                   Keep going
                 </button>
                 <button
                   onClick={() => void confirmSaveAndExit()}
                   disabled={isSubmitting}
-                  className="bg-[#0047CC] text-white border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] cursor-pointer inline-flex items-center gap-[8px] shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] disabled:opacity-50 disabled:cursor-not-allowed font-sans"
+                  className={`text-white border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] inline-flex items-center gap-[8px] font-sans transition-all ${isSubmitting
+                      ? 'bg-[#0047CC]/70 cursor-not-allowed'
+                      : 'bg-[#0047CC] cursor-pointer shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1]'
+                    }`}
                 >
                   {isSubmitting ? 'Saving...' : 'Save and exit'}
                 </button>

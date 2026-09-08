@@ -11,7 +11,8 @@ import { useGate3ResumePresentation } from '../../hooks/useGate3ResumePresentati
 import { formatSecondsAsHms } from '../../utils/assessmentSession';
 import { isGate1ApiEnabled, resolveGate1AssessmentId } from '../../config/gate1Api';
 import { useGetPreAssessmentReadinessQuery } from '../../services/queries/talent';
-import { getCandidateFirstName, getCandidateInitials } from '../../utils/userName';
+import { useGetTalentProfileQuery } from '../../services/queries/onboarding';
+import { getCandidateFirstName, getCandidateInitials, isEmailLike } from '../../utils/userName';
 
 const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -116,8 +117,21 @@ const STAGE3_RULES = [
 const RoleAssessmentResumeGate: React.FC = () => {
   const navigate = useNavigate();
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const firstName = useMemo(() => getCandidateFirstName(user, 'there'), [user]);
+
+  const { data: talentProfile } = useGetTalentProfileQuery(
+    !!user && (!user?.firstName || isEmailLike(user.firstName))
+  );
+
+  useEffect(() => {
+    if (talentProfile?.data?.firstName && !isEmailLike(talentProfile.data.firstName)) {
+      updateUser({
+        firstName: talentProfile.data.firstName,
+        lastName: talentProfile.data.lastName || '',
+      });
+    }
+  }, [talentProfile, updateUser]);
 
   const {
     viewModel: gate1View,
@@ -278,9 +292,7 @@ const RoleAssessmentResumeGate: React.FC = () => {
         completedLabel: 'Completed so far',
         completedValue: '—',
         completedSub: 'screens in Stage 1',
-        resumePath: isGate1ApiEnabled()
-          ? `/onboarding/talent/${roleSlug}/interview/stage-1`
-          : `/onboarding/talent/${roleSlug}/interview/session-1/situational`,
+        resumePath: `/onboarding/talent/${roleSlug}/interview/stage-1`,
         showRegenerationNotice: false,
         rulesList: STAGE1_RULES,
       };
@@ -495,7 +507,7 @@ const RoleAssessmentResumeGate: React.FC = () => {
                   {timeLeft != null
                     ? `remaining out of ${config.deadlineTotalFormatted}`
                     : config.deadlineHint ||
-                      (currentStage === 1 ? '48-hour assessment window' : '')}
+                      (currentStage === 1 ? '48-hour interview window' : '')}
                 </div>
               </div>
 

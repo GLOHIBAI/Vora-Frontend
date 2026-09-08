@@ -9,6 +9,7 @@ import { useGetPublicRoleQuery } from '../../services/queries/talent';
 import { useStage2PillarIntroQuery } from '../../services/queries/assessments';
 import { getActiveAssessmentId } from '../../utils/assessmentSession';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
+import { navigateGate2Authoritative } from '../../utils/stage2Flow';
 
 const HelpIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -43,9 +44,26 @@ const RoleAssessmentStageTwoPartOneIntro: React.FC = () => {
 
   useEffect(() => {
     localStorage.setItem('vora_stage2_unlocked', 'true');
-  }, []);
+    if (activeAssessmentId && roleSlug) {
+      void navigateGate2Authoritative(
+        activeAssessmentId,
+        roleSlug,
+        (targetPath) => {
+          if (targetPath && !targetPath.includes('part-1')) {
+            navigate(targetPath, { replace: true });
+          }
+        }
+      );
+    }
+  }, [activeAssessmentId, roleSlug, navigate]);
 
-  const handleBegin = () => {
+  const handleBegin = async () => {
+    if (activeAssessmentId && roleSlug) {
+      const target = await navigateGate2Authoritative(activeAssessmentId, roleSlug, navigate);
+      if (target && !target.includes('part-1')) {
+        return;
+      }
+    }
     toast.success('Starting Stage 2 Part 1...');
     navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/part-1/interview-1`);
   };

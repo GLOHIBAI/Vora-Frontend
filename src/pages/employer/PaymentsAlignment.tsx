@@ -123,7 +123,7 @@ const PaymentsAlignment: React.FC = () => {
       <div className="flex flex-col gap-1">
         <PageTitle className="text-3xl">Alignment Session Review</PageTitle>
         <SectionDescription className="text-sm text-[#808080] max-w-3xl">
-          Review candidates from additional alignment sessions. Full assessment scores below. Hire
+          Review candidates from additional alignment sessions. Full interview scores below. Hire
           for full refund · Reject with valid documented reason for refund · Invalid rejection
           forfeits fee.
         </SectionDescription>

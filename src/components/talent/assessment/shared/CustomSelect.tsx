@@ -110,7 +110,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                     : 'text-[#1E293B] font-medium hover:bg-[#F8FAFC]'
                 }`}
               >
-                <span className="whitespace-normal break-words leading-relaxed text-left font-mono text-[12.5px]">
+                <span className="whitespace-normal break-words leading-relaxed text-left font-sans text-[13.5px]">
                   {opt.label}
                 </span>
                 {isSelected && (

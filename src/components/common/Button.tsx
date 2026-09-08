@@ -15,6 +15,7 @@ const Button: React.FC<ButtonProps> = ({
   ...props 
 }) => {
   const isLink = variant === 'link';
+  const isSocial = variant === 'social';
   
   const sizeStyles = {
     sm: 'min-h-[32px] sm:min-h-[36px] px-3 sm:px-3.5 py-1 sm:py-1.5 text-[12px]',
@@ -36,10 +37,14 @@ const Button: React.FC<ButtonProps> = ({
       .join(' ');
   };
 
-  const resolvedSizeStyles = getOverrideStyles(sizeStyles[size], className);
+  const resolvedSizeStyles = isSocial
+    ? getOverrideStyles('min-h-[44px] sm:min-h-[48px] px-3 sm:px-3.5 py-2 sm:py-2.5 text-xs sm:text-[13px]', className)
+    : getOverrideStyles(sizeStyles[size], className);
 
-  const baseStyles = `font-medium transition-all flex items-center justify-center gap-2 relative whitespace-nowrap ${
-    isLink ? 'cursor-pointer' : `shadow-sm active:scale-[0.98] cursor-pointer ${resolvedSizeStyles}`
+  const isInteractive = !disabled && !isLoading;
+  const cursorStyle = isInteractive ? 'cursor-pointer' : 'cursor-not-allowed';
+  const baseStyles = `font-medium transition-all flex items-center justify-center gap-2 relative whitespace-nowrap ${cursorStyle} ${
+    isLink ? '' : `shadow-sm ${isInteractive ? 'active:scale-[0.98]' : ''} ${resolvedSizeStyles}`
   }`;
   
   const variants = {
@@ -47,12 +52,12 @@ const Button: React.FC<ButtonProps> = ({
     secondary: "bg-[#767b91] text-white hover:bg-[#64697c] disabled:bg-[#E6E6E6] disabled:text-[#ADADAD] disabled:cursor-not-allowed",
     outline: "border border-border-default text-text-secondary hover:bg-gray-50 disabled:bg-[#F7F7F7] disabled:text-[#ADADAD] disabled:border-[#E6E6E6] disabled:cursor-not-allowed",
     'primary-outline': "border-[1.5px] border-brand-blue text-brand-blue hover:bg-[#EBF6FF] disabled:bg-[#F7F7F7] disabled:text-[#ADADAD] disabled:border-[#E6E6E6] disabled:cursor-not-allowed",
-    social: "border border-border-default rounded-xl font-medium text-text-secondary hover:bg-gray-50 py-2.5 sm:py-3.5 px-3.5 sm:px-4 disabled:opacity-50 disabled:cursor-not-allowed",
+    social: "border border-border-default rounded-xl font-medium text-text-secondary hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed",
     link: "bg-transparent p-0 min-h-0 disabled:opacity-50 disabled:cursor-not-allowed"
   };
 
   const widthStyle = fullWidth && !isLink ? "w-full" : "";
-  const shapeStyle = isLink ? "" : (pill ? "rounded-full" : "rounded-lg");
+  const shapeStyle = isLink ? "" : (isSocial ? "rounded-xl" : (pill ? "rounded-full" : "rounded-lg"));
 
   return (
     <button 

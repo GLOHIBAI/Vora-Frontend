@@ -54,7 +54,7 @@ export function useAssessmentStep({
       }
 
       if (!assessmentId) {
-        toast.error('Assessment session not found. Please refresh and try again.');
+        toast.error('Interview session not found. Please refresh and try again.');
         return;
       }
 

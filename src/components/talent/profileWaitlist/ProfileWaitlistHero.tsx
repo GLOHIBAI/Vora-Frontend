@@ -23,7 +23,7 @@ const ProfileWaitlistHero: React.FC<ProfileWaitlistHeroProps> = ({ summary }) =>
 
     <p className="text-sm text-[#808080] leading-relaxed max-w-[660px] mx-auto mb-5 sm:mb-[22px]">
       Your profile stays on file. When a role opens that clears the {summary.matchThreshold}% threshold,
-      VORA will notify you and you can go straight to assessment.
+      VORA will notify you and you can go straight to interview.
     </p>
 
     <div className="inline-flex items-start gap-2.5 bg-white border border-[#E6E6E6] rounded-lg px-5 py-3 text-left mb-5 sm:mb-[22px]">
@@ -41,7 +41,7 @@ const ProfileWaitlistHero: React.FC<ProfileWaitlistHeroProps> = ({ summary }) =>
       </div>
       <div className="text-center bg-[#F7F7F7] border border-[#E6E6E6] rounded-lg px-5 py-3.5 min-w-[110px]">
         <p className="text-[22px] font-extrabold text-[#0047CC]">{summary.assessmentGrade}</p>
-        <p className="text-xs text-[#808080] font-semibold mt-0.5">Assessment Grade</p>
+        <p className="text-xs text-[#808080] font-semibold mt-0.5">Interview Grade</p>
       </div>
       <div className="text-center bg-[#F7F7F7] border border-[#E6E6E6] rounded-lg px-5 py-3.5 min-w-[110px]">
         <p className="text-[22px] font-extrabold text-[#0047CC]">{summary.profileStrengthLabel}</p>

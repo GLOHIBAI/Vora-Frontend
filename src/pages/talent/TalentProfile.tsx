@@ -86,15 +86,15 @@ const TalentProfile: React.FC = () => {
           </div>
         </div>
 
-        {/* Assessment Overview */}
+        {/* Interview Overview */}
         <div className="break-inside-avoid mb-8">
           <div className="space-y-6">
-            <h3 className="text-[13px] font-medium text-gray-900 uppercase tracking-[0.15em] ml-2">Assessment overview</h3>
+            <h3 className="text-[13px] font-medium text-gray-900 uppercase tracking-[0.15em] ml-2">Interview overview</h3>
             
             <div className="grid grid-cols-1 gap-5">
               <div className="bg-white p-8 rounded-[32px] space-y-4 relative overflow-hidden group border border-blue-100/20 shadow-sm">
                 <div className="flex items-center justify-between relative z-10">
-                  <p className="text-[13px] font-medium text-[#0047CC] uppercase tracking-widest">Pyschometric Test</p>
+                  <p className="text-[13px] font-medium text-[#0047CC] uppercase tracking-widest">Psychometric Interview</p>
                   <div className="flex items-center gap-1 text-[11px] font-medium text-[#2CA62C] bg-white/60 backdrop-blur-md px-3 py-1 rounded-full border border-green-100/30">
                     <ArrowUpIcon size={14} strokeWidth={3} className="rotate-45" />
                     Top 1%
@@ -108,7 +108,7 @@ const TalentProfile: React.FC = () => {
 
               <div className="bg-[#F0F7FF] p-8 rounded-[32px] space-y-4 relative overflow-hidden group border border-blue-50 shadow-sm">
                 <div className="flex items-center justify-between relative z-10">
-                  <p className="text-[13px] font-medium text-[#0047CC] uppercase tracking-widest">Situational Test</p>
+                  <p className="text-[13px] font-medium text-[#0047CC] uppercase tracking-widest">Situational Interview</p>
                   <div className="flex items-center gap-1 text-[11px] font-medium text-[#2CA62C] bg-white/60 backdrop-blur-md px-3 py-1 rounded-full border border-green-100/30">
                     <ArrowUpIcon size={14} strokeWidth={3} className="rotate-45" />
                     Top 1%
