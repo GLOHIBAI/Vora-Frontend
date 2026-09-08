@@ -284,6 +284,8 @@ export interface AssessmentGateStartResponse {
   responses?: ResponsesMap;
   alreadySubmitted?: boolean;
   status?: string;
+  submittedAt?: string;
+  completedAt?: string;
 }
 
 export interface Gate2PillarItemsResponse {
