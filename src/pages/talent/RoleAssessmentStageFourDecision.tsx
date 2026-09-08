@@ -68,10 +68,10 @@ export const RoleAssessmentStageFourDecision: React.FC = () => {
   const roleTitle = roleData?.roleTitle || 'Selected Role';
   const defaultCompanyName = roleData?.companyName || 'The hiring team';
 
-  // Poll decision status
+  // Poll decision status (15-30s interval per spec)
   const { data: decisionRaw, isLoading } = useAssessmentDecisionQuery(assessmentId, {
     enabled: Boolean(assessmentId),
-    refetchInterval: 4000,
+    refetchInterval: 20000,
   });
 
   const confirmSlotMutation = useConfirmAlignmentSlotMutation();
@@ -188,7 +188,7 @@ export const RoleAssessmentStageFourDecision: React.FC = () => {
             </h1>
 
             <p className="text-[15px] text-[#4A4A4A] leading-[1.65] max-w-[560px] mx-auto mb-[28px]">
-              The hiring panel has reviewed your complete assessment package and came to a unanimous decision: they would love to extend an offer for <strong>{roleTitle}</strong>.
+              The hiring panel has reviewed your complete interview package and came to a unanimous decision: they would love to extend an offer for <strong>{roleTitle}</strong>.
             </p>
 
             {/* Offer details banner */}
@@ -382,7 +382,7 @@ export const RoleAssessmentStageFourDecision: React.FC = () => {
             </h1>
 
             <p className="text-[14.5px] text-[#4A4A4A] leading-[1.65] mb-[24px]">
-              The hiring team reviewed your assessment and decided not to move forward for this specific role opening.
+              The hiring team reviewed your interview and decided not to move forward for this specific role opening.
             </p>
 
             {reason && (

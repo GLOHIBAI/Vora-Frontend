@@ -25,6 +25,7 @@ import RoleApplyContextBanner from '../../components/auth/RoleApplyContextBanner
 import { useGetPublicRoleQuery } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
+import AuthHeroVideoCarousel from '../../components/auth/AuthHeroVideoCarousel';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -137,7 +138,12 @@ const Login: React.FC = () => {
   });
 
   const loginContent = (
-    <AuthPageShell loading={showFullPage} centered={!role} className={role ? "flex-1 !min-h-0" : ""}>
+    <AuthPageShell
+      loading={showFullPage}
+      centered={!role}
+      className={role ? "flex-1 !min-h-0" : ""}
+      heroContent={<AuthHeroVideoCarousel />}
+    >
       <AuthPageHeader
         title="Welcome back to Vora."
         subtitle="Access your dashboard to manage jobs, mentorships, and career growth."
@@ -201,8 +207,8 @@ const Login: React.FC = () => {
           <AuthSocialButtons>
             <GoogleSignInButton disabled={loginMutation.isPending} roleSlug={slug} />
             <Button variant="social" disabled={loginMutation.isPending} className="min-w-0">
-              <AppleIcon />
-              <span className="truncate">Sign in with Apple</span>
+              <AppleIcon size={18} />
+              <span className="whitespace-nowrap">Sign in with Apple</span>
             </Button>
           </AuthSocialButtons>
 

@@ -12,6 +12,7 @@ import {
   useSubmitAssessmentScreenMutation,
   useAssessmentDraftQuery,
   fetchGate2PillarItems,
+  markComponentSubmitted,
 } from '../../services/queries/assessments';
 import { getActiveAssessmentId } from '../../utils/assessmentSession';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
@@ -120,7 +121,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
   useEffect(() => {
     if (!activeAssessmentId) {
       setApiLoading(false);
-      setLoadError('Assessment not found. Resume Stage 2 from your journey.');
+      setLoadError('Interview not found. Resume Stage 2 from your journey.');
       return;
     }
     if (bootInFlightRef.current) return;
@@ -170,7 +171,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
           }
 
           if (!ready) {
-            setLoadError('Assessment question generation is taking longer than expected. The queue worker may be stuck.');
+            setLoadError('Interview question generation is taking longer than expected. The queue worker may be stuck.');
             setApiScreenData(null);
             setActiveItem(null);
             return;
@@ -211,7 +212,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
         }
 
         if (!screen || !item) {
-          setLoadError('Assessment question generation is taking longer than expected. The queue worker may be stuck.');
+          setLoadError('Interview question generation is taking longer than expected. The queue worker may be stuck.');
           setApiScreenData(null);
           setActiveItem(null);
           return;
@@ -270,7 +271,10 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
         if (prev === null) return prev;
         if (prev <= 1) {
           clearInterval(timer);
-          void handleSubmit('time-up');
+          const ENABLE_TIMER_EXPIRY = import.meta.env.VITE_ENABLE_TIMER_EXPIRY === 'true';
+          if (ENABLE_TIMER_EXPIRY) {
+            void handleSubmit('time-up');
+          }
           return 0;
         }
         return prev - 1;
@@ -382,6 +386,8 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
         responses: { [itemKey]: { prose } },
       });
 
+      markComponentSubmitted(apiScreenData.componentId);
+
       const resData = (submitRes as any)?.data || submitRes;
       if (resData?.nextStep === 'GATE2_COMPLETE' || resData?.pillarCompleted) {
         toast.success('All simulations complete. Review your Stage 2 responses before submitting.');
@@ -400,6 +406,21 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
     } catch (err) {
       const serverMsg = getApiErrorMessage(err, 'Failed to submit. Please try again.');
       const lower = serverMsg.toLowerCase();
+      if (lower.includes('locked') || lower.includes('cannot be changed')) {
+        try {
+          await submitScreenMutation.mutateAsync({
+            assessmentId: activeAssessmentId,
+            componentId: apiScreenData.componentId,
+            responses: {},
+          });
+          markComponentSubmitted(apiScreenData.componentId);
+          toast.success('Simulation submitted successfully!');
+          navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);
+          return;
+        } catch (retryErr) {
+          console.warn('Retry submit with empty responses failed:', retryErr);
+        }
+      }
       if (
         lower.includes('already submitted') ||
         lower.includes('already been submitted') ||
@@ -483,6 +504,8 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
 
   const timerChipClass = () => {
     if (secondsLeft === null) return 'timer-chip';
+    const ENABLE_TIMER_EXPIRY = import.meta.env.VITE_ENABLE_TIMER_EXPIRY === 'true';
+    if (!ENABLE_TIMER_EXPIRY) return 'timer-chip';
     if (secondsLeft <= 60) return 'timer-chip warn';
     if (secondsLeft <= 180) return 'timer-chip caution';
     return 'timer-chip';
@@ -627,7 +650,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
       </div>
 
       <main className="max-w-[920px] w-full mx-auto px-[28px] py-[32px] pb-[90px] flex-1">
-        <div className="inline-flex items-center gap-[7px] bg-[#EBF6FF] text-[#0047CC] text-[11.5px] font-[800] tracking-[0.7px] uppercase px-[12px] py-[5px] rounded-full mb-[14px]">
+        <div className="inline-flex items-center gap-[7px] bg-transparent border border-[#387DFF] text-[#0047CC] text-[11.5px] font-[800] tracking-[0.7px] uppercase px-[12px] py-[5px] rounded-full mb-[14px]">
           <svg className="w-[10px] h-[10px] fill-current" viewBox="0 0 12 12">
             <circle cx="6" cy="6" r="5" />
           </svg>
@@ -641,7 +664,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
         ) : null}
 
         {whyMattersText ? (
-          <div className="bg-[#EBF6FF] rounded-[8px] p-[12px_14px] flex gap-[10px] mb-[22px]">
+          <div className="bg-[#EBF6FF] border border-[#387DFF] rounded-[8px] p-[12px_14px] flex gap-[10px] mb-[22px]">
             <InfoIcon className="w-[16px] h-[16px] text-[#0047CC] shrink-0 mt-[1px]" />
             <p className="text-[12.5px] text-[#182348] leading-[1.5]">
               <strong className="font-[800]">Why this matters · </strong>
@@ -763,7 +786,9 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
             type="button"
             onClick={() => setShowSaveModal(true)}
             disabled={isSubmitting}
-            className="bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] font-sans disabled:opacity-50"
+            className={`bg-white text-[#4A4A4A] border-[1.5px] border-[#E6E6E6] rounded-[10px] p-[11px_18px] text-[13.5px] font-[700] font-sans transition-all ${
+              isSubmitting ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-[#F7F7F7]'
+            }`}
           >
             Save and finish later
           </button>
@@ -780,8 +805,10 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
             }}
             disabled={isSubmitting}
             aria-disabled={!meetsWordLimits || isSubmitting}
-            className={`border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] inline-flex items-center justify-center font-sans ${
-              !meetsWordLimits || isSubmitting
+            className={`border-none rounded-[10px] p-[12px_24px] text-[14px] font-[700] inline-flex items-center justify-center font-sans transition-all ${
+              isSubmitting
+                ? 'bg-[#E6E6E6] text-white shadow-none cursor-not-allowed'
+                : !meetsWordLimits
                 ? 'bg-[#E6E6E6] text-white shadow-none cursor-pointer'
                 : 'bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] cursor-pointer hover:bg-[#344DA1]'
             }`}

@@ -10,6 +10,7 @@ import { resolveGate1AssessmentId } from '../../config/gate1Api';
 import { unwrapAssessmentData } from '../../utils/assessmentSession';
 import type { GateVerdictResponse } from '../../services/queries/assessments/types';
 import FullPageSpinner from '../../components/common/FullPageSpinner';
+import EvidenceMap from '../../components/talent/assessment/shared/EvidenceMap';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -82,7 +83,7 @@ const RoleAssessmentSessionTwoOutcome: React.FC = () => {
   const verdict = unwrapAssessmentData<GateVerdictResponse>(verdictRaw);
 
   if (isVerdictLoading || !verdict) {
-    return <FullPageSpinner message="Retrieving your assessment outcome..." />;
+    return <FullPageSpinner message="Retrieving your interview outcome..." />;
   }
 
   const firstName = verdict?.talent?.firstName || user?.firstName || 'there';
@@ -426,6 +427,9 @@ const RoleAssessmentSessionTwoOutcome: React.FC = () => {
             ))}
           </div>
         </div>
+
+        {/* Evidence Map */}
+        <EvidenceMap evidenceMap={verdict?.evidenceMap} className="mb-[18px]" />
 
         {/* Diagnosis */}
         <div className="bg-[#EFF6FF] border border-[#BFDBFE] rounded-[14px] p-[20px_24px] mb-[18px] flex gap-[14px] items-start">

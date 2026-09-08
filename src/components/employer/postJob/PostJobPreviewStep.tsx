@@ -210,7 +210,7 @@ const PostJobPreviewStep: React.FC<PostJobPreviewStepProps> = ({
               <PreviewTagList items={languages} />
             </div>
             <div>
-              <FieldLabel>Pre-assessment submission</FieldLabel>
+              <FieldLabel>Pre-interview submission</FieldLabel>
               <PreviewTagList items={preAssessments} />
             </div>
           </div>

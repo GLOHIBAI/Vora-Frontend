@@ -4,14 +4,46 @@ export const getRoleSignupPath = (slug: string): string =>
 export const ROLE_APPLY_SLUG_KEY = 'voraRoleApplySlug';
 
 export const saveRoleApplySlug = (slug: string): void => {
-  sessionStorage.setItem(ROLE_APPLY_SLUG_KEY, slug);
+  try {
+    sessionStorage.setItem(ROLE_APPLY_SLUG_KEY, slug);
+    localStorage.setItem(ROLE_APPLY_SLUG_KEY, slug);
+  } catch {}
 };
 
-export const loadRoleApplySlug = (): string | null =>
-  sessionStorage.getItem(ROLE_APPLY_SLUG_KEY);
+export const loadRoleApplySlug = (): string | null => {
+  try {
+    const direct =
+      sessionStorage.getItem(ROLE_APPLY_SLUG_KEY) ||
+      localStorage.getItem(ROLE_APPLY_SLUG_KEY) ||
+      localStorage.getItem('active_assessment_role_slug') ||
+      sessionStorage.getItem('active_assessment_role_slug');
+    if (direct) return direct;
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('voraRoleLanding:')) {
+        const candidate = key.replace('voraRoleLanding:', '').trim();
+        if (candidate) return candidate;
+      }
+    }
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key && key.startsWith('voraRoleLanding:')) {
+        const candidate = key.replace('voraRoleLanding:', '').trim();
+        if (candidate) return candidate;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
 
 export const clearRoleApplySlug = (): void => {
-  sessionStorage.removeItem(ROLE_APPLY_SLUG_KEY);
+  try {
+    sessionStorage.removeItem(ROLE_APPLY_SLUG_KEY);
+    localStorage.removeItem(ROLE_APPLY_SLUG_KEY);
+  } catch {}
 };
 
 export const extractSalaryShort = (compensationLine: string, overviewSalary?: string): string => {

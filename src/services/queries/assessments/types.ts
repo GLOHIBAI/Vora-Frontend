@@ -282,6 +282,8 @@ export interface AssessmentGateStartResponse {
   table?: any;
   chart?: any;
   responses?: ResponsesMap;
+  alreadySubmitted?: boolean;
+  status?: string;
 }
 
 export interface Gate2PillarItemsResponse {
@@ -552,6 +554,32 @@ export interface GateVerdictResponse {
     closesAt: string;
     postedAt: string;
   }>;
+  // Evidence map (pass and fail paths)
+  evidenceMap?: EvidenceMapData;
+}
+
+export interface EvidenceMapSignal {
+  kind?: 'hit' | 'miss' | 'partial' | 'dimension' | string;
+  type?: string;
+  label?: string;
+  detail?: string;
+}
+
+export interface EvidenceMapCell {
+  key?: string;
+  zoneKey?: string;
+  label?: string;
+  title?: string;
+  sortOrder?: number;
+  intensity?: number;
+  band?: 'strong' | 'pass' | 'weak' | string;
+  polarity?: 'strength' | 'neutral' | 'shortfall' | string;
+  evidence?: string;
+  signals?: Array<string | EvidenceMapSignal>;
+}
+
+export interface EvidenceMapData {
+  cells: EvidenceMapCell[];
 }
 
 // ── Review summary ───────────────────────────────────────────────────────────

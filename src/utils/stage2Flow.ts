@@ -7,6 +7,7 @@ import type {
   ResponsesMap,
 } from "../services/queries/assessments/types";
 import { GATE2_PILLARS } from "../services/queries/assessments/types";
+import { apiClient } from "../services/api";
 import { formatSecondsAsHms, unwrapAssessmentData } from "./assessmentSession";
 
 const GATE2_NEXT_STEPS: Gate2ResumeNextStep[] = [
@@ -72,13 +73,34 @@ export const resolveGate2ResumeNavigatePath = (
   roleSlug: string,
   resume: Gate2ResumeState,
 ): string => {
-  if (resume.nextStep === "GATE2_COMPLETE" || resume.gate2Complete) {
+  if (
+    resume.nextStep === "GATE2_COMPLETE" ||
+    resume.gate2Complete ||
+    GATE2_PILLARS.every((p) => resume.completedPillars.includes(p))
+  ) {
     // All pillars done — go to review so the user can POST gates/2/submit.
     // /analyzing must only be reached after that final submit.
     return `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`;
   }
 
-  const pillar = resume.nextPillar ?? resume.pillar;
+  // Determine the true active pillar:
+  // If nextPillar is specified and not completed, use it.
+  // Otherwise check resume.pillar (only if not completed).
+  // If current pillar is completed, find the first uncompleted pillar in sequence!
+  let pillar: Gate2PillarKey | null = null;
+  if (resume.nextPillar && !resume.completedPillars.includes(resume.nextPillar)) {
+    pillar = resolveGate2PillarKey(resume.nextPillar);
+  } else if (resume.pillar && !resume.completedPillars.includes(resume.pillar)) {
+    pillar = resolveGate2PillarKey(resume.pillar);
+  }
+
+  if (!pillar) {
+    pillar = (GATE2_PILLARS.find((p) => !resume.completedPillars.includes(p)) as Gate2PillarKey) ?? null;
+  }
+
+  if (!pillar) {
+    return `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`;
+  }
 
   if (resume.nextStep === "PILLAR_INTRO" || resume.nextStep === "START_PILLAR") {
     return (
@@ -92,6 +114,52 @@ export const resolveGate2ResumeNavigatePath = (
     gate2PillarStartPath(roleSlug, pillar) ||
     `/onboarding/talent/${roleSlug}/interview/stage-2`
   );
+};
+
+/**
+ * Authoritatively resolves and navigates to the user's active Gate 2 step
+ * directly from GET /assessments/:id/gates/2/resume-state.
+ */
+export const navigateGate2Authoritative = async (
+  assessmentId: string,
+  roleSlug: string,
+  navigate: (path: string, options?: { replace?: boolean }) => void,
+  fallbackPath?: string,
+): Promise<string | null> => {
+  if (!assessmentId || !roleSlug) {
+    if (fallbackPath) navigate(fallbackPath, { replace: true });
+    return fallbackPath || null;
+  }
+
+  try {
+    const resumeRaw = await apiClient.get<Record<string, any>>({
+      url: `/assessments/${assessmentId}/gates/2/resume-state`,
+      auth: true,
+      suppressErrorToast: true,
+    });
+    const resume = parseGate2ResumeState(resumeRaw);
+    if (resume) {
+      const targetPath = resolveGate2ResumeNavigatePath(roleSlug, resume);
+      if (targetPath) {
+        const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+        // If the target path is the exact current route, do NOT re-navigate into it!
+        // Re-navigating to the same route remounts the component and resets in-progress windows!
+        if (currentPath && (currentPath === targetPath || targetPath.endsWith(currentPath))) {
+          return targetPath;
+        }
+        navigate(targetPath, { replace: true });
+        return targetPath;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to resolve authoritative Gate 2 route:', err);
+  }
+
+  if (fallbackPath) {
+    navigate(fallbackPath, { replace: true });
+    return fallbackPath;
+  }
+  return null;
 };
 
 export const parseGate2ResumeState = (
@@ -392,7 +460,7 @@ export const buildGate2ResumeViewModel = (
     gateSecs != null ? formatSecondsAsHms(gateSecs) : "—";
   const deadlineHint =
     gateSecs != null
-      ? `${Math.round(gateSecs / 3600)}-hour assessment window`
+      ? `${Math.round(gateSecs / 3600)}-hour interview window`
       : "";
 
   return {

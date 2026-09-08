@@ -27,18 +27,29 @@ export interface SignupFormProps {
   roleSlug?: string;
   showFooterLogin?: boolean;
   loginTo?: string;
+  accountType?: string;
+  onAccountTypeChange?: (type: string) => void;
 }
 
 const SignupForm: React.FC<SignupFormProps> = ({
   roleSlug,
   showFooterLogin = true,
   loginTo = '/login',
+  accountType: controlledAccountType,
+  onAccountTypeChange,
 }) => {
   const navigate = useNavigate();
   const isRoleSignup = Boolean(roleSlug);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [accountType, setAccountType] = useState(isRoleSignup ? 'Talent' : '');
+  const [localAccountType, setLocalAccountType] = useState(isRoleSignup ? 'Talent' : (controlledAccountType || ''));
+  const accountType = controlledAccountType !== undefined ? controlledAccountType : localAccountType;
+
+  const handleAccountTypeChange = (newType: string) => {
+    setLocalAccountType(newType);
+    onAccountTypeChange?.(newType);
+  };
+
   const [formError, setFormError] = useState('');
 
   const signupMutation = useSignupMutation();
@@ -153,7 +164,7 @@ const SignupForm: React.FC<SignupFormProps> = ({
           ) : (
             <Select
               value={accountType}
-              onChange={(e) => setAccountType(e.target.value)}
+              onChange={(e) => handleAccountTypeChange(e.target.value)}
               onBlur={() => handleBlur('accountType')}
               placeholder="Select account type"
               options={[
@@ -187,8 +198,8 @@ const SignupForm: React.FC<SignupFormProps> = ({
             email={email}
           />
           <Button variant="social" disabled={signupMutation.isPending} className="min-w-0">
-            <AppleIcon />
-            <span className="truncate">Sign up with Apple</span>
+            <AppleIcon size={18} />
+            <span className="whitespace-nowrap">Sign up with Apple</span>
           </Button>
         </AuthSocialButtons>
 

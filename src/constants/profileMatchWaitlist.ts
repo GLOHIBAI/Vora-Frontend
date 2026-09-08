@@ -32,7 +32,7 @@ export const PROFILE_WAITLIST_NEXT_STEPS = [
   },
   {
     title: "Instant alert, instant access.",
-    body: "When an employer posts a role that matches your profile at 80%+, you are notified before most people find the listing and can go straight into assessment.",
+    body: "When an employer posts a role that matches your profile at 80%+, you are notified before most people find the listing and can go straight into interview.",
   },
   {
     title: "Your score is valid for 90 days.",

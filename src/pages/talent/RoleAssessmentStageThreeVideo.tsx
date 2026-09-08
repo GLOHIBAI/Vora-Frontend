@@ -47,8 +47,9 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
   const assessmentId = resolveGate1AssessmentId() || getActiveAssessmentId() || '';
 
-  // Feature enforcement toggles from env (default to true)
-  const ENABLE_STAGE3_HARD_CAP = import.meta.env.VITE_ENABLE_STAGE3_HARD_CAP !== 'false';
+  // Feature enforcement toggles from env (default to false)
+  const ENABLE_TIMER_EXPIRY = import.meta.env.VITE_ENABLE_TIMER_EXPIRY === 'true';
+  const ENABLE_STAGE3_HARD_CAP = ENABLE_TIMER_EXPIRY && import.meta.env.VITE_ENABLE_STAGE3_HARD_CAP === 'true';
   const ENABLE_STAGE3_RETAKE_LIMIT = import.meta.env.VITE_ENABLE_STAGE3_RETAKE_LIMIT !== 'false';
 
   const { data: roleResponse } = useGetPublicRoleQuery(roleSlug || '');
@@ -147,7 +148,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
     const initGate3 = async () => {
       if (!assessmentId) {
         setIsPreparingContent(false);
-        setApiError('No active assessment session found.');
+        setApiError('No active interview session found.');
         return;
       }
       try {
@@ -296,7 +297,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
         }
 
         console.error('Failed to start Gate 3 session:', err);
-        setApiError(err?.message || 'Failed to initialize Stage 3 assessment from server.');
+        setApiError(err?.message || 'Failed to initialize Stage 3 interview from server.');
         setIsPreparingContent(false);
       }
     };
@@ -354,6 +355,25 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
   const streamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+
+  /**
+   * Fix WebM blobs that lack duration metadata in the container header.
+   * MediaRecorder-produced WebM files often report Infinity/NaN duration,
+   * causing the native controls to show only elapsed time and the progress
+   * bar to not sync. Seeking briefly to the end forces the browser to
+   * calculate the real duration from the byte stream.
+   */
+  const handlePreviewLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const video = e.currentTarget;
+    if (!Number.isFinite(video.duration) || Number.isNaN(video.duration)) {
+      video.currentTime = Number.MAX_SAFE_INTEGER;
+      const onSeek = () => {
+        video.removeEventListener('timeupdate', onSeek);
+        video.currentTime = 0;
+      };
+      video.addEventListener('timeupdate', onSeek);
+    }
+  };
 
   // Timer: Think Time countdown (Starts only when contentReady === true)
   useEffect(() => {
@@ -909,7 +929,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
       localStorage.setItem('vora_stage3_completed', 'true');
       localStorage.setItem('vora_stage4_unlocked', 'true');
       setIsCompiling(false);
-      toast.success('Stage 3 video assessment completed!');
+      toast.success('Stage 3 video interview completed!');
       navigate(`/onboarding/talent/${roleSlug}/interview/stage-3/complete`);
     }, 4200);
   };
@@ -945,7 +965,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
           'Encoding video chunks to H.264 MP4',
           'Verifying audio stream decibels',
           'Analyzing communication clarity and delivery',
-          'Compiling assessment submission package',
+          'Compiling interview submission package',
         ]}
         initialStepIndex={0}
         schedule={[
@@ -1167,6 +1187,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
                           controls
                           playsInline
                           className="w-full h-full object-contain"
+                          onLoadedMetadata={handlePreviewLoadedMetadata}
                         />
                       ) : null}
                     </div>

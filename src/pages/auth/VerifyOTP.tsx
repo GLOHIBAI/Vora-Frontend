@@ -14,6 +14,8 @@ import {
   AuthOtpInputGrid,
   authFooterLinkClass,
 } from '../../components/auth/AuthPageLayout';
+import AuthHeroVideoCarousel from '../../components/auth/AuthHeroVideoCarousel';
+import AuthHeroRoleVideo from '../../components/auth/AuthHeroRoleVideo';
 import {
   useVerifyOTPMutation,
   useResendOTPMutation,
@@ -271,19 +273,25 @@ const VerifyOTP: React.FC = () => {
     </>
   );
 
+  const heroNode = state.accountType ? (
+    <AuthHeroRoleVideo roleType={state.accountType} roleTitle={role?.roleTitle} companyName={role?.companyName} />
+  ) : (
+    <AuthHeroVideoCarousel />
+  );
+
   if (isRoleFlow && role) {
     return (
       <div className="min-h-screen flex flex-col bg-white">
         <AuthCenterLogoNav />
         <RoleApplyContextBanner role={role} />
-        <AuthPageShell loading={showFullPage} centered={false} className="flex-1 !min-h-0 !py-10 sm:!py-16">
+        <AuthPageShell loading={showFullPage} centered={false} className="flex-1 !min-h-0 !py-10 sm:!py-16" heroContent={heroNode}>
           {formContent}
         </AuthPageShell>
       </div>
     );
   }
 
-  return <AuthPageShell loading={showFullPage}>{formContent}</AuthPageShell>;
+  return <AuthPageShell loading={showFullPage} heroContent={heroNode}>{formContent}</AuthPageShell>;
 };
 
 export default VerifyOTP;

@@ -44,7 +44,7 @@ const JobPostedConfirmation: React.FC = () => {
           <>
             VORA&apos;s AI matching engine is already running against your specification. Share the
             link below to reach candidates outside the pool, they still go through the same
-            three-stage assessment gate before you see them.
+            three-stage interview gate before you see them.
           </>
         }
       />
@@ -65,7 +65,7 @@ const JobPostedConfirmation: React.FC = () => {
         </h2>
         <p className="text-[13px] text-[#808080] leading-relaxed mb-4">
           Anyone with this link can view the role and apply through VORA. They complete onboarding
-          and assessment before appearing in your applicant list, same gate as pool candidates.
+          and interview before appearing in your applicant list, same gate as pool candidates.
         </p>
 
         <RoleShareSection

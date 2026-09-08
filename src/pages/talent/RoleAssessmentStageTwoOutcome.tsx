@@ -9,6 +9,7 @@ import { getActiveAssessmentId, unwrapAssessmentData } from '../../utils/assessm
 import { getCandidateFirstName } from '../../utils/userName';
 import type { GateVerdictResponse } from '../../services/queries/assessments/types';
 import FullPageSpinner from '../../components/common/FullPageSpinner';
+import EvidenceMap from '../../components/talent/assessment/shared/EvidenceMap';
 
 const AlertCircleIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -86,7 +87,7 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
   const verdict = unwrapAssessmentData<GateVerdictResponse>(verdictRaw);
 
   if (isVerdictLoading || isVerdictFetching || !verdict) {
-    return <FullPageSpinner message="Retrieving your assessment outcome..." />;
+    return <FullPageSpinner message="Retrieving your interview outcome..." />;
   }
 
   const vData: any = (verdict as any)?.data || verdict || (verdictRaw as any)?.data || verdictRaw || {};
@@ -98,7 +99,7 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
   const threshold = vData?.threshold ?? 80;
 
   const heroTag = vData?.heroTag || 'Stage 2 outcome · with your next path';
-  const headline = vData?.headline || `Stage 2 assessment: ${firstName}, you did not pass.`;
+  const headline = vData?.headline || `Stage 2 interview: ${firstName}, you did not pass.`;
   const summary = vData?.summary || `Your Stage 2 composite score of ${score}% did not clear the ${threshold}% threshold for ${roleTitle} at ${employerName}.`;
 
   const narrativeParagraphs: string[] =
@@ -302,6 +303,9 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Evidence Map */}
+        <EvidenceMap evidenceMap={verdict?.evidenceMap} />
 
         {/* Diagnosis Feedback Section */}
         {diagnosis && diagnosis.rationale && (

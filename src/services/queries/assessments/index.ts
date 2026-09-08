@@ -193,13 +193,75 @@ export const useStartAssessmentScreenMutation = (gate: 1 | 2 | 3 = 1) => {
         auth: true,
       });
     },
-    onSuccess: (data, { assessmentId }) => {
+    onSuccess: (data: any, { assessmentId }) => {
+      const normalized = data?.data || data;
+      const statusLower = String(normalized?.status || '').toLowerCase();
+      const isActuallyClosed =
+        normalized?.alreadySubmitted === true ||
+        statusLower === 'completed' ||
+        statusLower === 'submitted' ||
+        statusLower === 'closed';
+
+      if (normalized?.componentId && isActuallyClosed) {
+        markComponentSubmitted(normalized.componentId);
+      }
       // Invalidate progress so the journey bar reflects the new screen start
       queryClient.invalidateQueries({
         queryKey: assessmentKeys.progress(assessmentId),
       });
     },
   });
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Component Lifecycle Tracking (guards against draft PATCH on submitted/closed components)
+// ─────────────────────────────────────────────────────────────────────────────
+const SUBMITTED_STORAGE_KEY = 'vora_submitted_components';
+
+const getStoredSubmittedComponents = (): Set<string> => {
+  try {
+    const raw = sessionStorage.getItem(SUBMITTED_STORAGE_KEY);
+    if (!raw) return new Set<string>();
+    const list = JSON.parse(raw);
+    return new Set<string>(Array.isArray(list) ? list : []);
+  } catch {
+    return new Set<string>();
+  }
+};
+
+const persistSubmittedComponents = (set: Set<string>) => {
+  try {
+    sessionStorage.setItem(SUBMITTED_STORAGE_KEY, JSON.stringify(Array.from(set)));
+  } catch {
+    // Ignore storage quota or security errors
+  }
+};
+
+const submittedComponentIds = getStoredSubmittedComponents();
+
+export const markComponentSubmitted = (componentId?: string | null) => {
+  if (componentId) {
+    submittedComponentIds.add(componentId);
+    persistSubmittedComponents(submittedComponentIds);
+  }
+};
+
+export const unmarkComponentSubmitted = (componentId?: string | null) => {
+  if (componentId) {
+    submittedComponentIds.delete(componentId);
+    persistSubmittedComponents(submittedComponentIds);
+  }
+};
+
+export const isComponentSubmitted = (componentId?: string | null): boolean => {
+  if (!componentId) return false;
+  if (submittedComponentIds.has(componentId)) return true;
+  const stored = getStoredSubmittedComponents();
+  if (stored.has(componentId)) {
+    submittedComponentIds.add(componentId);
+    return true;
+  }
+  return false;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -224,7 +286,7 @@ export const useStartAssessmentScreenMutation = (gate: 1 | 2 | 3 = 1) => {
 export const useSaveAssessmentDraftMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       assessmentId,
       componentId,
       responses,
@@ -234,12 +296,55 @@ export const useSaveAssessmentDraftMutation = () => {
       /** Only NEW (unlocked) keys never re-send already-saved answers */
       responses: ResponsesMap;
     }) => {
-      return apiClient.patch<SaveDraftResponse>({
-        url: `/assessments/${assessmentId}/components/${componentId}/responses`,
-        body: { responses },
-        auth: true,
-        suppressErrorToast: true,
-      });
+      // Rule 2 & 3: Never PATCH draft if the component ID is missing
+      if (!componentId) {
+        return { responses: {} } as SaveDraftResponse;
+      }
+
+      // Filter out empty keys, empty values, or empty objects to avoid backend 400: "Draft patch must include at least one item response."
+      const cleanResponses: ResponsesMap = {};
+      if (responses && typeof responses === 'object') {
+        for (const [key, val] of Object.entries(responses)) {
+          if (!key || !key.trim()) continue;
+          if (val === undefined || val === null || val === '') continue;
+          if (typeof val === 'object' && !Array.isArray(val) && Object.keys(val).length === 0) continue;
+          cleanResponses[key] = val;
+        }
+      }
+
+      if (Object.keys(cleanResponses).length === 0) {
+        return { responses: {} } as SaveDraftResponse;
+      }
+
+      try {
+        return await apiClient.patch<SaveDraftResponse>({
+          url: `/assessments/${assessmentId}/components/${componentId}/responses`,
+          body: { responses: cleanResponses },
+          auth: true,
+          suppressErrorToast: true,
+        });
+      } catch (err: any) {
+        const msg = String(
+          err?.message ||
+          err?.data?.message ||
+          err?.response?.data?.message ||
+          ''
+        ).toLowerCase();
+        if (
+          msg.includes('already been submitted') ||
+          msg.includes('already submitted') ||
+          msg.includes('closed') ||
+          msg.includes('ended')
+        ) {
+          markComponentSubmitted(componentId);
+          return { responses: {} } as SaveDraftResponse;
+        }
+        if (msg.includes('cannot be changed') || msg.includes('locked')) {
+          // Individual answer locked, not entire component
+          return { responses: {} } as SaveDraftResponse;
+        }
+        throw err;
+      }
     },
     onSuccess: (_data, { assessmentId }) => {
       // Invalidate progress so the answered/total counts update in the UI
@@ -301,7 +406,10 @@ export const useSubmitAssessmentScreenMutation = () => {
         auth: true,
       });
     },
-    onSuccess: (data: any, { assessmentId }) => {
+    onSuccess: (data: any, { assessmentId, componentId }) => {
+      if (componentId) {
+        markComponentSubmitted(componentId);
+      }
       const normalized = data?.data || data;
       if (normalized) {
         queryClient.setQueryData<GateResumeState>(
@@ -976,27 +1084,71 @@ export const deleteCandidateVoiceQuestion = async (
 // ── Employer Candidate-Voice Replies ────────────────────────────────────────
 
 /**
- * POST /api/v1/assessments/:assessmentId/candidate-voice/questions/:questionId/reply-text
- * Employer text reply to a candidate question.
+ * POST /api/v1/assessments/:assessmentId/decision/candidate-voice/:questionId/reply
+ * Employer text reply to a candidate question (max 5000 chars).
  */
-export const postCandidateVoiceReplyText = async (
+export const postEmployerCandidateVoiceReplyText = async (
   assessmentId: string,
   questionId: string,
   text: string,
 ): Promise<any> => {
+  try {
+    const res = await apiClient.post<any>({
+      url: `/assessments/${assessmentId}/decision/candidate-voice/${questionId}/reply`,
+      body: { text },
+      auth: true,
+    });
+    return res?.data || res;
+  } catch {
+    // Fallback to legacy path if backend mounted at root
+    const res = await apiClient.post<any>({
+      url: `/assessments/${assessmentId}/candidate-voice/questions/${questionId}/reply-text`,
+      body: { text },
+      auth: true,
+    });
+    return res?.data || res;
+  }
+};
+
+/**
+ * POST /api/v1/assessments/:assessmentId/decision/candidate-voice/:questionId/reply/upload-url
+ * Direct upload URL for employer video reply.
+ */
+export const requestEmployerCandidateVoiceReplyUploadUrl = async (
+  assessmentId: string,
+  questionId: string,
+  opts: { contentType: string; fileName?: string },
+): Promise<import('./types').Gate3DirectUploadUrlResponse> => {
   const res = await apiClient.post<any>({
-    url: `/assessments/${assessmentId}/candidate-voice/questions/${questionId}/reply-text`,
-    body: { text },
+    url: `/assessments/${assessmentId}/decision/candidate-voice/${questionId}/reply/upload-url`,
+    body: { contentType: opts.contentType, fileName: opts.fileName || 'reply.webm' },
+    auth: true,
+  });
+  return (res?.data || res) as import('./types').Gate3DirectUploadUrlResponse;
+};
+
+/**
+ * POST /api/v1/assessments/:assessmentId/decision/candidate-voice/:questionId/reply/complete
+ * Complete direct upload for employer video reply.
+ */
+export const completeEmployerCandidateVoiceReplyUpload = async (
+  assessmentId: string,
+  questionId: string,
+  opts: { uploadId: string },
+): Promise<any> => {
+  const res = await apiClient.post<any>({
+    url: `/assessments/${assessmentId}/decision/candidate-voice/${questionId}/reply/complete`,
+    body: { uploadId: opts.uploadId },
     auth: true,
   });
   return res?.data || res;
 };
 
 /**
- * POST /api/v1/assessments/:assessmentId/candidate-voice/questions/:questionId/reply-video
+ * POST /api/v1/assessments/:assessmentId/decision/candidate-voice/:questionId/reply/video
  * Employer video reply to a candidate question (multipart).
  */
-export const postCandidateVoiceReplyVideo = async (
+export const postEmployerCandidateVoiceReplyVideo = async (
   assessmentId: string,
   questionId: string,
   file: Blob | File,
@@ -1014,13 +1166,26 @@ export const postCandidateVoiceReplyVideo = async (
 
   formData.append('file', uploadFile, fileName);
 
-  const res = await apiClient.post<any>({
-    url: `/assessments/${assessmentId}/candidate-voice/questions/${questionId}/reply-video`,
-    body: formData,
-    auth: true,
-  });
-  return res?.data || res;
+  try {
+    const res = await apiClient.post<any>({
+      url: `/assessments/${assessmentId}/decision/candidate-voice/${questionId}/reply/video`,
+      body: formData,
+      auth: true,
+    });
+    return res?.data || res;
+  } catch {
+    const res = await apiClient.post<any>({
+      url: `/assessments/${assessmentId}/candidate-voice/questions/${questionId}/reply-video`,
+      body: formData,
+      auth: true,
+    });
+    return res?.data || res;
+  }
 };
+
+// Aliases for backwards compatibility
+export const postCandidateVoiceReplyText = postEmployerCandidateVoiceReplyText;
+export const postCandidateVoiceReplyVideo = postEmployerCandidateVoiceReplyVideo;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STAGE 4: Final Decision & Employer Review Queries / Mutations
@@ -1065,8 +1230,8 @@ export const useAssessmentDecisionQuery = (
     queryKey: assessmentKeys.decision(assessmentId),
     queryFn: () => fetchAssessmentDecision(assessmentId),
     enabled: Boolean(assessmentId) && (options?.enabled ?? true),
-    refetchInterval: options?.refetchInterval ?? 4000,
-    staleTime: 2000,
+    refetchInterval: options?.refetchInterval ?? 20000,
+    staleTime: 5000,
   });
 
 /**

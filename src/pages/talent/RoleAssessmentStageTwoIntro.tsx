@@ -48,7 +48,7 @@ const RoleAssessmentStageTwoIntro: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex items-center justify-center p-6">
         <div className="bg-white border border-[#E6E6E6] rounded-[18px] max-w-[440px] w-full p-[30px] text-center">
-          <h2 className="text-[18px] font-[900] mb-2">Assessment not found</h2>
+          <h2 className="text-[18px] font-[900] mb-2">Interview not found</h2>
           <p className="text-[14px] text-[#4A4A4A] leading-[1.6] mb-5">
             Start or resume Stage 2 from your journey so we can load this intro.
           </p>

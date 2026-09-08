@@ -436,7 +436,7 @@ const JobEditModal: React.FC<JobEditModalProps> = ({ isOpen, onClose, section, d
             </div>
 
             <Input 
-              label="Pre-assessment materials required from candidates"
+              label="Pre-interview materials required from candidates"
               type="text" 
               value={preAssessment} 
               onChange={(e) => setPreAssessment(e.target.value)}

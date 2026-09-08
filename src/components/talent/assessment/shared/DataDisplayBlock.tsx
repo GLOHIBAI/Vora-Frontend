@@ -101,12 +101,38 @@ const getNestedItems = (seriesItem: any): any[] | null => {
   return null;
 };
 
+const NON_VALUE_KEYS = new Set([
+  'label',
+  'name',
+  'title',
+  'category',
+  'x',
+  'id',
+  'key',
+  'year',
+  'quarter',
+  'date',
+  'period',
+  'complexity',
+  'type',
+  'color',
+  'gradient',
+  'description',
+  'subtitle',
+  'status',
+  'band',
+  'role',
+  'instruction',
+  'eyebrow',
+  'whythismatters',
+]);
+
 const getChartItemValue = (item: any): number => {
   if (!item) return 0;
   if (typeof item === 'number') return item;
   if (typeof item !== 'object') return parseValue(item);
 
-  const raw =
+  const direct =
     item.value ??
     item.val ??
     item.y ??
@@ -118,8 +144,27 @@ const getChartItemValue = (item: any): number => {
     item.rate ??
     item.score ??
     item.count ??
-    0;
-  return parseValue(raw);
+    item.bugs ??
+    item.total;
+
+  if (direct !== undefined && direct !== null) {
+    return parseValue(direct);
+  }
+
+  // Dynamic fallback: look for any numeric property not in NON_VALUE_KEYS
+  for (const [k, v] of Object.entries(item)) {
+    if (!NON_VALUE_KEYS.has(k.toLowerCase()) && v !== undefined && v !== null) {
+      if (typeof v === 'number') return v;
+      if (typeof v === 'string') {
+        const clean = v.replace(/[^0-9.-]/g, '');
+        if (clean.length > 0 && !isNaN(Number(clean))) {
+          return parseFloat(clean);
+        }
+      }
+    }
+  }
+
+  return 0;
 };
 
 const formatChartDisplayValue = (item: any): string => {
@@ -142,10 +187,13 @@ const formatChartDisplayValue = (item: any): string => {
     item.percentage ??
     item.rate ??
     item.score ??
-    item.count;
+    item.count ??
+    item.bugs;
 
-  if (raw === undefined || raw === null) return '';
-  return String(raw);
+  if (raw !== undefined && raw !== null) return String(raw);
+
+  const val = getChartItemValue(item);
+  return val > 0 ? String(val) : '';
 };
 
 export const DataDisplayBlock: React.FC<DataDisplayBlockProps> = ({ table, chart, dataset }) => {
@@ -260,11 +308,15 @@ export const DataDisplayBlock: React.FC<DataDisplayBlockProps> = ({ table, chart
       {/* 1. Render Table */}
       {table && (
         <div className="overflow-x-auto mb-6">
-          {(table.title || chartTitle) && (
+          {table.title ? (
             <div className="text-[11px] font-[800] tracking-[0.7px] uppercase text-[#808080] mb-3">
-              {table.title || chartTitle}
+              {table.title}
             </div>
-          )}
+          ) : !chartData && chartTitle ? (
+            <div className="text-[11px] font-[800] tracking-[0.7px] uppercase text-[#808080] mb-3">
+              {chartTitle}
+            </div>
+          ) : null}
           <table className="w-full border-collapse text-left text-[13.5px]">
             <thead>
               <tr>
@@ -382,19 +434,19 @@ export const DataDisplayBlock: React.FC<DataDisplayBlockProps> = ({ table, chart
               })}
             </div>
           ) : (
-            <div className="flex items-end gap-3.5 p-3.5 border-b border-[#E6E6E6] relative h-[220px] justify-between">
+            <div className="flex items-end gap-3.5 p-3.5 border-b border-[#E6E6E6] relative h-[220px] justify-around">
               {chartData.map((d, idx) => {
                 const val = getChartItemValue(d);
                 const label = getChartItemLabel(d);
                 const displayVal = formatChartDisplayValue(d);
                 const heightPercent = maxVal > 0 ? Math.max((val / maxVal) * 85, 4) : 0;
                 return (
-                  <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+                  <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end max-w-[120px]">
                     <div className="text-[11px] font-[800] text-[#4A4A4A] mb-1 tabular-nums">
                       {displayVal}
                     </div>
                     <div
-                      className="w-full bg-gradient-to-b from-[#387DFF] to-[#0047CC] rounded-[8px_8px_0_0] transition-all duration-300"
+                      className="w-full max-w-[80px] bg-gradient-to-b from-[#387DFF] to-[#0047CC] rounded-[8px_8px_0_0] transition-all duration-300 shadow-sm hover:opacity-90"
                       style={{ height: `${heightPercent}%` }}
                     />
                     <div className="text-[11.5px] text-[#808080] font-[700] mt-1.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-full text-center">

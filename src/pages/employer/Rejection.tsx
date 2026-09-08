@@ -67,7 +67,7 @@ const Rejection: React.FC = () => {
           <div className="space-y-2">
             <h2 className="text-xl font-medium text-gray-900 ">Document Rejection Reason</h2>
             <p className="text-[13px] text-gray-500 leading-relaxed font-medium">
-              A rejection reason is required. VORA reviews all rejections against the candidate's verified assessment record. Reasons that reference competency, communication ability, or professional judgment, already assessed and passed, will trigger an automatic review.
+              A rejection reason is required. VORA reviews all rejections against the candidate's verified interview record. Reasons that reference competency, communication ability, or professional judgment, already assessed and passed, will trigger an automatic review.
             </p>
           </div>
 
@@ -119,7 +119,7 @@ const Rejection: React.FC = () => {
             {isFlagged && (
               <div className="flex items-center gap-2 text-[#DC2626] text-[12px] font-medium animate-in fade-in slide-in-from-top-1">
                 <AlertTriangleIcon size={14} />
-                Your details appear to reference competency or assessment-related criteria already verified by VORA. This will trigger a review.
+                Your details appear to reference competency or interview-related criteria already verified by VORA. This will trigger a review.
               </div>
             )}
 
@@ -163,7 +163,7 @@ const Rejection: React.FC = () => {
           <div className="space-y-4">
             <h2 className="text-xl font-medium text-gray-900 ">Rejection Flagged for Review</h2>
             <p className="text-[14px] text-gray-500 leading-relaxed font-medium">
-              Your rejection documentation references criteria that overlap with competencies already verified through VORA's three-stage assessment. This has been automatically flagged for review by the VORA compliance team.
+              Your rejection documentation references criteria that overlap with competencies already verified through VORA's three-stage interview. This has been automatically flagged for review by the VORA compliance team.
             </p>
           </div>
 

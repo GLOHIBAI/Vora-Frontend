@@ -76,22 +76,22 @@ const OptionButton: React.FC<OptionButtonProps> = ({
     // Only treat as code if explicitly delimited with triple quotes / backticks
     if (raw.includes('"""') || raw.includes('```')) return true;
 
-    // Count strong code-specific signals (need at least 2 to classify as code)
+    // If it is a normal conversational/prose sentence, never treat as raw code
+    const isProse = /^(Use|Implement|Opt|Create|Add|Choose|Select|Configure|Build|Ensure|Deploy|Run|Setup|Set up|Write|Avoid|Prefer|Consider|Migrate|Refactor|Design)\b/i.test(clean);
+    if (isProse) {
+      return false;
+    }
+
+    // Count strong code-specific syntax signals (need at least 2 to classify as code)
     let codeSignals = 0;
     if (clean.includes('@RestController')) codeSignals += 2;
     if (clean.includes('public class ')) codeSignals += 2;
     if (clean.includes('System.out')) codeSignals += 2;
-    if (clean.includes('useState')) codeSignals += 2;
-    if (clean.includes('useEffect')) codeSignals += 2;
-    if (/\bfunction\s*\(/.test(clean)) codeSignals += 2; // function( not just "function" in English
-    if (/\bconst\s+\w+\s*=/.test(clean)) codeSignals++; // const x = ...
-    if (/\blet\s+\w+\s*=/.test(clean)) codeSignals++; // let x = ...
-    if (/\bvar\s+\w+\s*=/.test(clean)) codeSignals++; // var x = ...
-    if (/\breturn\s+[{[\w]/.test(clean)) codeSignals++; // return { or return [ or return value
-    if (/=>\s*[{(]/.test(clean)) codeSignals++; // => { or => (
-    if (/\bimport\s+.*\bfrom\b/.test(clean)) codeSignals += 2; // import X from 'Y'
-    if (clean.includes('fetch(')) codeSignals++;
-    if (clean.includes('->') && (clean.includes('{') || clean.includes('('))) codeSignals++;
+    if (/\bfunction\s*\([^\)]*\)\s*\{/.test(clean)) codeSignals += 2;
+    if (/\bconst\s+\w+\s*=\s*[\(\{\w]/.test(clean)) codeSignals += 2;
+    if (/\blet\s+\w+\s*=\s*[\(\{\w]/.test(clean)) codeSignals += 2;
+    if (/\bimport\s+.*\bfrom\s+['"]/.test(clean)) codeSignals += 2;
+    if (/=>\s*\{[\s\S]*\}/.test(clean)) codeSignals += 2;
     if (clean.includes(';') && clean.includes('{') && clean.includes('}')) codeSignals += 2;
 
     return codeSignals >= 2;

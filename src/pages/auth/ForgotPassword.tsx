@@ -17,6 +17,7 @@ import { useForgotPasswordMutation } from '../../services/queries/auth';
 import { useGetPublicRoleQuery } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
+import AuthHeroVideoCarousel from '../../components/auth/AuthHeroVideoCarousel';
 import { validateEmail } from '../../utils/validation';
 import { useBlockBrowserAutofill } from '../../hooks/useBlockBrowserAutofill';
 import { useFullPageLoading } from '../../hooks/useFullPageLoading';
@@ -95,7 +96,12 @@ const ForgotPassword: React.FC = () => {
   const loginPath = activeSlug ? `/role/${activeSlug}/login` : '/login';
 
   const forgotPasswordContent = (
-    <AuthPageShell loading={showFullPage} centered={!role} className={role ? 'flex-1 !min-h-0' : ''}>
+    <AuthPageShell
+      loading={showFullPage}
+      centered={!role}
+      className={role ? 'flex-1 !min-h-0' : ''}
+      heroContent={<AuthHeroVideoCarousel />}
+    >
       <AuthPageHeader
         title="Reset your password"
         subtitle="Enter your email address and we'll send you a 6-digit code to reset your password."

@@ -506,7 +506,7 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
       localStorage.setItem('vora_stage3_completed', 'true');
       localStorage.setItem('vora_stage4_unlocked', 'true');
       setIsCompiling(false);
-      toast.success('Stage 3 assessment completed!');
+      toast.success('Stage 3 interview completed!');
       navigate(`/onboarding/talent/${roleSlug}/interview/stage-3/complete`);
     }, 4000);
   };
@@ -528,7 +528,7 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
           'Encoding video chunks to H.264 MP4',
           'Attaching candidate inquiries for the hiring team',
           'Analyzing communication clarity and delivery',
-          'Compiling final Stage 3 assessment package',
+          'Compiling final Stage 3 interview package',
         ]}
         initialStepIndex={0}
         schedule={[
@@ -631,7 +631,7 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
                 No questions at this time
               </div>
               <div className="text-[13px] text-[#666] leading-[1.5]">
-                Everything was clear. Proceed directly to the assessment scoring and compilation.
+                Everything was clear. Proceed directly to the interview scoring and compilation.
               </div>
             </div>
           </button>

@@ -41,9 +41,9 @@ export const DEFAULT_VAULT_TIMELINE = (
   {
     status: 'future',
     stepNumber: 5,
-    title: 'Assessment and hire',
+    title: 'Interview and hire',
     description:
-      'Matched candidates proceed through VORA\'s assessment. You receive scored profiles and can hire or request an Alignment session. On confirmed hire, the true-up fires, if the final salary differs from the midpoint, VORA charges or refunds the difference within 24 hours.',
+      'Matched candidates proceed through VORA\'s interview. You receive scored profiles and can hire or request an Alignment session. On confirmed hire, the true-up fires, if the final salary differs from the midpoint, VORA charges or refunds the difference within 24 hours.',
     dateLabel: `${goLiveFormatted.split(' ').slice(-1)[0]} onwards`,
   },
 ];

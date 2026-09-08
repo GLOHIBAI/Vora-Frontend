@@ -58,8 +58,8 @@ export const DEFAULT_PUBLIC_ROLE_LANDING: PublicRoleLandingData = {
     'Candidates must hold the legal right to work in Sweden or an EU/EEA country. VORA will note this during your profile match, if you do not meet this criterion, you will still be matched to roles where your eligibility is confirmed.',
   assessmentItems: [
     'Profile match score (CV + onboarding info vs JD)',
-    'Psychometric test (30 questions)',
-    'Situational Judgement Test (SJT)',
-    'Video assessment',
+    'Psychometric interview (30 questions)',
+    'Situational Judgement Interview (SJI)',
+    'Video interview',
   ],
 };

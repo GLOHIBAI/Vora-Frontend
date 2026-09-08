@@ -10,7 +10,7 @@ export type Gate2SubmitAnswer =
   | Record<string, string>
   | { choice: string | string[]; reason?: string }
   | { most: string; least: string }
-  | { code: string; stdout?: string }
+  | { code: string; stdout?: string; findings?: string; reason?: string; solution?: string }
   | { prose: string; followUp?: string };
 
 export interface Gate2ResponsesPayload {
@@ -247,14 +247,30 @@ export function formatGate2Answer(
     case 'code':
     case 'livecode': {
       if (typeof rawAnswer === 'string') {
-        return { code: rawAnswer };
+        return { code: rawAnswer, findings: rawAnswer, reason: rawAnswer };
       }
       if (typeof rawAnswer === 'object' && !Array.isArray(rawAnswer)) {
         const code = String(rawAnswer.code ?? rawAnswer.solution ?? rawAnswer.text ?? '');
+        const findings =
+          rawAnswer.findings !== undefined
+            ? String(rawAnswer.findings)
+            : rawAnswer.reason !== undefined
+              ? String(rawAnswer.reason)
+              : code;
+        const reason =
+          rawAnswer.reason !== undefined
+            ? String(rawAnswer.reason)
+            : findings;
         const stdout = rawAnswer.stdout !== undefined ? String(rawAnswer.stdout) : undefined;
-        return stdout !== undefined ? { code, stdout } : { code };
+        return {
+          code,
+          findings,
+          reason,
+          ...(rawAnswer.solution !== undefined ? { solution: String(rawAnswer.solution) } : {}),
+          ...(stdout !== undefined ? { stdout } : {}),
+        };
       }
-      return { code: String(rawAnswer) };
+      return { code: String(rawAnswer), findings: String(rawAnswer), reason: String(rawAnswer) };
     }
 
     // Short prose
@@ -291,7 +307,24 @@ export function formatGate2Answer(
           return { most: String(rawAnswer.most), least: String(rawAnswer.least) };
         }
         if ('code' in rawAnswer) {
-          return { code: String(rawAnswer.code), ...(rawAnswer.stdout !== undefined ? { stdout: String(rawAnswer.stdout) } : {}) };
+          const code = String(rawAnswer.code);
+          const findings =
+            rawAnswer.findings !== undefined
+              ? String(rawAnswer.findings)
+              : rawAnswer.reason !== undefined
+                ? String(rawAnswer.reason)
+                : code;
+          const reason =
+            rawAnswer.reason !== undefined
+              ? String(rawAnswer.reason)
+              : findings;
+          return {
+            code,
+            findings,
+            reason,
+            ...(rawAnswer.solution !== undefined ? { solution: String(rawAnswer.solution) } : {}),
+            ...(rawAnswer.stdout !== undefined ? { stdout: String(rawAnswer.stdout) } : {}),
+          };
         }
         if ('prose' in rawAnswer) {
           return { prose: String(rawAnswer.prose), ...(rawAnswer.followUp !== undefined ? { followUp: String(rawAnswer.followUp) } : {}) };
@@ -327,11 +360,19 @@ export function formatGate2ResponsesPayload(
   const formatted: Record<string, Gate2SubmitAnswer> = {};
 
   for (const [itemId, rawVal] of Object.entries(rawResponses)) {
+    if (!itemId || !itemId.trim()) continue;
+    if (rawVal === undefined || rawVal === null || rawVal === '') continue;
+    if (typeof rawVal === 'object' && !Array.isArray(rawVal) && Object.keys(rawVal).length === 0) continue;
+
     const item = itemsMap.get(itemId);
     const itemType = item?.type ?? item?.content?.type ?? '';
     const minWords = item?.content?.minWords;
 
-    formatted[itemId] = formatGate2Answer(itemType, rawVal, { minWords });
+    const formattedAns = formatGate2Answer(itemType, rawVal, { minWords });
+    if (formattedAns === undefined || formattedAns === null || formattedAns === '') continue;
+    if (typeof formattedAns === 'object' && !Array.isArray(formattedAns) && Object.keys(formattedAns).length === 0) continue;
+
+    formatted[itemId] = formattedAns;
   }
 
   return formatted;

@@ -96,7 +96,7 @@ const Gate1ScreenView: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="max-w-md text-center">
-          <p className="text-[#808080] mb-4">{error ?? 'No active assessment found.'}</p>
+          <p className="text-[#808080] mb-4">{error ?? 'No active interview found.'}</p>
           <Button
             type="button"
             variant="primary"
@@ -154,7 +154,7 @@ const Gate1ScreenView: React.FC = () => {
         percent: Math.round((partsCompleted / partsRequired) * 100),
       }}
       onSaveExit={() => navigate(`/onboarding/talent/${roleSlug}/interview/journey`)}
-      onScreenComplete={() => void handleScreenComplete()}
+      onScreenComplete={handleScreenComplete}
     />
   );
 };

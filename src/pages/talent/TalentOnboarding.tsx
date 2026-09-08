@@ -149,27 +149,32 @@ const TalentOnboarding: React.FC = () => {
   } = useTalentOnboardingStateQuery(true);
 
   const roleSlug =
+    searchParams.get('role') ||
+    searchParams.get('roleSlug') ||
     onboardingState?.data?.applyContext?.roleLink ||
     (location.state as { roleSlug?: string } | null)?.roleSlug || 
     loadRoleApplySlug() || 
-    '';
+    'backend-engineer-a7e000';
   const isRoleApplyFlow = Boolean(roleSlug);
 
   const { data: response, isLoading: isRoleLoading } = useGetPublicRoleQuery(roleSlug || '');
 
-  const role: PublicRoleLandingData | null = useMemo(() => {
-    if (!isRoleApplyFlow) return null;
+  const role: PublicRoleLandingData = useMemo(() => {
+    const slug = roleSlug || 'backend-engineer-a7e000';
     const apiData = response?.data || response;
     if (!apiData || Object.keys(apiData).length === 0) {
-      return getRoleLandingForSlug(roleSlug);
+      return getRoleLandingForSlug(slug);
     }
-    return mapApiResponseToRoleData(roleSlug, apiData);
-  }, [isRoleApplyFlow, response, roleSlug]);
+    return mapApiResponseToRoleData(slug, apiData);
+  }, [response, roleSlug]);
 
   useEffect(() => {
     const fromState = (location.state as { roleSlug?: string } | null)?.roleSlug;
-    if (fromState) saveRoleApplySlug(fromState);
-  }, [location.state]);
+    const fromSearch = searchParams.get('role') || searchParams.get('roleSlug');
+    const fromOnboarding = onboardingState?.data?.applyContext?.roleLink;
+    const slugToSave = fromSearch || fromState || fromOnboarding;
+    if (slugToSave) saveRoleApplySlug(slugToSave);
+  }, [location.state, searchParams, onboardingState?.data?.applyContext?.roleLink]);
 
   const onboardingMutation = useTalentOnboardingMutation();
 
@@ -589,7 +594,7 @@ const TalentOnboarding: React.FC = () => {
             </button>
           )}
           <span className="text-sm font-medium text-[#1C1C1C]">
-            {step === 1 ? '0/1' : '1/1'}
+            {step}/2
           </span>
         </div>
         <div className="flex gap-1 w-full h-1.5">
@@ -913,10 +918,10 @@ const TalentOnboarding: React.FC = () => {
 
             {/* Sponsorship callout */}
             {showSponsorCallout && (
-              <div className="flex gap-2.5 items-start bg-[#FFFBEB] border border-[#FDE68A] rounded-lg p-3.5">
-                <AlertTriangleIcon className="flex-shrink-0 mt-0.5" stroke="#92400E" />
+              <div className="flex gap-2.5 items-start bg-transparent border border-[#BFDBFE] rounded-lg p-3.5">
+                <AlertTriangleIcon className="flex-shrink-0 mt-0.5" stroke="#0047CC" />
                 <p className="text-[13px] text-[#4A4A4A] leading-relaxed">
-                  <strong className="text-[#92400E]">Sponsorship required:</strong> Only roles where the employer has confirmed they will support visa acquisition will appear in your results. This significantly limits your matched pool.
+                  <strong className="text-[#0047CC]">Sponsorship required:</strong> Only roles where the employer has confirmed they will support visa acquisition will appear in your results. This significantly limits your matched pool.
                 </p>
               </div>
             )}
@@ -1008,11 +1013,7 @@ const TalentOnboarding: React.FC = () => {
     );
   }
 
-  if (isRoleApplyFlow && role) {
-    return <RoleOnboardingShell role={role}>{onboardingContent}</RoleOnboardingShell>;
-  }
-
-  return onboardingContent;
+  return <RoleOnboardingShell role={role}>{onboardingContent}</RoleOnboardingShell>;
 };
 
 export default TalentOnboarding;

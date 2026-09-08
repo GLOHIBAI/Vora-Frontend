@@ -249,3 +249,28 @@ export const useResetPasswordMutation = () => {
       }),
   });
 };
+
+export const useLogoutMutation = () => {
+  const { logout } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      try {
+        await apiClient.post({
+          url: "/auth/logout",
+          auth: true,
+          credentials: "include",
+          suppressErrorToast: true,
+        });
+      } catch {
+        // Proceed with local logout even if server is unreachable
+      }
+    },
+    onSettled: () => {
+      logout();
+      queryClient.clear();
+      toast.success("Logged out successfully");
+    },
+  });
+};

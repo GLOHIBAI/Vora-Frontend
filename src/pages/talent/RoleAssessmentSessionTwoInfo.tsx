@@ -100,7 +100,7 @@ const RoleAssessmentSessionTwoInfo: React.FC = () => {
             Short workplace scenarios drawn from situations you might genuinely face. You&apos;ll tell us how you&apos;d approach each one. There are no trick questions and no single &quot;right&quot; answer we&apos;re looking for.
           </p>
 
-          <div className="bg-[#EBF6FF] rounded-[12px] p-[14px_16px] text-left mb-[24px] flex gap-[11px]">
+          <div className="bg-[#EBF6FF] border border-[#387DFF] rounded-[12px] p-[14px_16px] text-left mb-[24px] flex gap-[11px]">
             <QuestionCircleIcon className="w-[18px] h-[18px] text-[#0047CC] shrink-0 mt-[1px]" />
             <div className="text-[13px] text-[#182348] leading-[1.55]">
               <div className="text-[10.5px] font-[800] tracking-[0.5px] uppercase text-[#0047CC] mb-[3px]">Why this matters</div>

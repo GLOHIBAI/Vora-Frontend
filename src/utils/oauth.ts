@@ -30,12 +30,33 @@ export function clearSetupToken(): void {
   localStorage.removeItem(SETUP_TOKEN_KEY);
 }
 
+import { isEmailLike } from './userName';
+
 export function mapApiUserToContextUser(user?: User): ContextUser {
   const mappedRole = ['talent', 'mentor', 'employer'].includes(user?.role?.toLowerCase() || '')
     ? (user!.role!.toLowerCase() as ContextUser['role'])
     : 'talent';
 
   let firstName = user?.firstName || '';
+
+  // If firstName is empty, 'User', or an email prefix, check if localStorage already has a real name
+  if (!firstName || firstName === 'User' || isEmailLike(firstName)) {
+    try {
+      const storedCandidateFn = localStorage.getItem('candidate_first_name') || localStorage.getItem('user_first_name');
+      if (storedCandidateFn && !isEmailLike(storedCandidateFn)) {
+        firstName = storedCandidateFn;
+      } else {
+        const storedUserRaw = localStorage.getItem('vora_user');
+        if (storedUserRaw) {
+          const storedUser = JSON.parse(storedUserRaw);
+          if (storedUser?.firstName && !isEmailLike(storedUser.firstName)) {
+            firstName = storedUser.firstName;
+          }
+        }
+      }
+    } catch {}
+  }
+
   if (!firstName || firstName === 'User') {
     firstName = user?.organisationName || user?.organizationName || user?.employerProfile?.organisationName || user?.employerProfile?.organizationName || '';
   }

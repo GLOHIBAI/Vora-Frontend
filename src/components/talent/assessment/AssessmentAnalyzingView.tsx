@@ -171,7 +171,7 @@ const AssessmentAnalyzingView: React.FC<AssessmentAnalyzingViewProps> = ({
                 <strong className="text-[#0047CC] font-semibold">{role.roleTitle}</strong>.
               </>
             ) : (
-              "Hang tight we're reviewing your assessment profile."
+              "Hang tight we're reviewing your interview profile."
             )}
           </div>
 

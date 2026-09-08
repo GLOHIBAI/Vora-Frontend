@@ -60,14 +60,14 @@ const ApplicantDetailsModal: React.FC<ApplicantDetailsModalProps> = ({
           <div className="grid grid-cols-2 gap-5">
             <div className="bg-white p-6 rounded-[20px] space-y-2 border border-blue-100/20">
               <div className="flex items-center justify-between">
-                <p className="text-[13px] font-medium text-[#0047CC] uppercase tracking-wide">Psychometric Test</p>
+                <p className="text-[13px] font-medium text-[#0047CC] uppercase tracking-wide">Psychometric Interview</p>
                 <span className="text-[11px] font-medium text-[#2CA62C] bg-white/50 px-2 py-0.5 rounded-full border border-green-100/30">↑ 5%</span>
               </div>
               <p className="text-[36px] font-medium text-[#0047CC]">{applicant.psych || '--'}%</p>
             </div>
             <div className="bg-[#EEFBEE] p-6 rounded-[20px] space-y-2 border border-green-100/20">
               <div className="flex items-center justify-between">
-                <p className="text-[13px] font-medium text-[#2CA62C] uppercase tracking-wide">Situational Test</p>
+                <p className="text-[13px] font-medium text-[#2CA62C] uppercase tracking-wide">Situational Interview</p>
                 <span className="text-[11px] font-medium text-[#2CA62C] bg-white/50 px-2 py-0.5 rounded-full border border-green-100/30">↑ 3%</span>
               </div>
               <p className="text-[36px] font-medium text-[#2CA62C]">{applicant.sjt || '--'}%</p>

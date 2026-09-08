@@ -28,16 +28,29 @@ const AssessmentItemsList: React.FC<AssessmentItemsListProps> = ({
           <div
             key={item.id}
             id={`assessment-item-${item.id}`}
-            className={`scroll-mt-[220px] transition-opacity duration-200 ${
-              itemLocked ? 'pointer-events-none opacity-85' : ''
+            className={`scroll-mt-[220px] transition-opacity duration-200 relative ${
+              itemLocked ? 'cursor-not-allowed opacity-85 select-none [&_*]:cursor-not-allowed' : ''
             }`}
           >
+            {itemLocked && (
+              <div
+                className="absolute inset-0 z-30 cursor-not-allowed bg-transparent"
+                title="This question has been saved and is locked."
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              />
+            )}
             <AssessmentItemRenderer
               item={item}
               value={answers[item.id]}
               disabled={itemLocked}
               isAnswerLocked={(subKey) => isLocked(item.id, subKey)}
-              onChange={(val, subKey) => onAnswer(item.id, val, item, subKey)}
+              onChange={(val, subKey) => {
+                if (itemLocked) return;
+                onAnswer(item.id, val, item, subKey);
+              }}
               isAdaptiveLoading={isAdaptiveLoading}
             />
           </div>

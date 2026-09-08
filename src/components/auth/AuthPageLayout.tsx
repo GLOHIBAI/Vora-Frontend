@@ -10,17 +10,41 @@ type AuthPageShellProps = {
   className?: string;
   centered?: boolean;
   loading?: boolean;
+  heroContent?: ReactNode;
 };
 
-/** Full-viewport auth wrapper, prevents horizontal overflow on small screens. */
+/** Full-viewport auth wrapper, supports split-screen video hero on desktop and clean mobile view. */
 export function AuthPageShell({
   children,
   className = '',
   centered = true,
   loading = false,
+  heroContent,
 }: AuthPageShellProps) {
   if (loading) {
     return <FullPageSpinner />;
+  }
+
+  if (heroContent) {
+    return (
+      <div
+        className={`h-screen w-full overflow-hidden bg-white ${className}`}
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-12 h-screen">
+          {/* Hero Video Showcase Area (Left on desktop) */}
+          <div className="hidden lg:block lg:col-span-6 xl:col-span-7 h-full overflow-hidden bg-[#0A0F1D]">
+            {heroContent}
+          </div>
+
+          {/* Form Area with safe auto-centering that prevents top-clipping (Right on desktop) */}
+          <div className="col-span-12 lg:col-span-6 xl:col-span-5 h-full overflow-y-auto custom-scrollbar flex flex-col px-4 py-6 sm:px-8 sm:py-8 lg:px-10 xl:px-14">
+            <div className="mx-auto my-auto w-full max-w-[460px] py-4">
+              {children}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -151,7 +175,7 @@ type AuthSocialButtonsProps = {
 
 export function AuthSocialButtons({ children }: AuthSocialButtonsProps) {
   return (
-    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:gap-4 [&_button]:min-w-0">
+    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:gap-3 [&_button]:min-w-0">
       {children}
     </div>
   );

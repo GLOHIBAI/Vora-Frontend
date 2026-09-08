@@ -3,6 +3,8 @@ import {
   useSaveAssessmentDraftMutation,
   useSubmitAssessmentScreenMutation,
   useSubmitAdaptiveStepMutation,
+  markComponentSubmitted,
+  isComponentSubmitted,
 } from "../services/queries/assessments";
 import {
   isItemAnswerComplete,
@@ -271,6 +273,14 @@ export function useAssessmentScreen({
     confirmInFlightRef.current = false;
     setPriorSteps(screenData.adaptiveMcq?.priorSteps ?? []);
     setIsSubmitProcessActive(false);
+
+    if (
+      componentId &&
+      (screenData.alreadySubmitted === true ||
+        ((screenData as any).status && (screenData as any).status !== 'IN_PROGRESS'))
+    ) {
+      markComponentSubmitted(componentId);
+    }
     // Intentionally only componentId: identity churn on items/adaptiveMcq must not
     // clear the in-flight adaptive step lock (that caused double shimmer).
     // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
@@ -317,7 +327,7 @@ export function useAssessmentScreen({
   }, []);
 
   const saveCurrentDraft = useCallback(async () => {
-    if (confirmInFlightRef.current || isSubmitProcessActive) return;
+    if (confirmInFlightRef.current || isSubmitProcessActive || isComponentSubmitted(componentId)) return;
 
     const unsavedBatch: ResponsesMap = {};
     items.forEach((item) => {
@@ -732,7 +742,7 @@ export function useAssessmentScreen({
         }
       }
 
-      const submitPayload = buildScreenSubmitResponses(items, answers);
+      const submitPayload = buildScreenSubmitResponses(items, answers, lockedResponses.current);
 
       await submitScreen.mutateAsync({
         assessmentId,
@@ -740,6 +750,7 @@ export function useAssessmentScreen({
         responses: submitPayload,
       });
 
+      markComponentSubmitted(componentId);
       await onScreenComplete();
     } catch (err: any) {
       confirmInFlightRef.current = false;

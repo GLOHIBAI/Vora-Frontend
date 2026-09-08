@@ -49,7 +49,7 @@ export function useLocalAssessmentScreen(
     setItems(initialItems);
     if (prevItemsKeyRef.current !== itemsKey) {
       prevItemsKeyRef.current = itemsKey;
-      setAnswers(buildInitialAnswers(initialItems));
+      setAnswers((prev) => ({ ...buildInitialAnswers(initialItems), ...prev }));
     }
   }, [itemsKey, initialItems]);
 

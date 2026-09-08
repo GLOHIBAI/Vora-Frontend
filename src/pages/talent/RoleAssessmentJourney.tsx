@@ -18,7 +18,8 @@ import {
 import { resolveGate1AssessmentId, isGate1ApiEnabled } from '../../config/gate1Api';
 import { setActiveAssessmentId } from '../../utils/assessmentSession';
 import FullPageSpinner from '../../components/common/FullPageSpinner';
-import { getCandidateFirstName, getCandidateInitials } from '../../utils/userName';
+import { useGetTalentProfileQuery } from '../../services/queries/onboarding';
+import { getCandidateFirstName, getCandidateInitials, isEmailLike } from '../../utils/userName';
 
 const DocumentCheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -110,7 +111,20 @@ const RoleAssessmentJourney: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
+
+  const { data: talentProfile } = useGetTalentProfileQuery(
+    !!user && (!user?.firstName || isEmailLike(user.firstName))
+  );
+
+  useEffect(() => {
+    if (talentProfile?.data?.firstName && !isEmailLike(talentProfile.data.firstName)) {
+      updateUser({
+        firstName: talentProfile.data.firstName,
+        lastName: talentProfile.data.lastName || '',
+      });
+    }
+  }, [talentProfile, updateUser]);
 
   const locationState = location.state as {
     firstName?: string;
@@ -388,7 +402,7 @@ const RoleAssessmentJourney: React.FC = () => {
             Your interview journey,<br/>built around <span className="text-white">your story</span>
           </h1>
           <p className="text-[15.5px] leading-[1.7] max-w-[620px] text-white/90 mb-[30px]">
-            This isn't a generic test. Four stages, each one earning its place in the picture {companyName} builds of you. No rote questions. No filler. Pause and resume from any device, anytime your seat is held.
+            This isn't a generic interview. Four stages, each one earning its place in the picture {companyName} builds of you. No rote questions. No filler. Pause and resume from any device, anytime your seat is held.
           </p>
           <div className="flex flex-wrap gap-[12px]">
             <div className="bg-white/10 border border-white/20 rounded-[12px] p-[11px_16px] backdrop-blur-[6px] min-w-[140px] flex-none">

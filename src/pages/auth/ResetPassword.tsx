@@ -17,6 +17,7 @@ import { useResetPasswordMutation } from '../../services/queries/auth';
 import { useGetPublicRoleQuery } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
+import AuthHeroVideoCarousel from '../../components/auth/AuthHeroVideoCarousel';
 import { validatePassword, validateEmail } from '../../utils/validation';
 import { useBlockBrowserAutofill } from '../../hooks/useBlockBrowserAutofill';
 import { useFullPageLoading } from '../../hooks/useFullPageLoading';
@@ -143,7 +144,12 @@ const ResetPassword: React.FC = () => {
   const loginPath = activeSlug ? `/role/${activeSlug}/login` : '/login';
 
   const resetPasswordContent = (
-    <AuthPageShell loading={showFullPage} centered={!role} className={role ? 'flex-1 !min-h-0' : ''}>
+    <AuthPageShell
+      loading={showFullPage}
+      centered={!role}
+      className={role ? 'flex-1 !min-h-0' : ''}
+      heroContent={<AuthHeroVideoCarousel />}
+    >
       <AuthPageHeader
         title="Set a new password"
         subtitle={

@@ -94,7 +94,7 @@ const MatchedRoleJdModal: React.FC<MatchedRoleJdModalProps> = ({
             <div>
               <p className={`text-[13px] font-bold ${matchStyle.title}`}>
                 {role.matchPercent}% profile match, your profile qualifies. Your next step is
-                assessment.
+                interview.
               </p>
               <p className={`text-xs mt-0.5 ${matchStyle.sub}`}>
                 CV and onboarding profile matched against this JD

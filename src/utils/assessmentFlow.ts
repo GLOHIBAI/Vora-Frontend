@@ -2,7 +2,12 @@ import type {
   AssessmentItem,
   ResponsesMap,
 } from "../services/queries/assessments/types";
-import { isAdaptiveType } from "../services/queries/assessments/types";
+import {
+  isAdaptiveType,
+  isSubItemLockedType,
+  isSubKeyLocked,
+  isWholeItemLocked,
+} from "../services/queries/assessments/types";
 import {
   GATE1_SESSION1_SCREENS,
   GATE1_SESSION2_SCREENS,
@@ -76,17 +81,41 @@ export const buildGate1StartBody = (
   screen: screenKey,
 });
 
-/** Build the submit payload one entry per item.id on the current screen. */
+/** Build the submit payload one entry per item.id on the current screen.
+ *  Strips locked (already-saved) keys so the backend does not reject them.
+ */
 export const buildScreenSubmitResponses = (
   items: AssessmentItem[],
   answers: ResponsesMap,
+  lockedResponses?: ResponsesMap,
 ): ResponsesMap => {
   const payload: ResponsesMap = {};
   items.forEach((item) => {
     if (isAdaptiveType(item.type) && item.content.layout !== "multi_question")
       return;
     const value = answers[item.id];
-    if (value !== undefined && value !== null && value !== "") {
+    if (value === undefined || value === null || value === "") return;
+
+    // If we have a locked map, strip items/sub-keys that are already saved
+    if (lockedResponses) {
+      if (isSubItemLockedType(item.type)) {
+        if (typeof value === "object" && !Array.isArray(value)) {
+          const delta: Record<string, unknown> = {};
+          Object.entries(value).forEach(([subKey, subVal]) => {
+            if (!isSubKeyLocked(lockedResponses, item.id, subKey)) {
+              delta[subKey] = subVal;
+            }
+          });
+          if (Object.keys(delta).length > 0) {
+            payload[item.id] = delta as typeof value;
+          }
+        }
+      } else {
+        if (!isWholeItemLocked(lockedResponses, item.id)) {
+          payload[item.id] = value;
+        }
+      }
+    } else {
       payload[item.id] = value;
     }
   });
