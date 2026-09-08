@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react';
 
+import { AUTH_HERO_VIDEOS } from '../../constants/authVideos';
+
 export interface AuthHeroRoleVideoProps {
   roleType?: 'Talent' | 'Employer' | 'Mentor' | string;
   roleTitle?: string;
@@ -25,7 +27,7 @@ export const AuthHeroRoleVideo: React.FC<AuthHeroRoleVideoProps> = ({
   const config: RoleConfig = useMemo(() => {
     if (normalizedRole.includes('employer')) {
       return {
-        videoSrc: '/videos/employer_signup_hero.mp4',
+        videoSrc: AUTH_HERO_VIDEOS.employer,
         roleBadge: 'For Hiring Organisations',
         title: 'Build high-impact health teams faster.',
         description:
@@ -35,7 +37,7 @@ export const AuthHeroRoleVideo: React.FC<AuthHeroRoleVideoProps> = ({
 
     if (normalizedRole.includes('mentor')) {
       return {
-        videoSrc: '/videos/mentor.mp4',
+        videoSrc: AUTH_HERO_VIDEOS.mentor,
         roleBadge: 'For Expert Mentors',
         title: 'Guide the next generation of global health leaders.',
         description:
@@ -45,7 +47,7 @@ export const AuthHeroRoleVideo: React.FC<AuthHeroRoleVideoProps> = ({
 
     // Default to Talent
     return {
-      videoSrc: '/videos/signup_as_talent_hero_silent.mp4',
+      videoSrc: AUTH_HERO_VIDEOS.talent,
       roleBadge: roleTitle ? `Role Application · ${roleTitle}` : 'For Global Health Talent',
       title: roleTitle
         ? `Launch your application for ${roleTitle}`

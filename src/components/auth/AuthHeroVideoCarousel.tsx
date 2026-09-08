@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { AUTH_HERO_VIDEOS } from '../../constants/authVideos';
 
 interface CarouselSlide {
   id: 'talent' | 'employer' | 'mentor';
@@ -15,7 +16,7 @@ const SLIDES: CarouselSlide[] = [
     title: 'Advance your career in global health.',
     description:
       'Prove your competencies through objective, job-simulation interviews and match with premier global health organisations.',
-    videoSrc: '/videos/signup_as_talent_hero_silent.mp4',
+    videoSrc: AUTH_HERO_VIDEOS.talent,
   },
   {
     id: 'employer',
@@ -23,7 +24,7 @@ const SLIDES: CarouselSlide[] = [
     title: 'Build high-impact health teams faster.',
     description:
       'Streamline discovery with AI-assisted competency benchmarks, verified candidate portfolios, and bias-free evaluation.',
-    videoSrc: '/videos/employer_signup_hero.mp4',
+    videoSrc: AUTH_HERO_VIDEOS.employer,
   },
   {
     id: 'mentor',
@@ -31,7 +32,7 @@ const SLIDES: CarouselSlide[] = [
     title: 'Guide the next generation of leaders.',
     description:
       'Share your frontline public health expertise, provide actionable feedback on candidate interviews, and shape global health initiatives.',
-    videoSrc: '/videos/mentor.mp4',
+    videoSrc: AUTH_HERO_VIDEOS.mentor,
   },
 ];
 
