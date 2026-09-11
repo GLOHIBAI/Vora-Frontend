@@ -148,7 +148,12 @@ export const useAssessmentJourneyQuery = (gate: 1 | 2 | 3 = 1) =>
 export const useGateResumeStateQuery = (
   assessmentId: string,
   gate: 1 | 2 | 3 = 1,
-  options?: { enabled?: boolean },
+  options?: {
+    enabled?: boolean;
+    staleTime?: number;
+    refetchOnWindowFocus?: boolean;
+    refetchOnReconnect?: boolean;
+  },
 ) =>
   useQuery({
     queryKey: assessmentKeys.resumeState(assessmentId, gate),
@@ -158,7 +163,9 @@ export const useGateResumeStateQuery = (
         auth: true,
       }),
     enabled: (options?.enabled ?? true) && !!assessmentId,
-    staleTime: 30 * 1000, // 30s re-fetch after each screen submit
+    staleTime: options?.staleTime ?? 30 * 1000,
+    refetchOnWindowFocus: options?.refetchOnWindowFocus,
+    refetchOnReconnect: options?.refetchOnReconnect,
   });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -345,12 +352,6 @@ export const useSaveAssessmentDraftMutation = () => {
         }
         throw err;
       }
-    },
-    onSuccess: (_data, { assessmentId }) => {
-      // Invalidate progress so the answered/total counts update in the UI
-      queryClient.invalidateQueries({
-        queryKey: assessmentKeys.progress(assessmentId),
-      });
     },
   });
 };

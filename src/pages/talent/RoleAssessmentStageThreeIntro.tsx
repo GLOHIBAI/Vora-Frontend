@@ -14,6 +14,7 @@ const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
 const RoleAssessmentStageThreeIntro: React.FC = () => {
   const navigate = useNavigate();
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
+  const ENABLE_ANTI_CHEAT_TAB_SWITCH = import.meta.env.VITE_ENABLE_ANTI_CHEAT_TAB_SWITCH === 'true';
 
   const handleBegin = () => {
     navigate(`/onboarding/talent/${roleSlug}/interview/stage-3/video`);
@@ -66,10 +67,9 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
             <div className="bg-white/[0.08] border border-white/[0.16] rounded-[12px] p-[11px_16px] backdrop-blur-[6px] min-w-[130px]">
               <div className="text-[18px] font-[900] tracking-[-0.2px] tabular-nums">48 hrs</div>
               <div className="text-[11px] font-[700] text-white/70 mt-[2px] tracking-[0.3px]">async window</div>
-            </div>
-            <div className="bg-white/[0.08] border border-white/[0.16] rounded-[12px] p-[11px_16px] backdrop-blur-[6px] min-w-[130px]">
-              <div className="text-[18px] font-[900] tracking-[-0.2px]">Record · Upload</div>
-              <div className="text-[11px] font-[700] text-white/70 mt-[2px] tracking-[0.3px]">your choice</div>
+            </div>            <div className="bg-white/[0.08] border border-white/[0.16] rounded-[12px] p-[11px_16px] backdrop-blur-[6px] min-w-[130px]">
+              <div className="text-[18px] font-[900] tracking-[-0.2px]">Live video</div>
+              <div className="text-[11px] font-[700] text-white/70 mt-[2px] tracking-[0.3px]">in-browser camera</div>
             </div>
           </div>
         </div>
@@ -129,13 +129,13 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
         {/* How it works */}
         <div className="bg-white rounded-[16px] p-[28px_30px] mb-[22px] border border-[#E6E6E6] shadow-[0_6px_22px_rgba(10,17,114,0.06)]">
           <div className="text-[11px] font-[800] tracking-[0.8px] uppercase text-[#0047CC] mb-[10px]">How the video interview works</div>
-          <h2 className="text-[18px] font-[900] text-[#1A1A1A] tracking-[-0.2px] mb-[18px]">One question at a time. Your answer, your way.</h2>
+          <h2 className="text-[18px] font-[900] text-[#1A1A1A] tracking-[-0.2px] mb-[18px]">One question at a time. Record live on camera.</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
             {[
               { num: 1, title: 'Question reveals', desc: 'Each question opens on its own. You can&apos;t see what comes next.' },
               { num: 2, title: '30s think time', desc: 'Read, breathe, gather your thoughts. Timer doesn&apos;t start yet.' },
-              { num: 3, title: 'Record or upload', desc: 'Use the in-browser recorder, or upload a video you recorded elsewhere.' },
-              { num: 4, title: 'Submit and unlock the next', desc: 'Submitting locks your answer and reveals the next question.' }
+              { num: 3, title: 'Record live on camera', desc: 'Use the in-browser webcam recorder to give your answer.' },
+              { num: 4, title: 'Submit and unlock next', desc: 'Submitting locks your answer and reveals the next question.' }
             ].map((st) => (
               <div key={st.num} className="relative p-[14px_12px] bg-[#F7F7F7] rounded-[10px] border border-[#E6E6E6]">
                 <div className="inline-flex items-center justify-center w-[22px] h-[22px] rounded-full bg-[#0047CC] text-white font-[900] text-[11px] mb-[8px]">
@@ -148,67 +148,34 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
           </div>
         </div>
 
-        {/* Two Paths */}
+        {/* Live Recording Details */}
         <div className="bg-white rounded-[16px] p-[28px_30px] mb-[22px] border border-[#E6E6E6]">
-          <div className="text-[11px] font-[800] tracking-[0.8px] uppercase text-[#0047CC] mb-[10px]">Your two ways to answer</div>
-          <h2 className="text-[18px] font-[900] text-[#1A1A1A] tracking-[-0.2px] mb-[6px]">Record live or upload pre-recorded · per question</h2>
+          <div className="text-[11px] font-[800] tracking-[0.8px] uppercase text-[#0047CC] mb-[10px]">Camera & microphone recording</div>
+          <h2 className="text-[18px] font-[900] text-[#1A1A1A] tracking-[-0.2px] mb-[6px]">Record directly in your browser</h2>
           <p className="text-[13.5px] text-[#808080] leading-[1.6] mb-[20px]">
-            For each question, you choose. Some people are sharper recording in the moment. Others want to record on their phone, watch it back, then upload. Both are completely fine.
+            Each question gives you 30 seconds of think time, followed by 1 to 2 minutes to record your answer on camera. You get up to one retake per question.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-[14px]">
-            <div className="p-[22px_20px] rounded-[14px] border-[1.5px] border-[#E6E6E6] relative bg-gradient-to-b from-[#FAFCFF] to-white">
-              <div className="w-[50px] h-[50px] rounded-[12px] bg-gradient-to-br from-[#EBF6FF] to-white border-[1.5px] border-[#EBF6FF] display flex items-center justify-center text-[#0047CC] mb-[14px]">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="3" fill="currentColor" />
-                </svg>
-              </div>
-              <div className="text-[10.5px] font-[800] tracking-[0.5px] uppercase text-[#0047CC] mb-[6px]">Path 1</div>
-              <div className="text-[16px] font-[900] text-[#1A1A1A] mb-[6px] tracking-[-0.2px]">Record live in your browser</div>
-              <div className="text-[13px] text-[#4A4A4A] leading-[1.6] mb-[12px]">Use your laptop or phone&apos;s camera and microphone. Record, watch back, retake if there&apos;s time, then submit.</div>
-              <ul className="list-none flex flex-col gap-[7px]">
-                {[
-                  'One in-browser take per question',
-                  'You can re-record while your question timer is running',
-                  'Audio levels meter shown live',
-                  'Nothing leaves your device until you tap Submit'
-                ].map((li, i) => (
-                  <li key={i} className="text-[12px] text-[#4A4A4A] font-[600] pl-[18px] relative line-height-[1.5] before:content-[''] before:absolute before:left-0 before:top-[7px] before:w-[6px] before:h-[6px] before:rounded-full before:bg-[#0047CC]">
-                    {li}
-                  </li>
-                ))}
-              </ul>
+          <div className="p-[22px_20px] rounded-[14px] border-[1.5px] border-[#E6E6E6] relative bg-gradient-to-b from-[#FAFCFF] to-white">
+            <div className="w-[50px] h-[50px] rounded-[12px] bg-gradient-to-br from-[#EBF6FF] to-white border-[1.5px] border-[#EBF6FF] flex items-center justify-center text-[#0047CC] mb-[14px]">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="3" fill="currentColor" />
+              </svg>
             </div>
-
-            <div className="p-[22px_20px] rounded-[14px] border-[1.5px] border-[#E6E6E6] relative bg-gradient-to-b from-[#FAFCFF] to-white">
-              <div className="w-[50px] h-[50px] rounded-[12px] bg-gradient-to-br from-[#EBF6FF] to-white border-[1.5px] border-[#EBF6FF] display flex items-center justify-center text-[#0047CC] mb-[14px]">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
-              </div>
-              <div className="text-[10.5px] font-[800] tracking-[0.5px] uppercase text-[#0047CC] mb-[6px]">Path 2</div>
-              <div className="text-[16px] font-[900] text-[#1A1A1A] mb-[6px] tracking-[-0.2px]">Upload a pre-recorded video</div>
-              <div className="text-[13px] text-[#4A4A4A] leading-[1.6] mb-[12px]">Recorded on your phone or device beforehand? Drag and drop the file. Preview, replace if needed, then submit.</div>
-              <ul className="list-none flex flex-col gap-[7px]">
-                {[
-                  'Per-question file upload, MP4, MOV or WebM',
-                  'Max 50 mb per question, max 3 minutes long',
-                  'Watch preview before submitting',
-                  'Replace freely while the question timer is running'
-                ].map((li, i) => (
-                  <li key={i} className="text-[12px] text-[#4A4A4A] font-[600] pl-[18px] relative line-height-[1.5] before:content-[''] before:absolute before:left-0 before:top-[7px] before:w-[6px] before:h-[6px] before:rounded-full before:bg-[#0047CC]">
-                    {li}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          <div className="mt-[18px] padding py-3 px-[14px] border border-[#0047CC] rounded-[10px] text-[12.5px] text-[#0047CC] leading-[1.55] display flex gap-[9px] items-start">
-            <svg className="w-[15px] h-[15px] text-[#0047CC] shrink-0 mt-[1px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <div><strong>Mix and match freely.</strong> You can record one question live, upload the next, then record the third. The method doesn&apos;t affect how you&apos;re assessed, only the content does.</div>
+            <div className="text-[16px] font-[900] text-[#1A1A1A] mb-[6px] tracking-[-0.2px]">Direct in-browser recording</div>
+            <div className="text-[13px] text-[#4A4A4A] leading-[1.6] mb-[12px]">Use your device&apos;s camera and microphone. Record, review your answer, retake if needed, then submit.</div>
+            <ul className="list-none flex flex-col gap-[7px]">
+              {[
+                '30 seconds of quiet think time before the recording begins',
+                'Up to 1 retake per question (maximum 2 takes total)',
+                'Live audio meter to ensure your microphone is working clearly',
+                'Nothing is submitted until you confirm your recording'
+              ].map((li, i) => (
+                <li key={i} className="text-[12px] text-[#4A4A4A] font-[600] pl-[18px] relative leading-[1.5] before:content-[''] before:absolute before:left-0 before:top-[7px] before:w-[6px] before:h-[6px] before:rounded-full before:bg-[#0047CC]">
+                  {li}
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 
@@ -303,12 +270,14 @@ const RoleAssessmentStageThreeIntro: React.FC = () => {
               </svg>
               You can pause between questions, not during one.
             </div>
-            <div className="flex gap-[9px] items-start font-[600] text-[12.5px] text-[#1A1A1A] leading-[1.5]">
-              <svg className="w-[14px] h-[14px] text-[#0047CC] shrink-0 mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 9h6v6H9z" />
-              </svg>
-              Don&apos;t switch tabs during recording. Auto-submits in 3 seconds.
-            </div>
+            {ENABLE_ANTI_CHEAT_TAB_SWITCH && (
+              <div className="flex gap-[9px] items-start font-[600] text-[12.5px] text-[#1A1A1A] leading-[1.5]">
+                <svg className="w-[14px] h-[14px] text-[#0047CC] shrink-0 mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 9h6v6H9z" />
+                </svg>
+                Don&apos;t switch tabs during recording. Auto-submits in 3 seconds.
+              </div>
+            )}
             <div className="flex gap-[9px] items-start font-[600] text-[12.5px] text-[#1A1A1A] leading-[1.5]">
               <svg className="w-[14px] h-[14px] text-[#0047CC] shrink-0 mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <polyline points="9 11 12 14 22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />

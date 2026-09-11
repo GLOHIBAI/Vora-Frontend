@@ -40,7 +40,7 @@ export interface DatePickerProps {
 export interface SelectProps {
   label?: string | React.ReactNode;
   hideLabel?: boolean;
-  variant?: 'default' | 'inline';
+  variant?: 'default' | 'inline' | 'compact';
   menuClassName?: string;
   name?: string;
   options?: Option[];
@@ -51,6 +51,7 @@ export interface SelectProps {
   helperText?: string;
   hint?: string;
   className?: string;
+  disabled?: boolean;
   onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   onBlur?: () => void;
 }

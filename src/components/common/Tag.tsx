@@ -24,9 +24,14 @@ const Tag: React.FC<TagProps> = ({ label, onRemove, className = '', variant = 'b
     'blue-soft': 'bg-[#EBF6FF] text-[#0047CC] border-transparent',
   };
 
+  const baseStyle = styles[variant] || styles.blue;
+  const resolvedStyle = className.includes('bg-')
+    ? baseStyle.replace(/\bbg-\S+/g, '').trim()
+    : baseStyle;
+
   return (
     <span
-      className={`inline-flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-[11px] font-medium px-2 sm:px-3 py-0.5 sm:py-1.5 rounded-full animate-in fade-in zoom-in-95 duration-200 border max-w-full break-words whitespace-normal text-left ${styles[variant] || styles.blue} ${className}`}
+      className={`inline-flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-[11px] font-medium px-2 sm:px-3 py-0.5 sm:py-1.5 rounded-full animate-in fade-in zoom-in-95 duration-200 border max-w-full break-words whitespace-normal text-left ${resolvedStyle} ${className}`}
     >
       {label}
       {onRemove && (

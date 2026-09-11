@@ -8,9 +8,8 @@ import {
   useGate1ScreenDraft,
 } from '../../../hooks/useGate1ActiveScreen';
 import { useGate1PostSubmitNavigation } from '../../../hooks/useGate1PostSubmitNavigation';
-import { useAssessmentGatesProgressQuery } from '../../../services/queries/assessments';
 import { useGetPublicRoleQuery } from '../../../services/queries/talent';
-import { GATE1_SCREEN_LABELS, findGate1ProgressEntry, unwrapAssessmentData } from '../../../utils/assessmentSession';
+import { GATE1_SCREEN_LABELS, unwrapAssessmentData } from '../../../utils/assessmentSession';
 import { GATE1_TOTAL_PARTS } from '../../../utils/assessmentFlow';
 import type { Gate1ScreenKey } from '../../../services/queries/assessments/types';
 import type { AssessmentDraftResponse } from '../../../services/queries/assessments/types';
@@ -19,11 +18,11 @@ import type { AssessmentDraftResponse } from '../../../services/queries/assessme
  * Gate 1 active screen one API screen per visit.
  *
  * Flow per screen:
- *   1. GET resume-state → nextScreenKey
- *   2. POST gates/1/start { screen } → items[] for this screen only
- *   3. PATCH .../responses (optional draft, partial answers)
- *   4. POST .../submit { responses } → gateRollup (no nextScreenKey)
- *   5. Refetch resume-state → POST start for next screen OR interstitial/review
+ *   1. Initial boot: GET resume-state -> nextScreenKey -> POST gates/1/start { screen }
+ *   2. PATCH .../responses (draft answers)
+ *   3. POST .../submit { responses } -> returns nextScreen.nextScreenKey
+ *   4. Direct advance: POST gates/1/start { screen: nextScreenKey } (no intermediate resume-state)
+ *   5. Last screen (11th / values_tradeoff): navigate directly to review -> gate submit -> verdict
  */
 const Gate1ScreenView: React.FC = () => {
   const navigate = useNavigate();
@@ -44,15 +43,11 @@ const Gate1ScreenView: React.FC = () => {
     isRecoverableError,
     reloadAfterSubmit,
     refetchResumeState,
+    advanceToNextScreen,
   } = useGate1ActiveScreen();
 
   const { data: draftRaw } = useGate1ScreenDraft(assessmentId, screenData);
   const draft = unwrapAssessmentData<AssessmentDraftResponse>(draftRaw);
-
-  const { data: progressRaw } = useAssessmentGatesProgressQuery(assessmentId ?? '', {
-    enabled: !!assessmentId,
-  });
-  const gateProgress = findGate1ProgressEntry(progressRaw);
 
   const handleScreenComplete = useGate1PostSubmitNavigation({
     roleSlug,
@@ -60,6 +55,7 @@ const Gate1ScreenView: React.FC = () => {
     finishedScreenKey: (screenData?.screenKey ?? '') as Gate1ScreenKey,
     refetchResumeState,
     reloadAfterSubmit,
+    advanceToNextScreen,
   });
 
   useEffect(() => {
@@ -134,7 +130,9 @@ const Gate1ScreenView: React.FC = () => {
     resumeState.session === 1 ? resumeState.session1Screens : resumeState.session2Screens;
   const screenIndex = (sessionScreens as readonly string[]).indexOf(screenKey);
 
-  const partsCompleted = gateProgress?.completedScreens ?? resumeState.completedScreenKeys.length;
+  const sessionOffset = resumeState.session === 2 ? 6 : 0;
+  const currentStep = screenIndex >= 0 ? sessionOffset + screenIndex : 0;
+  const partsCompleted = Math.max(resumeState.completedScreenKeys.length, currentStep);
   const partsRequired = GATE1_TOTAL_PARTS;
 
   return (

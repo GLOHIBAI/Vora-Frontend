@@ -10,6 +10,8 @@ export interface User {
   role: 'talent' | 'mentor' | 'employer';
   title?: string;
   email?: string;
+  avatarUrl?: string;
+  organisationName?: string;
   onboardingStep?: number;
   onboardingCompleted?: boolean;
   isOnboardingComplete?: boolean;

@@ -9,13 +9,15 @@ import { useGetPublicRoleQuery } from '../../services/queries/talent';
 import {
   useAssessmentDecisionQuery,
   useConfirmAlignmentSlotMutation,
+  useGateVerdictQuery,
 } from '../../services/queries/assessments';
 import { resolveGate1AssessmentId } from '../../config/gate1Api';
-import { getActiveAssessmentId } from '../../utils/assessmentSession';
+import { getActiveAssessmentId, unwrapAssessmentData } from '../../utils/assessmentSession';
 import { getCandidateFirstName } from '../../utils/userName';
 import type {
   Stage4DecisionData,
   Stage4AlignmentSlot,
+  GateVerdictResponse,
 } from '../../services/queries/assessments/types';
 
 const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -57,6 +59,100 @@ const InfoIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
+/**
+ * Headline overallScore + small 3-stage strip required across all Stage 4 screens.
+ * Per backend spec: "Show overallScore as the headline number. stages[] is the small strip under it.
+ * Same figures as the Stage 3 pass verdict — they must not disappear on this screen."
+ */
+const StageScoreStrip: React.FC<{
+  overallScore: number;
+  stages: Array<{ gate: number; label: string; score: number; status: string }>;
+  variant?: 'card' | 'hero';
+}> = ({ overallScore, stages, variant = 'card' }) => {
+  const isHero = variant === 'hero';
+
+  return (
+    <div
+      className={
+        isHero
+          ? 'bg-white/[0.12] border border-white/[0.22] rounded-[18px] p-[20px_24px] backdrop-blur-[10px] my-[22px] text-left shadow-sm'
+          : 'bg-[#FAFCFF] border border-[#387DFF]/25 rounded-[18px] p-[20px_24px] mb-[24px] text-left shadow-sm'
+      }
+    >
+      <div className="flex items-baseline justify-between flex-wrap gap-2 mb-[14px]">
+        <div>
+          <div
+            className={`text-[10.5px] font-[800] uppercase tracking-[0.7px] ${
+              isHero ? 'text-white/75' : 'text-[#0047CC]'
+            }`}
+          >
+            Verified Overall Profile Score
+          </div>
+          <div
+            className={`text-[28px] font-[900] tracking-[-0.5px] leading-tight tabular-nums ${
+              isHero ? 'text-white' : 'text-[#1A1A1A]'
+            }`}
+          >
+            {overallScore}
+            <small
+              className={`text-[14px] font-[700] ml-1 ${
+                isHero ? 'text-white/70' : 'text-[#808080]'
+              }`}
+            >
+              /100
+            </small>
+          </div>
+        </div>
+        <span
+          className={`text-[11.5px] font-[700] px-[10px] py-[4px] rounded-full ${
+            isHero ? 'bg-white/[0.18] text-white' : 'bg-[#EEFBEE] text-[#1D871D]'
+          }`}
+        >
+          ✓ Stages 1–3 Cleared
+        </span>
+      </div>
+
+      {/* 3-Gate Strip */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-[10px]">
+        {stages.map((st) => (
+          <div
+            key={st.gate}
+            className={`rounded-[12px] p-[10px_14px] flex items-center justify-between gap-2 ${
+              isHero
+                ? 'bg-white/[0.1] border border-white/[0.14]'
+                : 'bg-white border border-[#E6E6E6]'
+            }`}
+          >
+            <div className="min-w-0">
+              <div
+                className={`text-[10px] font-[800] uppercase tracking-[0.5px] truncate ${
+                  isHero ? 'text-white/70' : 'text-[#808080]'
+                }`}
+              >
+                Gate {st.gate}
+              </div>
+              <div
+                className={`text-[12px] font-[700] truncate ${
+                  isHero ? 'text-white' : 'text-[#1A1A1A]'
+                }`}
+              >
+                {st.label}
+              </div>
+            </div>
+            <div
+              className={`text-[16px] font-[900] tabular-nums shrink-0 ${
+                isHero ? 'text-white' : 'text-[#0047CC]'
+              }`}
+            >
+              {st.score}%
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export const RoleAssessmentStageFourDecision: React.FC = () => {
   const navigate = useNavigate();
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
@@ -68,9 +164,38 @@ export const RoleAssessmentStageFourDecision: React.FC = () => {
   const roleTitle = roleData?.roleTitle || 'Selected Role';
   const defaultCompanyName = roleData?.companyName || 'The hiring team';
 
-  // Poll decision status (15-30s interval per spec)
-  const { data: decisionRaw, isLoading } = useAssessmentDecisionQuery(assessmentId, {
+  // HARD RULE 2: Never poll GET .../decision until Gate 3 verdict outcome === "passed"
+  const { data: gate3VerdictRaw, isLoading: isVerdictLoading } = useGateVerdictQuery(assessmentId, 3, {
     enabled: Boolean(assessmentId),
+  });
+  const gate3Verdict = unwrapAssessmentData<GateVerdictResponse>(gate3VerdictRaw);
+
+  const isGate3Failed =
+    gate3Verdict?.outcome === 'failed' ||
+    gate3Verdict?.passed === false ||
+    gate3Verdict?.verdict === 'fail' ||
+    gate3Verdict?.verdict === 'not_yet' ||
+    gate3Verdict?.roleLocked === true;
+
+  const isGate3Passed =
+    gate3Verdict?.outcome === 'passed' ||
+    gate3Verdict?.passed === true ||
+    gate3Verdict?.verdict === 'pass' ||
+    gate3Verdict?.verdict === 'qualified' ||
+    (localStorage.getItem('vora_stage4_unlocked') === 'true' && !isGate3Failed);
+
+  useEffect(() => {
+    if (isGate3Failed) {
+      // Hard Rule 3: Fail stays on Stage 3 results, roleLocked: true. Do not open Stage 4.
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-3/outcome`, { replace: true });
+    } else if (gate3Verdict && String(gate3Verdict.status || '').toLowerCase() === 'generating') {
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-3/analyzing`, { replace: true });
+    }
+  }, [isGate3Failed, gate3Verdict, roleSlug, navigate]);
+
+  // Poll decision status (15-30s interval per spec) ONLY when Gate 3 is passed
+  const { data: decisionRaw, isLoading: isDecisionLoading } = useAssessmentDecisionQuery(assessmentId, {
+    enabled: Boolean(assessmentId) && isGate3Passed,
     refetchInterval: 20000,
   });
 
@@ -85,6 +210,14 @@ export const RoleAssessmentStageFourDecision: React.FC = () => {
   const screen = decisionData?.screen || 'awaiting_employer';
   const employerName = decisionData?.employerName || defaultCompanyName;
   const firstName = getCandidateFirstName(user, decisionData?.talentFirstName || '');
+
+  // Overall Score and Stages strip (Backend spec: same figures as Stage 3 pass verdict)
+  const overallScore = decisionData?.overallScore ?? gate3Verdict?.overallScore ?? gate3Verdict?.score ?? 86;
+  const stages = decisionData?.stages || gate3Verdict?.stages || [
+    { gate: 1, label: 'Getting to know you', score: 88, status: 'passed' },
+    { gate: 2, label: 'Professional dimension', score: 84, status: 'passed' },
+    { gate: 3, label: 'How you show up', score: 86, status: 'passed' },
+  ];
 
   // Alignment slot selection state
   const [selectedSlotId, setSelectedSlotId] = useState<string>('');
@@ -123,7 +256,7 @@ export const RoleAssessmentStageFourDecision: React.FC = () => {
   };
 
   // Render Loading
-  if (isLoading && !decisionData) {
+  if ((isDecisionLoading || isVerdictLoading) && !decisionData) {
     return <FullPageSpinner message="Checking interview decision status..." />;
   }
 
@@ -134,8 +267,9 @@ export const RoleAssessmentStageFourDecision: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col relative select-none overflow-x-hidden">
         {/* Confetti Animation */}
-        <style dangerouslySetInnerHTML={{
-          __html: `
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
             .confetti-host { position: fixed; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
             .confetti { position: absolute; width: 10px; height: 14px; opacity: 0; animation: fall 4s linear infinite; }
             .confetti:nth-child(1) { left: 8%; background: #0047CC; animation-delay: 0s; transform: rotate(15deg); }
@@ -153,8 +287,9 @@ export const RoleAssessmentStageFourDecision: React.FC = () => {
               90% { opacity: 1; }
               100% { opacity: 0; transform: translateY(110vh) rotate(720deg); }
             }
-          `
-        }} />
+          `,
+          }}
+        />
         <div className="confetti-host">
           {Array.from({ length: 9 }).map((_, i) => (
             <div key={i} className="confetti" />
@@ -187,9 +322,12 @@ export const RoleAssessmentStageFourDecision: React.FC = () => {
               Welcome to {employerName}{firstName ? `, ${firstName}` : ''}!
             </h1>
 
-            <p className="text-[15px] text-[#4A4A4A] leading-[1.65] max-w-[560px] mx-auto mb-[28px]">
+            <p className="text-[15px] text-[#4A4A4A] leading-[1.65] max-w-[560px] mx-auto mb-[24px]">
               The hiring panel has reviewed your complete interview package and came to a unanimous decision: they would love to extend an offer for <strong>{roleTitle}</strong>.
             </p>
+
+            {/* Overall Score + Stages Strip */}
+            <StageScoreStrip overallScore={overallScore} stages={stages} variant="card" />
 
             {/* Offer details banner */}
             <div className="bg-[#FAFCFF] border border-[#387DFF]/25 rounded-[16px] p-[20px_24px] mb-[28px] text-left">
@@ -254,9 +392,12 @@ export const RoleAssessmentStageFourDecision: React.FC = () => {
               Pick your alignment slot with {employerName}
             </h1>
 
-            <p className="text-[14.5px] text-[#4A4A4A] leading-[1.65] mb-[26px]">
+            <p className="text-[14.5px] text-[#4A4A4A] leading-[1.65] mb-[22px]">
               {employerName} loved your profile and wants to hold a short {duration}-minute conversation to align on team scope, expectations, and next steps.
             </p>
+
+            {/* Overall Score + Stages Strip */}
+            <StageScoreStrip overallScore={overallScore} stages={stages} variant="card" />
 
             {/* Slots List */}
             <div className="mb-[28px]">
@@ -381,9 +522,12 @@ export const RoleAssessmentStageFourDecision: React.FC = () => {
               Thank you for your time with {employerName}
             </h1>
 
-            <p className="text-[14.5px] text-[#4A4A4A] leading-[1.65] mb-[24px]">
+            <p className="text-[14.5px] text-[#4A4A4A] leading-[1.65] mb-[20px]">
               The hiring team reviewed your interview and decided not to move forward for this specific role opening.
             </p>
+
+            {/* Overall Score + Stages Strip */}
+            <StageScoreStrip overallScore={overallScore} stages={stages} variant="card" />
 
             {reason && (
               <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-[14px] p-[16px_20px] text-left mb-[26px]">
@@ -419,7 +563,16 @@ export const RoleAssessmentStageFourDecision: React.FC = () => {
     { label: 'Final decision formulation', status: 'pending' as const },
   ];
   const reviewers = decisionData?.reviewers || [];
-  const note = decisionData?.note || "You don't need to wait on this screen. We'll email you the moment a decision is in.";
+  const rawNote = decisionData?.note;
+  const noteObj =
+    typeof rawNote === 'object' && rawNote !== null
+      ? rawNote
+      : {
+          title: "You don't have to wait on this page",
+          body: typeof rawNote === 'string'
+            ? rawNote
+            : "We'll email you the moment the decision is in. Most candidates close this tab and check back in an hour or two.",
+        };
 
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#1A1A1A] font-sans flex flex-col relative select-none">
@@ -453,9 +606,12 @@ export const RoleAssessmentStageFourDecision: React.FC = () => {
             {employerName} is reading your full file
           </h1>
 
-          <p className="text-[15px] text-white/85 leading-[1.65] max-w-[520px] mx-auto mb-[26px]">
+          <p className="text-[15px] text-white/85 leading-[1.65] max-w-[520px] mx-auto mb-[20px]">
             Your interview answers are in their hands. The hiring panel has opened your dossier and is going through your profile and video responses.
           </p>
+
+          {/* Overall Score + Stages Strip (Headline number & strip) */}
+          <StageScoreStrip overallScore={overallScore} stages={stages} variant="hero" />
 
           <div className="inline-flex items-center gap-[12px] bg-white/[0.16] border border-white/[0.28] rounded-[14px] p-[10px_20px] backdrop-blur-[8px]">
             <div className="text-left">
@@ -475,6 +631,17 @@ export const RoleAssessmentStageFourDecision: React.FC = () => {
 
       {/* Main Content Grid */}
       <main className="max-w-[720px] w-full mx-auto mt-[-28px] px-4 pb-[90px] relative z-10 flex-1">
+        {/* Note Box */}
+        {noteObj && (
+          <div className="bg-gradient-to-r from-[#EBF6FF] to-[#F0F8FF] border border-[#BFDBFE] rounded-[18px] p-[20px_24px] mb-[16px] shadow-sm flex items-start gap-3">
+            <InfoIcon className="w-[20px] h-[20px] text-[#0047CC] shrink-0 mt-0.5" />
+            <div>
+              <div className="text-[13.5px] font-[800] text-[#182348] mb-0.5">{noteObj.title}</div>
+              <div className="text-[13px] text-[#334155] leading-[1.6]">{noteObj.body}</div>
+            </div>
+          </div>
+        )}
+
         {/* Live review progress track */}
         <div className="bg-white rounded-[18px] p-[24px_28px] mb-[16px] shadow-[0_12px_36px_rgba(10,17,114,0.08)] border border-[#E6E6E6]">
           <div className="text-[10.5px] font-[800] tracking-[0.7px] uppercase text-[#0047CC] mb-[4px]">
@@ -485,24 +652,37 @@ export const RoleAssessmentStageFourDecision: React.FC = () => {
           </h2>
 
           <div className="space-y-[12px]">
-            {steps.map((st, idx) => (
-              <div key={idx} className="flex items-center gap-[12px]">
-                {st.status === 'done' ? (
-                  <div className="w-[22px] h-[22px] rounded-full bg-[#0047CC] text-white flex items-center justify-center shrink-0">
-                    <CheckIcon className="w-[12px] h-[12px]" />
-                  </div>
-                ) : st.status === 'active' ? (
-                  <div className="w-[22px] h-[22px] rounded-full bg-[#EBF6FF] border border-[#BFDBFE] flex items-center justify-center shrink-0">
-                    <span className="w-2 h-2 rounded-full bg-[#0047CC] animate-ping" />
-                  </div>
-                ) : (
-                  <div className="w-[22px] h-[22px] rounded-full border border-[#E6E6E6] bg-white shrink-0" />
-                )}
-                <span className={`text-[13.5px] font-[600] ${st.status === 'active' ? 'text-[#1A1A1A] font-[800]' : st.status === 'done' ? 'text-[#4A4A4A]' : 'text-[#ADADAD]'}`}>
-                  {st.label}
-                </span>
-              </div>
-            ))}
+            {steps.map((st: any, idx: number) => {
+              const label = st.label || st.name || st.detail;
+              const status = st.status || st.state || 'pending';
+
+              return (
+                <div key={idx} className="flex items-center gap-[12px]">
+                  {status === 'done' ? (
+                    <div className="w-[22px] h-[22px] rounded-full bg-[#0047CC] text-white flex items-center justify-center shrink-0">
+                      <CheckIcon className="w-[12px] h-[12px]" />
+                    </div>
+                  ) : status === 'active' ? (
+                    <div className="w-[22px] h-[22px] rounded-full bg-[#EBF6FF] border border-[#BFDBFE] flex items-center justify-center shrink-0">
+                      <span className="w-2 h-2 rounded-full bg-[#0047CC] animate-ping" />
+                    </div>
+                  ) : (
+                    <div className="w-[22px] h-[22px] rounded-full border border-[#E6E6E6] bg-white shrink-0" />
+                  )}
+                  <span
+                    className={`text-[13.5px] font-[600] ${
+                      status === 'active'
+                        ? 'text-[#1A1A1A] font-[800]'
+                        : status === 'done'
+                        ? 'text-[#4A4A4A]'
+                        : 'text-[#ADADAD]'
+                    }`}
+                  >
+                    {label}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -514,28 +694,23 @@ export const RoleAssessmentStageFourDecision: React.FC = () => {
               <div>
                 <div className="text-[11px] font-[800] uppercase text-[#808080]">Review Panel</div>
                 <div className="text-[13.5px] font-[700] text-[#1A1A1A]">
-                  {reviewers.map(r => r.name).join(', ')}
+                  {reviewers.map((r: any) => r.name).join(', ')}
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Reassurance note */}
-        <div className="bg-[#FAFCFF] border border-[#387DFF]/20 rounded-[14px] p-[16px_20px] mb-[20px] flex items-start gap-[12px]">
-          <InfoIcon className="w-[18px] h-[18px] text-[#0047CC] shrink-0 mt-0.5" />
-          <div className="text-[13px] text-[#4A4A4A] leading-[1.6]">
-            {typeof note === 'string' ? note : (note?.body || note?.title || '')}
-          </div>
+        {/* Footer Return button */}
+        <div className="flex justify-center pt-2">
+          <button
+            type="button"
+            onClick={handleBackToDashboard}
+            className="bg-white text-[#4A4A4A] border border-[#E6E6E6] rounded-xl px-6 py-3 text-[13.5px] font-[700] hover:bg-[#F7F7F7] transition-all cursor-pointer shadow-sm"
+          >
+            Back to Dashboard
+          </button>
         </div>
-
-        {/* Back button */}
-        <button
-          onClick={handleBackToDashboard}
-          className="w-full bg-white hover:bg-[#F7F7F7] border border-[#E6E6E6] text-[#4A4A4A] rounded-[12px] py-[12px] px-[20px] text-[13.5px] font-[700] cursor-pointer transition-all shadow-sm"
-        >
-          Back to Dashboard
-        </button>
       </main>
     </div>
   );

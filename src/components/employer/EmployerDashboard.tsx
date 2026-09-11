@@ -15,11 +15,13 @@ import {
   WalletIcon,
   CalendarIcon,
   InfoIcon,
+  VideoIcon,
 } from '../common/Icons';
 import PostJobWizard from './PostJobWizard';
 import PostJobModal from './PostJobModal';
 import Tag from '../common/Tag';
 import Button from '../common/Button';
+import EmptyState from '../common/EmptyState';
 import FullPageSpinner from '../common/FullPageSpinner';
 import { useAuth } from '../../context/AuthContext';
 import { useEmployerDashboardQuery } from '../../services/queries/employer';
@@ -441,9 +443,13 @@ const EmployerDashboard: React.FC = () => {
             </div>
             <div className="divide-y divide-gray-50">
               {activeJobs.length === 0 ? (
-                <div className="p-8 text-center text-gray-400 text-[13px]">
-                  No active jobs found. Click &quot;Post a Job&quot; to create your first listing.
-                </div>
+                <EmptyState
+                  icon={BriefcaseIcon}
+                  title="No active jobs found"
+                  description='Click "Post a Job" to create your first listing.'
+                  compact
+                  className="py-8"
+                />
               ) : (
                 activeJobs.map((job, i) => (
                   <div
@@ -487,9 +493,13 @@ const EmployerDashboard: React.FC = () => {
             </div>
             <div className="divide-y divide-gray-50">
               {alignmentSessions.length === 0 ? (
-                <div className="p-8 text-center text-gray-400 text-[13px]">
-                  No alignment sessions scheduled yet.
-                </div>
+                <EmptyState
+                  icon={VideoIcon}
+                  title="No alignment sessions scheduled"
+                  description="Sessions will appear here once requested or scheduled."
+                  compact
+                  className="py-8"
+                />
               ) : (
                 alignmentSessions.map((session, i) => {
                   const candidateName = session.candidateName || session.name || 'Candidate';
@@ -553,9 +563,13 @@ const EmployerDashboard: React.FC = () => {
 
             <div className="space-y-3">
               {checkIns.length === 0 ? (
-                <div className="p-6 text-center text-gray-400 text-[13px] bg-gray-50/50 rounded-xl">
-                  No post-hire check-ins pending.
-                </div>
+                <EmptyState
+                  icon={ClockIcon}
+                  title="No post-hire check-ins pending"
+                  description="Completed hires and upcoming milestones will appear here."
+                  compact
+                  className="py-6"
+                />
               ) : (
                 checkIns.map((item, idx) => {
                   const initials =
@@ -698,9 +712,12 @@ const EmployerDashboard: React.FC = () => {
             </div>
             <div className="divide-y divide-gray-50">
               {recentActivity.length === 0 ? (
-                <div className="p-8 text-center text-gray-400 text-[13px]">
-                  No recent activity recorded yet.
-                </div>
+                <EmptyState
+                  icon={InfoIcon}
+                  title="No recent activity recorded yet"
+                  compact
+                  className="py-8"
+                />
               ) : (
                 recentActivity.map((act, i) => {
                   const iconConfig = mapActivityIcon(act.iconType);

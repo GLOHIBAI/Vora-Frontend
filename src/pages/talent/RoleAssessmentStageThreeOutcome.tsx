@@ -56,6 +56,13 @@ const ClockIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
+const getInitials = (name: string): string => {
+  if (!name) return 'VA';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
+
 const renderFormattedText = (text: string, isHero = false) => {
   if (!text) return null;
   const parts = text.split(/(\d+(?:\.\d+)?%)/g);
@@ -71,7 +78,7 @@ const renderFormattedText = (text: string, isHero = false) => {
   });
 };
 
-const RoleAssessmentStageTwoOutcome: React.FC = () => {
+const RoleAssessmentStageThreeOutcome: React.FC = () => {
   const navigate = useNavigate();
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
   const { user } = useAuth();
@@ -83,7 +90,7 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
     }
   }, [assessmentId, roleSlug, navigate]);
 
-  const { data: verdictRaw, isLoading: isVerdictLoading, isFetching: isVerdictFetching } = useGateVerdictQuery(assessmentId, 2, { enabled: !!assessmentId });
+  const { data: verdictRaw, isLoading: isVerdictLoading, isFetching: isVerdictFetching } = useGateVerdictQuery(assessmentId, 3, { enabled: !!assessmentId });
   const verdict = unwrapAssessmentData<GateVerdictResponse>(verdictRaw);
 
   if (isVerdictLoading || isVerdictFetching || !verdict) {
@@ -95,19 +102,22 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
   const firstName = getCandidateFirstName(user, vData?.talent?.firstName || 'Candidate');
   const roleTitle = vData?.role?.roleTitle || 'Role';
   const employerName = vData?.role?.employerName || 'Vora AI';
-  const score = vData?.score ?? 0;
+  const score = vData?.score ?? 71;
   const threshold = vData?.threshold ?? 80;
+  const overallScore = vData?.overallScore ?? 81;
 
-  const heroTag = vData?.heroTag || 'Stage 2 outcome · with your next path';
-  const headline = vData?.headline || `Stage 2 interview: ${firstName}, you did not pass.`;
-  const summary = vData?.summary || `Your Stage 2 composite score of ${score}% did not clear the ${threshold}% threshold for ${roleTitle} at ${employerName}.`;
+  const heroTag = vData?.heroTag || 'Stage 3 outcome · with your next path';
+  const headline = vData?.headline || `Stage 3 interview: ${firstName}, you did not pass.`;
+  const summary =
+    vData?.summary ||
+    `Your Stage 3 score of ${score}% did not clear the ${threshold}% threshold for ${roleTitle} at ${employerName}. While your overall profile score across all three gates is ${overallScore}%, Stage 3 is a required gate and cannot be averaged out.`;
 
-  const narrativeParagraphs: string[] =
-    vData?.narrativeParagraphs ||
-    vData?.data?.narrativeParagraphs ||
-    (verdictRaw as any)?.data?.narrativeParagraphs ||
-    (verdictRaw as any)?.narrativeParagraphs ||
-    [];
+  const narrativeParagraphs: string[] = vData?.narrativeParagraphs || [];
+  const stages: Array<{ gate: number; label: string; score: number; status: string }> = vData?.stages || [
+    { gate: 1, label: 'Stage 1 · Foundation', score: 86, status: 'passed' },
+    { gate: 2, label: 'Stage 2 · Knowledge & Expertise', score: 85, status: 'passed' },
+    { gate: 3, label: 'Stage 3 · How you show up', score: score, status: 'failed' },
+  ];
 
   const rawGaps =
     vData?.gaps ||
@@ -116,7 +126,6 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
     (verdict as any)?.data?.gaps ||
     (verdictRaw as any)?.gaps ||
     (verdictRaw as any)?.data?.gaps ||
-    (verdictRaw as any)?.data?.data?.gaps ||
     vData?.skillGaps ||
     vData?.competencyGaps ||
     [];
@@ -131,22 +140,7 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
     (Array.isArray((verdictRaw as any)?.data?.futureRoles) && (verdictRaw as any).data.futureRoles) ||
     (Array.isArray((verdictRaw as any)?.futureRoles) && (verdictRaw as any).futureRoles) ||
     [];
-  const parts: any[] =
-    (Array.isArray(vData?.parts) && vData.parts) ||
-    (Array.isArray(vData?.data?.parts) && vData.data.parts) ||
-    (Array.isArray((verdictRaw as any)?.data?.parts) && (verdictRaw as any).data.parts) ||
-    (Array.isArray((verdictRaw as any)?.parts) && (verdictRaw as any).parts) ||
-    [];
   const ledgerNote = vData?.ledgerNote || vData?.data?.ledgerNote || (verdictRaw as any)?.data?.ledgerNote;
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((part) => part.charAt(0))
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
 
   const getRelativePostedTime = (postedAt?: string) => {
     if (!postedAt) return 'Posted 2 days ago';
@@ -183,7 +177,7 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
         <span className="inline-flex items-center gap-[1px] text-[#0047CC]">
           <VoraLogo size="sm" to="/dashboard" />
         </span>
-        <div className="text-[12.5px] text-[#808080] font-[600]">Stage 2 · Outcome and what to do next</div>
+        <div className="text-[12.5px] text-[#808080] font-[600]">Stage 3 · Outcome and what to do next</div>
         <div className="flex items-center gap-[6px] text-[12px] text-[#808080] font-[600]">
           <svg className="w-[13px] h-[13px] text-[#0047CC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
             <polyline points="20 6 9 17 4 12" />
@@ -193,13 +187,13 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
       </header>
 
       {/* Stage Rail */}
-      <StageRail activeStage={2} greenDone={false} />
+      <StageRail activeStage={3} greenDone={false} />
 
       {/* Hero */}
       <section className="bg-gradient-to-br from-[#1A2138] via-[#2D3548] to-[#3B4361] text-white p-[48px_32px_60px] relative overflow-hidden">
         <div className="max-w-[880px] mx-auto relative z-[2]">
           <div className="inline-flex items-center gap-[7px] bg-white/10 border border-white/20 rounded-full p-[6px_14px] backdrop-blur-md mb-4">
-            <AlertCircleIcon className="w-[13px] h-[13px] text-[#0047CC]" />
+            <AlertCircleIcon className="w-[13px] h-[13px] text-[#387DFF]" />
             <span className="text-[11.5px] font-[800] tracking-[0.7px] uppercase text-white/90">{heroTag}</span>
           </div>
           <h1 className="text-[30px] font-[900] tracking-[-0.4px] leading-[1.22] mb-3.5 max-w-[680px]">
@@ -209,33 +203,34 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
             {renderFormattedText(summary, true)}
           </p>
 
-          {/* Composite score & Part breakdown boxes */}
+          {/* Composite score & Overall score boxes */}
           <div className="mt-6 flex gap-3.5 flex-wrap items-stretch">
-            {/* Composite score box */}
-            <div className="bg-white/10 border border-white/20 rounded-[14px] p-[18px_20px] backdrop-blur-md min-w-[140px] flex-1 max-w-[180px]">
-              <div className="text-[10.5px] font-[800] tracking-[0.6px] uppercase text-white/70 mb-1.5">Composite score</div>
-              <div className="text-[28px] font-[900] tracking-[-0.5px] leading-none tabular-nums">
+            {/* Stage 3 score box */}
+            <div className="bg-white/10 border border-white/20 rounded-[14px] p-[18px_20px] backdrop-blur-md min-w-[140px] flex-1 max-w-[200px]">
+              <div className="text-[10.5px] font-[800] tracking-[0.6px] uppercase text-white/70 mb-1.5">Stage 3 score</div>
+              <div className="text-[28px] font-[900] tracking-[-0.5px] leading-none tabular-nums text-[#FFB4B4]">
                 {score}<small className="text-[14px] font-[700] text-white/70 ml-1">/100</small>
               </div>
               <div className="text-[11.5px] text-white/75 font-[600] mt-1.5 leading-snug">Threshold to pass: {threshold}</div>
             </div>
 
-            {/* Part score boxes */}
-            {parts.map((p, idx) => (
-              <div key={p.key || p.part || idx} className="bg-white/10 border border-white/20 rounded-[14px] p-[18px_20px] backdrop-blur-md min-w-[140px] flex-1 max-w-[200px]">
-                <div className="text-[10.5px] font-[800] tracking-[0.6px] uppercase text-white/70 mb-1.5">
-                  {p.displayLabel || (p.partLabel ? `Part ${p.part || idx + 1} · ${p.partLabel}` : `Part ${p.part || idx + 1}`)}
-                </div>
-                <div className="text-[28px] font-[900] tracking-[-0.5px] leading-none tabular-nums">
-                  {p.scorePercent}<small className="text-[14px] font-[700] text-white/70 ml-1">%</small>
-                </div>
-                {(p.shortDetail || p.description) && (
-                  <div className="text-[11.5px] text-white/75 font-[600] mt-1.5 leading-snug line-clamp-2">
-                    {p.shortDetail || p.description}
-                  </div>
-                )}
+            {/* Overall 3-gate score */}
+            <div className="bg-white/10 border border-white/20 rounded-[14px] p-[18px_20px] backdrop-blur-md min-w-[140px] flex-1 max-w-[200px]">
+              <div className="text-[10.5px] font-[800] tracking-[0.6px] uppercase text-white/70 mb-1.5">Overall profile score</div>
+              <div className="text-[28px] font-[900] tracking-[-0.5px] leading-none tabular-nums">
+                {overallScore}<small className="text-[14px] font-[700] text-white/70 ml-1">/100</small>
               </div>
-            ))}
+              <div className="text-[11.5px] text-white/75 font-[600] mt-1.5 leading-snug">Across all 3 gates</div>
+            </div>
+
+            {/* Locked note */}
+            <div className="bg-white/10 border border-white/20 rounded-[14px] p-[18px_20px] backdrop-blur-md min-w-[140px] flex-1 max-w-[200px]">
+              <div className="text-[10.5px] font-[800] tracking-[0.6px] uppercase text-white/70 mb-1.5">Role lock status</div>
+              <div className="text-[20px] font-[900] tracking-[-0.3px] leading-snug text-white mt-1">
+                90-day cooldown
+              </div>
+              <div className="text-[11.5px] text-white/75 font-[600] mt-1.5 leading-snug">Verified ledger retained</div>
+            </div>
           </div>
         </div>
       </section>
@@ -253,17 +248,72 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
           </div>
         )}
 
+        {/* 3-Stage Progress Rail Summary */}
+        {stages.length > 0 && (
+          <div className="bg-white border-[1.5px] border-[#E6E6E6] rounded-[18px] p-[26px_30px]">
+            <div className="text-[11px] font-[800] tracking-[0.7px] uppercase text-[#0047CC] mb-2">
+              Three-Gate Performance Summary
+            </div>
+            <h2 className="text-[18px] font-[900] text-[#1A1A1A] tracking-[-0.2px] mb-3">
+              Where your overall scores landed
+            </h2>
+
+            <div className="flex flex-col divide-y divide-[#F0F0F0]">
+              {stages.map((st) => {
+                const isPass = st.status === 'passed' || st.score >= threshold;
+                return (
+                  <div key={st.gate} className="py-[14px] first:pt-0 last:pb-0 flex flex-col gap-[8px]">
+                    <div className="flex items-center justify-between gap-[10px]">
+                      <div className="flex items-center gap-[10px]">
+                        <div
+                          className={`w-[26px] h-[26px] rounded-[8px] flex items-center justify-center text-[12px] font-[900] ${
+                            isPass ? 'bg-[#EEFBEE] text-[#1D871D]' : 'bg-[#FEF2F2] text-[#DC2626]'
+                          }`}
+                        >
+                          {isPass ? '✓' : '×'}
+                        </div>
+                        <div>
+                          <div className="font-[800] text-[14px] text-[#1A1A1A]">{st.label}</div>
+                          <div className="text-[11.5px] text-[#808080] font-[600]">
+                            Status:{' '}
+                            <span className={`capitalize font-[700] ${isPass ? 'text-[#1D871D]' : 'text-[#DC2626]'}`}>
+                              {st.status}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-[18px] font-[900] text-[#1A1A1A] tracking-[-0.3px] tabular-nums">
+                        {st.score}<small className="text-[11.5px] font-[700] text-[#808080] ml-[2px]">%</small>
+                      </div>
+                    </div>
+                    <div className="h-[7px] bg-[#F7F7F7] rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-1000 ${
+                          isPass
+                            ? 'bg-gradient-to-r from-[#0047CC] to-[#387DFF]'
+                            : 'bg-gradient-to-r from-[#DC2626] to-[#EF4444]'
+                        }`}
+                        style={{ width: `${Math.min(100, st.score)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Competency Gaps Section */}
         {gaps.length > 0 && (
           <div className="bg-white border-[1.5px] border-[#E6E6E6] rounded-[18px] p-[26px_30px]">
             <div className="text-[11px] font-[800] tracking-[0.7px] uppercase text-[#0047CC] mb-2">
-              Where Stage 2 fell short
+              Where Stage 3 fell short
             </div>
             <h2 className="text-[18px] font-[900] text-[#1A1A1A] tracking-[-0.2px] mb-1.5">
-              {gaps.length} {gaps.length === 1 ? 'competency came' : 'competencies came'} in below the bar
+              {gaps.length} {gaps.length === 1 ? 'area came' : 'areas came'} in below the threshold
             </h2>
             <p className="text-[13.5px] text-[#808080] leading-[1.6] mb-4">
-              These areas specifically pulled your composite score (<strong className="font-[800] text-[#1A1A1A]">{score}%</strong>) below the required <strong className="font-[800] text-[#1A1A1A]">{threshold}%</strong> threshold.
+              These delivery and communication areas brought your Stage 3 score (<strong className="font-[800] text-[#1A1A1A]">{score}%</strong>) below the required <strong className="font-[800] text-[#1A1A1A]">{threshold}%</strong> threshold.
             </p>
 
             <div className="space-y-3.5">
@@ -305,7 +355,7 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
         )}
 
         {/* Evidence Map */}
-        <EvidenceMap evidenceMap={verdict?.evidenceMap} />
+        <EvidenceMap evidenceMap={vData?.evidenceMap} />
 
         {/* Diagnosis Feedback Section */}
         {diagnosis && diagnosis.rationale && (
@@ -314,7 +364,7 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
               Diagnosis & Feedback
             </div>
             <h2 className="text-[18px] font-[900] text-[#1A1A1A] tracking-[-0.2px] mb-2">
-              Interview Rationale
+              Executive Evaluation Rationale
             </h2>
             <p className="text-[14px] text-[#4A4A4A] leading-[1.7]">
               {diagnosis.rationale}
@@ -324,14 +374,14 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
 
         {/* Curator Recommendation Section */}
         {curator && (
-          <div className="bg-gradient-to-br from-[#182348] to-[#0047CC] text-white rounded-[18px] p-[32px_34px] relative overflow-hidden">
+          <div className="bg-gradient-to-br from-[#182348] to-[#0047CC] text-white rounded-[18px] p-[32px_34px] relative overflow-hidden shadow-[0_12px_36px_rgba(0,71,204,0.18)]">
             <div className="text-[11px] font-[800] tracking-[0.7px] uppercase text-white/75 mb-2 relative z-10">
-              {curator.eyebrow || 'Curated recommendation'}
+              {curator.eyebrow || 'From the curator'}
             </div>
             <h2 className="text-[22px] font-[900] text-white tracking-[-0.3px] leading-[1.25] mb-2.5 relative z-10">
-              {curator.title}
+              {curator.title || 'Why we recommend this path for you'}
             </h2>
-            <p className="text-[14.5px] text-white/85 leading-[1.7] max-w-[580px] relative z-10">
+            <p className="text-[14.5px] text-white/85 leading-[1.7] max-w-[620px] relative z-10">
               {curator.body}
             </p>
           </div>
@@ -348,11 +398,11 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
             <div className="p-[30px_34px]">
               <div className="flex gap-4 items-start mb-4 flex-wrap">
                 <div className="w-[74px] h-[74px] rounded-full bg-gradient-to-br from-[#182348] to-[#0047CC] text-white flex items-center justify-center font-[900] text-[22px] shrink-0 border-2 border-[#D4A017]/60 shadow-lg">
-                  {getInitials(mentor.name || 'MO')}
+                  {getInitials(mentor.name || 'KA')}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="inline-flex items-center gap-1.5 bg-[#FEF9E7] text-[#92400E] text-[10.5px] font-[900] uppercase px-2.5 py-1 rounded-md mb-1.5">
-                    The instructor
+                    Executive Mentor
                   </div>
                   <div className="text-[18px] font-[900] text-[#1A1A1A] tracking-[-0.3px] leading-tight mb-1">
                     {mentor.name}
@@ -363,7 +413,12 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
                   {mentor.credentials && mentor.credentials.length > 0 && (
                     <div className="flex gap-2 flex-wrap">
                       {mentor.credentials.map((cred: string, i: number) => (
-                        <span key={i} className={`text-[11px] px-2.5 py-0.5 rounded-md font-[700] ${i === 0 ? 'bg-[#FEF9E7] text-[#92400E] font-[800]' : 'bg-[#F7F7F7] text-[#4A4A4A]'}`}>
+                        <span
+                          key={i}
+                          className={`text-[11px] px-2.5 py-0.5 rounded-md font-[700] ${
+                            i === 0 ? 'bg-[#FEF9E7] text-[#92400E] font-[800]' : 'bg-[#F7F7F7] text-[#4A4A4A]'
+                          }`}
+                        >
                           {cred}
                         </span>
                       ))}
@@ -406,7 +461,9 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
                 {mentor.priceAmount && (
                   <div className="bg-[#F7F7F7] border border-[#E6E6E6] rounded-xl p-3 text-center">
                     <div className="text-[10px] font-[800] uppercase text-[#808080] mb-0.5">Fee</div>
-                    <div className="text-[14.5px] font-[900] text-[#1A1A1A]">{mentor.priceCurrency || 'NGN'} {mentor.priceAmount.toLocaleString()}</div>
+                    <div className="text-[14.5px] font-[900] text-[#1A1A1A]">
+                      {mentor.priceCurrency || 'USD'} {mentor.priceAmount.toLocaleString()}
+                    </div>
                   </div>
                 )}
               </div>
@@ -419,7 +476,10 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
                   </div>
                   <ul className="space-y-1.5">
                     {mentor.fixesSummary.map((fix: string, i: number) => (
-                      <li key={i} className="text-[12.5px] text-[#1A1A1A] font-[600] pl-4 relative leading-relaxed before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-[#2CA62C]">
+                      <li
+                        key={i}
+                        className="text-[12.5px] text-[#1A1A1A] font-[600] pl-4 relative leading-relaxed before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-[#2CA62C]"
+                      >
                         {fix}
                       </li>
                     ))}
@@ -440,14 +500,14 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
               {futureRoles.length} open {futureRoles.length === 1 ? 'role' : 'roles'} matching your current & projected profile
             </h2>
             <p className="text-[13.5px] text-[#808080] leading-[1.65] mb-4 max-w-[600px]">
-              These employers are actively seeking talent with your profile. Tap any role to view details and apply.
+              These employers are actively seeking talent with your strong foundational and domain scores.
             </p>
 
             <div className="space-y-3">
               {futureRoles.map((role) => {
                 const daysRemaining = getDaysRemaining(role.closesAt, role.postedAt);
                 const relativePosted = getRelativePostedTime(role.postedAt);
-                const matchPercent = role.projectedMatchPercent || role.currentMatchPercent || 90;
+                const matchPercent = role.projectedMatchPercent || role.currentMatchPercent || 88;
 
                 return (
                   <div
@@ -494,7 +554,7 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
                         {matchPercent}% match
                       </div>
                       <div className="text-[11px] text-[#808080] font-[600] mb-1">
-                        after course
+                        after mentorship
                       </div>
                       <div className="w-[70px] h-1.5 bg-[#F0F4FF] rounded-full overflow-hidden ml-auto">
                         <div
@@ -540,4 +600,4 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
   );
 };
 
-export default RoleAssessmentStageTwoOutcome;
+export default RoleAssessmentStageThreeOutcome;

@@ -37,6 +37,7 @@ const RoleAssessmentStageTwoPartThreeIntro: React.FC = () => {
   }, []);
 
   const [isSyncing, setIsSyncing] = React.useState(false);
+  const [isProcessing, setIsProcessing] = React.useState(false);
 
   const errorMsg =
     (error as { data?: { message?: string }; message?: string })?.data?.message ||
@@ -77,6 +78,8 @@ const RoleAssessmentStageTwoPartThreeIntro: React.FC = () => {
   }, [isError, isOutOfSync, activeAssessmentId, roleSlug, navigate]);
 
   const handleBegin = () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
     toast.success('Starting Stage 2 Part 4...');
     navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/part-4/simulation-1`);
   };
@@ -182,7 +185,7 @@ const RoleAssessmentStageTwoPartThreeIntro: React.FC = () => {
         <div className="bg-white rounded-[24px] border border-[#E6E6E6] max-w-[580px] w-full p-[44px_44px_36px] text-center relative overflow-hidden">
           {(levelLabel || yearsDetail) && (
             <div className="flex justify-center mb-[18px]">
-              <div className="bg-[#EBF6FF] border border-[#387DFF]/30 text-[#0047CC] text-[11.5px] font-[800] tracking-[0.6px] uppercase px-[14px] py-[5px] rounded-full inline-flex items-center gap-[7px]">
+              <div className="bg-transparent border border-[#387DFF]/30 text-[#0047CC] text-[11.5px] font-[800] tracking-[0.6px] uppercase px-[14px] py-[5px] rounded-full inline-flex items-center gap-[7px]">
                 {levelLabel.toUpperCase()}
                 {yearsDetail ? (
                   <span className="text-[#387DFF] font-[700] normal-case tracking-normal">
@@ -244,9 +247,21 @@ const RoleAssessmentStageTwoPartThreeIntro: React.FC = () => {
             <button
               type="button"
               onClick={handleBegin}
-              className="flex-1 bg-[#0047CC] text-white border-none rounded-[10px] p-[12px_20px] text-[13.5px] font-[700] cursor-pointer inline-flex items-center justify-center gap-[7px] shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] transition-all font-sans"
+              disabled={isProcessing}
+              className={`flex-1 border-none rounded-[10px] p-[12px_20px] text-[13.5px] font-[700] inline-flex items-center justify-center gap-[8px] transition-all font-sans ${
+                isProcessing
+                  ? 'bg-[#E6E6E6] text-[#ADADAD] cursor-not-allowed shadow-none pointer-events-none'
+                  : 'bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] cursor-pointer hover:bg-[#344DA1]'
+              }`}
             >
-              {beginPartLabel}
+              {isProcessing ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-[#ADADAD] border-t-transparent rounded-full animate-spin" />
+                  <span>Processing...</span>
+                </>
+              ) : (
+                beginPartLabel
+              )}
             </button>
           </div>
 

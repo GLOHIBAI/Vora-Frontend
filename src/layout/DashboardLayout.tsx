@@ -9,8 +9,9 @@ import {
 } from '../components/common/Icons';
 import { useAuth } from '../context/AuthContext';
 import { useLogoutMutation } from '../services/queries/auth';
-import { useEmployerProfileSettingsQuery } from '../services/queries/employer';
+import { useEmployerProfileSettingsQuery, useEmployerOrganisationQuery, useEmployerTeamQuery } from '../services/queries/employer';
 import { useTalentOnboardingStateQuery, useMentorOnboardingStateQuery, useGetTalentProfileQuery, useGetMentorProfileQuery, useEmployerOnboardingStateQuery } from '../services/queries/onboarding';
+import { useMentorProfileSettingsQuery } from '../services/queries/mentor';
 
 import { 
   EMPLOYER_NAV_ITEMS,
@@ -71,9 +72,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { data: talentProfile } = useGetTalentProfileQuery(!!user && isTalent);
   const { data: talentState } = useTalentOnboardingStateQuery(!!user && isTalent);
   const { data: mentorProfile } = useGetMentorProfileQuery(!!user && isMentor);
+  const { data: mentorSettingsProfile } = useMentorProfileSettingsQuery({ enabled: !!user && isMentor });
   const { data: mentorState } = useMentorOnboardingStateQuery(!!user && isMentor);
   const { data: employerState } = useEmployerOnboardingStateQuery(!!user && isEmployer);
   const { data: employerProfile } = useEmployerProfileSettingsQuery({ enabled: !!user && isEmployer });
+  const { data: employerOrg } = useEmployerOrganisationQuery({ enabled: !!user && isEmployer });
+  const { data: employerTeam } = useEmployerTeamQuery({ enabled: !!user && isEmployer });
 
   useEffect(() => {
     if (user && isEmployer && employerState?.data) {
@@ -143,15 +147,35 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   }, [talentProfile, talentState, isTalent, user, updateUser]);
 
   useEffect(() => {
-    if (user && isMentor && !hasSyncedMentorRef.current) {
-      if (mentorProfile?.data) {
+    if (user && isMentor) {
+      if (mentorSettingsProfile) {
+        const firstName = mentorSettingsProfile.firstName;
+        const lastName = mentorSettingsProfile.lastName ?? '';
+        const title = mentorSettingsProfile.professionalTitle;
+        const photoUrl = mentorSettingsProfile.photoUrl;
+        if (
+          (firstName && (user.firstName !== firstName || user.lastName !== lastName)) ||
+          (title && user.title !== title) ||
+          (photoUrl && user.avatarUrl !== photoUrl)
+        ) {
+          updateUser({
+            ...(firstName ? { firstName, lastName } : {}),
+            ...(title ? { title } : {}),
+            ...(photoUrl ? { avatarUrl: photoUrl } : {}),
+          });
+        }
+      } else if (mentorProfile?.data) {
         const { firstName, lastName } = mentorProfile.data;
-        if (firstName) {
-          hasSyncedMentorRef.current = true;
-          if (user.firstName !== firstName || user.lastName !== lastName) {
-            updateUser({ firstName, lastName });
-            return;
-          }
+        const photoUrl = (mentorProfile.data as any).photoUrl || (mentorProfile.data as any).avatarUrl;
+        if (
+          (firstName && (user.firstName !== firstName || user.lastName !== lastName)) ||
+          (photoUrl && user.avatarUrl !== photoUrl)
+        ) {
+          updateUser({
+            ...(firstName ? { firstName, lastName } : {}),
+            ...(photoUrl ? { avatarUrl: photoUrl } : {}),
+          });
+          return;
         }
       }
       const mentorOnboardingFields = normalizeMentorOnboardingState(mentorState?.data)?.fields;
@@ -172,18 +196,29 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         }
       }
     }
-  }, [mentorProfile, mentorState, isMentor, user, updateUser]);
+  }, [mentorSettingsProfile, mentorProfile, mentorState, isMentor, user, updateUser]);
 
   useEffect(() => {
-    if (user && isEmployer && employerProfile && !hasSyncedEmployerRef.current) {
+    if (user && isEmployer && employerProfile) {
       const firstName = employerProfile.firstName;
-      const lastName = employerProfile.lastName;
-      if (firstName) {
-        hasSyncedEmployerRef.current = true;
-        if (user.firstName !== firstName || user.lastName !== lastName) {
-          updateUser({ firstName, lastName: lastName ?? '' });
-          return;
-        }
+      const lastName = employerProfile.lastName ?? '';
+      const title = employerProfile.professionalTitle;
+      const photoUrl = employerProfile.photoUrl;
+      if (
+        (firstName && (user.firstName !== firstName || user.lastName !== lastName)) ||
+        (title && user.title !== title) ||
+        (photoUrl && user.avatarUrl !== photoUrl)
+      ) {
+        updateUser({
+          ...(firstName ? { firstName, lastName } : {}),
+          ...(title ? { title } : {}),
+          ...(photoUrl ? { avatarUrl: photoUrl } : {}),
+        });
+      }
+    }
+    if (user && isEmployer && employerOrg?.organisationName) {
+      if (user.organisationName !== employerOrg.organisationName) {
+        updateUser({ organisationName: employerOrg.organisationName });
       }
     }
     if (user && isEmployer && !user.firstName && !user.lastName && employerState?.data?.fields?.organisationName) {
@@ -192,22 +227,50 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         updateUser({ firstName: orgName, lastName: '' });
       }
     }
-  }, [employerProfile, employerState, isEmployer, user, updateUser]);
+  }, [employerProfile, employerOrg, employerState, isEmployer, user, updateUser]);
 
   if (!user) return null;
 
-  const fullName = user.title 
-    ? `${user.title} ${user.firstName || ''} ${user.lastName || ''}`.trim()
-    : (user.lastName ? `${user.firstName || ''} ${user.lastName}` : (user.firstName || user.email || 'User'));
-  const initials = ((user.firstName || user.email || 'U').charAt(0) + (user.lastName ? user.lastName.charAt(0) : '')).toUpperCase();
+  const currentOrgName = isEmployer
+    ? (employerOrg?.organisationName || user.organisationName || employerState?.data?.fields?.organisationName || '')
+    : '';
+
+  const firstName = employerProfile?.firstName || (isMentor ? mentorSettingsProfile?.firstName : null) || user.firstName || '';
+  const lastName = employerProfile?.lastName ?? (isMentor ? mentorSettingsProfile?.lastName : null) ?? user.lastName ?? '';
+  const userPersonalName = [firstName, lastName].filter(Boolean).join(' ').trim() 
+    || (user.email ? user.email.split('@')[0] : 'User');
+
+  // Sidebar bottom widget represents the logged-in user's personal profile
+  const displayName = userPersonalName;
+
+  // Derive user's role/title
+  let userRoleInOrg = employerProfile?.professionalTitle || (isMentor ? mentorSettingsProfile?.professionalTitle : null) || user.title || 'Admin';
+  if (isEmployer && employerTeam?.members && user.email) {
+    const selfMember = employerTeam.members.find(
+      (m: any) => m.email?.toLowerCase() === user.email?.toLowerCase()
+    );
+    if (selfMember?.role) {
+      userRoleInOrg = selfMember.role === 'ADMIN' ? 'Admin' : (selfMember.role.charAt(0) + selfMember.role.slice(1).toLowerCase().replace('_', ' '));
+    }
+  }
+
   const isTalentMatchFlow = location.pathname.includes('/talent/match');
-  
   let roleLabel = user.role.charAt(0).toUpperCase() + user.role.slice(1);
   if (isTalentMatchFlow) {
     roleLabel = 'Job Seeker';
-  } else if (roleLabel === 'Employer') {
-    roleLabel = 'Admin Manager';
+  } else if (isEmployer) {
+    roleLabel = employerProfile?.professionalTitle || user.title || userRoleInOrg;
+  } else if (isMentor) {
+    roleLabel = mentorSettingsProfile?.professionalTitle || user.title || 'Mentor';
   }
+
+  const initials = ((firstName || user.email || 'U').charAt(0) + (lastName ? lastName.charAt(0) : '')).toUpperCase();
+
+  const avatarUrl = isEmployer
+    ? (employerProfile?.photoUrl || user?.avatarUrl || employerOrg?.logoUrl)
+    : (isMentor 
+        ? (mentorSettingsProfile?.photoUrl || mentorProfile?.data?.photoUrl || (mentorProfile?.data as any)?.avatarUrl || user?.avatarUrl) 
+        : user?.avatarUrl);
 
   const getNavItems = () => {
     if (user.role === 'employer') return EMPLOYER_NAV_ITEMS;
@@ -330,12 +393,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               <Link
                 to="/settings"
                 className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity cursor-pointer group-data-[nav-collapsed=true]/sidebar:lg:justify-center group-data-[nav-collapsed=true]/sidebar:lg:gap-0"
-                title={isNavCollapsed ? `${fullName} (Settings)` : 'Manage settings'}
+                title={isNavCollapsed ? `${displayName} (Settings)` : 'Manage settings'}
               >
-                {employerProfile?.photoUrl ? (
+                {avatarUrl ? (
                   <img
-                    src={employerProfile.photoUrl}
-                    alt={fullName}
+                    src={avatarUrl}
+                    alt={displayName}
                     className="w-9 h-9 rounded-full object-cover shrink-0 shadow-xs border border-gray-200"
                   />
                 ) : (
@@ -344,8 +407,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                   </div>
                 )}
                 <div className="flex-1 min-w-0 group-data-[nav-collapsed=true]/sidebar:lg:hidden">
-                  <p className="text-[13px] font-bold text-[#1A1A1A] truncate leading-tight">{fullName}</p>
-                  <p className="text-[11px] text-[#808080] font-medium truncate">{roleLabel}</p>
+                  <p className="text-[13px] font-bold text-[#1A1A1A] truncate leading-tight" title={displayName}>{displayName}</p>
+                  <p className="text-[11px] text-[#808080] font-medium truncate" title={roleLabel}>{roleLabel}</p>
                 </div>
               </Link>
 

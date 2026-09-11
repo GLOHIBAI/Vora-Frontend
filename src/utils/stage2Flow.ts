@@ -7,6 +7,7 @@ import type {
   ResponsesMap,
 } from "../services/queries/assessments/types";
 import { GATE2_PILLARS } from "../services/queries/assessments/types";
+import { isComponentSubmitted, unmarkComponentSubmitted } from "../services/queries/assessments";
 import { apiClient } from "../services/api";
 import { formatSecondsAsHms, unwrapAssessmentData } from "./assessmentSession";
 
@@ -125,6 +126,7 @@ export const navigateGate2Authoritative = async (
   roleSlug: string,
   navigate: (path: string, options?: { replace?: boolean }) => void,
   fallbackPath?: string,
+  closedComponentId?: string,
 ): Promise<string | null> => {
   if (!assessmentId || !roleSlug) {
     if (fallbackPath) navigate(fallbackPath, { replace: true });
@@ -139,6 +141,103 @@ export const navigateGate2Authoritative = async (
     });
     const resume = parseGate2ResumeState(resumeRaw);
     if (resume) {
+      const rawData = unwrapAssessmentData<Record<string, any>>(resumeRaw) || {};
+      const isDeadComponent = Boolean(
+        (closedComponentId && resume.componentId && resume.componentId === closedComponentId) ||
+        (resume.componentId && isComponentSubmitted(resume.componentId))
+      );
+
+      // Dead-component loop detection:
+      // When the backend resume-state continues returning a closed/submitted componentId with START_PILLAR
+      // or RESUME_PILLAR, resolving blindly to resolveGate2ResumeNavigatePath sends the user to the intro
+      // of the already-submitted pillar (or back into the same closed component).
+      if (isDeadComponent) {
+        const currentPillarKey = resolveGate2PillarKey(resume.pillar || resume.nextPillar);
+        const isCurrentPillarReallyComplete = Boolean(
+          rawData?.pillarCompleted ||
+          (currentPillarKey && resume.completedPillars.includes(currentPillarKey))
+        );
+
+        // 1. If backend reports pillarCompleted or nextPillar is advanced, route forward
+        if (isCurrentPillarReallyComplete || (resume.nextPillar && resume.nextPillar !== resume.pillar)) {
+          const forwardPillar =
+            resolveGate2PillarKey(resume.nextPillar) ||
+            GATE2_PILLARS.find((p) => p !== currentPillarKey && !resume.completedPillars.includes(p));
+          if (forwardPillar) {
+            const forwardPath = gate2PillarIntroPath(roleSlug, forwardPillar);
+            if (forwardPath) {
+              navigate(forwardPath, { replace: true });
+              return forwardPath;
+            }
+          }
+        }
+
+        // 2. Try POST .../gates/2/start to get a fresh component
+        try {
+          const startRes = await apiClient.post<Record<string, any>>({
+            url: `/assessments/${assessmentId}/gates/2/start`,
+            body: { pillar: currentPillarKey },
+            auth: true,
+            suppressErrorToast: true,
+          });
+          const startData = unwrapAssessmentData<Record<string, any>>(startRes) || (startRes as any)?.data || startRes;
+          const freshCompId = startData?.componentId || startData?.component_id;
+          if (freshCompId) {
+            unmarkComponentSubmitted(freshCompId);
+            if (freshCompId !== closedComponentId) {
+              // Fresh component obtained!
+              const startPath =
+                gate2PillarStartPath(roleSlug, currentPillarKey) ||
+                `/onboarding/talent/${roleSlug}/interview/stage-2`;
+              navigate(startPath, { replace: true });
+              return startPath;
+            }
+          }
+          if (startData?.pillarCompleted && startData?.nextPillar) {
+            const nextPath = gate2PillarIntroPath(roleSlug, startData.nextPillar);
+            if (nextPath) {
+              navigate(nextPath, { replace: true });
+              return nextPath;
+            }
+          }
+        } catch {
+          // Start failed or returned error
+        }
+
+        // 3. Fallback: ONLY advance to next uncompleted pillar if current pillar is actually complete!
+        if (isCurrentPillarReallyComplete) {
+          const nextUncompletedPillar = GATE2_PILLARS.find(
+            (p) => p !== currentPillarKey && !resume.completedPillars.includes(p)
+          );
+          if (nextUncompletedPillar) {
+            const targetPath = gate2PillarIntroPath(roleSlug, nextUncompletedPillar);
+            if (targetPath) {
+              navigate(targetPath, { replace: true });
+              return targetPath;
+            }
+          }
+
+          // If no more uncompleted pillars, route to analyzing
+          const analyzingPath = `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`;
+          navigate(analyzingPath, { replace: true });
+          return analyzingPath;
+        }
+
+        // Current pillar is not actually complete: stay on current pillar and unmark the false submitted state
+        if (resume.componentId) {
+          unmarkComponentSubmitted(resume.componentId);
+        }
+        const stayPath =
+          gate2PillarStartPath(roleSlug, currentPillarKey) ||
+          `/onboarding/talent/${roleSlug}/interview/stage-2`;
+        const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+        if (currentPath && (currentPath === stayPath || stayPath.endsWith(currentPath))) {
+          return stayPath;
+        }
+        navigate(stayPath, { replace: true });
+        return stayPath;
+      }
+
       const targetPath = resolveGate2ResumeNavigatePath(roleSlug, resume);
       if (targetPath) {
         const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';

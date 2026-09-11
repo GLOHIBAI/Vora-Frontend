@@ -143,9 +143,216 @@ export interface EmployerDashboardData {
 }
 
 // -------------------------------------------------------------
-// Settings Types
+// Settings Types (Boot D & Legacy)
 // -------------------------------------------------------------
 
+// 1. Organisation Profile
+export interface EmployerOrganisationSettings {
+  organisationName: string;
+  websiteUrl: string;
+  country: string;
+  organisationSize: string;
+  organisationType: string;
+  defaultTimezone: string;
+  logoStorageKey?: string | null;
+  logoUrl?: string | null;
+}
+
+export type UpdateEmployerOrganisationDto = Partial<EmployerOrganisationSettings>;
+
+// 2. Team & Seats
+export type EmployerTeamMemberRole =
+  | 'ADMIN'
+  | 'SENIOR_RECRUITER'
+  | 'RECRUITER'
+  | 'HIRING_MANAGER'
+  | 'VIEWER';
+
+export type EmployerTeamMemberStatus = 'PENDING' | 'ACTIVE' | 'REMOVED';
+
+export interface EmployerTeamMember {
+  id: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  email: string;
+  role: EmployerTeamMemberRole | string;
+  status: EmployerTeamMemberStatus | string;
+  joined?: string;
+  createdAt?: string;
+}
+
+export interface EmployerTeamResponse {
+  seatLimit: number;
+  usedSeats: number;
+  availableSeats?: number;
+  members: EmployerTeamMember[];
+}
+
+export interface InviteTeamMemberDto {
+  email: string;
+  role: EmployerTeamMemberRole | string;
+}
+
+export interface UpdateTeamMemberDto {
+  role?: EmployerTeamMemberRole | string;
+  status?: EmployerTeamMemberStatus | string;
+}
+
+// 3. Roles & Permissions
+export type EmployerPermissionKey =
+  | 'post_jobs'
+  | 'view_applicants'
+  | 'hire'
+  | 'reject'
+  | 'alignment_sessions'
+  | 'view_financials'
+  | 'manage_team'
+  | 'bulk_hire'
+  | 'edit_job_details';
+
+export type EmployerRolePermissions = Record<EmployerPermissionKey, boolean>;
+
+export type EmployerRolePermissionsMatrix = Record<
+  string,
+  Partial<Record<EmployerPermissionKey, boolean>>
+>;
+
+export interface UpdateRolePermissionsDto {
+  role: string;
+  permissions: Partial<Record<EmployerPermissionKey, boolean>>;
+}
+
+// 4. Billing & Payments
+export interface EmployerBillingPaymentMethod {
+  id: string;
+  brand?: string;
+  last4?: string;
+  expMonth?: number | string;
+  expYear?: number | string;
+  isDefault?: boolean;
+}
+
+export interface EmployerBillingPlan {
+  name?: string;
+  status?: string;
+  seatLimit?: number;
+}
+
+export interface EmployerBillingEscrow {
+  balance?: number | string;
+  escrowBalance?: number | string;
+  pendingTrueUp?: number | string;
+  currency?: string;
+}
+
+export interface EmployerBillingSettings {
+  plan?: EmployerBillingPlan;
+  planName?: string;
+  planStatus?: string;
+  seatLimit?: number;
+  paymentMethods?: EmployerBillingPaymentMethod[];
+  escrow?: EmployerBillingEscrow;
+  escrowSummary?: EmployerBillingEscrow;
+  walletBalance?: number | string;
+}
+
+// 5. Notifications
+export type NotificationFrequency = 'INSTANT' | 'DAILY_DIGEST' | 'WEEKLY_SUMMARY';
+
+export interface EmployerNotificationsSettings {
+  // HTML-aligned keys
+  emailHireConfirmed?: boolean;
+  emailNewApplications?: boolean;
+  emailAssessmentCompleted?: boolean;
+  emailAlignmentSessions?: boolean;
+  emailRejectionFlagged?: boolean;
+  emailFeeProcessed?: boolean;
+  emailWeeklyActivitySummary?: boolean;
+
+  // Legacy / extra keys
+  emailEscrowWalletActivity?: boolean;
+  emailPostHireCheckIns?: boolean;
+  emailPppTierUpdates?: boolean;
+  emailPlatformAnnouncements?: boolean;
+  inAppDashboardNotifications?: boolean;
+  frequency?: NotificationFrequency;
+}
+
+export type UpdateEmployerNotificationsDto = Partial<EmployerNotificationsSettings>;
+
+// 6. Security
+export interface EmployerSecuritySettings {
+  twoFactorEnabled: boolean;
+  sessionsCount?: number;
+  lastPasswordChange?: string;
+}
+
+export interface AuthSession {
+  id: string;
+  deviceName?: string;
+  userAgent?: string;
+  ipAddress?: string;
+  ip?: string;
+  lastActiveAt?: string;
+  isCurrent?: boolean;
+}
+
+export interface ChangePasswordDto {
+  currentPassword?: string;
+  newPassword?: string;
+  confirmNewPassword?: string;
+  confirmPassword?: string;
+  confirm?: string;
+  current?: string;
+  new?: string;
+}
+
+// 7. Data & Privacy
+export interface AuditTrailItem {
+  id: string;
+  action: string;
+  details?: string;
+  actorEmail?: string;
+  actorRole?: string;
+  ipAddress?: string;
+  createdAt: string;
+}
+
+export interface AuditTrailResponse {
+  items: AuditTrailItem[];
+  total?: number;
+  downloadUrl?: string;
+}
+
+// 8. Offer Templates
+export interface OfferTemplateItem {
+  id: string;
+  name: string;
+  category: string;
+  storageKey?: string;
+  mimeType?: string;
+  isCustom?: boolean;
+  isActive?: boolean;
+  libraryTemplateId?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  url?: string;
+}
+
+export interface CreateOfferTemplateDto {
+  name: string;
+  category: string;
+  storageKey: string;
+  mimeType?: string;
+}
+
+export interface UpdateOfferTemplateDto {
+  isActive?: boolean;
+  libraryTemplateId?: string | null;
+}
+
+// 9. Person profile & account (still supported)
 export interface EmployerProfileSettings {
   firstName: string;
   lastName: string;
@@ -157,21 +364,6 @@ export interface EmployerProfileSettings {
 }
 
 export type UpdateEmployerProfileDto = Partial<EmployerProfileSettings>;
-
-export type NotificationFrequency = 'INSTANT' | 'DAILY_DIGEST' | 'WEEKLY_SUMMARY';
-
-export interface EmployerNotificationsSettings {
-  emailNewApplications: boolean;
-  emailAlignmentSessions: boolean;
-  emailEscrowWalletActivity: boolean;
-  emailPostHireCheckIns: boolean;
-  emailPppTierUpdates: boolean;
-  emailPlatformAnnouncements: boolean;
-  inAppDashboardNotifications: boolean;
-  frequency: NotificationFrequency;
-}
-
-export type UpdateEmployerNotificationsDto = Partial<EmployerNotificationsSettings>;
 
 export interface PendingEmailChange {
   requestedEmail: string;
@@ -192,23 +384,6 @@ export interface UpdateEmployerAccountDto {
 
 export interface EmailChangeRequestDto {
   newEmail: string;
-}
-
-export interface AuthSession {
-  id: string;
-  deviceName?: string;
-  userAgent?: string;
-  ipAddress?: string;
-  ip?: string;
-  lastActiveAt?: string;
-  isCurrent?: boolean;
-}
-
-export interface ChangePasswordDto {
-  currentPassword?: string;
-  newPassword?: string;
-  current?: string;
-  new?: string;
 }
 
 export interface UploadAvatarResponse {

@@ -71,12 +71,10 @@ const resolveNextPillarRoute = (
   }
 
   if (nextPillar) {
-    if (nextStep === 'START_PILLAR') {
-      const startPath = gate2PillarStartPath(roleSlug, nextPillar);
-      if (startPath) return startPath;
-    }
     const introPath = gate2PillarIntroPath(roleSlug, nextPillar);
     if (introPath) return introPath;
+    const startPath = gate2PillarStartPath(roleSlug, nextPillar);
+    if (startPath) return startPath;
   }
 
   // Fallback sequential progression
@@ -88,6 +86,12 @@ const resolveNextPillarRoute = (
 };
 
 const QUESTIONS_PER_SESSION = 4;
+const DEFAULT_GATE2_PILLAR_TOTALS: Record<number, number> = {
+  1: 20,
+  2: 20,
+  3: 12,
+  4: 4,
+};
 const FIXED_HEADER_OFFSET_PX = 196;
 const FIXED_FOOTER_OFFSET_PX = 96;
 
@@ -336,15 +340,17 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           if (cancelled) return;
         }
 
-        if (rawData?.pillarCompleted) {
-          const nextPill = rawData.nextPillar;
+        const resolvedData = unwrapAssessmentData<Record<string, any>>(res) ?? (res as Record<string, any>);
+
+        if (resolvedData?.pillarCompleted) {
+          const nextPill = resolvedData.nextPillar;
           if (nextPill) {
-            const nextPath = gate2PillarStartPath(roleSlug, nextPill) || gate2PillarIntroPath(roleSlug, nextPill);
+            const nextPath = gate2PillarIntroPath(roleSlug, nextPill) || gate2PillarStartPath(roleSlug, nextPill);
             if (nextPath) {
               navigate(nextPath, { replace: true });
               return;
             }
-          } else if (rawData.nextStep === 'GATE2_COMPLETE') {
+          } else if (resolvedData.nextStep === 'GATE2_COMPLETE') {
             // All pillars done — go to review so the user can do POST gates/2/submit.
             // /analyzing is only valid AFTER final submit; routing there directly
             // causes a 400 (ASSESSMENT_GATE2_FINAL_SUBMIT_REQUIRED) → loop.
@@ -363,28 +369,40 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
             rawStatus === 'COMPLETED' ||
             rawStatus === 'SUBMITTED' ||
             rawStatus === 'CLOSED' ||
-            (rawStatus && rawStatus !== 'IN_PROGRESS') ||
             Boolean(data?.submittedAt) ||
-            Boolean(data?.completedAt);
+            Boolean(data?.completedAt) ||
+            isComponentSubmitted(data?.componentId);
 
           if (data?.componentId && isSubmittedOrDone) {
             markComponentSubmitted(data.componentId);
-            await navigateGate2Authoritative(activeAssessmentId, roleSlug, navigate);
+            if (activeAssessmentId) {
+              await navigateGate2Authoritative(activeAssessmentId, roleSlug, navigate, undefined, data.componentId);
+            }
             return;
           }
           if (data?.componentId && !isSubmittedOrDone) {
             unmarkComponentSubmitted(data.componentId);
           }
           setActiveItems(items);
-          if (window) {
-            setWindowInfo(window);
-          } else {
-            setWindowInfo({ from: 1, through: items.length, hasMore: false });
-          }
-          const total = progress?.total || items.length;
+          const defaultTotal = DEFAULT_GATE2_PILLAR_TOTALS[partNumber] || 20;
+          const total = (progress?.total && progress.total > items.length)
+            ? progress.total
+            : defaultTotal;
           const current = progress?.current || 1;
           const answered = progress?.answered || 0;
           setPillarProgress({ total, current, answered });
+
+          const initialThrough = window?.through ?? items.length;
+          const initialFrom = window?.from ?? 1;
+          const hasMoreCalculated = window?.hasMore !== undefined
+            ? window.hasMore
+            : initialThrough < total;
+
+          setWindowInfo({
+            from: initialFrom,
+            through: initialThrough,
+            hasMore: hasMoreCalculated,
+          });
 
           const initialResponses = data.responses || (res as any)?.responses || (res as any)?.data?.responses;
           if (initialResponses && typeof initialResponses === 'object') {
@@ -535,7 +553,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
               !isComponentSubmitted(apiScreenData.componentId) &&
               Object.keys(answers).length > 0
             ) {
-              const draftPayload = buildUnlockedDraftPayload(answers);
+              const draftPayload = buildCurrentWindowDraftPayload();
               if (Object.keys(draftPayload).length > 0) {
                 await safeSaveDraft(draftPayload).catch(() => { });
               }
@@ -731,7 +749,8 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         if (
           lowerMsg.includes('already been submitted') ||
           lowerMsg.includes('already submitted') ||
-          lowerMsg.includes('completed')
+          lowerMsg.includes('component is closed') ||
+          lowerMsg.includes('component has ended')
         ) {
           markComponentSubmitted(compId);
           isAlreadySubmitted = true;
@@ -783,6 +802,38 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     return sanitizeAnswers(windowAnswers, activeDisplayedItems);
   };
 
+  const buildAllResponsesPayload = () => {
+    const merged: Record<string, any> = {};
+
+    // 1. Locked / drafted responses from earlier windows
+    for (const [id, val] of Object.entries(lockedResponsesRef.current)) {
+      if (id && val !== undefined && val !== null && val !== '' && val !== true) {
+        merged[id] = val;
+      }
+    }
+
+    // 2. Answers recorded locally across windows
+    for (const [id, val] of Object.entries(answers)) {
+      if (id && val !== undefined && val !== null && val !== '') {
+        if (typeof val === 'object' && !Array.isArray(val) && Object.keys(val).length === 0) continue;
+        merged[id] = val;
+      }
+    }
+
+    // 3. Current active window answers guarantee
+    for (const item of activeDisplayedItems) {
+      if (item?.id && answers[item.id] !== undefined && answers[item.id] !== null && answers[item.id] !== '') {
+        merged[item.id] = answers[item.id];
+      }
+    }
+
+    const sanitized = sanitizeAnswers(merged);
+    if (Object.keys(sanitized).length === 0) {
+      return buildCurrentWindowDraftPayload();
+    }
+    return sanitized;
+  };
+
   const handleSubmit = async (reason?: string) => {
     if (isSubmitting) return;
 
@@ -791,9 +842,15 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       blurTimerRef.current = null;
     }
 
-    // Enforce window pagination: if there are remaining windows, continue rather than multi-submitting prematurely
-    if (isHasMoreWindows) {
+    // Hard guard 1: Never submit if there are remaining windows or through < total
+    if (isHasMoreWindows || (pillarProgress.total > 0 && windowInfo.through < pillarProgress.total)) {
       return handleContinueNextWindow();
+    }
+
+    // Hard guard 2: Never submit until all questions are answered
+    if (pillarProgress.total > 0 && pillarProgress.answered < pillarProgress.total) {
+      toast.error(`Please answer all ${pillarProgress.total} questions before submitting.`);
+      return;
     }
 
     setIsSubmitting(true);
@@ -810,8 +867,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
     }
 
     if (isComponentSubmitted(compId)) {
-      const targetPath = resolveNextPillarRoute(roleSlug, {}, partNumber);
-      navigate(targetPath, { replace: true });
+      await navigateGate2Authoritative(activeAssessmentId, roleSlug, navigate, undefined, compId);
       setIsSubmitting(false);
       return;
     }
@@ -830,13 +886,12 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       }
 
       // Step 2: Final submit.
-      // Per backend contract: Once answers are saved via PATCH, they are immutable on the component.
-      // Backend automatically merges stored drafts with the submit body.
-      // Calling submit with responses: {} prevents "answer is locked and cannot be changed" rejections.
+      // Backend validates incoming responses in submit body: must include all answered items, never {}
+      const submitPayload = buildAllResponsesPayload();
       const submitRes = await submitScreenMutation.mutateAsync({
         assessmentId: activeAssessmentId,
         componentId: compId,
-        responses: {},
+        responses: submitPayload,
       });
 
       markComponentSubmitted(compId);
@@ -856,11 +911,13 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       const lower = serverMsg.toLowerCase();
       if (lower.includes('locked') || lower.includes('cannot be changed')) {
         try {
-          // Recovery: Re-attempt submit with empty responses so backend uses previously locked drafts
+          // Recovery: Re-attempt submit with sanitized window payload (never empty {})
+          const windowPayload = buildCurrentWindowDraftPayload();
+          const retryPayload = Object.keys(windowPayload).length > 0 ? windowPayload : buildAllResponsesPayload();
           const retryRes = await submitScreenMutation.mutateAsync({
             assessmentId: activeAssessmentId,
             componentId: compId,
-            responses: {},
+            responses: retryPayload,
           });
           markComponentSubmitted(compId);
           toast.success('All answers locked, saved and submitted.');
@@ -869,19 +926,19 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
           navigate(targetPath);
           return;
         } catch (retryErr: any) {
-          console.warn('Retry submit with empty responses failed:', retryErr);
+          console.warn('Retry submit failed:', retryErr);
         }
       }
 
       if (
         lower.includes('already submitted') ||
         lower.includes('already been submitted') ||
-        lower.includes('completed') ||
-        lower.includes('time limit')
+        lower.includes('component is closed') ||
+        lower.includes('component has ended') ||
+        lower.includes('time limit has expired')
       ) {
         markComponentSubmitted(compId);
-        const targetPath = resolveNextPillarRoute(roleSlug, err?.response?.data || err?.data, partNumber);
-        navigate(targetPath, { replace: true });
+        await navigateGate2Authoritative(activeAssessmentId, roleSlug, navigate, undefined, compId);
         return;
       }
 
@@ -961,12 +1018,12 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
   };
 
   const isHasMoreWindows = useMemo(() => {
-    // If all items for this pillar are answered, there are no more windows to fetch
-    if (pillarProgress.total > 0 && pillarProgress.answered >= pillarProgress.total) return false;
+    if (pillarProgress.total > 0 && windowInfo.through < pillarProgress.total) return true;
     if (windowInfo.hasMore === true) return true;
-    if (windowInfo.hasMore === false) return false;
+    if (pillarProgress.total > 0 && pillarProgress.answered >= pillarProgress.total && windowInfo.through >= pillarProgress.total) return false;
+    if (windowInfo.hasMore === false && (!pillarProgress.total || windowInfo.through >= pillarProgress.total)) return false;
     if (pillarProgress.total > 0) return windowInfo.through < pillarProgress.total;
-    return false;
+    return Boolean(windowInfo.hasMore);
   }, [windowInfo, pillarProgress]);
 
   const displayPillar = useMemo(() => {
@@ -992,10 +1049,10 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       blurTimerRef.current = null;
     }
 
+    const compId = activeComponentId;
     setIsSubmitting(true);
     setApiLoading(true);
     try {
-      const compId = activeComponentId;
       if (!activeAssessmentId || !compId) {
         toast.error('Interview is not ready. Please reload and try again.');
         setApiLoading(false);
@@ -1027,7 +1084,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       // Hard gate: never show the next window unless draft save of unlocked answers succeeds.
       const draftResult = await safeSaveDraft(payloadResponses);
       if (draftResult?.alreadySubmitted) {
-        await navigateGate2Authoritative(activeAssessmentId, roleSlug, navigate);
+        await navigateGate2Authoritative(activeAssessmentId, roleSlug, navigate, undefined, compId);
         return;
       }
 
@@ -1043,29 +1100,51 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
         // Graceful handling of contentReady === false: poll every 2.5s until generated
         const initialUnwrapped = unwrapAssessmentData<Record<string, any>>(res) ?? (res as Record<string, any>);
+
+        // Honor pillarCompleted immediately if backend reported it
+        if (initialUnwrapped?.pillarCompleted || (res as any)?.pillarCompleted) {
+          const targetPath = resolveNextPillarRoute(roleSlug, res?.data || res, partNumber);
+          toast.success('Pillar completed! Moving to the next section.');
+          navigate(targetPath, { replace: true });
+          return;
+        }
+
+        const initialItems = normalizeAssessmentItems(initialUnwrapped?.items || initialUnwrapped?.data?.items);
         const isContentWarming =
           initialUnwrapped?.contentReady === false ||
           initialUnwrapped?.content_ready === false ||
-          (!initialUnwrapped?.items || initialUnwrapped.items.length === 0);
+          (!initialItems.length && !initialUnwrapped?.pillarCompleted && (pillarProgress.total === 0 || windowInfo.through < pillarProgress.total));
 
         if (isContentWarming) {
+          toast('Preparing next questions with AI...', { icon: '⏳', id: 'items-warming' });
           const pollStartTime = Date.now();
-          while (Date.now() - pollStartTime < 45000) {
+          while (Date.now() - pollStartTime < 60000) {
             await new Promise((r) => setTimeout(r, 2500));
             const pollRes = await fetchGate2PillarItems(activeAssessmentId, pillar, {
               from: nextFrom,
               through: nextThrough,
             });
             const pollUnwrapped = unwrapAssessmentData<Record<string, any>>(pollRes) ?? (pollRes as Record<string, any>);
+
+            if (pollUnwrapped?.pillarCompleted) {
+              toast.dismiss('items-warming');
+              const targetPath = resolveNextPillarRoute(roleSlug, (pollRes as any)?.data || pollRes, partNumber);
+              toast.success('Pillar completed! Moving to the next section.');
+              navigate(targetPath, { replace: true });
+              return;
+            }
+
             const pollItems = normalizeAssessmentItems(pollUnwrapped?.items || pollUnwrapped?.data?.items);
             if (
-              (pollUnwrapped?.contentReady === true || pollUnwrapped?.content_ready === true) &&
+              (pollUnwrapped?.contentReady === true || pollUnwrapped?.content_ready === true || pollItems.length > 0) &&
               pollItems.length > 0
             ) {
               res = pollRes;
+              toast.dismiss('items-warming');
               break;
             }
           }
+          toast.dismiss('items-warming');
         }
       } catch (fetchErr: any) {
         const rawMsg =
@@ -1078,13 +1157,11 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
         if (
           lowerMsg.includes('already submitted') ||
           lowerMsg.includes('already been submitted') ||
-          lowerMsg.includes('completed') ||
-          lowerMsg.includes('time limit') ||
-          lowerMsg.includes('locked') ||
-          lowerMsg.includes('cannot be changed')
+          lowerMsg.includes('component is closed') ||
+          lowerMsg.includes('component has ended')
         ) {
-          const targetPath = resolveNextPillarRoute(roleSlug, fetchErr?.response?.data, partNumber);
-          navigate(targetPath, { replace: true });
+          markComponentSubmitted(compId);
+          await navigateGate2Authoritative(activeAssessmentId, roleSlug, navigate, undefined, compId);
           return;
         }
         throw fetchErr;
@@ -1233,7 +1310,15 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
 
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        // No more questions in this pillar! Automatically advance to next pillar or analyzing page
+        // Empty items returned:
+        // If total is known and through < total, AI questions are still preparing — DO NOT navigate away!
+        if (pillarProgress.total > 0 && windowInfo.through < pillarProgress.total) {
+          toast('The next questions are still preparing. Please tap Continue again in a moment.', { icon: '⏳' });
+          setApiLoading(false);
+          setIsSubmitting(false);
+          return;
+        }
+
         const nextPartMap: Record<number, string> = {
           1: `/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`,
           2: `/onboarding/talent/${roleSlug}/interview/stage-2/part-3/intro`,
@@ -1255,17 +1340,14 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
       if (
         lower.includes('already submitted') ||
         lower.includes('already been submitted') ||
-        lower.includes('completed') ||
-        lower.includes('time limit')
+        lower.includes('component is closed') ||
+        lower.includes('component has ended') ||
+        lower.includes('time limit has expired')
       ) {
-        const nextPartMap: Record<number, string> = {
-          1: `/onboarding/talent/${roleSlug}/interview/stage-2/part-2/intro`,
-          2: `/onboarding/talent/${roleSlug}/interview/stage-2/part-3/intro`,
-          3: `/onboarding/talent/${roleSlug}/interview/stage-2/part-4/intro`,
-          4: `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`,
-        };
-        const targetPath = nextPartMap[partNumber] || `/onboarding/talent/${roleSlug}/interview/stage-2/analyzing`;
-        navigate(targetPath, { replace: true });
+        if (compId) markComponentSubmitted(compId);
+        if (activeAssessmentId) {
+          await navigateGate2Authoritative(activeAssessmentId, roleSlug, navigate, undefined, compId || undefined);
+        }
         return;
       }
 
@@ -1463,7 +1545,7 @@ const RoleAssessmentStageTwoInterviewBase: React.FC<StageTwoInterviewBaseProps> 
               </p>
 
               {/* Why matters component */}
-              <div className="bg-[#EBF6FF] border border-[#387DFF] rounded-[8px] p-[12px_14px] flex gap-[10px] mb-[22px]">
+              <div className="bg-transparent border border-blue-200 rounded-[8px] p-[12px_14px] flex gap-[10px] mb-[22px]">
                 <InfoIcon className="w-[16px] h-[16px] text-[#0047CC] shrink-0 mt-[1px]" />
                 <p className="text-[12.5px] text-[#182348] leading-[1.5]">
                   <strong className="font-[800]">Why this matters · </strong>

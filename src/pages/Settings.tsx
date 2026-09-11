@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
@@ -29,6 +29,7 @@ import {
   MULTIPLIERS,
   TIER_INFO,
 } from '../constants/settings';
+import { validatePassword } from '../utils/validation';
 import { useAuth } from '../context/AuthContext';
 import { useLogoutMutation } from '../services/queries/auth';
 import {
@@ -47,6 +48,9 @@ import {
 import type { TabType, Slot, DayAvailability } from '../types';
 import type { NotificationFrequency } from '../services/queries/employer/types';
 
+import EmployerSettingsView from '../components/employer/EmployerSettingsView';
+import MentorSettingsView from '../components/mentor/MentorSettingsView';
+
 const DAY_NAMES: Record<string, string> = {
   mon: 'Monday',
   tue: 'Tuesday',
@@ -57,13 +61,13 @@ const DAY_NAMES: Record<string, string> = {
   sun: 'Sunday',
 };
 
-const Settings: React.FC = () => {
+const StandardSettingsView: React.FC = () => {
   const { user, updateUser } = useAuth();
   const role = user?.role?.toLowerCase() || localStorage.getItem('vora_role') || 'employer';
   const isEmployer = role === 'employer';
 
   const availableTabs: TabType[] = (() => {
-    if (isEmployer || role === 'talent') {
+    if (role === 'talent') {
       return ['profile', 'notification', 'account'];
     }
     return ['profile', 'availability', 'courses', 'mentorship', 'notification', 'account'];
@@ -178,6 +182,7 @@ const Settings: React.FC = () => {
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [newEmailInput, setNewEmailInput] = useState('');
   const [passwordFields, setPasswordFields] = useState({ current: '', new: '', confirm: '' });
+  const [passwordErrors, setPasswordErrors] = useState({ current: '', new: '', confirm: '' });
 
   // Hydrate Account from Employer API
   useEffect(() => {
@@ -376,14 +381,74 @@ const Settings: React.FC = () => {
     setNewEmailInput('');
   };
 
-  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!passwordFields.new || passwordFields.new.length < 8) {
-      toast.error('New password must be at least 8 characters long');
-      return;
+  const getPasswordFieldsValidationMessage = (): string | null => {
+    if (!passwordFields.current.trim()) {
+      return 'Please enter your current password.';
+    }
+    if (!passwordFields.new) {
+      return 'Please enter a new password.';
+    }
+    const strengthErr = validatePassword(passwordFields.new);
+    if (strengthErr) {
+      return strengthErr;
+    }
+    if (passwordFields.current && passwordFields.new === passwordFields.current) {
+      return 'New password cannot be the same as your current password.';
+    }
+    if (!passwordFields.confirm) {
+      return 'Please confirm your new password.';
     }
     if (passwordFields.new !== passwordFields.confirm) {
-      toast.error('Passwords do not match');
+      return 'Passwords do not match.';
+    }
+    return null;
+  };
+
+  const isPasswordFieldsValid = useMemo(() => {
+    return getPasswordFieldsValidationMessage() === null;
+  }, [passwordFields]);
+
+  const validatePasswordFields = () => {
+    const errs = { current: '', new: '', confirm: '' };
+    let isValid = true;
+
+    if (!passwordFields.current.trim()) {
+      errs.current = 'Current password is required';
+      isValid = false;
+    }
+
+    if (!passwordFields.new) {
+      errs.new = 'New password is required';
+      isValid = false;
+    } else {
+      const strengthErr = validatePassword(passwordFields.new);
+      if (strengthErr) {
+        errs.new = strengthErr;
+        isValid = false;
+      } else if (passwordFields.current && passwordFields.new === passwordFields.current) {
+        errs.new = 'New password cannot be the same as your current password';
+        isValid = false;
+      }
+    }
+
+    if (!passwordFields.confirm) {
+      errs.confirm = 'Please confirm your new password';
+      isValid = false;
+    } else if (passwordFields.new !== passwordFields.confirm) {
+      errs.confirm = 'Passwords do not match';
+      isValid = false;
+    }
+
+    setPasswordErrors(errs);
+    return isValid;
+  };
+
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const errorMsg = getPasswordFieldsValidationMessage();
+    if (errorMsg) {
+      validatePasswordFields();
+      toast.error(errorMsg);
       return;
     }
 
@@ -391,9 +456,12 @@ const Settings: React.FC = () => {
       await changePasswordMutation.mutateAsync({
         currentPassword: passwordFields.current,
         newPassword: passwordFields.new,
+        confirmNewPassword: passwordFields.confirm,
       });
       setPwModalOpen(false);
       setPasswordFields({ current: '', new: '', confirm: '' });
+      setPasswordErrors({ current: '', new: '', confirm: '' });
+      toast.success('Password updated successfully');
     } catch {
       // Handled in mutation onError
     }
@@ -494,7 +562,7 @@ const Settings: React.FC = () => {
                     fullWidth={false}
                     onClick={() => fileInputRef.current?.click()}
                     className="cursor-pointer"
-                    disabled={isUploadingPhoto || uploadAvatarMutation.isPending}
+                    disabled={isUploadingPhoto || uploadAvatarMutation.isPending || updateProfileMutation.isPending}
                   >
                     {isUploadingPhoto || uploadAvatarMutation.isPending ? 'Uploading…' : 'Change photo'}
                   </Button>
@@ -549,6 +617,7 @@ const Settings: React.FC = () => {
                       placeholder="e.g. Health Systems"
                       value={newTagInput}
                       onChange={(e) => setNewTagInput(e.target.value)}
+                      className="!py-2 sm:!py-2 text-sm"
                     />
                     <Button variant="primary" size="sm" fullWidth={false} onClick={handleAddExpertise}>
                       Add
@@ -969,10 +1038,15 @@ const Settings: React.FC = () => {
               variant="primary"
               type="submit"
               pill={false}
-              className="rounded-xl"
+              className={`rounded-xl transition-all ${
+                !isPasswordFieldsValid
+                  ? '!bg-[#E6E6E6] !text-[#ADADAD] !cursor-not-allowed !shadow-none hover:!bg-[#E6E6E6]'
+                  : ''
+              }`}
               form="change-password-form"
               fullWidth={false}
               disabled={changePasswordMutation.isPending}
+              aria-disabled={!isPasswordFieldsValid}
             >
               {changePasswordMutation.isPending ? 'Saving…' : 'Change password'}
             </Button>
@@ -983,23 +1057,52 @@ const Settings: React.FC = () => {
           <Input
             label="Current password"
             type="password"
+            showPasswordToggle
             placeholder="Current password"
             value={passwordFields.current}
-            onChange={(e) => setPasswordFields({ ...passwordFields, current: e.target.value })}
+            error={Boolean(passwordErrors.current)}
+            helperText={passwordErrors.current}
+            onChange={(e) => {
+              setPasswordFields({ ...passwordFields, current: e.target.value });
+              if (passwordErrors.current) setPasswordErrors((prev) => ({ ...prev, current: '' }));
+            }}
           />
           <Input
             label="New password"
             type="password"
+            showPasswordToggle
             placeholder="New password (min. 8 characters)"
             value={passwordFields.new}
-            onChange={(e) => setPasswordFields({ ...passwordFields, new: e.target.value })}
+            error={Boolean(passwordErrors.new)}
+            helperText={passwordErrors.new}
+            onChange={(e) => {
+              const val = e.target.value;
+              setPasswordFields({ ...passwordFields, new: val });
+              if (passwordErrors.new) setPasswordErrors((prev) => ({ ...prev, new: '' }));
+              if (passwordFields.confirm && val !== passwordFields.confirm) {
+                setPasswordErrors((prev) => ({ ...prev, confirm: 'Passwords do not match' }));
+              } else if (passwordFields.confirm && val === passwordFields.confirm) {
+                setPasswordErrors((prev) => ({ ...prev, confirm: '' }));
+              }
+            }}
           />
           <Input
             label="Confirm new password"
             type="password"
+            showPasswordToggle
             placeholder="Confirm password"
             value={passwordFields.confirm}
-            onChange={(e) => setPasswordFields({ ...passwordFields, confirm: e.target.value })}
+            error={Boolean(passwordErrors.confirm)}
+            helperText={passwordErrors.confirm}
+            onChange={(e) => {
+              const val = e.target.value;
+              setPasswordFields({ ...passwordFields, confirm: val });
+              if (passwordFields.new && val !== passwordFields.new) {
+                setPasswordErrors((prev) => ({ ...prev, confirm: 'Passwords do not match' }));
+              } else {
+                setPasswordErrors((prev) => ({ ...prev, confirm: '' }));
+              }
+            }}
           />
         </form>
       </ModalDialog>
@@ -1049,6 +1152,23 @@ const Settings: React.FC = () => {
       </ModalDialog>
     </div>
   );
+};
+
+const Settings: React.FC = () => {
+  const { user } = useAuth();
+  const role = user?.role?.toLowerCase() || localStorage.getItem('vora_role') || 'employer';
+  const isEmployer = role === 'employer';
+  const isMentor = role === 'mentor';
+
+  if (isEmployer) {
+    return <EmployerSettingsView />;
+  }
+
+  if (isMentor) {
+    return <MentorSettingsView />;
+  }
+
+  return <StandardSettingsView />;
 };
 
 export default Settings;

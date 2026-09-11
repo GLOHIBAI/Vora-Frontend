@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import AssessmentHeader from '../../components/talent/AssessmentHeader';
@@ -28,6 +28,7 @@ const LockIcon: React.FC<{ className?: string }> = ({ className }) => (
 const RoleAssessmentStageTwoPartOneIntro: React.FC = () => {
   const navigate = useNavigate();
   const { roleSlug = '' } = useParams<{ roleSlug: string }>();
+  const [isProcessing, setIsProcessing] = useState(false);
   const hasUnlockedPart4 = localStorage.getItem('vora_stage2_part4_unlocked') === 'true';
   const hasUnlockedPart3 = localStorage.getItem('vora_stage2_part3_unlocked') === 'true';
   const hasUnlockedPart2 = localStorage.getItem('vora_stage2_part2_unlocked') === 'true';
@@ -58,14 +59,21 @@ const RoleAssessmentStageTwoPartOneIntro: React.FC = () => {
   }, [activeAssessmentId, roleSlug, navigate]);
 
   const handleBegin = async () => {
-    if (activeAssessmentId && roleSlug) {
-      const target = await navigateGate2Authoritative(activeAssessmentId, roleSlug, navigate);
-      if (target && !target.includes('part-1')) {
-        return;
+    if (isProcessing) return;
+    setIsProcessing(true);
+    try {
+      if (activeAssessmentId && roleSlug) {
+        const target = await navigateGate2Authoritative(activeAssessmentId, roleSlug, navigate);
+        if (target && !target.includes('part-1')) {
+          return;
+        }
       }
+      toast.success('Starting Stage 2 Part 1...');
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/part-1/interview-1`);
+    } catch (err) {
+      console.error('Error starting Stage 2 Part 1:', err);
+      setIsProcessing(false);
     }
-    toast.success('Starting Stage 2 Part 1...');
-    navigate(`/onboarding/talent/${roleSlug}/interview/stage-2/part-1/interview-1`);
   };
 
   if (activeAssessmentId && (isLoading || !pillarIntroData)) {
@@ -241,17 +249,30 @@ const RoleAssessmentStageTwoPartOneIntro: React.FC = () => {
 
               {/* Action Button */}
               <button
+                type="button"
                 onClick={handleBegin}
-                className="bg-[#0047CC] text-white border-none rounded-[10px] p-[14px_28px] text-[14px] font-[700] cursor-pointer w-full flex items-center justify-center transition-all shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,71,204,0.36)] font-sans"
+                disabled={isProcessing}
+                className={`border-none rounded-[10px] p-[14px_28px] text-[14px] font-[700] w-full flex items-center justify-center gap-[8px] transition-all font-sans ${
+                  isProcessing
+                    ? 'bg-[#E6E6E6] text-[#ADADAD] cursor-not-allowed shadow-none pointer-events-none'
+                    : 'bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] cursor-pointer hover:bg-[#344DA1] hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,71,204,0.36)]'
+                }`}
               >
-                Begin Interview 1 of 3
+                {isProcessing ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-[#ADADAD] border-t-transparent rounded-full animate-spin" />
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  'Begin Interview 1 of 3'
+                )}
               </button>
             </>
           ) : (
             <>
               {/* Dynamic Non-Clinical Reference Layout */}
               <div className="flex justify-center mb-[18px]">
-                <div className="bg-[#EBF6FF] border border-[#387DFF]/30 text-[#0047CC] text-[11.5px] font-[800] tracking-[0.6px] uppercase px-[14px] py-[5px] rounded-full inline-flex items-center gap-[7px]">
+                <div className="bg-transparent border border-[#387DFF]/30 text-[#0047CC] text-[11.5px] font-[800] tracking-[0.6px] uppercase px-[14px] py-[5px] rounded-full inline-flex items-center gap-[7px]">
                   {levelLabel.toUpperCase()}{' '}
                   <span className="text-[#387DFF] font-[700] normal-case tracking-normal">
                     · {yearsDetail}
@@ -292,16 +313,30 @@ const RoleAssessmentStageTwoPartOneIntro: React.FC = () => {
               {/* Buttons Row */}
               <div className="flex gap-[9px] w-full">
                 <button
+                  type="button"
                   onClick={() => navigate(`/onboarding/talent/${roleSlug}/interview/stage-2`)}
                   className="flex-1 bg-white text-[#4A4A4A] border border-[#E6E6E6] rounded-[10px] p-[12px_20px] text-[13.5px] font-[700] cursor-pointer hover:bg-[#F7F7F7] transition-all font-sans"
                 >
                   {stageOverviewLabel}
                 </button>
                 <button
+                  type="button"
                   onClick={handleBegin}
-                  className="flex-1 bg-[#0047CC] text-white border-none rounded-[10px] p-[12px_20px] text-[13.5px] font-[700] cursor-pointer inline-flex items-center justify-center gap-[7px] shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] transition-all font-sans"
+                  disabled={isProcessing}
+                  className={`flex-1 border-none rounded-[10px] p-[12px_20px] text-[13.5px] font-[700] inline-flex items-center justify-center gap-[8px] transition-all font-sans ${
+                    isProcessing
+                      ? 'bg-[#E6E6E6] text-[#ADADAD] cursor-not-allowed shadow-none pointer-events-none'
+                      : 'bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] cursor-pointer hover:bg-[#344DA1]'
+                  }`}
                 >
-                  {beginPartLabel}
+                  {isProcessing ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-[#ADADAD] border-t-transparent rounded-full animate-spin" />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    beginPartLabel
+                  )}
                 </button>
               </div>
             </>

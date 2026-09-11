@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import VoraLogo from '../../components/common/VoraLogo';
 import Button from '../../components/common/Button';
@@ -32,6 +32,7 @@ const RoleAssessmentSessionTwoInfo: React.FC = () => {
   const sessionLabel = 'Your instincts';
   const screenCount = 5;
   const minuteRange = '12-18';
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const { data: roleResponse } = useGetPublicRoleQuery(roleSlug);
   const roleMeta = useMemo(() => {
@@ -45,7 +46,11 @@ const RoleAssessmentSessionTwoInfo: React.FC = () => {
   const companyName = roleMeta?.companyName ?? 'the employer';
 
   const handleStart = () => {
-    navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
+    if (isProcessing) return;
+    setIsProcessing(true);
+    setTimeout(() => {
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
+    }, 400);
   };
 
   return (
@@ -100,7 +105,7 @@ const RoleAssessmentSessionTwoInfo: React.FC = () => {
             Short workplace scenarios drawn from situations you might genuinely face. You&apos;ll tell us how you&apos;d approach each one. There are no trick questions and no single &quot;right&quot; answer we&apos;re looking for.
           </p>
 
-          <div className="bg-[#EBF6FF] border border-[#387DFF] rounded-[12px] p-[14px_16px] text-left mb-[24px] flex gap-[11px]">
+          <div className="bg-transparent border border-blue-200 rounded-[12px] p-[14px_16px] text-left mb-[24px] flex gap-[11px]">
             <QuestionCircleIcon className="w-[18px] h-[18px] text-[#0047CC] shrink-0 mt-[1px]" />
             <div className="text-[13px] text-[#182348] leading-[1.55]">
               <div className="text-[10.5px] font-[800] tracking-[0.5px] uppercase text-[#0047CC] mb-[3px]">Why this matters</div>
@@ -126,8 +131,15 @@ const RoleAssessmentSessionTwoInfo: React.FC = () => {
           <div className="flex flex-col sm:flex-row gap-[12px] justify-center items-stretch sm:items-center mt-[10px]">
             <Button 
               onClick={handleStart}
+              isLoading={isProcessing}
+              loadingLabel="Processing..."
+              disabled={isProcessing}
               pill={false}
-              className="rounded-xl p-[14px_28px] transition-all bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,71,204,0.36)] w-full sm:w-auto sm:min-w-[200px] flex justify-center items-center"
+              className={`rounded-xl p-[14px_28px] transition-all ${
+                isProcessing
+                  ? '!bg-[#E6E6E6] !text-[#ADADAD] cursor-not-allowed !shadow-none pointer-events-none'
+                  : 'bg-[#0047CC] text-white shadow-[0_4px_14px_rgba(0,71,204,0.28)] hover:bg-[#344DA1] hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,71,204,0.36)]'
+              } w-full sm:w-auto sm:min-w-[200px] flex justify-center items-center`}
             >
               <span className="text-[14px] font-[700]">
                 Begin session

@@ -35,16 +35,27 @@ export const buildGate3ResumeViewModel = (
     resumeState.progress?.uploaded ??
     (resumeState.videoUploads ? Object.keys(resumeState.videoUploads).length : 0);
 
-  const isCompleted = resumeState.gate3Complete || resumeState.nextStep === 'STAGE3_COMPLETE';
-  const isCandidateQuestions = resumeState.nextStep === 'CANDIDATE_QUESTIONS';
+  const isCompleted = resumeState.gate3Complete || resumeState.nextStep === 'GATE3_COMPLETE' || resumeState.nextStep === 'STAGE3_COMPLETE';
+  const isFailed = resumeState.nextStep === 'GATE3_FAILED';
+  const isAwaitVerdict = resumeState.nextStep === 'AWAIT_VERDICT';
+  const isCandidateQuestions = resumeState.nextStep === 'CANDIDATE_QUESTIONS' || resumeState.nextStep === 'CANDIDATE_VOICE';
 
   const base = `/onboarding/talent/${roleSlug}/interview/stage-3`;
 
   let resumePath: string;
   switch (resumeState.nextStep) {
+    case 'GATE3_COMPLETE':
+      resumePath = `${base}/results`;
+      break;
+    case 'GATE3_FAILED':
+      resumePath = `${base}/outcome`;
+      break;
+    case 'AWAIT_VERDICT':
+      resumePath = `${base}/analyzing`;
+      break;
     case 'STAGE3_COMPLETE':
     case 'GATE3_REVIEW':
-      resumePath = `${base}/complete`;
+      resumePath = `${base}/results`;
       break;
     case 'CANDIDATE_VOICE':
     case 'CANDIDATE_QUESTIONS':
@@ -63,8 +74,20 @@ export const buildGate3ResumeViewModel = (
   const remaining = Math.max(0, totalQ - answeredQ);
 
   return {
-    welcomeText: isCompleted ? 'Stage 3 Complete' : `Welcome back — Question ${currentQ} of ${totalQ}`,
-    pausedTimeText: isCompleted ? 'All responses recorded' : `Paused at Question ${currentQ}`,
+    welcomeText: isFailed
+      ? 'Stage 3 Outcome'
+      : isCompleted
+      ? 'Stage 3 Complete'
+      : isAwaitVerdict
+      ? 'Stage 3 Scoring'
+      : `Welcome back — Question ${currentQ} of ${totalQ}`,
+    pausedTimeText: isFailed
+      ? 'Evaluation finalized'
+      : isCompleted
+      ? 'All responses recorded'
+      : isAwaitVerdict
+      ? 'Scoring in progress'
+      : `Paused at Question ${currentQ}`,
     positionTitle: 'Stage 3 · How you show up',
     positionDesc: 'Short recorded video responses demonstrating how you communicate and reason.',
     crumbs: ['Stage 3', 'How you show up', `Question ${currentQ}`],
@@ -79,7 +102,13 @@ export const buildGate3ResumeViewModel = (
     completedSub: remaining > 0 ? `${remaining} remaining` : 'All questions answered',
     resumePath,
     showRegenerationNotice: false,
-    ctaLabel: isCompleted ? 'View results' : 'Resume video interview',
+    ctaLabel: isFailed
+      ? 'View outcome'
+      : isCompleted
+      ? 'View results'
+      : isAwaitVerdict
+      ? 'View scoring status'
+      : 'Resume video interview',
   };
 };
 

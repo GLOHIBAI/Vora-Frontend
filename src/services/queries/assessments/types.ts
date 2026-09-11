@@ -401,9 +401,15 @@ export interface AssessmentSubmitResponse {
   componentId: string;
   screenKey?: string;
   status: "completed" | "partial";
-  /** Deprecated submit does not return next screen; refetch resume-state instead. */
-  nextScreenKey?: string;
+  nextScreenKey?: string | null;
+  nextScreen?: {
+    nextScreenKey?: string | null;
+    session?: number;
+    [key: string]: unknown;
+  };
+  gate1Complete?: boolean;
   gateRollup?: GateRollup;
+  [key: string]: unknown;
 }
 
 // ── Adaptive step response ───────────────────────────────────────────────────
@@ -507,6 +513,19 @@ export interface GateVerdictResponse {
     description: string;
     scorePercent: number;
   }>;
+  overallScore?: number;
+  stages?: Array<{
+    gate: number;
+    label: string;
+    score: number;
+    status: string;
+  }>;
+  nextDecision?: {
+    title: string;
+    description: string;
+    ctaLabel: string;
+    typicalWait: string;
+  };
   nextStage?: {
     gate: number;
     label: string;
@@ -1054,18 +1073,31 @@ export interface Stage4Offer {
 }
 
 export interface Stage4DecisionData {
+  stage?: number;
   screen: Stage4DecisionScreen;
   status?: string;
+  assessmentId?: string;
+  rolePostingId?: string;
+  roleTitle?: string;
   employerName?: string;
   talentFirstName?: string;
   typicalWait?: string;
+  overallScore?: number;
+  stages?: Array<{
+    gate: number;
+    label: string;
+    score: number;
+    status: string;
+  }>;
+  startedAt?: string;
   startedAgo?: string;
   steps?: Stage4DecisionStep[];
   reviewers?: Stage4Reviewer[];
   note?: { title?: string; body?: string } | string;
-  alignment?: Stage4Alignment;
-  rejection?: Stage4Rejection;
-  offer?: Stage4Offer;
+  alignment?: Stage4Alignment | null;
+  rejection?: Stage4Rejection | null;
+  offer?: Stage4Offer | null;
+  hire?: { hireId?: string } | null;
   hireId?: string;
 }
 

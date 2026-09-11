@@ -13,6 +13,7 @@ import { getLikertQuestions } from '../../../utils/assessmentItems';
 import type {
   AssessmentDraftResponse,
   AssessmentScreenStartResponse,
+  AssessmentSubmitResponse,
 } from '../../../services/queries/assessments/types';
 
 export interface AssessmentScreenProgress {
@@ -34,7 +35,7 @@ export interface AssessmentScreenViewProps {
   companyName?: string;
   roleTitle?: string;
   onSaveExit: () => void;
-  onScreenComplete: () => void | Promise<void>;
+  onScreenComplete: (submitResponse?: AssessmentSubmitResponse) => void | Promise<void>;
 }
 
 interface ScreenMeta {
@@ -300,7 +301,7 @@ const AssessmentScreenView: React.FC<AssessmentScreenViewProps> = ({
         </div>
 
         {/* Why Mini block */}
-        <div className="bg-[#EBF6FF] border border-[#387DFF] rounded-[10px] p-[11px_14px] flex gap-2.5 items-start mb-8 text-[12.5px] text-[#182348] leading-[1.5]">
+        <div className="bg-transparent border border-blue-200 rounded-[10px] p-[11px_14px] flex gap-2.5 items-start mb-8 text-[12.5px] text-[#182348] leading-[1.5]">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-[15px] h-[15px] text-[#0047CC] shrink-0 mt-0.5">
             <circle cx="12" cy="12" r="10"/>
             <path d="M12 8v4M12 16h.01" strokeLinecap="round"/>

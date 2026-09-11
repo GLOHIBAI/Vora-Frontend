@@ -32,6 +32,7 @@ import {
   type AdaptiveStepResponse,
   type SaveDraftResponse,
   type AdaptiveMcqPriorStep,
+  type AssessmentSubmitResponse,
 } from "../services/queries/assessments/types";
 
 const mergeResponseMaps = (
@@ -71,7 +72,7 @@ const normalizeSaveResponse = (raw: unknown): SaveDraftResponse =>
 interface UseAssessmentScreenOptions {
   assessmentId: string;
   screenData: AssessmentGateStartResponse;
-  onScreenComplete: () => void | Promise<void>;
+  onScreenComplete: (submitResponse?: AssessmentSubmitResponse) => void | Promise<void>;
   onAdaptiveStep?: (response: AdaptiveStepResponse) => void;
 }
 
@@ -744,14 +745,15 @@ export function useAssessmentScreen({
 
       const submitPayload = buildScreenSubmitResponses(items, answers, lockedResponses.current);
 
-      await submitScreen.mutateAsync({
+      const submitRaw = await submitScreen.mutateAsync({
         assessmentId,
         componentId,
         responses: submitPayload,
       });
 
       markComponentSubmitted(componentId);
-      await onScreenComplete();
+      const submitResponse = ((submitRaw as any)?.data ?? submitRaw) as AssessmentSubmitResponse;
+      await onScreenComplete(submitResponse);
     } catch (err: any) {
       confirmInFlightRef.current = false;
       setIsSubmitProcessActive(false);

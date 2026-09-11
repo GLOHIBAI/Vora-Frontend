@@ -183,7 +183,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
         if ((screen as any)?.pillarCompleted) {
           const nextPill = (screen as any).nextPillar;
           if (nextPill) {
-            const nextPath = gate2PillarStartPath(roleSlug, nextPill) || gate2PillarIntroPath(roleSlug, nextPill);
+            const nextPath = gate2PillarIntroPath(roleSlug, nextPill) || gate2PillarStartPath(roleSlug, nextPill);
             if (nextPath) {
               navigate(nextPath, { replace: true });
               return;
@@ -411,7 +411,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
           await submitScreenMutation.mutateAsync({
             assessmentId: activeAssessmentId,
             componentId: apiScreenData.componentId,
-            responses: {},
+            responses: { [itemKey]: { prose } },
           });
           markComponentSubmitted(apiScreenData.componentId);
           toast.success('Simulation submitted successfully!');
@@ -424,8 +424,9 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
       if (
         lower.includes('already submitted') ||
         lower.includes('already been submitted') ||
-        lower.includes('completed') ||
-        lower.includes('time limit')
+        lower.includes('simulation has ended') ||
+        lower.includes('component is closed') ||
+        lower.includes('time limit has expired')
       ) {
         toast.success('Simulation complete.');
         navigate(`/onboarding/talent/${roleSlug}/${nextPath}`);
@@ -664,7 +665,7 @@ const RoleAssessmentStageTwoSimulationBase: React.FC<StageTwoSimulationBaseProps
         ) : null}
 
         {whyMattersText ? (
-          <div className="bg-[#EBF6FF] border border-[#387DFF] rounded-[8px] p-[12px_14px] flex gap-[10px] mb-[22px]">
+          <div className="bg-transparent border border-blue-200 rounded-[8px] p-[12px_14px] flex gap-[10px] mb-[22px]">
             <InfoIcon className="w-[16px] h-[16px] text-[#0047CC] shrink-0 mt-[1px]" />
             <p className="text-[12.5px] text-[#182348] leading-[1.5]">
               <strong className="font-[800]">Why this matters · </strong>

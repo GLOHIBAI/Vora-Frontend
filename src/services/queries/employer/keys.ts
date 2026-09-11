@@ -3,7 +3,15 @@ export const employerKeys = {
   dashboard: () => [...employerKeys.all, 'dashboard'] as const,
   settings: () => [...employerKeys.all, 'settings'] as const,
   settingsProfile: () => [...employerKeys.settings(), 'profile'] as const,
+  settingsOrganisation: () => [...employerKeys.settings(), 'organisation'] as const,
+  settingsTeam: () => [...employerKeys.settings(), 'team'] as const,
+  settingsRoles: () => [...employerKeys.settings(), 'roles'] as const,
+  settingsBilling: () => [...employerKeys.settings(), 'billing'] as const,
   settingsNotifications: () => [...employerKeys.settings(), 'notifications'] as const,
+  settingsSecurity: () => [...employerKeys.settings(), 'security'] as const,
+  settingsDataPrivacyAudit: () => [...employerKeys.settings(), 'data-privacy', 'audit-trail'] as const,
+  settingsOfferTemplates: (category?: string, q?: string) =>
+    [...employerKeys.settings(), 'offer-templates', { category, q }] as const,
   settingsAccount: () => [...employerKeys.settings(), 'account'] as const,
   authSessions: () => ['auth', 'sessions'] as const,
 

@@ -7,10 +7,11 @@ import {
   useGateResumeStateQuery,
   useStartAssessmentScreenMutation,
 } from "../services/queries/assessments";
-import type {
-  AssessmentGateStartResponse,
-  Gate1ScreenKey,
-  GateResumeState,
+import {
+  type AssessmentGateStartResponse,
+  type Gate1ScreenKey,
+  type GateResumeState,
+  GATE1_SESSION2_SCREENS,
 } from "../services/queries/assessments/types";
 import { getApiErrorMessage, type ApiError } from "../services/api";
 import {
@@ -34,6 +35,7 @@ interface UseGate1ActiveScreenResult {
   isRecoverableError: boolean;
   reloadAfterSubmit: () => void;
   refetchResumeState: () => Promise<unknown>;
+  advanceToNextScreen: (nextKey: Gate1ScreenKey) => Promise<void>;
 }
 
 export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
@@ -89,6 +91,9 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
     refetch: refetchResumeState,
   } = useGateResumeStateQuery(assessmentId ?? "", 1, {
     enabled: !!assessmentId && !localStartFresh,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   const resumeState = useMemo(
@@ -271,6 +276,68 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
     refetchResumeState,
   ]);
 
+  const advanceToNextScreen = useCallback(
+    async (nextKey: Gate1ScreenKey) => {
+      if (!assessmentId) return;
+      setIsBooting(true);
+      setError(null);
+      bootedKeyRef.current = nextKey;
+      recoverAttemptsRef.current = 0;
+
+      // Update cached resume-state locally without triggering network request
+      queryClient.setQueryData(
+        assessmentKeys.resumeState(assessmentId, 1),
+        (prev: any) => {
+          if (!prev) return prev;
+          const target = prev?.data ?? prev;
+          const currentComplete = Array.isArray(target.completedScreenKeys)
+            ? target.completedScreenKeys
+            : [];
+          const completedScreenKeys =
+            screenData?.screenKey && !currentComplete.includes(screenData.screenKey)
+              ? [...currentComplete, screenData.screenKey]
+              : currentComplete;
+          const isSession2 = (GATE1_SESSION2_SCREENS as readonly string[]).includes(nextKey);
+          const updated = {
+            ...target,
+            session: isSession2 ? 2 : target.session,
+            nextScreenKey: nextKey,
+            inProgress: {
+              screenKey: nextKey,
+              componentId: "",
+              session: isSession2 ? 2 : target.session,
+            },
+            completedScreenKeys,
+          };
+          return prev?.data ? { ...prev, data: updated } : updated;
+        },
+      );
+
+      try {
+        const started = await startScreenAsync({
+          assessmentId,
+          body: buildGate1StartBody(nextKey),
+        });
+
+        const payload = normalizeGateStartResponse(started, nextKey);
+        if (!payload) {
+          throw new Error("Could not load this screen. Please try again.");
+        }
+
+        setScreenData(payload);
+      } catch (err: unknown) {
+        const message = getApiErrorMessage(
+          err,
+          "Could not start this interview screen. Please try again.",
+        );
+        setError(message);
+      } finally {
+        setIsBooting(false);
+      }
+    },
+    [assessmentId, screenData?.screenKey, queryClient, startScreenAsync],
+  );
+
   const isLoading =
     (!!assessmentId && !startFresh && resumeLoading) ||
     isBooting ||
@@ -292,6 +359,7 @@ export const useGate1ActiveScreen = (): UseGate1ActiveScreenResult => {
     isRecoverableError,
     reloadAfterSubmit,
     refetchResumeState,
+    advanceToNextScreen,
   };
 };
 

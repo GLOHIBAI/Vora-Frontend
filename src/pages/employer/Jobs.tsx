@@ -15,6 +15,7 @@ import PaginationControls from '../../components/common/PaginationControls';
 import Input from '../../components/common/Input';
 import Tag from '../../components/common/Tag';
 import Spinner from '../../components/common/Spinner';
+import EmptyState from '../../components/common/EmptyState';
 import type { PostJobContinueConfig } from '../../types/rolePosting';
 import { useEmployerJobsQuery } from '../../services/queries/employer';
 import type { EmployerJobStatus, EmployerJobBadge } from '../../services/queries/employer/types';
@@ -261,13 +262,11 @@ const Jobs: React.FC = () => {
                     </div>
                   ))
                 ) : (
-                  <div className="py-20 flex flex-col items-center justify-center">
-                    <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
-                      <BriefcaseIcon size={24} className="text-[#0047CC]" />
-                    </div>
-                    <p className="text-[15px] font-medium text-gray-900">No jobs found</p>
-                    <p className="text-[13px] font-medium text-gray-400 mt-1">Try adjusting your search or filters</p>
-                  </div>
+                  <EmptyState
+                    icon={BriefcaseIcon}
+                    title="No jobs found"
+                    description="Try adjusting your search or filters"
+                  />
                 )}
               </div>
             </div>

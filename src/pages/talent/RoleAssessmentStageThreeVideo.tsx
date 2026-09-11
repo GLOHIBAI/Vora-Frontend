@@ -100,9 +100,21 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
       const resumeRes = rawResume?.data || rawResume;
       const step = resumeRes?.nextStep || '';
 
-      if (step === 'STAGE3_COMPLETE' || step === 'GATE3_REVIEW' || resumeRes?.gate3Complete) {
+      if (step === 'GATE3_COMPLETE' || step === 'STAGE3_COMPLETE' || step === 'GATE3_REVIEW' || resumeRes?.gate3Complete) {
         stopCamera();
-        navigate(`${base}/complete`);
+        navigate(`${base}/results`);
+        return;
+      }
+
+      if (step === 'GATE3_FAILED') {
+        stopCamera();
+        navigate(`${base}/outcome`);
+        return;
+      }
+
+      if (step === 'AWAIT_VERDICT') {
+        stopCamera();
+        navigate(`${base}/analyzing`);
         return;
       }
 
@@ -310,9 +322,6 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
     };
   }, [assessmentId]);
 
-  // Modes tab
-  const [activeTab, setActiveTab] = useState<'live' | 'upload'>('live');
-
   // Answer capture status
   const [hasAnswer, setHasAnswer] = useState<boolean>(false);
 
@@ -330,10 +339,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
   const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null);
   const [hasWebcamPermission, setHasWebcamPermission] = useState<boolean | null>(null);
 
-  // File Upload states
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState<boolean>(false);
+  // Modals and UI state
 
   // Collapsible panels (redesign)
   const [showWhyWeAsk, setShowWhyWeAsk] = useState<boolean>(false);
@@ -458,7 +464,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
 
   // Camera stream initiation
   useEffect(() => {
-    if (activeTab === 'live' && !isRecordingStopped) {
+    if (!isRecordingStopped) {
       startCamera();
     } else {
       stopCamera();
@@ -466,12 +472,12 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
     return () => {
       stopCamera();
     };
-  }, [activeTab, currentItem?.id, isRecordingStopped]);
+  }, [currentItem?.id, isRecordingStopped]);
 
   // Visual audio bars levels rhythm
   useEffect(() => {
     let interval: any = null;
-    if (activeTab === 'live' && isRecording) {
+    if (isRecording) {
       interval = setInterval(() => {
         setAudioLevels(prev => prev.map(() => Math.floor(Math.random() * 80) + 10));
       }, 140);
@@ -481,7 +487,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isRecording, activeTab]);
+  }, [isRecording]);
 
   const startCamera = async (): Promise<MediaStream | null> => {
     try {
@@ -524,9 +530,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
   // Preparation skip / Start
   const handleStartAnswerFlow = () => {
     setIsThinking(false);
-    if (activeTab === 'live') {
-      handleStartRecording();
-    }
+    handleStartRecording();
   };
 
   const handleStartRecording = async () => {
@@ -637,67 +641,6 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
     handleStartRecording();
   };
 
-  const handleSwitchTab = (tab: 'live' | 'upload') => {
-    if (isRecording) {
-      toast.error('Please stop recording before switching modes.');
-      return;
-    }
-    setActiveTab(tab);
-  };
-
-  // Upload zones drag and drop handlers
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      processSelectedFile(files[0]);
-    }
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      processSelectedFile(files[0]);
-    }
-  };
-
-  const processSelectedFile = (file: File) => {
-    const validExts = ['.mp4', '.mov', '.webm'];
-    const ext = '.' + file.name.split('.').pop()?.toLowerCase();
-
-    if (!validExts.includes(ext)) {
-      toast.error('Unsupported format! Upload MP4, MOV, or WebM.');
-      return;
-    }
-
-    if (file.size > 200 * 1024 * 1024) {
-      toast.error('File size exceeds the 50 mb limit!');
-      return;
-    }
-
-    const url = URL.createObjectURL(file);
-    setUploadedFile(file);
-    setUploadedUrl(url);
-    setHasAnswer(true);
-    toast.success('Video upload validated.');
-  };
-
-  const handleReplaceUpload = () => {
-    setUploadedFile(null);
-    setUploadedUrl(null);
-    setHasAnswer(false);
-  };
-
   // Auto-submit from cheat rules violation
   const handleCheatSubmit = () => {
     setShowCheatModal(false);
@@ -722,7 +665,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
     const currentItemId = currentItem?.id;
     try {
       setIsSubmittingVideo(true);
-      const videoPayload = uploadedFile || recordedBlobRef.current;
+      const videoPayload = recordedBlobRef.current;
 
       let uploadRes: any;
 
@@ -762,6 +705,10 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
 
       if (currentItemId) {
         completedItemIdsRef.current.add(currentItemId);
+      }
+
+      if (uploadRes?.retakeExhausted) {
+        toast('Maximum retakes reached for this question. Moving forward...', { icon: 'ℹ️' });
       }
 
       const targetCompId = uploadRes?.componentId || componentId;
@@ -885,8 +832,6 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
       recordedBlobRef.current = null;
       setIsRecordingStopped(false);
       setIsRecording(false);
-      setUploadedFile(null);
-      setUploadedUrl(null);
       setHasAnswer(false);
     }
   };
@@ -927,11 +872,9 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
         }
       }
       localStorage.setItem('vora_stage3_completed', 'true');
-      localStorage.setItem('vora_stage4_unlocked', 'true');
       setIsCompiling(false);
-      toast.success('Stage 3 video interview completed!');
-      navigate(`/onboarding/talent/${roleSlug}/interview/stage-3/complete`);
-    }, 4200);
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-3/analyzing`);
+    }, 1500);
   };
 
   const handleSaveAndConfirmExit = () => {
@@ -1102,33 +1045,8 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
               </div>
             )}
 
-            {/* ── Mode toggle — plain text tabs ── */}
-            <div className="flex items-center gap-[24px] border-b border-[#E6E6E6] mt-[4px]">
-              <button
-                onClick={() => handleSwitchTab('live')}
-                disabled={isRecording}
-                className={`pb-[10px] text-[13.5px] font-[600] border-b-[2px] transition-all cursor-pointer bg-transparent ${activeTab === 'live'
-                  ? 'text-[#0047CC] border-[#0047CC]'
-                  : 'text-[#808080] border-transparent hover:text-[#4A4A4A]'
-                  }`}
-              >
-                Record now
-              </button>
-              <button
-                onClick={() => handleSwitchTab('upload')}
-                disabled={isRecording}
-                className={`pb-[10px] text-[13.5px] font-[600] border-b-[2px] transition-all cursor-pointer bg-transparent ${activeTab === 'upload'
-                  ? 'text-[#0047CC] border-[#0047CC]'
-                  : 'text-[#808080] border-transparent hover:text-[#4A4A4A]'
-                  }`}
-              >
-                Upload a recording
-              </button>
-            </div>
-
             {/* ── Record live panel ── */}
-            {activeTab === 'live' && (
-              <div className="bg-[#0B0F14] rounded-[12px] overflow-hidden flex flex-col min-h-[420px] relative shadow-[0_8px_24px_rgba(0,0,0,0.15)]">
+            <div className="bg-[#0B0F14] rounded-[12px] overflow-hidden flex flex-col min-h-[420px] relative shadow-[0_8px_24px_rgba(0,0,0,0.15)] mt-[4px]">
 
                 <div className="flex-1 relative bg-[#0B0F14] flex items-center justify-center min-h-[320px] overflow-hidden">
 
@@ -1279,84 +1197,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
                     )}
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* ── Upload panel ── */}
-            {activeTab === 'upload' && (
-              <div className="bg-white border border-[#E6E6E6] rounded-[12px] p-[24px] min-h-[420px] flex flex-col items-stretch">
-                {uploadedUrl ? (
-                  <div className="flex-1 flex flex-col justify-between">
-                    <div className="bg-[#0B0F14] rounded-[10px] h-[240px] flex items-center justify-center relative overflow-hidden mb-[14px]">
-                      <video
-                        src={uploadedUrl}
-                        controls
-                        className="w-full h-full object-contain"
-                      />
-                      <div className="absolute bottom-[10px] left-[10px] right-[10px] flex justify-between items-center z-[2]">
-                        <div className="text-white text-[11px] font-[600] bg-black/55 backdrop-blur-[6px] p-[4px_10px] rounded-[6px] max-w-[60%] truncate">
-                          {uploadedFile?.name}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-[14px_16px] bg-[#EBF6FF] border border-[#387DFF]/20 rounded-[10px] flex items-center gap-[10px]">
-                      <CheckIcon className="w-[16px] h-[16px] text-[#0047CC] shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[13px] font-[600] text-[#1A1A1A] mb-[2px]">Uploaded · within limits</div>
-                        <div className="text-[11.5px] text-[#0047CC] font-[500]">
-                          {uploadedFile ? (uploadedFile.size / (1024 * 1024)).toFixed(1) : 0} MB · Ready to submit
-                        </div>
-                      </div>
-                      <button
-                        onClick={handleReplaceUpload}
-                        className="bg-white border border-[#E6E6E6] text-[#4A4A4A] p-[6px_12px] rounded-[8px] font-[600] text-[12px] cursor-pointer inline-flex items-center gap-[5px] shrink-0 hover:bg-[#F7F7F7] transition-colors"
-                      >
-                        Replace
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    className={`flex-1 border-[1.5px] border-dashed rounded-[12px] flex flex-col items-center justify-center p-[40px_28px] text-center cursor-pointer transition-all ${isDragging
-                      ? 'border-[#0047CC] bg-[#F4F8FF]'
-                      : 'border-[#D4D4D4] bg-[#FAFAFA] hover:border-[#808080] hover:bg-[#F5F5F5]'
-                      }`}
-                  >
-                    <input
-                      type="file"
-                      id="file-upload-input"
-                      accept=".mp4,.mov,.webm"
-                      className="hidden"
-                      onChange={handleFileSelect}
-                    />
-
-                    <div className="w-[72px] h-[72px] rounded-[16px] bg-white border border-[#E6E6E6] flex items-center justify-center text-[#808080] mb-[14px]">
-                      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="17 8 12 3 7 8" />
-                        <line x1="12" y1="3" x2="12" y2="15" />
-                      </svg>
-                    </div>
-                    <div className="text-[16px] font-[700] text-[#1A1A1A] mb-[6px]">
-                      Drop a video here
-                    </div>
-                    <div className="text-[13px] text-[#808080] leading-[1.55] mb-[16px] max-w-[320px] font-[400]">
-                      Or pick from your device. MP4, MOV, or WebM up to 50 mb.
-                    </div>
-                    <label
-                      htmlFor="file-upload-input"
-                      className="bg-[#0047CC] text-white border-none rounded-[10px] p-[10px_20px] font-[600] text-[13px] cursor-pointer inline-flex items-center gap-[7px] shadow-[0_2px_8px_rgba(0,71,204,0.2)] hover:bg-[#344DA1] transition-colors"
-                    >
-                      Choose video file
-                    </label>
-                  </div>
-                )}
-              </div>
-            )}
+            </div>
           </div>
 
           {/* ── Right companion panel — single unified card ── */}
@@ -1436,7 +1277,7 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
           {hasAnswer ? (
             <span className="inline-flex items-center gap-[6px] bg-[#EBF6FF] text-[#0047CC] border border-[#387DFF]/20 px-[12px] py-[5px] rounded-full text-[11.5px] font-[600]">
               <CheckIcon className="w-[11px] h-[11px]" />
-              {activeTab === 'live' ? 'Recording captured' : 'Video uploaded'}
+              Recording captured
             </span>
           ) : (
             <span className="inline-flex items-center gap-[6px] bg-[#F7F7F7] text-[#808080] px-[12px] py-[5px] rounded-full text-[11.5px] font-[500]">

@@ -82,6 +82,8 @@ export interface TalentProfileResponse {
   firstName: string;
   lastName: string;
   professionalTitle?: string;
+  photoUrl?: string;
+  avatarUrl?: string;
 }
 
 export const useGetTalentProfileQuery = (enabled = true) => {
@@ -102,6 +104,8 @@ export interface MentorProfileResponse {
   lastName: string;
   title?: string;
   professionalTitle?: string;
+  photoUrl?: string;
+  avatarUrl?: string;
 }
 
 export const useGetMentorProfileQuery = (enabled = true) => {

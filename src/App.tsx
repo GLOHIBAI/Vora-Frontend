@@ -58,9 +58,12 @@ const RoleAssessmentStageTwoAnalyzing = lazy(() => import('./pages/talent/RoleAs
 const RoleAssessmentStageTwoResults = lazy(() => import('./pages/talent/RoleAssessmentStageTwoResults'))
 const RoleAssessmentStageTwoOutcome = lazy(() => import('./pages/talent/RoleAssessmentStageTwoOutcome'))
 const RoleAssessmentStageThreeIntro = lazy(() => import('./pages/talent/RoleAssessmentStageThreeIntro'))
-const RoleAssessmentStageThreeVideo = lazy(() => import('./pages/talent/RoleAssessmentStageThreeVideo'))
-const RoleAssessmentStageThreeCandidateQuestions = lazy(() => import('./pages/talent/RoleAssessmentStageThreeCandidateQuestions'))
-const RoleAssessmentStageThreeComplete = lazy(() => import('./pages/talent/RoleAssessmentStageThreeComplete'))
+const RoleAssessmentStageThreeVideo = lazy(() => import('./pages/talent/RoleAssessmentStageThreeVideo'));
+const RoleAssessmentStageThreeCandidateQuestions = lazy(() => import('./pages/talent/RoleAssessmentStageThreeCandidateQuestions'));
+const RoleAssessmentStageThreeComplete = lazy(() => import('./pages/talent/RoleAssessmentStageThreeComplete'));
+const RoleAssessmentStageThreeAnalyzing = lazy(() => import('./pages/talent/RoleAssessmentStageThreeAnalyzing'))
+const RoleAssessmentStageThreeResults = lazy(() => import('./pages/talent/RoleAssessmentStageThreeResults'))
+const RoleAssessmentStageThreeOutcome = lazy(() => import('./pages/talent/RoleAssessmentStageThreeOutcome'))
 const RoleAssessmentStageFourDecision = lazy(() => import('./pages/talent/RoleAssessmentStageFourDecision'))
 const RoleAssessmentResumeGate = lazy(() => import('./pages/talent/RoleAssessmentResumeGate'))
 const RoleProfileRolesFound = lazy(() => import('./pages/talent/RoleProfileRolesFound'))
@@ -252,6 +255,9 @@ const App = () => {
             <Route path="interview/stage-3/candidate-questions" element={<RoleAssessmentStageThreeCandidateQuestions />} />
             <Route path="interview/stage-3/questions" element={<RoleAssessmentStageThreeCandidateQuestions />} />
             <Route path="interview/stage-3/complete" element={<RoleAssessmentStageThreeComplete />} />
+            <Route path="interview/stage-3/analyzing" element={<RoleAssessmentStageThreeAnalyzing />} />
+            <Route path="interview/stage-3/results" element={<RoleAssessmentStageThreeResults />} />
+            <Route path="interview/stage-3/outcome" element={<RoleAssessmentStageThreeOutcome />} />
             <Route path="interview/stage-4" element={<RoleAssessmentStageFourDecision />} />
             <Route path="interview/stage-4/decision" element={<RoleAssessmentStageFourDecision />} />
             <Route path="interview/stage-4/review" element={<RoleAssessmentStageFourDecision />} />

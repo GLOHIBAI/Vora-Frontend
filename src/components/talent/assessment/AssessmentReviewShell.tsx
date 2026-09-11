@@ -88,7 +88,7 @@ const AssessmentReviewShell: React.FC<AssessmentReviewShellProps> = ({
         <div className="mb-[14px]">
           <Tag
             variant="blue"
-            className="uppercase font-[800] tracking-[0.7px] px-[12px] py-[5px]"
+            className="bg-transparent uppercase font-[800] tracking-[0.7px] px-[12px] py-[5px]"
             label="Last look before you submit"
           />
         </div>

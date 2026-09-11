@@ -5,8 +5,21 @@ import type {
   EmployerDashboardData,
   EmployerProfileSettings,
   UpdateEmployerProfileDto,
+  EmployerOrganisationSettings,
+  UpdateEmployerOrganisationDto,
+  EmployerTeamResponse,
+  InviteTeamMemberDto,
+  UpdateTeamMemberDto,
+  EmployerRolePermissionsMatrix,
+  UpdateRolePermissionsDto,
+  EmployerBillingSettings,
   EmployerNotificationsSettings,
   UpdateEmployerNotificationsDto,
+  EmployerSecuritySettings,
+  AuditTrailResponse,
+  OfferTemplateItem,
+  CreateOfferTemplateDto,
+  UpdateOfferTemplateDto,
   EmployerAccountSettings,
   UpdateEmployerAccountDto,
   EmailChangeRequestDto,
@@ -84,6 +97,8 @@ export const useUpdateEmployerProfileSettingsMutation = () => {
 };
 
 export const useUploadAvatarMutation = () => {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData();
@@ -98,8 +113,353 @@ export const useUploadAvatarMutation = () => {
 
       return (res?.data?.data ?? res?.data ?? res) as UploadAvatarResponse;
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mentor'] });
+      queryClient.invalidateQueries({ queryKey: ['employer'] });
+    },
     onError: (err: any) => {
       toast.error(err?.message || 'Failed to upload profile photo');
+    },
+  });
+};
+
+// -------------------------------------------------------------
+// Settings - Organisation Profile (Boot D)
+// -------------------------------------------------------------
+
+export const useEmployerOrganisationQuery = (options: Record<string, any> = {}) => {
+  return useQuery({
+    queryKey: employerKeys.settingsOrganisation(),
+    queryFn: async () => {
+      const response = await apiClient.get<any>({
+        url: '/employers/settings/organisation',
+        auth: true,
+      });
+      const data = response?.data?.data ?? response?.data ?? response;
+      return data as EmployerOrganisationSettings;
+    },
+    ...options,
+  });
+};
+
+export const useUpdateEmployerOrganisationMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: UpdateEmployerOrganisationDto) => {
+      const response = await apiClient.patch<any>({
+        url: '/employers/settings/organisation',
+        body: payload,
+        auth: true,
+      });
+      return response?.data?.data ?? response?.data ?? response;
+    },
+    onSuccess: () => {
+      toast.success('Organisation profile saved successfully');
+      queryClient.invalidateQueries({ queryKey: employerKeys.settingsOrganisation() });
+      queryClient.invalidateQueries({ queryKey: employerKeys.dashboard() });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to update organisation profile');
+    },
+  });
+};
+
+// -------------------------------------------------------------
+// Settings - Team & Seats (Boot D)
+// -------------------------------------------------------------
+
+export const useEmployerTeamQuery = (options: Record<string, any> = {}) => {
+  return useQuery({
+    queryKey: employerKeys.settingsTeam(),
+    queryFn: async () => {
+      const response = await apiClient.get<any>({
+        url: '/employers/settings/team',
+        auth: true,
+      });
+      const data = response?.data?.data ?? response?.data ?? response;
+      return data as EmployerTeamResponse;
+    },
+    ...options,
+  });
+};
+
+export const useInviteTeamMemberMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: InviteTeamMemberDto) => {
+      const response = await apiClient.post<any>({
+        url: '/employers/settings/team/invites',
+        body: payload,
+        auth: true,
+      });
+      return response?.data?.data ?? response?.data ?? response;
+    },
+    onSuccess: (_, variables) => {
+      toast.success(`Invitation sent to ${variables.email}`);
+      queryClient.invalidateQueries({ queryKey: employerKeys.settingsTeam() });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to send team invitation');
+    },
+  });
+};
+
+export const useUpdateTeamMemberMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      memberId,
+      ...payload
+    }: UpdateTeamMemberDto & { memberId: string }) => {
+      const response = await apiClient.patch<any>({
+        url: `/employers/settings/team/members/${memberId}`,
+        body: payload,
+        auth: true,
+      });
+      return response?.data?.data ?? response?.data ?? response;
+    },
+    onSuccess: () => {
+      toast.success('Team member updated');
+      queryClient.invalidateQueries({ queryKey: employerKeys.settingsTeam() });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to update team member');
+    },
+  });
+};
+
+// -------------------------------------------------------------
+// Settings - Roles & Permissions (Boot D)
+// -------------------------------------------------------------
+
+export const useEmployerRolesMatrixQuery = (options: Record<string, any> = {}) => {
+  return useQuery({
+    queryKey: employerKeys.settingsRoles(),
+    queryFn: async () => {
+      const response = await apiClient.get<any>({
+        url: '/employers/settings/roles',
+        auth: true,
+      });
+      const data = response?.data?.data ?? response?.data ?? response;
+      return data as EmployerRolePermissionsMatrix;
+    },
+    ...options,
+  });
+};
+
+export const useUpdateRolePermissionsMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: UpdateRolePermissionsDto) => {
+      const response = await apiClient.patch<any>({
+        url: `/employers/settings/roles/${payload.role}`,
+        body: { permissions: payload.permissions },
+        auth: true,
+      });
+      return response?.data?.data ?? response?.data ?? response;
+    },
+    onSuccess: (_, variables) => {
+      toast.success(`Updated permissions for ${variables.role}`);
+      queryClient.invalidateQueries({ queryKey: employerKeys.settingsRoles() });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to update role permissions');
+    },
+  });
+};
+
+// -------------------------------------------------------------
+// Settings - Billing & Payments (Boot D)
+// -------------------------------------------------------------
+
+export const useEmployerBillingSettingsQuery = (options: Record<string, any> = {}) => {
+  return useQuery({
+    queryKey: employerKeys.settingsBilling(),
+    queryFn: async () => {
+      const response = await apiClient.get<any>({
+        url: '/employers/settings/billing',
+        auth: true,
+      });
+      const data = response?.data?.data ?? response?.data ?? response;
+      return data as EmployerBillingSettings;
+    },
+    ...options,
+  });
+};
+
+// -------------------------------------------------------------
+// Settings - Security (Boot D)
+// -------------------------------------------------------------
+
+export const useEmployerSecuritySettingsQuery = (options: Record<string, any> = {}) => {
+  return useQuery({
+    queryKey: employerKeys.settingsSecurity(),
+    queryFn: async () => {
+      const response = await apiClient.get<any>({
+        url: '/employers/settings/security',
+        auth: true,
+      });
+      const data = response?.data?.data ?? response?.data ?? response;
+      return data as EmployerSecuritySettings;
+    },
+    ...options,
+  });
+};
+
+// -------------------------------------------------------------
+// Settings - Data & Privacy (Boot D)
+// -------------------------------------------------------------
+
+export const useDataPrivacyExportMutation = () => {
+  return useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post<any>({
+        url: '/employers/settings/data-privacy/export-request',
+        auth: true,
+      });
+      return response?.data?.data ?? response?.data ?? response;
+    },
+    onSuccess: () => {
+      toast.success('Data export request received. A download link will be emailed once ready.');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to request data export');
+    },
+  });
+};
+
+export const useDataPrivacyDeletionMutation = () => {
+  return useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post<any>({
+        url: '/employers/settings/data-privacy/deletion-request',
+        auth: true,
+      });
+      return response?.data?.data ?? response?.data ?? response;
+    },
+    onSuccess: () => {
+      toast.success('Account deletion request queued for compliance review.');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to submit deletion request');
+    },
+  });
+};
+
+export const useDataPrivacyAuditTrailQuery = (options: Record<string, any> = {}) => {
+  return useQuery({
+    queryKey: employerKeys.settingsDataPrivacyAudit(),
+    queryFn: async () => {
+      const response = await apiClient.get<any>({
+        url: '/employers/settings/data-privacy/audit-trail',
+        auth: true,
+      });
+      const data = response?.data?.data ?? response?.data ?? response;
+      return data as AuditTrailResponse;
+    },
+    ...options,
+  });
+};
+
+// -------------------------------------------------------------
+// Settings - Offer Templates (Boot D)
+// -------------------------------------------------------------
+
+export interface OfferTemplatesQueryParams {
+  category?: string;
+  q?: string;
+  enabled?: boolean;
+}
+
+export const useEmployerOfferTemplatesQuery = (
+  params: OfferTemplatesQueryParams = {},
+  options: Record<string, any> = {}
+) => {
+  const { category = '', q = '', enabled = true } = params;
+  return useQuery({
+    queryKey: employerKeys.settingsOfferTemplates(category, q),
+    queryFn: async () => {
+      const qs = new URLSearchParams();
+      if (category && category !== 'All') qs.set('category', category);
+      if (q) qs.set('q', q);
+      const queryString = qs.toString() ? `?${qs.toString()}` : '';
+      const response = await apiClient.get<any>({
+        url: `/employers/settings/offer-templates${queryString}`,
+        auth: true,
+      });
+      const data = response?.data?.data ?? response?.data ?? response;
+      return (Array.isArray(data) ? data : data?.templates ?? data?.items ?? []) as OfferTemplateItem[];
+    },
+    enabled,
+    ...options,
+  });
+};
+
+export const useCreateOfferTemplateMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: CreateOfferTemplateDto) => {
+      const response = await apiClient.post<any>({
+        url: '/employers/settings/offer-templates',
+        body: payload,
+        auth: true,
+      });
+      return response?.data?.data ?? response?.data ?? response;
+    },
+    onSuccess: () => {
+      toast.success('Custom offer template uploaded successfully');
+      queryClient.invalidateQueries({ queryKey: [...employerKeys.settings(), 'offer-templates'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to upload offer template');
+    },
+  });
+};
+
+export const useUpdateOfferTemplateMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...payload }: UpdateOfferTemplateDto & { id: string }) => {
+      const response = await apiClient.patch<any>({
+        url: `/employers/settings/offer-templates/${id}`,
+        body: payload,
+        auth: true,
+      });
+      return response?.data?.data ?? response?.data ?? response;
+    },
+    onSuccess: () => {
+      toast.success('Offer template updated');
+      queryClient.invalidateQueries({ queryKey: [...employerKeys.settings(), 'offer-templates'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to update offer template');
+    },
+  });
+};
+
+export const useDeleteOfferTemplateMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiClient.delete<any>({
+        url: `/employers/settings/offer-templates/${id}`,
+        auth: true,
+      });
+      return response?.data?.data ?? response?.data ?? response;
+    },
+    onSuccess: () => {
+      toast.success('Offer template removed');
+      queryClient.invalidateQueries({ queryKey: [...employerKeys.settings(), 'offer-templates'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to delete offer template');
     },
   });
 };
@@ -252,11 +612,17 @@ export const useRevokeOtherSessionsMutation = () => {
 export const useChangePasswordMutation = () => {
   return useMutation({
     mutationFn: async (payload: ChangePasswordDto) => {
+      const currentPassword = payload.currentPassword || payload.current;
+      const newPassword = payload.newPassword || payload.new;
+      const confirmNewPassword =
+        payload.confirmNewPassword || payload.confirmPassword || payload.confirm || newPassword;
+
       const response = await apiClient.post<any>({
         url: '/auth/change-password',
         body: {
-          currentPassword: payload.currentPassword || payload.current,
-          newPassword: payload.newPassword || payload.new,
+          currentPassword,
+          newPassword,
+          confirmNewPassword,
         },
         auth: true,
       });

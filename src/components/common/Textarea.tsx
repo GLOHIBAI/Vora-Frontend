@@ -62,9 +62,11 @@ const Textarea: React.FC<TextareaProps> = ({
 
   return (
     <div className="w-full">
-      <label className="block text-sm font-medium text-text-secondary mb-2.5">
-        {label}
-      </label>
+      {Boolean(label) && (
+        <label className="block text-sm font-medium text-text-secondary mb-2.5">
+          {label}
+        </label>
+      )}
       <div
         className={`rounded-lg border overflow-hidden transition-all focus-within:outline-none focus-within:ring-2 ${borderClass} ${focusRingClass}`}
       >

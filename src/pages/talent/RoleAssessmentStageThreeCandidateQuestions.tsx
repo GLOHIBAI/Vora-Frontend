@@ -67,7 +67,6 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
   const [questionsList, setQuestionsList] = useState<CandidateQuestionItem[]>([]);
 
   // Current recording / drafting state
-  const [activeTab, setActiveTab] = useState<'live' | 'upload'>('live');
   const [currentTopic, setCurrentTopic] = useState<string>('');
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [isRecordingStopped, setIsRecordingStopped] = useState<boolean>(false);
@@ -75,11 +74,6 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
   const [hasWebcamPermission, setHasWebcamPermission] = useState<boolean | null>(null);
   const [recElapsed, setRecElapsed] = useState<number>(0);
   const [audioLevels, setAudioLevels] = useState<number[]>([15, 30, 20, 45, 60, 40, 25, 55, 35, 10, 20, 15]);
-
-  // Upload file state
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState<boolean>(false);
   const [isUploadingQuestion, setIsUploadingQuestion] = useState<boolean>(false);
 
   // Backend scoring readiness and session info
@@ -158,7 +152,7 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
 
   // Camera stream controls
   useEffect(() => {
-    if (hasQuestions === 'yes' && activeTab === 'live' && !isRecordingStopped) {
+    if (hasQuestions === 'yes' && !isRecordingStopped) {
       startCamera();
     } else {
       stopCamera();
@@ -166,12 +160,12 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
     return () => {
       stopCamera();
     };
-  }, [hasQuestions, activeTab, isRecordingStopped]);
+  }, [hasQuestions, isRecordingStopped]);
 
   // Visual audio bars rhythm
   useEffect(() => {
     let interval: any = null;
-    if (hasQuestions === 'yes' && activeTab === 'live' && isRecording) {
+    if (hasQuestions === 'yes' && isRecording) {
       interval = setInterval(() => {
         setAudioLevels(prev => prev.map(() => Math.floor(Math.random() * 80) + 10));
       }, 140);
@@ -181,7 +175,7 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isRecording, activeTab, hasQuestions]);
+  }, [isRecording, hasQuestions]);
 
   // Timer: recording elapsed
   useEffect(() => {
@@ -316,58 +310,12 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
     startCamera();
   };
 
-  // Upload handlers
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      processSelectedFile(files[0]);
-    }
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      processSelectedFile(files[0]);
-    }
-  };
-
-  const processSelectedFile = (file: File) => {
-    const validExts = ['.mp4', '.mov', '.webm'];
-    const ext = '.' + file.name.split('.').pop()?.toLowerCase();
-
-    if (!validExts.includes(ext)) {
-      toast.error('Unsupported format! Upload MP4, MOV, or WebM.');
-      return;
-    }
-
-    if (file.size > 200 * 1024 * 1024) {
-      toast.error('File size exceeds the 50 mb limit!');
-      return;
-    }
-
-    const url = URL.createObjectURL(file);
-    setUploadedFile(file);
-    setUploadedUrl(url);
-    toast.success('Video upload validated.');
-  };
-
   const handleSaveQuestion = async () => {
-    const videoUrl = activeTab === 'live' ? recordedVideoUrl : uploadedUrl;
-    const videoBlob = activeTab === 'live' ? (recordedBlobRef.current || undefined) : (uploadedFile || undefined);
+    const videoUrl = recordedVideoUrl;
+    const videoBlob = recordedBlobRef.current || undefined;
 
     if (!videoUrl || !videoBlob) {
-      toast.error('Please record or upload a video for this question.');
+      toast.error('Please record a video for this question.');
       return;
     }
 
@@ -433,8 +381,6 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
       recordedBlobRef.current = null;
       setIsRecordingStopped(false);
       setIsRecording(false);
-      setUploadedFile(null);
-      setUploadedUrl(null);
       setRecElapsed(0);
     } catch (err: any) {
       console.error('Failed to upload candidate voice question:', err);
@@ -489,6 +435,15 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
         }
       }
 
+      // Ensure choice is committed to backend
+      if (assessmentId && hasQuestions) {
+        try {
+          await submitGate3CandidateVoiceChoice(assessmentId, hasQuestions);
+        } catch {
+          // Ignore if already submitted
+        }
+      }
+
       // Submit component completion with standard empty payload {} (matches Stage 3 video completion)
       if (assessmentId && componentId) {
         try {
@@ -501,14 +456,12 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
       console.warn('Error finalizing candidate questions:', err);
     }
 
-    // Analyzing delay then navigate to stage 3 complete
+    // Analyzing delay then navigate to stage 3 analyzing to await AI verdict
     setTimeout(() => {
       localStorage.setItem('vora_stage3_completed', 'true');
-      localStorage.setItem('vora_stage4_unlocked', 'true');
       setIsCompiling(false);
-      toast.success('Stage 3 interview completed!');
-      navigate(`/onboarding/talent/${roleSlug}/interview/stage-3/complete`);
-    }, 4000);
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-3/analyzing`);
+    }, 1500);
   };
 
   const formatTimer = (seconds: number) => {
@@ -608,7 +561,7 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
                 </span>
               </div>
               <div className="text-[13px] text-[#666] leading-[1.5]">
-                Record or upload short video inquiries about the role, culture, team, or expectations.
+                Record short video inquiries on camera about the role, culture, team, or expectations.
               </div>
             </div>
           </button>
@@ -751,32 +704,6 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
                       Keep each question concise and clear (recommended: under 1-2 minutes).
                     </p>
                   </div>
-
-                  {/* Mode tabs */}
-                  <div className="flex items-center gap-[16px]">
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('live')}
-                      disabled={isRecording}
-                      className={`pb-[6px] text-[13px] font-[600] border-b-[2px] transition-all cursor-pointer bg-transparent ${activeTab === 'live'
-                        ? 'text-[#0047CC] border-[#0047CC]'
-                        : 'text-[#808080] border-transparent hover:text-[#4A4A4A]'
-                        }`}
-                    >
-                      Record live
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('upload')}
-                      disabled={isRecording}
-                      className={`pb-[6px] text-[13px] font-[600] border-b-[2px] transition-all cursor-pointer bg-transparent ${activeTab === 'upload'
-                        ? 'text-[#0047CC] border-[#0047CC]'
-                        : 'text-[#808080] border-transparent hover:text-[#4A4A4A]'
-                        }`}
-                    >
-                      Upload video
-                    </button>
-                  </div>
                 </div>
 
                 {/* Optional Question Topic Input */}
@@ -794,8 +721,7 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
                 </div>
 
                 {/* Live Webcam Studio */}
-                {activeTab === 'live' && (
-                  <div className="bg-[#0B0F14] rounded-[12px] overflow-hidden flex flex-col min-h-[380px] relative mb-[20px] shadow-[0_8px_24px_rgba(0,0,0,0.15)]">
+                <div className="bg-[#0B0F14] rounded-[12px] overflow-hidden flex flex-col min-h-[380px] relative mb-[20px] shadow-[0_8px_24px_rgba(0,0,0,0.15)]">
 
                     <div className="flex-1 relative bg-[#0B0F14] flex items-center justify-center min-h-[300px] overflow-hidden">
 
@@ -911,70 +837,15 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                )}
-
-                {/* Upload File Zone */}
-                {activeTab === 'upload' && (
-                  <div className="bg-[#FAFAFA] border border-[#E6E6E6] rounded-[12px] p-[20px] mb-[20px]">
-                    {uploadedUrl ? (
-                      <div className="flex flex-col gap-[12px]">
-                        <div className="bg-[#0B0F14] rounded-[10px] h-[200px] flex items-center justify-center overflow-hidden">
-                          <video src={uploadedUrl} controls className="w-full h-full object-contain" />
-                        </div>
-                        <div className="flex items-center justify-between bg-[#EBF6FF] p-[10px_14px] rounded-[8px] border border-[#387DFF]/20">
-                          <div className="text-[12.5px] text-[#0047CC] font-[600] flex items-center gap-[6px]">
-                            <CheckIcon className="w-[14px] h-[14px]" />
-                            {uploadedFile?.name} ({uploadedFile ? (uploadedFile.size / (1024 * 1024)).toFixed(1) : 0} MB)
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => { setUploadedFile(null); setUploadedUrl(null); }}
-                            className="text-[11.5px] text-[#4A4A4A] hover:text-[#1A1A1A] font-[600] bg-white border border-[#E6E6E6] px-[10px] py-[4px] rounded-[6px] cursor-pointer"
-                          >
-                            Replace
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleFileDrop}
-                        className={`border-[1.5px] border-dashed rounded-[12px] p-[32px_20px] text-center cursor-pointer transition-all ${isDragging ? 'border-[#0047CC] bg-[#EBF6FF]' : 'border-[#D4D4D4] bg-white hover:border-[#808080]'
-                          }`}
-                      >
-                        <input
-                          type="file"
-                          id="candidate-question-upload"
-                          accept=".mp4,.mov,.webm"
-                          className="hidden"
-                          onChange={handleFileSelect}
-                        />
-                        <div className="text-[15px] font-[700] text-[#1A1A1A] mb-[4px]">
-                          Drop your video file here
-                        </div>
-                        <div className="text-[12.5px] text-[#808080] mb-[12px]">
-                          MP4, MOV, or WebM up to 50 mb
-                        </div>
-                        <label
-                          htmlFor="candidate-question-upload"
-                          className="bg-[#0047CC] hover:bg-[#344DA1] text-white rounded-[8px] px-[16px] py-[8px] text-[12.5px] font-[600] cursor-pointer inline-flex items-center gap-[6px]"
-                        >
-                          Choose file
-                        </label>
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 {/* Save question action button */}
                 <div className="flex items-center justify-between pt-[14px] border-t border-[#E6E6E6] flex-wrap gap-[10px]">
                   <div className="text-[12.5px] text-[#808080]">
                     {isUploadingQuestion
                       ? 'Uploading question to server...'
-                      : (activeTab === 'live' ? recordedVideoUrl : uploadedUrl)
+                      : recordedVideoUrl
                         ? '✓ Video ready to save to your list'
-                        : 'Record or upload your video before saving'}
+                        : 'Record your video before saving'}
                   </div>
 
                   <div className="flex gap-[10px]">
@@ -983,7 +854,7 @@ const RoleAssessmentStageThreeCandidateQuestions: React.FC = () => {
                       fullWidth={false}
                       pill={true}
                       onClick={handleSaveQuestion}
-                      disabled={isUploadingQuestion || !(activeTab === 'live' ? recordedVideoUrl : uploadedUrl)}
+                      disabled={isUploadingQuestion || !recordedVideoUrl}
                       className="bg-[#0047CC] hover:bg-[#344DA1] text-white text-[13px] font-[600] px-[20px] py-[9px] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isUploadingQuestion ? 'Uploading...' : `+ Add Question ${questionsList.length + 1}`}

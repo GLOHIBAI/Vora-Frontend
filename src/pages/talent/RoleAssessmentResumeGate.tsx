@@ -96,21 +96,25 @@ interface StageConfig {
   ctaLabel?: string;
 }
 
+const ENABLE_ANTI_CHEAT_TAB_SWITCH = import.meta.env.VITE_ENABLE_ANTI_CHEAT_TAB_SWITCH === 'true';
+
+const TAB_SWITCH_RULE = { text: "Don't switch tabs. Doing so auto-submits in 3 seconds", icon: StopIcon };
+
 const STAGE1_RULES = [
   { text: 'Each section has its own timed window where applicable', icon: ClockIcon },
-  { text: "Don't switch tabs. Doing so auto-submits in 3 seconds", icon: StopIcon },
+  ...(ENABLE_ANTI_CHEAT_TAB_SWITCH ? [TAB_SWITCH_RULE] : []),
   { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon },
 ];
 
 const STAGE2_RULES = [
   { text: 'Each interview has its own timed window', icon: ClockIcon },
-  { text: "Don't switch tabs. Doing so auto-submits in 3 seconds", icon: StopIcon },
+  ...(ENABLE_ANTI_CHEAT_TAB_SWITCH ? [TAB_SWITCH_RULE] : []),
   { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon },
 ];
 
 const STAGE3_RULES = [
   { text: 'Each question has a 30s think time and 1-2 min response limit', icon: ClockIcon },
-  { text: "Don't switch tabs. Doing so auto-submits in 3 seconds", icon: StopIcon },
+  ...(ENABLE_ANTI_CHEAT_TAB_SWITCH ? [TAB_SWITCH_RULE] : []),
   { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon },
 ];
 
@@ -246,7 +250,7 @@ const RoleAssessmentResumeGate: React.FC = () => {
       showRegenerationNotice: true,
       rulesList: [
         { text: 'Each response has a 30s think time and 3m record limit', icon: ClockIcon },
-        { text: "Don't switch tabs. Doing so auto-submits in 3 seconds", icon: StopIcon },
+        ...(ENABLE_ANTI_CHEAT_TAB_SWITCH ? [TAB_SWITCH_RULE] : []),
         { text: 'Pause properly with Save and finish later if you need to', icon: CheckIcon },
       ],
     }),
