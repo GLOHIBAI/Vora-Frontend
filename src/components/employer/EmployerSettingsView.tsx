@@ -181,6 +181,28 @@ const NOTIF_ITEMS: { key: keyof EmployerNotificationsSettings; label: string; de
 
 const TEMPLATE_CATEGORIES = ['All', 'Standard', 'Clinical', 'Executive', 'Contract'];
 
+const ORG_TYPE_OPTIONS = [
+  { value: 'government-agency', label: 'Government Agency' },
+  { value: 'ngo', label: 'NGO / Non-profit' },
+  { value: 'healthcare-provider', label: 'Healthcare Provider' },
+  { value: 'private-corporation', label: 'Private Corporation' },
+  { value: 'academic-research', label: 'Academic / Research' },
+  { value: 'other', label: 'Other' },
+];
+
+const isStandardOrgType = (type?: string | null) => {
+  if (!type) return false;
+  const norm = type.toLowerCase().replace(/[\s_/\\-]+/g, '');
+  return [
+    'governmentagency',
+    'ngo',
+    'ngononprofit',
+    'healthcareprovider',
+    'privatecorporation',
+    'academicresearch',
+  ].includes(norm);
+};
+
 const EmployerSettingsView: React.FC = () => {
   const { user, updateUser } = useAuth();
   const [activeSection, setActiveSection] = useState<EmployerSettingsSection>('org');
@@ -202,34 +224,69 @@ const EmployerSettingsView: React.FC = () => {
     logoStorageKey: null as string | null,
     logoUrl: null as string | null,
   });
+  const [selectedOrgType, setSelectedOrgType] = useState<string>('government-agency');
+  const [customOrgType, setCustomOrgType] = useState<string>('');
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (orgData) {
+      const serverType = orgData.organisationType ?? 'government-agency';
+      const isStandard = isStandardOrgType(serverType);
+
       setOrgProfile({
         organisationName: orgData.organisationName ?? user?.organisationName ?? '',
         websiteUrl: orgData.websiteUrl ?? '',
         country: orgData.country ?? '',
         organisationSize: orgData.organisationSize ?? '51-200',
-        organisationType: orgData.organisationType ?? 'government-agency',
+        organisationType: serverType,
         defaultTimezone: orgData.defaultTimezone ?? 'GMT+1',
         logoStorageKey: orgData.logoStorageKey ?? null,
         logoUrl: orgData.logoUrl ?? null,
       });
+
+      if (isStandard) {
+        setSelectedOrgType(serverType);
+        setCustomOrgType('');
+      } else {
+        setSelectedOrgType('other');
+        setCustomOrgType(serverType.toLowerCase() === 'other' ? '' : serverType);
+      }
+
       if (orgData.logoUrl) {
         setLogoPreview(orgData.logoUrl);
       }
     }
   }, [orgData, user]);
 
+  const handleOrgTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setSelectedOrgType(val);
+    if (val === 'other') {
+      setOrgProfile((prev) => ({ ...prev, organisationType: customOrgType.trim() || 'Other' }));
+    } else {
+      setOrgProfile((prev) => ({ ...prev, organisationType: val }));
+    }
+  };
+
+  const handleCustomOrgTypeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setCustomOrgType(val);
+    setOrgProfile((prev) => ({ ...prev, organisationType: val.trim() || 'Other' }));
+  };
+
   const handleSaveOrg = async () => {
+    const finalOrgType =
+      selectedOrgType === 'other'
+        ? (customOrgType.trim() || 'Other')
+        : orgProfile.organisationType;
+
     await updateOrgMutation.mutateAsync({
       organisationName: orgProfile.organisationName,
       websiteUrl: orgProfile.websiteUrl,
       country: orgProfile.country,
       organisationSize: orgProfile.organisationSize,
-      organisationType: orgProfile.organisationType,
+      organisationType: finalOrgType,
       defaultTimezone: orgProfile.defaultTimezone,
       logoStorageKey: orgProfile.logoStorageKey,
     });
@@ -802,15 +859,9 @@ const EmployerSettingsView: React.FC = () => {
                     />
                     <Select
                       label="Organisation type"
-                      value={orgProfile.organisationType}
-                      onChange={(e) => setOrgProfile({ ...orgProfile, organisationType: e.target.value })}
-                      options={[
-                        { value: 'government-agency', label: 'Government Agency' },
-                        { value: 'ngo', label: 'NGO / Non-profit' },
-                        { value: 'healthcare-provider', label: 'Healthcare Provider' },
-                        { value: 'private-corporation', label: 'Private Corporation' },
-                        { value: 'academic-research', label: 'Academic / Research' },
-                      ]}
+                      value={selectedOrgType}
+                      onChange={handleOrgTypeChange}
+                      options={ORG_TYPE_OPTIONS}
                     />
                     <Select
                       label="Default timezone"
@@ -824,6 +875,17 @@ const EmployerSettingsView: React.FC = () => {
                         { value: 'EST', label: 'EST (GMT-5 New York)' },
                       ]}
                     />
+                    {selectedOrgType === 'other' && (
+                      <div className="sm:col-span-2">
+                        <Input
+                          label="Specify organisation type"
+                          placeholder="e.g. Foundation, Venture Studio, Tech Startup"
+                          value={customOrgType}
+                          onChange={handleCustomOrgTypeChange}
+                          autoFocus
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div>
