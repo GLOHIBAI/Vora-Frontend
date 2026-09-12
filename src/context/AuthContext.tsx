@@ -138,6 +138,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         safeUpdates.lastName = capitalizeName(safeUpdates.lastName);
       }
 
+      // Prevent redundant state updates and infinite re-render loops
+      const hasActualChange = Object.entries(safeUpdates).some(
+        ([key, val]) => (prevUser as unknown as Record<string, unknown>)[key] !== val
+      );
+      if (!hasActualChange) {
+        return prevUser;
+      }
+
       const updatedUser = { ...prevUser, ...safeUpdates };
 
       if (updatedUser.firstName && !isEmailLike(updatedUser.firstName)) {

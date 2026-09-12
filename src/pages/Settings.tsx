@@ -48,6 +48,14 @@ import {
 } from '../services/queries/employer';
 import type { TabType, Slot, DayAvailability } from '../types';
 import type { NotificationFrequency } from '../services/queries/employer/types';
+import {
+  canUserChangePassword,
+  canUserChangeEmail,
+  getPasswordChangesRemaining,
+  getEmailChangesRemaining,
+  incrementPasswordChangeCount,
+  incrementEmailChangeCount,
+} from '../utils/credentialLimits';
 
 import EmployerSettingsView from '../components/employer/EmployerSettingsView';
 import MentorSettingsView from '../components/mentor/MentorSettingsView';
@@ -207,6 +215,20 @@ const StandardSettingsView: React.FC = () => {
   const canChangePassword = employerAccountData?.canChangePassword !== false;
   const pendingEmailChange = employerAccountData?.pendingEmailChange;
 
+  const userIdentifier = user?.email || user?.id || '';
+  const [pwChangeTrigger, setPwChangeTrigger] = useState(0);
+  const [emailChangeTrigger, setEmailChangeTrigger] = useState(0);
+
+  const remainingPasswordChanges = useMemo(
+    () => getPasswordChangesRemaining(userIdentifier, (employerAccountData as any)?.passwordChangeCount),
+    [userIdentifier, employerAccountData, pwChangeTrigger]
+  );
+
+  const remainingEmailChanges = useMemo(
+    () => getEmailChangesRemaining(userIdentifier, (employerAccountData as any)?.emailChangeCount),
+    [userIdentifier, employerAccountData, emailChangeTrigger]
+  );
+
   // -------------------------------------------------------------
   // Availability & Pricing Tab State (for Mentors)
   // -------------------------------------------------------------
@@ -362,11 +384,7 @@ const StandardSettingsView: React.FC = () => {
       const uploadRes = await uploadAvatarMutation.mutateAsync(file);
       if (uploadRes?.storageKey) {
         setPhotoStorageKey(uploadRes.storageKey);
-        if (isEmployer) {
-          await updateProfileMutation.mutateAsync({
-            photoStorageKey: uploadRes.storageKey,
-          });
-        }
+        toast.success('Photo selected. Click "Save changes" to apply.');
       }
     } catch {
       // Toast already handled by mutation
@@ -380,14 +398,25 @@ const StandardSettingsView: React.FC = () => {
 
   const handleRequestEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canUserChangeEmail(userIdentifier, (employerAccountData as any)?.emailChangeCount)) {
+      toast.error('You have reached the maximum limit of 3 email changes.');
+      return;
+    }
     if (!newEmailInput.trim()) {
       toast.error('Please enter a valid new email address');
       return;
     }
 
-    await requestEmailChangeMutation.mutateAsync({ newEmail: newEmailInput.trim() });
-    setEmailModalOpen(false);
-    setNewEmailInput('');
+    try {
+      await requestEmailChangeMutation.mutateAsync({ newEmail: newEmailInput.trim() });
+      incrementEmailChangeCount(userIdentifier);
+      setEmailChangeTrigger((c) => c + 1);
+      setEmailModalOpen(false);
+      setNewEmailInput('');
+      toast.success('Email change request submitted');
+    } catch {
+      // Handled in mutation onError
+    }
   };
 
   const getPasswordFieldsValidationMessage = (): string | null => {
@@ -454,6 +483,10 @@ const StandardSettingsView: React.FC = () => {
 
   const handleChangePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canUserChangePassword(userIdentifier, (employerAccountData as any)?.passwordChangeCount)) {
+      toast.error('You have reached the maximum limit of 3 password changes.');
+      return;
+    }
     const errorMsg = getPasswordFieldsValidationMessage();
     if (errorMsg) {
       validatePasswordFields();
@@ -467,6 +500,8 @@ const StandardSettingsView: React.FC = () => {
         newPassword: passwordFields.new,
         confirmNewPassword: passwordFields.confirm,
       });
+      incrementPasswordChangeCount(userIdentifier);
+      setPwChangeTrigger((c) => c + 1);
       setPwModalOpen(false);
       setPasswordFields({ current: '', new: '', confirm: '' });
       setPasswordErrors({ current: '', new: '', confirm: '' });
@@ -908,11 +943,17 @@ const StandardSettingsView: React.FC = () => {
                   <div>
                     <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Email</div>
                     <div className="text-sm font-semibold text-gray-900">{accountEmail}</div>
+                    <div className="text-[11px] text-gray-400 mt-0.5">
+                      {remainingEmailChanges > 0
+                        ? `${remainingEmailChanges} of 3 changes left`
+                        : 'No changes left (3/3 used)'}
+                    </div>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
                     fullWidth={false}
+                    disabled={remainingEmailChanges <= 0}
                     onClick={() => setEmailModalOpen(true)}
                   >
                     Change email
@@ -924,11 +965,17 @@ const StandardSettingsView: React.FC = () => {
                     <div>
                       <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Password</div>
                       <div className="text-sm font-semibold text-gray-900">••••••••••••</div>
+                      <div className="text-[11px] text-gray-400 mt-0.5">
+                        {remainingPasswordChanges > 0
+                          ? `${remainingPasswordChanges} of 3 changes left`
+                          : 'No changes left (3/3 used)'}
+                      </div>
                     </div>
                     <Button
                       variant="outline"
                       size="sm"
                       fullWidth={false}
+                      disabled={remainingPasswordChanges <= 0}
                       onClick={() => setPwModalOpen(true)}
                     >
                       Change password
@@ -1031,8 +1078,8 @@ const StandardSettingsView: React.FC = () => {
       {/* Change Password Modal */}
       <ModalDialog
         open={pwModalOpen}
-        title="Change password"
-        subtitle="Choose a strong password you do not use elsewhere."
+        title="Change Password"
+        subtitle={`Choose a strong password you do not use elsewhere. ${remainingPasswordChanges} of 3 changes left.`}
         onClose={() => setPwModalOpen(false)}
         maxWidth="max-w-[480px]"
         footer={
@@ -1052,14 +1099,14 @@ const StandardSettingsView: React.FC = () => {
               type="submit"
               pill={false}
               className={`rounded-xl transition-all ${
-                !isPasswordFieldsValid
+                !isPasswordFieldsValid || remainingPasswordChanges <= 0
                   ? '!bg-[#E6E6E6] !text-[#ADADAD] !cursor-not-allowed !shadow-none hover:!bg-[#E6E6E6]'
                   : ''
               }`}
               form="change-password-form"
               fullWidth={false}
-              disabled={changePasswordMutation.isPending}
-              aria-disabled={!isPasswordFieldsValid}
+              disabled={changePasswordMutation.isPending || remainingPasswordChanges <= 0}
+              aria-disabled={!isPasswordFieldsValid || remainingPasswordChanges <= 0}
             >
               {changePasswordMutation.isPending ? 'Saving…' : 'Change password'}
             </Button>
@@ -1124,7 +1171,7 @@ const StandardSettingsView: React.FC = () => {
       <ModalDialog
         open={emailModalOpen}
         title="Request Email Change"
-        subtitle="Enter the new email address for your organization account. This request will be sent to the administrator."
+        subtitle={`Enter the new email address for your organization account. This request will be sent to the administrator. ${remainingEmailChanges} of 3 changes left.`}
         onClose={() => setEmailModalOpen(false)}
         maxWidth="max-w-[480px]"
         footer={
@@ -1146,7 +1193,7 @@ const StandardSettingsView: React.FC = () => {
               className="rounded-xl"
               form="change-email-form"
               fullWidth={false}
-              disabled={requestEmailChangeMutation.isPending}
+              disabled={requestEmailChangeMutation.isPending || remainingEmailChanges <= 0}
             >
               {requestEmailChangeMutation.isPending ? 'Submitting…' : 'Submit Request'}
             </Button>

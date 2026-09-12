@@ -43,6 +43,14 @@ import {
   useRevokeOtherSessionsMutation,
   useChangePasswordMutation,
 } from '../../services/queries/employer';
+import {
+  canUserChangePassword,
+  canUserChangeEmail,
+  getPasswordChangesRemaining,
+  getEmailChangesRemaining,
+  incrementPasswordChangeCount,
+  incrementEmailChangeCount,
+} from '../../utils/credentialLimits';
 
 export type MentorSettingsTab =
   | 'profile'
@@ -244,12 +252,7 @@ const MentorSettingsView: React.FC = () => {
       const res = await uploadAvatarMutation.mutateAsync(file);
       if (res?.storageKey) {
         setPhotoStorageKey(res.storageKey);
-        const updateRes = await updateProfileMutation.mutateAsync({ photoStorageKey: res.storageKey });
-        const newAvatarUrl = updateRes?.photoUrl || res?.signedUrl || previewUrl;
-        if (newAvatarUrl) {
-          updateUser({ avatarUrl: newAvatarUrl });
-        }
-        toast.success('Photo updated');
+        toast.success('Photo selected. Click "Save changes" to apply.');
       }
     } catch {
       // Handled in mutation onError
@@ -613,6 +616,20 @@ const MentorSettingsView: React.FC = () => {
   const [newEmail, setNewEmail] = useState('');
   const [aiMatchingConsent, setAiMatchingConsent] = useState(true);
 
+  const userIdentifier = user?.email || user?.id || '';
+  const [pwChangeTrigger, setPwChangeTrigger] = useState(0);
+  const [emailChangeTrigger, setEmailChangeTrigger] = useState(0);
+
+  const remainingPasswordChanges = useMemo(
+    () => getPasswordChangesRemaining(userIdentifier, (accountData as any)?.passwordChangeCount),
+    [userIdentifier, accountData, pwChangeTrigger]
+  );
+
+  const remainingEmailChanges = useMemo(
+    () => getEmailChangesRemaining(userIdentifier, (accountData as any)?.emailChangeCount),
+    [userIdentifier, accountData, emailChangeTrigger]
+  );
+
   useEffect(() => {
     if (accountData) {
       if (typeof accountData.aiMatchingConsent === 'boolean') {
@@ -690,6 +707,10 @@ const MentorSettingsView: React.FC = () => {
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canUserChangePassword(userIdentifier, (accountData as any)?.passwordChangeCount)) {
+      toast.error('You have reached the maximum limit of 3 password changes.');
+      return;
+    }
     const errorMsg = getMentorPasswordValidationMessage();
     if (errorMsg) {
       validateMentorPasswordForm();
@@ -702,6 +723,8 @@ const MentorSettingsView: React.FC = () => {
         newPassword: passwords.new,
         confirmNewPassword: passwords.confirm,
       });
+      incrementPasswordChangeCount(userIdentifier);
+      setPwChangeTrigger((c) => c + 1);
       setPasswords({ current: '', new: '', confirm: '' });
       setPasswordErrors({ current: '', new: '', confirm: '' });
       setPwModalOpen(false);
@@ -713,13 +736,24 @@ const MentorSettingsView: React.FC = () => {
 
   const handleRequestEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canUserChangeEmail(userIdentifier, (accountData as any)?.emailChangeCount)) {
+      toast.error('You have reached the maximum limit of 3 email changes.');
+      return;
+    }
     if (!newEmail.trim()) {
       toast.error('Please enter a valid email address');
       return;
     }
-    await requestEmailChangeMutation.mutateAsync({ newEmail: newEmail.trim() });
-    setEmailModalOpen(false);
-    setNewEmail('');
+    try {
+      await requestEmailChangeMutation.mutateAsync({ newEmail: newEmail.trim() });
+      incrementEmailChangeCount(userIdentifier);
+      setEmailChangeTrigger((c) => c + 1);
+      setEmailModalOpen(false);
+      setNewEmail('');
+      toast.success('Email change request submitted');
+    } catch {
+      // Handled in mutation onError
+    }
   };
 
   // PPP Calculation helper
@@ -1783,6 +1817,11 @@ const MentorSettingsView: React.FC = () => {
                       <div className="text-sm font-semibold text-[#1A1A1A] mt-0.5">
                         {accountData?.email || user?.email || 'adaeze@globalhealth.org'}
                       </div>
+                      <div className="text-[11px] text-[#808080] mt-0.5">
+                        {remainingEmailChanges > 0
+                          ? `${remainingEmailChanges} of 3 changes left`
+                          : 'No changes left (3/3 used)'}
+                      </div>
                       {accountData?.pendingEmailChange && (
                         <div className="text-[11px] text-[#D97706] mt-0.5 font-medium">
                           Pending confirmation: {accountData.pendingEmailChange.requestedEmail}
@@ -1794,6 +1833,7 @@ const MentorSettingsView: React.FC = () => {
                       size="sm"
                       pill={false}
                       fullWidth={false}
+                      disabled={remainingEmailChanges <= 0}
                       onClick={() => setEmailModalOpen(true)}
                       className="text-xs"
                     >
@@ -1805,12 +1845,18 @@ const MentorSettingsView: React.FC = () => {
                     <div>
                       <div className="text-[10px] font-bold text-[#808080] uppercase tracking-wider">Password</div>
                       <div className="text-sm font-semibold text-[#1A1A1A] mt-0.5">••••••••••••</div>
+                      <div className="text-[11px] text-[#808080] mt-0.5">
+                        {remainingPasswordChanges > 0
+                          ? `${remainingPasswordChanges} of 3 changes left`
+                          : 'No changes left (3/3 used)'}
+                      </div>
                     </div>
                     <Button
                       variant="outline"
                       size="sm"
                       pill={false}
                       fullWidth={false}
+                      disabled={remainingPasswordChanges <= 0}
                       onClick={() => setPwModalOpen(true)}
                       className="text-xs"
                     >
@@ -1907,7 +1953,7 @@ const MentorSettingsView: React.FC = () => {
       <ModalDialog
         open={pwModalOpen}
         title="Change password"
-        subtitle="Choose a strong password you do not use elsewhere."
+        subtitle={`Choose a strong password you do not use elsewhere. ${remainingPasswordChanges} of 3 changes left.`}
         onClose={() => setPwModalOpen(false)}
         maxWidth="max-w-[460px]"
         footer={
@@ -1928,10 +1974,10 @@ const MentorSettingsView: React.FC = () => {
               pill={false}
               fullWidth={false}
               onClick={handleUpdatePassword}
-              disabled={changePasswordMutation.isPending}
-              aria-disabled={!isMentorPasswordFormValid}
+              disabled={changePasswordMutation.isPending || remainingPasswordChanges <= 0}
+              aria-disabled={!isMentorPasswordFormValid || remainingPasswordChanges <= 0}
               className={`text-xs font-bold transition-all ${
-                !isMentorPasswordFormValid
+                !isMentorPasswordFormValid || remainingPasswordChanges <= 0
                   ? '!bg-[#E6E6E6] !text-[#ADADAD] !cursor-not-allowed !shadow-none hover:!bg-[#E6E6E6]'
                   : ''
               }`}
@@ -1948,6 +1994,7 @@ const MentorSettingsView: React.FC = () => {
             showPasswordToggle
             placeholder="Current password"
             value={passwords.current}
+            disabled={remainingPasswordChanges <= 0}
             error={Boolean(passwordErrors.current)}
             helperText={passwordErrors.current}
             onChange={(e) => {
@@ -1961,6 +2008,7 @@ const MentorSettingsView: React.FC = () => {
             showPasswordToggle
             placeholder="Min. 8 characters"
             value={passwords.new}
+            disabled={remainingPasswordChanges <= 0}
             error={Boolean(passwordErrors.new)}
             helperText={passwordErrors.new}
             onChange={(e) => {
@@ -1980,6 +2028,7 @@ const MentorSettingsView: React.FC = () => {
             showPasswordToggle
             placeholder="Confirm password"
             value={passwords.confirm}
+            disabled={remainingPasswordChanges <= 0}
             error={Boolean(passwordErrors.confirm)}
             helperText={passwordErrors.confirm}
             onChange={(e) => {
@@ -1999,7 +2048,7 @@ const MentorSettingsView: React.FC = () => {
       <ModalDialog
         open={emailModalOpen}
         title="Change email"
-        subtitle="Enter your new email address. A confirmation link will be sent."
+        subtitle={`Enter your new email address. A confirmation link will be sent. ${remainingEmailChanges} of 3 changes left.`}
         onClose={() => setEmailModalOpen(false)}
         maxWidth="max-w-[460px]"
         footer={
@@ -2020,7 +2069,7 @@ const MentorSettingsView: React.FC = () => {
               pill={false}
               fullWidth={false}
               onClick={handleRequestEmailSubmit}
-              disabled={requestEmailChangeMutation.isPending}
+              disabled={requestEmailChangeMutation.isPending || remainingEmailChanges <= 0}
               className="text-xs font-bold"
             >
               {requestEmailChangeMutation.isPending ? 'Sending…' : 'Send Verification'}

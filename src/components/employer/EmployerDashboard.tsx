@@ -47,19 +47,23 @@ const KPICard: React.FC<{
   onClick?: () => void;
 }> = ({ label, value, delta, deltaType, icon: Icon, bgColor, iconColor, onClick }) => (
   <div
-    className="bg-white border border-gray-100 rounded-[14px] p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer relative overflow-hidden group"
+    className="bg-white border border-gray-100 rounded-[18px] p-5 lg:p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-pointer relative overflow-hidden group flex flex-col justify-between"
     onClick={onClick}
   >
-    <div className={`w-10 h-10 ${bgColor} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-      <Icon size={18} className={iconColor} />
+    <div className="flex items-center justify-between mb-4">
+      <div className={`w-11 h-11 ${bgColor} border border-gray-100/80 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform shadow-xs`}>
+        <Icon size={20} className={iconColor} />
+      </div>
+      {delta && (
+        <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full ${deltaType === 'up' ? 'text-green-700 bg-green-50 border border-green-100/60' : 'text-gray-500 bg-gray-50 border border-gray-100'}`}>
+          {deltaType === 'up' ? '↑' : '↓'} {delta}
+        </span>
+      )}
     </div>
-    <p className="text-[24px] lg:text-[30px] font-medium text-gray-900 leading-none mb-1">{value}</p>
-    <p className="text-[13px] font-medium text-gray-500">{label}</p>
-    {delta && (
-      <p className={`text-[11px] font-medium mt-2 ${deltaType === 'up' ? 'text-green-600' : 'text-gray-400'}`}>
-        {deltaType === 'up' ? '↑' : '↓'} {delta}
-      </p>
-    )}
+    <div>
+      <p className="text-[28px] lg:text-[34px] font-semibold text-gray-900 leading-none mb-1.5 tracking-tight">{value}</p>
+      <p className="text-[13px] font-medium text-gray-500">{label}</p>
+    </div>
   </div>
 );
 
@@ -72,14 +76,14 @@ const QuickActionBtn: React.FC<{
   onClick?: () => void;
 }> = ({ label, sub, icon: Icon, bgColor, iconColor, onClick }) => (
   <button
-    className="bg-white border border-gray-100 rounded-[14px] p-4 flex items-center gap-4 hover:shadow-lg hover:border-gray-200 hover:-translate-y-0.5 transition-all group text-left cursor-pointer"
+    className="bg-white border border-gray-100 rounded-[16px] p-4 flex items-center gap-3.5 hover:shadow-md hover:border-blue-100 hover:-translate-y-0.5 transition-all group text-left cursor-pointer w-full shadow-xs"
     onClick={onClick}
   >
-    <div className={`w-11 h-11 ${bgColor} rounded-xl flex items-center justify-center shrink-0`}>
-      <Icon size={20} className={iconColor} />
+    <div className={`w-10 h-10 ${bgColor} border border-gray-100/80 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs`}>
+      <Icon size={18} className={iconColor} />
     </div>
     <div className="flex-1 min-w-0">
-      <p className="text-[14px] font-medium text-gray-900 truncate">{label}</p>
+      <p className="text-[13px] font-semibold text-gray-900 truncate group-hover:text-[#0047CC] transition-colors">{label}</p>
       <p className="text-[11px] font-medium text-gray-400 truncate mt-0.5">{sub}</p>
     </div>
   </button>
@@ -347,89 +351,89 @@ const EmployerDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Main Masonry Grid */}
-      <div className="columns-1 lg:columns-2 xl:columns-2 gap-6 space-y-6">
-        {/* Column 1 */}
-        <div className="break-inside-avoid space-y-6">
-          {/* KPI Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <KPICard
-              label="Active Jobs"
-              value={metrics.activeJobs.value}
-              delta={metrics.activeJobs.delta}
-              deltaType={metrics.activeJobs.deltaType}
-              icon={BriefcaseIcon}
-              bgColor="bg-white"
-              iconColor="text-[#0047CC]"
-              onClick={() => navigate('/employer/jobs')}
-            />
-            <KPICard
-              label="Total Applicants"
-              value={metrics.totalApplicants.value}
-              delta={metrics.totalApplicants.delta}
-              deltaType={metrics.totalApplicants.deltaType}
-              icon={UsersIcon}
-              bgColor="bg-white"
-              iconColor="text-[#0047CC]"
-              onClick={() => navigate('/employer/jobs')}
-            />
-            <KPICard
-              label="Alignment Sessions"
-              value={metrics.alignmentSessions.value}
-              delta={metrics.alignmentSessions.delta}
-              deltaType={metrics.alignmentSessions.deltaType}
-              icon={ClockIcon}
-              bgColor="bg-white"
-              iconColor="text-[#0047CC]"
-            />
-            <KPICard
-              label="Wallet Balance"
-              value={metrics.walletBalance.value}
-              delta={metrics.walletBalance.delta}
-              deltaType={metrics.walletBalance.deltaType}
-              icon={WalletIcon}
-              bgColor="bg-white"
-              iconColor="text-[#0047CC]"
-              onClick={() => navigate('/employer/payments')}
-            />
-          </div>
+      {/* 4 Horizontal Boxes */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        <KPICard
+          label="Active Jobs"
+          value={metrics.activeJobs.value}
+          delta={metrics.activeJobs.delta}
+          deltaType={metrics.activeJobs.deltaType}
+          icon={BriefcaseIcon}
+          bgColor="bg-white"
+          iconColor="text-[#0047CC]"
+          onClick={() => navigate('/employer/jobs')}
+        />
+        <KPICard
+          label="Total Applicants"
+          value={metrics.totalApplicants.value}
+          delta={metrics.totalApplicants.delta}
+          deltaType={metrics.totalApplicants.deltaType}
+          icon={UsersIcon}
+          bgColor="bg-white"
+          iconColor="text-[#0047CC]"
+          onClick={() => navigate('/employer/jobs')}
+        />
+        <KPICard
+          label="Alignment Sessions"
+          value={metrics.alignmentSessions.value}
+          delta={metrics.alignmentSessions.delta}
+          deltaType={metrics.alignmentSessions.deltaType}
+          icon={ClockIcon}
+          bgColor="bg-white"
+          iconColor="text-[#0047CC]"
+        />
+        <KPICard
+          label="Wallet Balance"
+          value={metrics.walletBalance.value}
+          delta={metrics.walletBalance.delta}
+          deltaType={metrics.walletBalance.deltaType}
+          icon={WalletIcon}
+          bgColor="bg-white"
+          iconColor="text-[#0047CC]"
+          onClick={() => navigate('/employer/payments')}
+        />
+      </div>
 
-          {/* Quick Action Buttons */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <QuickActionBtn
-              label="Post a Job"
-              sub="Create a new listing"
-              icon={PlusIcon}
-              bgColor="bg-white"
-              iconColor="text-[#0047CC]"
-              onClick={() => setIsPostModalOpen(true)}
-            />
-            <QuickActionBtn
-              label="Confirm Hire"
-              sub="Send offer & lock escrow"
-              icon={CheckIcon}
-              bgColor="bg-white"
-              iconColor="text-[#0047CC]"
-              onClick={() => navigate('/employer/payments')}
-            />
-            <QuickActionBtn
-              label="Bulk Hire"
-              sub="Confirm multiple hires"
-              icon={UsersIcon}
-              bgColor="bg-white"
-              iconColor="text-[#0047CC]"
-              onClick={() => navigate('/employer/payments')}
-            />
-            <QuickActionBtn
-              label="Top Up Wallet"
-              sub="Add funds for escrow"
-              icon={TrendingUpIcon}
-              bgColor="bg-white"
-              iconColor="text-[#0047CC]"
-              onClick={() => navigate('/employer/payments')}
-            />
-          </div>
+      {/* Quick Action Buttons */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <QuickActionBtn
+          label="Post a Job"
+          sub="Create a new listing"
+          icon={PlusIcon}
+          bgColor="bg-white"
+          iconColor="text-[#0047CC]"
+          onClick={() => setIsPostModalOpen(true)}
+        />
+        <QuickActionBtn
+          label="Confirm Hire"
+          sub="Send offer & lock escrow"
+          icon={CheckIcon}
+          bgColor="bg-white"
+          iconColor="text-[#0047CC]"
+          onClick={() => navigate('/employer/payments')}
+        />
+        <QuickActionBtn
+          label="Bulk Hire"
+          sub="Confirm multiple hires"
+          icon={UsersIcon}
+          bgColor="bg-white"
+          iconColor="text-[#0047CC]"
+          onClick={() => navigate('/employer/payments')}
+        />
+        <QuickActionBtn
+          label="Top Up Wallet"
+          sub="Add funds for escrow"
+          icon={TrendingUpIcon}
+          bgColor="bg-white"
+          iconColor="text-[#0047CC]"
+          onClick={() => navigate('/employer/payments')}
+        />
+      </div>
 
+      {/* Modern SaaS Dashboard Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column (8 cols): Primary Workflow Feeds */}
+        <div className="lg:col-span-7 xl:col-span-8 space-y-6">
           {/* Active Jobs Card */}
           <div className="bg-white border border-gray-100 rounded-[18px] shadow-sm overflow-hidden">
             <div className="p-6 border-b border-gray-50 flex items-center justify-between">
@@ -538,10 +542,58 @@ const EmployerDashboard: React.FC = () => {
               )}
             </div>
           </div>
+
+          {/* Recent Activity Card */}
+          <div className="bg-white border border-gray-100 rounded-[18px] shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-gray-50 flex items-center justify-between">
+              <h3 className="text-[16px] font-medium text-gray-900">Recent Activity</h3>
+              <button
+                onClick={() => navigate('/employer/payments')}
+                className="text-[13px] font-medium text-[#0047CC] flex items-center gap-1 hover:underline bg-transparent border-none cursor-pointer"
+              >
+                All transactions <ChevronRightIcon size={12} />
+              </button>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {recentActivity.length === 0 ? (
+                <EmptyState
+                  icon={InfoIcon}
+                  title="No recent activity recorded yet"
+                  compact
+                  className="py-8"
+                />
+              ) : (
+                recentActivity.map((act, i) => {
+                  const iconConfig = mapActivityIcon(act.iconType);
+                  const IconComp = iconConfig.icon;
+                  return (
+                    <div key={act.id || i} className="flex gap-4 p-5 hover:bg-gray-50 transition-all cursor-pointer group">
+                      <div
+                        className={`w-9 h-9 rounded-lg ${
+                          act.iconBg || iconConfig.bg
+                        } flex items-center justify-center shrink-0`}
+                      >
+                        <IconComp size={16} className={act.iconColor || iconConfig.color} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[14px] font-medium text-gray-900 leading-tight truncate">{act.title}</p>
+                        <p className="text-[11px] font-medium text-gray-400 mt-1">
+                          {act.subtitle || act.sub || ''}
+                        </p>
+                      </div>
+                      <span className="text-[11px] font-medium text-gray-300 shrink-0">
+                        {act.timestamp || act.time || ''}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Column 2 */}
-        <div className="break-inside-avoid space-y-6">
+        {/* Right Column (4 cols): Financials & Action Widgets */}
+        <div className="lg:col-span-5 xl:col-span-4 space-y-6">
           {/* Post-Hire Tracking Widget */}
           <div className="bg-white border border-gray-100 rounded-[18px] p-6 shadow-sm">
             <div className="flex items-center justify-between mb-5">
@@ -697,54 +749,6 @@ const EmployerDashboard: React.FC = () => {
             >
               View Payment Overview
             </button>
-          </div>
-
-          {/* Recent Activity Card */}
-          <div className="bg-white border border-gray-100 rounded-[18px] shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-gray-50 flex items-center justify-between">
-              <h3 className="text-[16px] font-medium text-gray-900">Recent Activity</h3>
-              <button
-                onClick={() => navigate('/employer/payments')}
-                className="text-[13px] font-medium text-[#0047CC] flex items-center gap-1 hover:underline bg-transparent border-none cursor-pointer"
-              >
-                All transactions <ChevronRightIcon size={12} />
-              </button>
-            </div>
-            <div className="divide-y divide-gray-50">
-              {recentActivity.length === 0 ? (
-                <EmptyState
-                  icon={InfoIcon}
-                  title="No recent activity recorded yet"
-                  compact
-                  className="py-8"
-                />
-              ) : (
-                recentActivity.map((act, i) => {
-                  const iconConfig = mapActivityIcon(act.iconType);
-                  const IconComp = iconConfig.icon;
-                  return (
-                    <div key={act.id || i} className="flex gap-4 p-5 hover:bg-gray-50 transition-all cursor-pointer group">
-                      <div
-                        className={`w-9 h-9 rounded-lg ${
-                          act.iconBg || iconConfig.bg
-                        } flex items-center justify-center shrink-0`}
-                      >
-                        <IconComp size={16} className={act.iconColor || iconConfig.color} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[14px] font-medium text-gray-900 leading-tight truncate">{act.title}</p>
-                        <p className="text-[11px] font-medium text-gray-400 mt-1">
-                          {act.subtitle || act.sub || ''}
-                        </p>
-                      </div>
-                      <span className="text-[11px] font-medium text-gray-300 shrink-0">
-                        {act.timestamp || act.time || ''}
-                      </span>
-                    </div>
-                  );
-                })
-              )}
-            </div>
           </div>
 
           {/* Account & Settings Tiles */}

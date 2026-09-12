@@ -46,6 +46,7 @@ import {
   useUpdateOfferTemplateMutation,
   useDeleteOfferTemplateMutation,
   useUploadAvatarMutation,
+  useRequestEmailChangeMutation,
 } from '../../services/queries/employer';
 import type {
   EmployerPermissionKey,
@@ -53,6 +54,14 @@ import type {
   EmployerNotificationsSettings,
   OfferTemplateItem,
 } from '../../services/queries/employer/types';
+import {
+  canUserChangePassword,
+  canUserChangeEmail,
+  getPasswordChangesRemaining,
+  getEmailChangesRemaining,
+  incrementPasswordChangeCount,
+  incrementEmailChangeCount,
+} from '../../utils/credentialLimits';
 
 export type EmployerSettingsSection =
   | 'org'
@@ -309,8 +318,7 @@ const EmployerSettingsView: React.FC = () => {
       const res = await uploadAvatarMutation.mutateAsync(file);
       if (res?.storageKey) {
         setOrgProfile((prev) => ({ ...prev, logoStorageKey: res.storageKey }));
-        await updateOrgMutation.mutateAsync({ logoStorageKey: res.storageKey });
-        toast.success('Organisation logo updated');
+        toast.success('Logo selected. Click "Save changes" to apply.');
       }
     } catch {
       // Handled in mutation onError
@@ -360,8 +368,9 @@ const EmployerSettingsView: React.FC = () => {
   const handleSavePersonalProfile = async () => {
     const cleanFn = capitalizeName(personalProfile.firstName);
     const cleanLn = capitalizeName(personalProfile.lastName);
+    let updateRes: any = null;
     try {
-      await updateProfileMutation.mutateAsync({
+      updateRes = await updateProfileMutation.mutateAsync({
         firstName: cleanFn,
         lastName: cleanLn,
         professionalTitle: personalProfile.professionalTitle,
@@ -375,6 +384,7 @@ const EmployerSettingsView: React.FC = () => {
       firstName: cleanFn,
       lastName: cleanLn,
       title: personalProfile.professionalTitle,
+      ...(updateRes?.photoUrl || personalPhotoPreview ? { avatarUrl: updateRes?.photoUrl || personalPhotoPreview } : {}),
     });
     toast.success('Personal profile updated');
   };
@@ -393,8 +403,7 @@ const EmployerSettingsView: React.FC = () => {
       const res = await uploadAvatarMutation.mutateAsync(file);
       if (res?.storageKey) {
         setPersonalProfile((prev) => ({ ...prev, photoStorageKey: res.storageKey }));
-        await updateProfileMutation.mutateAsync({ photoStorageKey: res.storageKey });
-        toast.success('Profile photo updated');
+        toast.success('Photo selected. Click "Save changes" to apply.');
       }
     } catch {
       // Handled in mutation onError
@@ -572,6 +581,46 @@ const EmployerSettingsView: React.FC = () => {
 
   const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
   const [passwordErrors, setPasswordErrors] = useState({ current: '', new: '', confirm: '' });
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [newEmailInput, setNewEmailInput] = useState('');
+  const requestEmailChangeMutation = useRequestEmailChangeMutation();
+
+  const userIdentifier = user?.email || user?.id || '';
+  const [pwChangeTrigger, setPwChangeTrigger] = useState(0);
+  const [emailChangeTrigger, setEmailChangeTrigger] = useState(0);
+
+  const remainingPasswordChanges = useMemo(
+    () => getPasswordChangesRemaining(userIdentifier, (securityData as any)?.passwordChangeCount),
+    [userIdentifier, securityData, pwChangeTrigger]
+  );
+
+  const remainingEmailChanges = useMemo(
+    () => getEmailChangesRemaining(userIdentifier),
+    [userIdentifier, emailChangeTrigger]
+  );
+
+  const handleRequestEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canUserChangeEmail(userIdentifier)) {
+      toast.error('You have reached the maximum limit of 3 email changes.');
+      return;
+    }
+    if (!newEmailInput.trim()) {
+      toast.error('Please enter a valid new email address');
+      return;
+    }
+
+    try {
+      await requestEmailChangeMutation.mutateAsync({ newEmail: newEmailInput.trim() });
+      incrementEmailChangeCount(userIdentifier);
+      setEmailChangeTrigger((c) => c + 1);
+      setEmailModalOpen(false);
+      setNewEmailInput('');
+      toast.success('Email change request submitted');
+    } catch {
+      // Handled in mutation onError
+    }
+  };
 
   const getPasswordValidationMessage = (): string | null => {
     if (!passwords.current.trim()) {
@@ -637,6 +686,10 @@ const EmployerSettingsView: React.FC = () => {
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canUserChangePassword(userIdentifier, (securityData as any)?.passwordChangeCount)) {
+      toast.error('You have reached the maximum limit of 3 password changes.');
+      return;
+    }
     const errorMsg = getPasswordValidationMessage();
     if (errorMsg) {
       validatePasswordForm();
@@ -649,6 +702,8 @@ const EmployerSettingsView: React.FC = () => {
         newPassword: passwords.new,
         confirmNewPassword: passwords.confirm,
       });
+      incrementPasswordChangeCount(userIdentifier);
+      setPwChangeTrigger((c) => c + 1);
       setPasswords({ current: '', new: '', confirm: '' });
       setPasswordErrors({ current: '', new: '', confirm: '' });
       toast.success('Password updated successfully');
@@ -1005,12 +1060,29 @@ const EmployerSettingsView: React.FC = () => {
                       placeholder="e.g. Admin Manager, Head of Talent"
                       onChange={(e) => setPersonalProfile({ ...personalProfile, professionalTitle: e.target.value })}
                     />
-                    <Input
-                      label="Email address"
-                      value={user?.email || ''}
-                      disabled
-                      className="opacity-70 bg-gray-50 cursor-not-allowed"
-                    />
+                    <div>
+                      <Input
+                        label="Email address"
+                        value={user?.email || ''}
+                        disabled
+                        className="opacity-70 bg-gray-50 cursor-not-allowed"
+                      />
+                      <div className="flex items-center justify-between mt-1.5 px-0.5 text-[11px]">
+                        <span className="text-[#808080]">
+                          {remainingEmailChanges > 0
+                            ? `${remainingEmailChanges} of 3 changes left`
+                            : 'No changes left (3/3 used)'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setEmailModalOpen(true)}
+                          disabled={remainingEmailChanges <= 0}
+                          className="font-bold text-[#0047CC] hover:underline disabled:text-[#ADADAD] disabled:cursor-not-allowed disabled:no-underline cursor-pointer"
+                        >
+                          Request change
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   <div>
@@ -1606,7 +1678,24 @@ const EmployerSettingsView: React.FC = () => {
             <div className="space-y-4">
               {/* Password Card */}
               <div className="bg-white border border-[#E6E6E6] rounded-xl p-6 shadow-sm">
-                <h2 className="text-[16px] font-bold text-[#1A1A1A] mb-4">Password</h2>
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <h2 className="text-[16px] font-bold text-[#1A1A1A]">Password</h2>
+                  <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                    remainingPasswordChanges > 0 ? 'bg-[#EBF6FF] text-[#0047CC]' : 'bg-[#FEF2F2] text-[#DC2626]'
+                  }`}>
+                    {remainingPasswordChanges > 0
+                      ? `${remainingPasswordChanges} of 3 changes left`
+                      : 'No changes left (3/3 used)'}
+                  </span>
+                </div>
+
+                {remainingPasswordChanges <= 0 && (
+                  <div className="mb-4 p-3 bg-[#FEF2F2] border border-[#FECACA] rounded-lg text-xs text-[#DC2626] font-medium flex items-center gap-2">
+                    <AlertTriangleIcon size={16} className="shrink-0" />
+                    <span>You have reached the maximum allowed limit of 3 password changes. Further changes cannot be made.</span>
+                  </div>
+                )}
+
                 <form onSubmit={handleUpdatePassword} className="space-y-3 max-w-[420px]" autoComplete="off">
                   <Input
                     label="Current password"
@@ -1614,6 +1703,7 @@ const EmployerSettingsView: React.FC = () => {
                     showPasswordToggle
                     placeholder="Enter current password"
                     value={passwords.current}
+                    disabled={remainingPasswordChanges <= 0}
                     error={Boolean(passwordErrors.current)}
                     helperText={passwordErrors.current}
                     onChange={(e) => {
@@ -1629,6 +1719,7 @@ const EmployerSettingsView: React.FC = () => {
                     showPasswordToggle
                     placeholder="Min. 8 characters"
                     value={passwords.new}
+                    disabled={remainingPasswordChanges <= 0}
                     error={Boolean(passwordErrors.new)}
                     helperText={passwordErrors.new}
                     onChange={(e) => {
@@ -1650,6 +1741,7 @@ const EmployerSettingsView: React.FC = () => {
                     showPasswordToggle
                     placeholder="Re-enter new password"
                     value={passwords.confirm}
+                    disabled={remainingPasswordChanges <= 0}
                     error={Boolean(passwordErrors.confirm)}
                     helperText={passwordErrors.confirm}
                     onChange={(e) => {
@@ -1668,10 +1760,10 @@ const EmployerSettingsView: React.FC = () => {
                     size="sm"
                     pill={false}
                     fullWidth={false}
-                    disabled={changePasswordMutation.isPending}
-                    aria-disabled={!isPasswordFormValid}
+                    disabled={changePasswordMutation.isPending || remainingPasswordChanges <= 0}
+                    aria-disabled={!isPasswordFormValid || remainingPasswordChanges <= 0}
                     className={`text-xs mt-2 transition-all ${
-                      !isPasswordFormValid
+                      !isPasswordFormValid || remainingPasswordChanges <= 0
                         ? '!bg-[#E6E6E6] !text-[#ADADAD] !cursor-not-allowed !shadow-none hover:!bg-[#E6E6E6]'
                         : ''
                     }`}
@@ -2165,6 +2257,52 @@ const EmployerSettingsView: React.FC = () => {
             You will be contacted by our data privacy compliance team once the request has been received and verified.
           </p>
         </div>
+      </ModalDialog>
+
+      {/* Change Email Request Modal */}
+      <ModalDialog
+        open={emailModalOpen}
+        title="Request Email Change"
+        subtitle={`Enter the new email address for your organization account. This request will be sent to the administrator. ${remainingEmailChanges} of 3 changes left.`}
+        onClose={() => setEmailModalOpen(false)}
+        maxWidth="max-w-[480px]"
+        footer={
+          <div className="flex justify-end gap-2.5">
+            <Button
+              variant="outline"
+              size="sm"
+              pill={false}
+              fullWidth={false}
+              onClick={() => setEmailModalOpen(false)}
+              className="text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              pill={false}
+              fullWidth={false}
+              form="employer-change-email-form"
+              type="submit"
+              disabled={requestEmailChangeMutation.isPending || remainingEmailChanges <= 0}
+              className="text-xs font-bold"
+            >
+              {requestEmailChangeMutation.isPending ? 'Submitting…' : 'Submit Request'}
+            </Button>
+          </div>
+        }
+      >
+        <form id="employer-change-email-form" onSubmit={handleRequestEmailSubmit} className="space-y-4" autoComplete="off">
+          <Input
+            label="New Email Address"
+            type="email"
+            placeholder="name@company.com"
+            value={newEmailInput}
+            onChange={(e) => setNewEmailInput(e.target.value)}
+            required
+          />
+        </form>
       </ModalDialog>
     </div>
   );

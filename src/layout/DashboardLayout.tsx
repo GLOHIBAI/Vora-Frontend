@@ -128,9 +128,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       if (talentProfile?.data) {
         const { firstName, lastName } = talentProfile.data;
         if (firstName) {
+          const cleanFn = capitalizeName(firstName);
+          const cleanLn = capitalizeName(lastName || '');
           hasSyncedTalentRef.current = true;
-          if (user.firstName !== firstName || user.lastName !== lastName) {
-            updateUser({ firstName, lastName });
+          if (user.firstName !== cleanFn || (user.lastName || '') !== cleanLn) {
+            updateUser({ firstName: cleanFn, lastName: cleanLn });
             return;
           }
         }
@@ -138,9 +140,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       if (talentState?.data?.fields) {
         const { firstName, lastName } = talentState.data.fields;
         if (firstName) {
+          const cleanFn = capitalizeName(firstName);
+          const cleanLn = capitalizeName(lastName || '');
           hasSyncedTalentRef.current = true;
-          if (user.firstName !== firstName || user.lastName !== lastName) {
-            updateUser({ firstName, lastName });
+          if (user.firstName !== cleanFn || (user.lastName || '') !== cleanLn) {
+            updateUser({ firstName: cleanFn, lastName: cleanLn });
           }
         }
       }
@@ -149,38 +153,42 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   useEffect(() => {
     if (user && isMentor) {
-      if (mentorSettingsProfile) {
-        const firstName = mentorSettingsProfile.firstName;
-        const lastName = mentorSettingsProfile.lastName ?? '';
+      if (mentorSettingsProfile && !hasSyncedMentorRef.current) {
+        const cleanFn = capitalizeName(mentorSettingsProfile.firstName || '');
+        const cleanLn = capitalizeName(mentorSettingsProfile.lastName ?? '');
         const title = mentorSettingsProfile.professionalTitle;
         const photoUrl = mentorSettingsProfile.photoUrl;
         if (
-          (firstName && (user.firstName !== firstName || user.lastName !== lastName)) ||
+          (cleanFn && (user.firstName !== cleanFn || (user.lastName || '') !== cleanLn)) ||
           (title && user.title !== title) ||
           (photoUrl && user.avatarUrl !== photoUrl)
         ) {
+          hasSyncedMentorRef.current = true;
           updateUser({
-            ...(firstName ? { firstName, lastName } : {}),
+            ...(cleanFn ? { firstName: cleanFn, lastName: cleanLn } : {}),
             ...(title ? { title } : {}),
             ...(photoUrl ? { avatarUrl: photoUrl } : {}),
           });
+          return;
         }
-      } else if (mentorProfile?.data) {
-        const { firstName, lastName } = mentorProfile.data;
+      } else if (mentorProfile?.data && !hasSyncedMentorRef.current) {
+        const cleanFn = capitalizeName(mentorProfile.data.firstName || '');
+        const cleanLn = capitalizeName(mentorProfile.data.lastName || '');
         const photoUrl = (mentorProfile.data as any).photoUrl || (mentorProfile.data as any).avatarUrl;
         if (
-          (firstName && (user.firstName !== firstName || user.lastName !== lastName)) ||
+          (cleanFn && (user.firstName !== cleanFn || (user.lastName || '') !== cleanLn)) ||
           (photoUrl && user.avatarUrl !== photoUrl)
         ) {
+          hasSyncedMentorRef.current = true;
           updateUser({
-            ...(firstName ? { firstName, lastName } : {}),
+            ...(cleanFn ? { firstName: cleanFn, lastName: cleanLn } : {}),
             ...(photoUrl ? { avatarUrl: photoUrl } : {}),
           });
           return;
         }
       }
       const mentorOnboardingFields = normalizeMentorOnboardingState(mentorState?.data)?.fields;
-      if (mentorOnboardingFields) {
+      if (mentorOnboardingFields && !hasSyncedMentorRef.current) {
         const firstName =
           typeof mentorOnboardingFields.firstName === 'string'
             ? mentorOnboardingFields.firstName
@@ -190,9 +198,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             ? mentorOnboardingFields.lastName
             : undefined;
         if (firstName) {
+          const cleanFn = capitalizeName(firstName);
+          const cleanLn = capitalizeName(lastName || '');
           hasSyncedMentorRef.current = true;
-          if (user.firstName !== firstName || user.lastName !== lastName) {
-            updateUser({ firstName, lastName: lastName ?? '' });
+          if (user.firstName !== cleanFn || (user.lastName || '') !== cleanLn) {
+            updateUser({ firstName: cleanFn, lastName: cleanLn });
           }
         }
       }
@@ -200,32 +210,35 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   }, [mentorSettingsProfile, mentorProfile, mentorState, isMentor, user, updateUser]);
 
   useEffect(() => {
-    if (user && isEmployer && employerProfile) {
-      const firstName = employerProfile.firstName;
-      const lastName = employerProfile.lastName ?? '';
-      const title = employerProfile.professionalTitle;
-      const photoUrl = employerProfile.photoUrl;
-      if (
-        (firstName && (user.firstName !== firstName || user.lastName !== lastName)) ||
-        (title && user.title !== title) ||
-        (photoUrl && user.avatarUrl !== photoUrl)
-      ) {
-        updateUser({
-          ...(firstName ? { firstName, lastName } : {}),
-          ...(title ? { title } : {}),
-          ...(photoUrl ? { avatarUrl: photoUrl } : {}),
-        });
+    if (user && isEmployer) {
+      if (employerProfile && !hasSyncedEmployerRef.current) {
+        const cleanFn = capitalizeName(employerProfile.firstName || '');
+        const cleanLn = capitalizeName(employerProfile.lastName ?? '');
+        const title = employerProfile.professionalTitle;
+        const photoUrl = employerProfile.photoUrl;
+        if (
+          (cleanFn && (user.firstName !== cleanFn || (user.lastName || '') !== cleanLn)) ||
+          (title && user.title !== title) ||
+          (photoUrl && user.avatarUrl !== photoUrl)
+        ) {
+          hasSyncedEmployerRef.current = true;
+          updateUser({
+            ...(cleanFn ? { firstName: cleanFn, lastName: cleanLn } : {}),
+            ...(title ? { title } : {}),
+            ...(photoUrl ? { avatarUrl: photoUrl } : {}),
+          });
+        }
       }
-    }
-    if (user && isEmployer && employerOrg?.organisationName) {
-      if (user.organisationName !== employerOrg.organisationName) {
-        updateUser({ organisationName: employerOrg.organisationName });
+      if (employerOrg?.organisationName) {
+        if (user.organisationName !== employerOrg.organisationName) {
+          updateUser({ organisationName: employerOrg.organisationName });
+        }
       }
-    }
-    if (user && isEmployer && !user.firstName && !user.lastName && employerState?.data?.fields?.organisationName) {
-      const orgName = employerState.data.fields.organisationName;
-      if (orgName) {
-        updateUser({ firstName: orgName, lastName: '' });
+      if (!user.firstName && !user.lastName && employerState?.data?.fields?.organisationName) {
+        const orgName = employerState.data.fields.organisationName;
+        if (orgName && user.organisationName !== orgName) {
+          updateUser({ firstName: capitalizeName(orgName), lastName: '', organisationName: orgName });
+        }
       }
     }
   }, [employerProfile, employerOrg, employerState, isEmployer, user, updateUser]);

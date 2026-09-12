@@ -196,6 +196,7 @@ const App = () => {
           <Route path="/payments/*" element={<ProtectedDashboardLayout><EmployerRoute><Payments /></EmployerRoute></ProtectedDashboardLayout>} />
           <Route path="/talents" element={<ProtectedDashboardLayout><Talents /></ProtectedDashboardLayout>} />
           <Route path="/talents/:id" element={<ProtectedDashboardLayout><TalentProfile /></ProtectedDashboardLayout>} />
+          <Route path="/settings" element={<ProtectedDashboardLayout><Settings /></ProtectedDashboardLayout>} />
 
           {/* Auth Routes */}
           <Route path="/signup" element={<Signup />} />
@@ -277,8 +278,6 @@ const App = () => {
 
           <Route path="/onboarding/mentor-apply/profile" element={<MentorProfile />} />
           <Route path="/onboarding/mentor-apply" element={<MentorApply />} />
-
-          <Route path="/settings" element={<ProtectedDashboardLayout><Settings /></ProtectedDashboardLayout>} />
 
           {/* Wildcard Fallback 404 Route */}
           <Route path="*" element={<NotFound />} />
