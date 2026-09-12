@@ -36,6 +36,7 @@ const STATUS_VARIANT_MAP: Record<string, string> = {
 // Map badge kind to Tag variant
 const BADGE_VARIANT_MAP: Record<string, string> = {
   ALIGNMENT: 'blue-light',
+  INTERVIEW: 'blue-light',
   ASSESSMENT: 'blue-light',
   VIDEO: 'blue-light',
   PSYCHOMETRIC: 'blue-light',

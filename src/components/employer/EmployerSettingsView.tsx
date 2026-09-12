@@ -72,7 +72,7 @@ interface PermissionDef {
 
 const PERM_DEFS: PermissionDef[] = [
   { key: 'post_jobs', label: 'Post new job listings', desc: 'Can create and publish roles' },
-  { key: 'view_applicants', label: 'View applicants', desc: 'Can see candidate pool and assessment results' },
+  { key: 'view_applicants', label: 'View applicants', desc: 'Can see candidate pool and interview results' },
   { key: 'hire', label: 'Confirm hire', desc: 'Can click hire and dispatch offer letters' },
   { key: 'reject', label: 'Reject candidates', desc: 'Can submit documented rejections' },
   { key: 'alignment_sessions', label: 'Request alignment sessions', desc: 'Can request video or in-person sessions' },
@@ -172,7 +172,7 @@ const DEFAULT_PERMS: Record<string, Record<EmployerPermissionKey, boolean>> = {
 const NOTIF_ITEMS: { key: keyof EmployerNotificationsSettings; label: string; desc: string }[] = [
   { key: 'emailHireConfirmed', label: 'Hire confirmed', desc: 'When a hire is confirmed and offer dispatched' },
   { key: 'emailNewApplications', label: 'New applicant', desc: 'When a new candidate applies to a role' },
-  { key: 'emailAssessmentCompleted', label: 'Assessment completed', desc: 'When a candidate completes a VORA test' },
+  { key: 'emailAssessmentCompleted', label: 'Interview completed', desc: 'When a candidate completes a VORA interview' },
   { key: 'emailAlignmentSessions', label: 'Alignment session booked', desc: 'When a final alignment session is scheduled' },
   { key: 'emailRejectionFlagged', label: 'Rejection flagged for review', desc: 'When a rejection triggers VORA compliance review' },
   { key: 'emailFeeProcessed', label: 'Fee processed', desc: 'When a VORA fee or true-up is charged or refunded' },
@@ -1090,7 +1090,7 @@ const EmployerSettingsView: React.FC = () => {
                   <EmptyState
                     icon={UsersIcon}
                     title="No team members yet"
-                    description="Invite recruiters, hiring managers, and admins to collaborate on roles and assessments."
+                    description="Invite recruiters, hiring managers, and admins to collaborate on roles and interviews."
                     action={{
                       label: 'Invite Member',
                       icon: PlusIcon,
@@ -1326,7 +1326,7 @@ const EmployerSettingsView: React.FC = () => {
                       : billingData?.planName || 'Growth Plan'}
                   </div>
                   <div className="text-xs text-[#808080] mt-1">
-                    Up to {billingData?.plan?.seatLimit ?? billingData?.seatLimit ?? 10} seats · Unlimited job postings · Full VORA assessment suite
+                    Up to {billingData?.plan?.seatLimit ?? billingData?.seatLimit ?? 10} seats · Unlimited job postings · Full VORA interview suite
                   </div>
                 </div>
                 <Button
@@ -1710,7 +1710,7 @@ const EmployerSettingsView: React.FC = () => {
               <div className="bg-white border border-[#E6E6E6] rounded-xl p-6 shadow-sm">
                 <h2 className="text-[16px] font-bold text-[#1A1A1A] mb-2">Data Retention & Requests</h2>
                 <p className="text-[13px] text-[#4A4A4A] leading-relaxed mb-4">
-                  VORA retains candidate assessment data for a minimum of 24 months to support audit trail compliance. You may request an export or deletion of organisation records where legally permitted.
+                  VORA retains candidate interview data for a minimum of 24 months to support audit trail compliance. You may request an export or deletion of organisation records where legally permitted.
                 </p>
                 <div className="flex gap-3 flex-wrap">
                   <Button
@@ -2089,7 +2089,7 @@ const EmployerSettingsView: React.FC = () => {
           <div className="p-3 bg-[#FEF2F2] border border-[#FECACA] rounded-lg text-[#DC2626] flex items-start gap-2.5">
             <AlertTriangleIcon size={16} className="shrink-0 mt-0.5" />
             <div>
-              <strong>Compliance Notice:</strong> This request will be queued for compliance review. Certain assessment and transaction records are preserved for the statutory 24-month retention window.
+              <strong>Compliance Notice:</strong> This request will be queued for compliance review. Certain interview and transaction records are preserved for the statutory 24-month retention window.
             </div>
           </div>
           <p>

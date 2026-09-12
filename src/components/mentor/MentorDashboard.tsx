@@ -134,7 +134,7 @@ const MentorDashboard: React.FC = () => {
           <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2 lg:gap-3 pt-1">
             <span className="text-[12px] lg:text-[13px] font-medium text-white/80">Today · 14:00 WAT · 60 min</span>
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
-              <Tag label="Assessment Referred" variant="blue-light" className="bg-white/10 border-white/20 text-white" />
+              <Tag label="Interview Referred" variant="blue-light" className="bg-white/10 border-white/20 text-white" />
               <Tag label="T3 · Nigeria · $150" variant="blue-light" className="bg-blue-400/20 border-blue-400/30 text-blue-200" />
               <Tag label="Session 3 of 6" variant="gray" className="bg-black/10 border-white/10 text-white" />
             </div>
@@ -196,7 +196,7 @@ const MentorDashboard: React.FC = () => {
                       <span className="text-[12px] font-medium text-gray-400">{session.time}</span>
                       <Tag 
                         label={session.type} 
-                        variant={session.type === 'Assessment Referred' ? 'blue-light' : 
+                        variant={session.type === 'Interview Referred' ? 'blue-light' : 
                                  session.type === 'Direct' ? 'green' : 'blue-light'} 
                       />
                     </div>

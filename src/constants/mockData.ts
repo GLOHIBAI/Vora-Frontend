@@ -316,9 +316,9 @@ export const TRACKED_TALENTS = [
 ];
 
 export const UPCOMING_SESSIONS = [
-  { name: 'Chiamaka Obi', time: 'Today · 14:00 WAT', status: 'Live', type: 'Assessment Referred', tier: 'T3 · Nigeria', fee: '$150', date: '8', mon: 'MAR', isLive: true },
+  { name: 'Chiamaka Obi', time: 'Today · 14:00 WAT', status: 'Live', type: 'Interview Referred', tier: 'T3 · Nigeria', fee: '$150', date: '8', mon: 'MAR', isLive: true },
   { name: 'Dr. Emeka Nwosu', time: 'Wed · 10:00 CET', status: 'Confirmed', type: 'Direct', tier: 'T1 · Switzerland', fee: '$1,200', date: '11', mon: 'MAR' },
-  { name: 'Fatima Al-Rashidi', time: 'Sat · 11:00 AST', status: 'Confirmed', type: 'Assessment Referred', tier: 'T3 · Yemen', fee: '$120', date: '14', mon: 'MAR' },
+  { name: 'Fatima Al-Rashidi', time: 'Sat · 11:00 AST', status: 'Confirmed', type: 'Interview Referred', tier: 'T3 · Yemen', fee: '$120', date: '14', mon: 'MAR' },
   { name: 'Kofi Mensah-Asante', time: 'Wed · TBC', status: 'Pending', type: 'VORA Matched', tier: 'T3 · Ghana', fee: '$150', date: '18', mon: 'MAR' }
 ];
 
@@ -329,7 +329,7 @@ export const ACTIVE_COURSES = [
 
 export const PENDING_REQUESTS = [
   { name: 'Kofi Mensah-Asante', role: 'Health Systems Analyst · GHS Ghana', tags: ['VORA Matched', 'T3 · Ghana'], note: 'Failed Psychometric (41%) after passing SJT (68%). VORA matched him to you for executive reasoning coaching.', initial: 'KM', color: 'from-red-300 to-red-500' },
-  { name: 'Taiwo Adeyemi', role: 'Programme Analyst · UNICEF Nigeria', tags: ['Assessment Referred', 'T3 · Nigeria'], note: 'Failed Psychometric ×3 and Video ×2 across WHO + UNICEF applications. Critical case.', initial: 'TA', color: 'from-amber-300 to-amber-500', isCritical: true }
+  { name: 'Taiwo Adeyemi', role: 'Programme Analyst · UNICEF Nigeria', tags: ['Interview Referred', 'T3 · Nigeria'], note: 'Failed Psychometric ×3 and Video ×2 across WHO + UNICEF applications. Critical case.', initial: 'TA', color: 'from-amber-300 to-amber-500', isCritical: true }
 ];
 
 import { UserIcon, BookIcon, InfoIcon } from '../components/common/Icons';
