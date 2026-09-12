@@ -27,6 +27,7 @@ import {
 } from '../utils/mentorOnboarding';
 import VoraLogo from '../components/common/VoraLogo';
 import { VORA_LOGO_SRC } from '../constants/brand';
+import { capitalizeName } from '../utils/userName';
 
 const SIDEBAR_STORAGE_KEY = 'vora-sidebar-icons-only';
 const SIDEBAR_WIDTH_EXPANDED = '220px';
@@ -235,13 +236,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     ? (employerOrg?.organisationName || user.organisationName || employerState?.data?.fields?.organisationName || '')
     : '';
 
-  const firstName = employerProfile?.firstName || (isMentor ? mentorSettingsProfile?.firstName : null) || user.firstName || '';
-  const lastName = employerProfile?.lastName ?? (isMentor ? mentorSettingsProfile?.lastName : null) ?? user.lastName ?? '';
+  const firstName = capitalizeName(employerProfile?.firstName || (isMentor ? mentorSettingsProfile?.firstName : null) || user.firstName || '');
+  const lastName = capitalizeName(employerProfile?.lastName ?? (isMentor ? mentorSettingsProfile?.lastName : null) ?? user.lastName ?? '');
   const userPersonalName = [firstName, lastName].filter(Boolean).join(' ').trim() 
-    || (user.email ? user.email.split('@')[0] : 'User');
+    || (user.email ? capitalizeName(user.email.split('@')[0]) : 'User');
 
   // Sidebar bottom widget represents the logged-in user's personal profile
-  const displayName = userPersonalName;
+  const displayName = capitalizeName(userPersonalName);
 
   // Derive user's role/title
   let userRoleInOrg = employerProfile?.professionalTitle || (isMentor ? mentorSettingsProfile?.professionalTitle : null) || user.title || 'Admin';

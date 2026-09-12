@@ -20,6 +20,7 @@ import {
 } from '../common/Icons';
 import { validatePassword } from '../../utils/validation';
 import { useAuth } from '../../context/AuthContext';
+import { capitalizeName } from '../../utils/userName';
 import {
   useEmployerOrganisationQuery,
   useUpdateEmployerOrganisationMutation,
@@ -323,8 +324,8 @@ const EmployerSettingsView: React.FC = () => {
   const updateProfileMutation = useUpdateEmployerProfileSettingsMutation();
 
   const [personalProfile, setPersonalProfile] = useState({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
+    firstName: capitalizeName(user?.firstName || ''),
+    lastName: capitalizeName(user?.lastName || ''),
     professionalTitle: user?.title || 'Admin',
     bio: '',
     photoStorageKey: null as string | null,
@@ -336,8 +337,8 @@ const EmployerSettingsView: React.FC = () => {
   useEffect(() => {
     if (profileData) {
       setPersonalProfile({
-        firstName: profileData.firstName || user?.firstName || '',
-        lastName: profileData.lastName || user?.lastName || '',
+        firstName: capitalizeName(profileData.firstName || user?.firstName || ''),
+        lastName: capitalizeName(profileData.lastName || user?.lastName || ''),
         professionalTitle: profileData.professionalTitle || user?.title || 'Admin',
         bio: profileData.bio || '',
         photoStorageKey: profileData.photoStorageKey || null,
@@ -349,18 +350,20 @@ const EmployerSettingsView: React.FC = () => {
     } else if (user) {
       setPersonalProfile((prev) => ({
         ...prev,
-        firstName: user.firstName || prev.firstName,
-        lastName: user.lastName || prev.lastName,
+        firstName: capitalizeName(user.firstName || prev.firstName),
+        lastName: capitalizeName(user.lastName || prev.lastName),
         professionalTitle: user.title || prev.professionalTitle,
       }));
     }
   }, [profileData, user]);
 
   const handleSavePersonalProfile = async () => {
+    const cleanFn = capitalizeName(personalProfile.firstName);
+    const cleanLn = capitalizeName(personalProfile.lastName);
     try {
       await updateProfileMutation.mutateAsync({
-        firstName: personalProfile.firstName,
-        lastName: personalProfile.lastName,
+        firstName: cleanFn,
+        lastName: cleanLn,
         professionalTitle: personalProfile.professionalTitle,
         bio: personalProfile.bio,
         photoStorageKey: personalProfile.photoStorageKey,
@@ -369,8 +372,8 @@ const EmployerSettingsView: React.FC = () => {
       // Gracefully handle if profile endpoint fails
     }
     updateUser({
-      firstName: personalProfile.firstName,
-      lastName: personalProfile.lastName,
+      firstName: cleanFn,
+      lastName: cleanLn,
       title: personalProfile.professionalTitle,
     });
     toast.success('Personal profile updated');
@@ -985,12 +988,16 @@ const EmployerSettingsView: React.FC = () => {
                     <Input
                       label="First name"
                       value={personalProfile.firstName}
-                      onChange={(e) => setPersonalProfile({ ...personalProfile, firstName: e.target.value })}
+                      autoCapitalize="words"
+                      className="capitalize"
+                      onChange={(e) => setPersonalProfile({ ...personalProfile, firstName: capitalizeName(e.target.value) })}
                     />
                     <Input
                       label="Last name"
                       value={personalProfile.lastName}
-                      onChange={(e) => setPersonalProfile({ ...personalProfile, lastName: e.target.value })}
+                      autoCapitalize="words"
+                      className="capitalize"
+                      onChange={(e) => setPersonalProfile({ ...personalProfile, lastName: capitalizeName(e.target.value) })}
                     />
                     <Input
                       label="Professional title / Role"

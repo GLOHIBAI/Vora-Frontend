@@ -31,6 +31,7 @@ import {
 } from '../constants/settings';
 import { validatePassword } from '../utils/validation';
 import { useAuth } from '../context/AuthContext';
+import { capitalizeName } from '../utils/userName';
 import { useLogoutMutation } from '../services/queries/auth';
 import {
   useEmployerProfileSettingsQuery,
@@ -101,8 +102,8 @@ const StandardSettingsView: React.FC = () => {
   const [profilePic, setProfilePic] = useState<string | null>(null);
   const [photoStorageKey, setPhotoStorageKey] = useState<string | null>(null);
   const [profile, setProfile] = useState({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
+    firstName: capitalizeName(user?.firstName || ''),
+    lastName: capitalizeName(user?.lastName || ''),
     title: '',
     bio: '',
   });
@@ -115,8 +116,8 @@ const StandardSettingsView: React.FC = () => {
   useEffect(() => {
     if (isEmployer && employerProfileData) {
       setProfile({
-        firstName: employerProfileData.firstName || user?.firstName || '',
-        lastName: employerProfileData.lastName || user?.lastName || '',
+        firstName: capitalizeName(employerProfileData.firstName || user?.firstName || ''),
+        lastName: capitalizeName(employerProfileData.lastName || user?.lastName || ''),
         title: employerProfileData.professionalTitle || '',
         bio: employerProfileData.bio || '',
       });
@@ -129,6 +130,12 @@ const StandardSettingsView: React.FC = () => {
       if (employerProfileData.photoStorageKey) {
         setPhotoStorageKey(employerProfileData.photoStorageKey);
       }
+    } else if (user) {
+      setProfile((prev) => ({
+        ...prev,
+        firstName: capitalizeName(user.firstName || prev.firstName),
+        lastName: capitalizeName(user.lastName || prev.lastName),
+      }));
     }
   }, [isEmployer, employerProfileData, user]);
 
@@ -296,18 +303,20 @@ const StandardSettingsView: React.FC = () => {
   // Handlers
   // -------------------------------------------------------------
   const handleSaveProfile = async () => {
+    const cleanFn = capitalizeName(profile.firstName);
+    const cleanLn = capitalizeName(profile.lastName);
     if (isEmployer) {
       await updateProfileMutation.mutateAsync({
-        firstName: profile.firstName,
-        lastName: profile.lastName,
+        firstName: cleanFn,
+        lastName: cleanLn,
         professionalTitle: profile.title,
         bio: profile.bio,
         expertise,
         photoStorageKey,
       });
-      updateUser({ firstName: profile.firstName, lastName: profile.lastName });
+      updateUser({ firstName: cleanFn, lastName: cleanLn });
     } else {
-      updateUser({ firstName: profile.firstName, lastName: profile.lastName });
+      updateUser({ firstName: cleanFn, lastName: cleanLn });
       toast.success('Profile settings saved successfully');
     }
   };
@@ -571,12 +580,16 @@ const StandardSettingsView: React.FC = () => {
                   <Input
                     label="First name"
                     value={profile.firstName}
-                    onChange={(e) => setProfile({ ...profile, firstName: e.target.value })}
+                    autoCapitalize="words"
+                    className="capitalize"
+                    onChange={(e) => setProfile({ ...profile, firstName: capitalizeName(e.target.value) })}
                   />
                   <Input
                     label="Last name"
                     value={profile.lastName}
-                    onChange={(e) => setProfile({ ...profile, lastName: e.target.value })}
+                    autoCapitalize="words"
+                    className="capitalize"
+                    onChange={(e) => setProfile({ ...profile, lastName: capitalizeName(e.target.value) })}
                   />
                 </div>
               </SettingsRow>

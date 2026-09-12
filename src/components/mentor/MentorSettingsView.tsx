@@ -20,6 +20,7 @@ import {
 } from '../common/Icons';
 import { validatePassword } from '../../utils/validation';
 import { useAuth } from '../../context/AuthContext';
+import { capitalizeName } from '../../utils/userName';
 import {
   useMentorProfileSettingsQuery,
   useUpdateMentorProfileSettingsMutation,
@@ -170,8 +171,8 @@ const MentorSettingsView: React.FC = () => {
   const uploadAvatarMutation = useUploadAvatarMutation();
 
   const [profile, setProfile] = useState({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
+    firstName: capitalizeName(user?.firstName || ''),
+    lastName: capitalizeName(user?.lastName || ''),
     title: '',
     bio: '',
   });
@@ -185,8 +186,8 @@ const MentorSettingsView: React.FC = () => {
   useEffect(() => {
     if (profileData) {
       setProfile({
-        firstName: profileData.firstName || user?.firstName || '',
-        lastName: profileData.lastName || user?.lastName || '',
+        firstName: capitalizeName(profileData.firstName || user?.firstName || ''),
+        lastName: capitalizeName(profileData.lastName || user?.lastName || ''),
         title: profileData.professionalTitle || '',
         bio: profileData.bio || '',
       });
@@ -199,21 +200,29 @@ const MentorSettingsView: React.FC = () => {
       if (profileData.photoStorageKey) {
         setPhotoStorageKey(profileData.photoStorageKey);
       }
+    } else if (user) {
+      setProfile((prev) => ({
+        ...prev,
+        firstName: capitalizeName(user.firstName || prev.firstName),
+        lastName: capitalizeName(user.lastName || prev.lastName),
+      }));
     }
   }, [profileData, user]);
 
   const handleSaveProfile = async () => {
+    const cleanFn = capitalizeName(profile.firstName);
+    const cleanLn = capitalizeName(profile.lastName);
     const updateRes = await updateProfileMutation.mutateAsync({
-      firstName: profile.firstName,
-      lastName: profile.lastName,
+      firstName: cleanFn,
+      lastName: cleanLn,
       professionalTitle: profile.title,
       bio: profile.bio,
       expertise,
       photoStorageKey,
     });
     updateUser({
-      firstName: profile.firstName,
-      lastName: profile.lastName,
+      firstName: cleanFn,
+      lastName: cleanLn,
       title: profile.title,
       ...(updateRes?.photoUrl || avatarPreview ? { avatarUrl: updateRes?.photoUrl || avatarPreview } : {}),
     });
@@ -831,12 +840,16 @@ const MentorSettingsView: React.FC = () => {
                     <Input
                       label="First name"
                       value={profile.firstName}
-                      onChange={(e) => setProfile({ ...profile, firstName: e.target.value })}
+                      autoCapitalize="words"
+                      className="capitalize"
+                      onChange={(e) => setProfile({ ...profile, firstName: capitalizeName(e.target.value) })}
                     />
                     <Input
                       label="Last name"
                       value={profile.lastName}
-                      onChange={(e) => setProfile({ ...profile, lastName: e.target.value })}
+                      autoCapitalize="words"
+                      className="capitalize"
+                      onChange={(e) => setProfile({ ...profile, lastName: capitalizeName(e.target.value) })}
                     />
                   </div>
                 </div>

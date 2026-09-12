@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import type { ReactNode } from 'react';
 import type { User, AuthContextType } from '../types';
 import { SETUP_TOKEN_KEY, clearSetupToken as clearStoredSetupToken } from '../utils/oauth';
-import { isEmailLike } from '../utils/userName';
+import { isEmailLike, capitalizeName } from '../utils/userName';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -45,7 +45,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const storedUser = localStorage.getItem('vora_user');
     if (storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        const parsed = JSON.parse(storedUser);
+        if (parsed?.firstName) parsed.firstName = capitalizeName(parsed.firstName);
+        if (parsed?.lastName) parsed.lastName = capitalizeName(parsed.lastName);
+        setUser(parsed);
       } catch (error) {
         console.error('Failed to parse stored user:', error);
         localStorage.removeItem('vora_user');
@@ -87,6 +90,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch {}
 
+    if (finalUserData.firstName) {
+      finalUserData.firstName = capitalizeName(finalUserData.firstName);
+    }
+    if (finalUserData.lastName) {
+      finalUserData.lastName = capitalizeName(finalUserData.lastName);
+    }
+
     if (finalUserData.firstName && !isEmailLike(finalUserData.firstName)) {
       try {
         localStorage.setItem('candidate_first_name', finalUserData.firstName);
@@ -119,6 +129,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (prevUser.firstName && !isEmailLike(prevUser.firstName)) {
           safeUpdates.firstName = prevUser.firstName;
         }
+      }
+
+      if (safeUpdates.firstName) {
+        safeUpdates.firstName = capitalizeName(safeUpdates.firstName);
+      }
+      if (safeUpdates.lastName) {
+        safeUpdates.lastName = capitalizeName(safeUpdates.lastName);
       }
 
       const updatedUser = { ...prevUser, ...safeUpdates };

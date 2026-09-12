@@ -4,6 +4,9 @@
  * over raw email prefixes (e.g. 'keunnapiddoho-6332').
  */
 
+import { capitalizeWords, capitalizeName } from './stringUtils';
+export { capitalizeWords, capitalizeName };
+
 export const isEmailLike = (val: unknown): boolean => {
   if (!val || typeof val !== 'string') return false;
   const str = val.trim();
@@ -17,7 +20,7 @@ export const cleanName = (val: unknown): string => {
   if (!val || typeof val !== 'string') return '';
   const trimmed = val.trim();
   if (!trimmed || isEmailLike(trimmed)) return '';
-  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+  return capitalizeName(trimmed);
 };
 
 export const getCandidateFirstName = (

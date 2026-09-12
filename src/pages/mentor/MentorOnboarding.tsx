@@ -204,8 +204,8 @@ const MentorProfile: React.FC = () => {
       ) {
         setPersonalInfo({
           title: fields.title || '',
-          firstName: fields.firstName || '',
-          lastName: fields.lastName || '',
+          firstName: capitalizeFirstLetter(fields.firstName || ''),
+          lastName: capitalizeFirstLetter(fields.lastName || ''),
           professionalTitle: fields.professionalTitle || '',
         });
       }
@@ -702,6 +702,8 @@ const MentorProfile: React.FC = () => {
                 label="First name"
                 name="firstName"
                 value={personalInfo.firstName}
+                autoCapitalize="words"
+                className="capitalize"
                 onChange={handleChange}
                 onBlur={() => handleBlur('firstName')}
                 placeholder="First name"
@@ -712,6 +714,8 @@ const MentorProfile: React.FC = () => {
                 label="Last name"
                 name="lastName"
                 value={personalInfo.lastName}
+                autoCapitalize="words"
+                className="capitalize"
                 onChange={handleChange}
                 onBlur={() => handleBlur('lastName')}
                 placeholder="Last name"

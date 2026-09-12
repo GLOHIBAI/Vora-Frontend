@@ -243,8 +243,8 @@ const TalentOnboarding: React.FC = () => {
       if (targetStep === 1) {
         if (savedFields.firstName || savedFields.lastName) {
           setFormData({
-            firstName: (savedFields.firstName as string) || '',
-            lastName: (savedFields.lastName as string) || '',
+            firstName: capitalizeFirstLetter((savedFields.firstName as string) || ''),
+            lastName: capitalizeFirstLetter((savedFields.lastName as string) || ''),
           });
         }
         return;
@@ -620,6 +620,8 @@ const TalentOnboarding: React.FC = () => {
                 label="First name"
                 name="firstName"
                 value={formData.firstName}
+                autoCapitalize="words"
+                className="capitalize"
                 onChange={handleChange}
                 onBlur={() => handleBlur('firstName')}
                 placeholder="First name"
@@ -630,6 +632,8 @@ const TalentOnboarding: React.FC = () => {
                 label="Last name"
                 name="lastName"
                 value={formData.lastName}
+                autoCapitalize="words"
+                className="capitalize"
                 onChange={handleChange}
                 onBlur={() => handleBlur('lastName')}
                 placeholder="Last name"
