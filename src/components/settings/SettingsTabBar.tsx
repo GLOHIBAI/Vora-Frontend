@@ -17,13 +17,13 @@ interface SettingsTabBarProps {
 }
 
 const SettingsTabBar: React.FC<SettingsTabBarProps> = ({ tabs, activeTab, onTabChange }) => (
-  <div className="flex border-b-[1.5px] border-[#E6E6E6] mb-9 overflow-x-auto scrollbar-hide">
+  <div className="flex border-b-[1.5px] border-[#E6E6E6] mb-6 sm:mb-9 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
     {tabs.map((tab) => (
       <button
         key={tab}
         type="button"
         onClick={() => onTabChange(tab)}
-        className={`px-[18px] py-2.5 text-sm font-semibold border-b-[2.5px] -mb-[1.5px] transition-all whitespace-nowrap cursor-pointer bg-transparent ${
+        className={`px-3.5 sm:px-[18px] py-2.5 text-xs sm:text-sm font-semibold border-b-[2.5px] -mb-[1.5px] transition-all whitespace-nowrap cursor-pointer bg-transparent shrink-0 ${
           activeTab === tab
             ? 'text-[#0047CC] border-[#0047CC] font-bold'
             : 'text-[#808080] border-transparent hover:text-[#1A1A1A]'

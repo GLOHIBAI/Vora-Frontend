@@ -588,7 +588,7 @@ const StandardSettingsView: React.FC = () => {
                       className="w-[60px] h-[60px] rounded-full object-cover border-2 border-[#0047CC]/10"
                     />
                   ) : (
-                    <div className="w-[60px] h-[60px] rounded-full bg-[#BEE96B] text-[#283979] text-lg font-bold flex items-center justify-center border-2 border-[#0047CC]/10">
+                    <div className="w-[60px] h-[60px] rounded-full bg-[#EBF6FF] text-[#0047CC] text-lg font-bold flex items-center justify-center border-2 border-[#0047CC]/20">
                       {profileInitials}
                     </div>
                   )}
@@ -940,9 +940,9 @@ const StandardSettingsView: React.FC = () => {
               <div className="text-sm font-bold text-gray-900">Credentials</div>
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-gray-100 pb-3 gap-4">
-                  <div>
+                  <div className="min-w-0 flex-1 break-words">
                     <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Email</div>
-                    <div className="text-sm font-semibold text-gray-900">{accountEmail}</div>
+                    <div className="text-sm font-semibold text-gray-900 truncate">{accountEmail}</div>
                     <div className="text-[11px] text-gray-400 mt-0.5">
                       {remainingEmailChanges > 0
                         ? `${remainingEmailChanges} of 3 changes left`
@@ -955,6 +955,7 @@ const StandardSettingsView: React.FC = () => {
                     fullWidth={false}
                     disabled={remainingEmailChanges <= 0}
                     onClick={() => setEmailModalOpen(true)}
+                    className="shrink-0"
                   >
                     Change email
                   </Button>
@@ -962,7 +963,7 @@ const StandardSettingsView: React.FC = () => {
 
                 {canChangePassword && (
                   <div className="flex items-center justify-between gap-4">
-                    <div>
+                    <div className="min-w-0 flex-1 break-words">
                       <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Password</div>
                       <div className="text-sm font-semibold text-gray-900">••••••••••••</div>
                       <div className="text-[11px] text-gray-400 mt-0.5">
@@ -977,6 +978,7 @@ const StandardSettingsView: React.FC = () => {
                       fullWidth={false}
                       disabled={remainingPasswordChanges <= 0}
                       onClick={() => setPwModalOpen(true)}
+                      className="shrink-0"
                     >
                       Change password
                     </Button>
@@ -1019,7 +1021,7 @@ const StandardSettingsView: React.FC = () => {
                     <div className="bg-gray-50 rounded-lg p-3">
                       <div className="flex items-center justify-between">
                         <div className="text-xs font-bold text-gray-900 mb-0.5">Current Browser Session</div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-full">
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-[#EBF6FF] text-[#0047CC] border border-[#0047CC]/20 rounded-full">
                           Current
                         </span>
                       </div>
@@ -1040,7 +1042,7 @@ const StandardSettingsView: React.FC = () => {
                           </div>
                         </div>
                         {session.isCurrent && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-full shrink-0">
+                          <span className="text-[10px] font-bold px-2 py-0.5 bg-[#EBF6FF] text-[#0047CC] border border-[#0047CC]/20 rounded-full shrink-0">
                             Current
                           </span>
                         )}

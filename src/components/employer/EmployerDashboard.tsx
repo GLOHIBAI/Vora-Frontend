@@ -194,24 +194,24 @@ const EmployerDashboard: React.FC = () => {
         } else if (hireId) {
           navigate(`/employer/check-in/${hireId}`);
         } else {
-          navigate('/employer/jobs');
+          navigate('/jobs');
         }
         break;
       case 'SET_BENCHMARKS':
         if (hireId) {
           navigate(`/employer/benchmarks/${hireId}`);
         } else {
-          navigate('/employer/jobs');
+          navigate('/jobs');
         }
         break;
       case 'VIEW_PIPELINE':
-        navigate('/employer/jobs');
+        navigate('/jobs');
         break;
       case 'VIEW_TRUE_UP':
-        navigate('/employer/payments');
+        navigate('/payments');
         break;
       default:
-        navigate('/employer/jobs');
+        navigate('/jobs');
         break;
     }
   };
@@ -361,7 +361,7 @@ const EmployerDashboard: React.FC = () => {
           icon={BriefcaseIcon}
           bgColor="bg-white"
           iconColor="text-[#0047CC]"
-          onClick={() => navigate('/employer/jobs')}
+          onClick={() => navigate('/jobs')}
         />
         <KPICard
           label="Total Applicants"
@@ -371,7 +371,7 @@ const EmployerDashboard: React.FC = () => {
           icon={UsersIcon}
           bgColor="bg-white"
           iconColor="text-[#0047CC]"
-          onClick={() => navigate('/employer/jobs')}
+          onClick={() => navigate('/jobs')}
         />
         <KPICard
           label="Alignment Sessions"
@@ -390,7 +390,7 @@ const EmployerDashboard: React.FC = () => {
           icon={WalletIcon}
           bgColor="bg-white"
           iconColor="text-[#0047CC]"
-          onClick={() => navigate('/employer/payments')}
+          onClick={() => navigate('/payments')}
         />
       </div>
 
@@ -410,7 +410,7 @@ const EmployerDashboard: React.FC = () => {
           icon={CheckIcon}
           bgColor="bg-white"
           iconColor="text-[#0047CC]"
-          onClick={() => navigate('/employer/payments')}
+          onClick={() => navigate('/payments')}
         />
         <QuickActionBtn
           label="Bulk Hire"
@@ -418,7 +418,7 @@ const EmployerDashboard: React.FC = () => {
           icon={UsersIcon}
           bgColor="bg-white"
           iconColor="text-[#0047CC]"
-          onClick={() => navigate('/employer/payments')}
+          onClick={() => navigate('/payments')}
         />
         <QuickActionBtn
           label="Top Up Wallet"
@@ -426,7 +426,7 @@ const EmployerDashboard: React.FC = () => {
           icon={TrendingUpIcon}
           bgColor="bg-white"
           iconColor="text-[#0047CC]"
-          onClick={() => navigate('/employer/payments')}
+          onClick={() => navigate('/payments')}
         />
       </div>
 
@@ -439,7 +439,7 @@ const EmployerDashboard: React.FC = () => {
             <div className="p-6 border-b border-gray-50 flex items-center justify-between">
               <h3 className="text-[16px] font-medium text-gray-900">Active Jobs</h3>
               <button
-                onClick={() => navigate('/employer/jobs')}
+                onClick={() => navigate('/jobs')}
                 className="text-[13px] font-medium text-[#0047CC] flex items-center gap-1 hover:underline bg-transparent border-none cursor-pointer"
               >
                 View all <ChevronRightIcon size={12} />
@@ -458,20 +458,20 @@ const EmployerDashboard: React.FC = () => {
                 activeJobs.map((job, i) => (
                   <div
                     key={job.id || i}
-                    onClick={() => navigate(job.id ? `/employer/jobs/${job.id}` : '/employer/jobs')}
+                    onClick={() => navigate(job.id ? `/jobs/${job.id}` : '/jobs')}
                     className="flex items-center gap-4 p-5 hover:bg-gray-50 transition-all cursor-pointer group"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-[14px] font-medium text-gray-900 truncate group-hover:text-[#0047CC] transition-colors">
-                        {job.title}
+                        {job.roleTitle || job.title || 'Untitled Role'}
                       </p>
                       <p className="text-[11px] font-medium text-gray-400 mt-0.5">
-                        {job.id} · {job.location || 'Remote'} · Posted {job.postedDate || 'Recent'}
+                        {[job.departmentOrUnit, job.location || 'Remote', `Posted ${job.postedDate || 'Recent'}`].filter(Boolean).join(' · ')}
                       </p>
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-[12px] font-medium text-gray-700">
-                        {job.applicantsCount ?? job.applicants ?? 0} applicants
+                        {job.applicantCount ?? job.applicantsCount ?? job.applicants ?? 0} applicants
                       </p>
                       <Tag
                         label={job.displayStatus || job.status || 'Live'}
@@ -489,7 +489,7 @@ const EmployerDashboard: React.FC = () => {
             <div className="p-6 border-b border-gray-50 flex items-center justify-between">
               <h3 className="text-[16px] font-medium text-gray-900">Alignment Sessions</h3>
               <button
-                onClick={() => navigate('/employer/jobs')}
+                onClick={() => navigate('/jobs')}
                 className="text-[13px] font-medium text-[#0047CC] flex items-center gap-1 hover:underline bg-transparent border-none cursor-pointer"
               >
                 Full View <ChevronRightIcon size={12} />
@@ -529,7 +529,7 @@ const EmployerDashboard: React.FC = () => {
                           {candidateName}
                         </p>
                         <p className="text-[11px] font-medium text-gray-400 mt-0.5">
-                          {session.roleTitle || session.role || 'Specialist'} · {session.id}
+                          {session.roleTitle || session.role || 'Specialist'}
                         </p>
                       </div>
                       <Tag
@@ -548,7 +548,7 @@ const EmployerDashboard: React.FC = () => {
             <div className="p-6 border-b border-gray-50 flex items-center justify-between">
               <h3 className="text-[16px] font-medium text-gray-900">Recent Activity</h3>
               <button
-                onClick={() => navigate('/employer/payments')}
+                onClick={() => navigate('/payments')}
                 className="text-[13px] font-medium text-[#0047CC] flex items-center gap-1 hover:underline bg-transparent border-none cursor-pointer"
               >
                 All transactions <ChevronRightIcon size={12} />
@@ -606,7 +606,7 @@ const EmployerDashboard: React.FC = () => {
                 )}
               </div>
               <button
-                onClick={() => navigate('/employer/jobs')}
+                onClick={() => navigate('/jobs')}
                 className="text-[12px] font-medium text-[#0047CC] hover:underline bg-transparent border-none cursor-pointer"
               >
                 View all
@@ -708,13 +708,13 @@ const EmployerDashboard: React.FC = () => {
             </p>
             <div className="flex gap-2">
               <button
-                onClick={() => navigate('/employer/payments')}
+                onClick={() => navigate('/payments')}
                 className="flex-1 py-2.5 bg-white text-[#0047CC] rounded-full text-[13px] font-medium hover:scale-[1.03] transition-transform cursor-pointer"
               >
                 Top Up
               </button>
               <button
-                onClick={() => navigate('/employer/payments')}
+                onClick={() => navigate('/payments')}
                 className="flex-1 py-2.5 bg-white/15 border border-white/30 text-white rounded-full text-[13px] font-medium hover:bg-white/25 transition-all cursor-pointer"
               >
                 History
@@ -744,7 +744,7 @@ const EmployerDashboard: React.FC = () => {
               </div>
             </div>
             <button
-              onClick={() => navigate('/employer/payments')}
+              onClick={() => navigate('/payments')}
               className="w-full mt-6 py-3 border border-gray-100 text-gray-700 text-[13px] font-medium rounded-xl hover:bg-gray-50 transition-all cursor-pointer"
             >
               View Payment Overview
@@ -758,8 +758,8 @@ const EmployerDashboard: React.FC = () => {
               {[
                 { label: 'Profile', sub: `${user?.firstName || 'Employer'} · Admin`, icon: UserIcon, path: '/settings' },
                 { label: 'Notifications', sub: 'Preferences', icon: BellIcon, path: '/settings' },
-                { label: 'Billing', sub: 'Enterprise', icon: TrendingUpIcon, path: '/employer/payments' },
-                { label: 'Payments', sub: 'Wallet & Escrow', icon: CreditCardIcon, path: '/employer/payments' },
+                { label: 'Billing', sub: 'Enterprise', icon: TrendingUpIcon, path: '/payments' },
+                { label: 'Payments', sub: 'Wallet & Escrow', icon: CreditCardIcon, path: '/payments' },
                 { label: 'Account', sub: 'Security & Sessions', icon: UsersIcon, path: '/settings' },
                 { label: 'Post Job', sub: 'New listing', icon: PlusIcon, isPostJob: true },
               ].map((tile, i) => (

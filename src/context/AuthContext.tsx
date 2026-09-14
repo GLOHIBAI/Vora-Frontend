@@ -4,7 +4,16 @@ import type { User, AuthContextType } from '../types';
 import { SETUP_TOKEN_KEY, clearSetupToken as clearStoredSetupToken } from '../utils/oauth';
 import { isEmailLike, capitalizeName } from '../utils/userName';
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const getAuthContext = (): React.Context<AuthContextType | undefined> => {
+  const globalRef = globalThis as unknown as { __VORA_AUTH_CONTEXT__?: React.Context<AuthContextType | undefined> };
+  if (!globalRef.__VORA_AUTH_CONTEXT__) {
+    globalRef.__VORA_AUTH_CONTEXT__ = createContext<AuthContextType | undefined>(undefined);
+  }
+  return globalRef.__VORA_AUTH_CONTEXT__;
+};
+
+const AuthContext = getAuthContext();
+
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);

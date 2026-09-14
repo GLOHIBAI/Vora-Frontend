@@ -845,10 +845,10 @@ const EmployerSettingsView: React.FC = () => {
                   key={item.key}
                   type="button"
                   onClick={() => setActiveSection(item.key)}
-                  className={`px-4 py-3 text-[13px] text-left border-b md:border-b-0 md:border-b-[#F7F7F7] last:border-b-0 border-l-[3px] transition-all whitespace-nowrap md:whitespace-normal cursor-pointer ${
+                  className={`px-4 py-3 text-[13px] text-left border-b-2 md:border-b-0 md:border-b-[#F7F7F7] last:border-b-0 md:border-l-[3px] transition-all whitespace-nowrap md:whitespace-normal cursor-pointer ${
                     isActive
-                      ? 'bg-[#EBF6FF] text-[#0047CC] font-bold border-l-[#0047CC]'
-                      : 'bg-transparent text-[#4A4A4A] font-medium border-l-transparent hover:bg-[#F7F7F7] hover:text-[#1A1A1A]'
+                      ? 'bg-[#EBF6FF] text-[#0047CC] font-bold border-b-[#0047CC] md:border-b-transparent md:border-l-[#0047CC]'
+                      : 'bg-transparent text-[#4A4A4A] font-medium border-b-transparent md:border-l-transparent hover:bg-[#F7F7F7] hover:text-[#1A1A1A]'
                   }`}
                 >
                   {item.label}
@@ -864,7 +864,7 @@ const EmployerSettingsView: React.FC = () => {
               1. ORGANISATION PROFILE
           ══════════════════════════════════════════ */}
           {activeSection === 'org' && (
-            <div className="bg-white border border-[#E6E6E6] rounded-xl p-6 shadow-sm">
+            <div className="bg-white border border-[#E6E6E6] rounded-xl p-4 sm:p-6 shadow-sm">
               <div className="flex items-center justify-between gap-4 mb-6 pb-4 border-b border-[#F7F7F7]">
                 <h2 className="text-[16px] font-bold text-[#1A1A1A]">Organisation Profile</h2>
                 <Button
@@ -1013,7 +1013,7 @@ const EmployerSettingsView: React.FC = () => {
               PERSONAL PROFILE
           ══════════════════════════════════════════ */}
           {activeSection === 'profile' && (
-            <div className="bg-white border border-[#E6E6E6] rounded-xl p-6 shadow-sm">
+            <div className="bg-white border border-[#E6E6E6] rounded-xl p-4 sm:p-6 shadow-sm">
               <div className="flex items-center justify-between gap-4 mb-6 pb-4 border-b border-[#F7F7F7]">
                 <div>
                   <h2 className="text-[16px] font-bold text-[#1A1A1A]">Personal Profile</h2>
@@ -1154,7 +1154,7 @@ const EmployerSettingsView: React.FC = () => {
           {activeSection === 'team' && (
             <div className="space-y-4">
               {/* Seat Usage Card */}
-              <div className="bg-white border border-[#E6E6E6] rounded-xl p-6 shadow-sm">
+              <div className="bg-white border border-[#E6E6E6] rounded-xl p-4 sm:p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-[16px] font-bold text-[#1A1A1A]">Seat Usage</h2>
                 </div>
@@ -1206,7 +1206,7 @@ const EmployerSettingsView: React.FC = () => {
               </div>
 
               {/* Team Members Card */}
-              <div className="bg-white border border-[#E6E6E6] rounded-xl p-6 shadow-sm">
+              <div className="bg-white border border-[#E6E6E6] rounded-xl p-4 sm:p-6 shadow-sm">
                 <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-[#F7F7F7]">
                   <h2 className="text-[16px] font-bold text-[#1A1A1A]">Team Members</h2>
                   <Button
@@ -1241,7 +1241,7 @@ const EmployerSettingsView: React.FC = () => {
                   />
                 ) : (
                   <div className="overflow-x-auto min-h-[280px] pb-16">
-                    <table className="w-full text-left text-xs">
+                    <table className="w-full text-left text-xs min-w-[540px]">
                       <thead>
                         <tr className="border-b border-[#E6E6E6] text-[11px] font-bold text-[#808080] uppercase tracking-wider">
                           <th className="pb-3 pr-4">Member</th>
@@ -1297,8 +1297,8 @@ const EmployerSettingsView: React.FC = () => {
                                   <span
                                     className={`inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
                                       statusDisplay === 'Active'
-                                        ? 'bg-[#EEFBEE] text-[#135813]'
-                                        : 'bg-[#FFFBEB] text-[#D97706]'
+                                        ? 'bg-[#EBF6FF] text-[#0047CC]'
+                                        : 'bg-[#EFF6FF] text-[#2563EB]'
                                     }`}
                                   >
                                     {statusDisplay}
@@ -1361,7 +1361,7 @@ const EmployerSettingsView: React.FC = () => {
               </div>
 
               {/* Permissions Checklist Card */}
-              <div className="bg-white border border-[#E6E6E6] rounded-xl p-6 shadow-sm">
+              <div className="bg-white border border-[#E6E6E6] rounded-xl p-4 sm:p-6 shadow-sm">
                 <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-[#F7F7F7]">
                   <div>
                     <h2 className="text-[16px] font-bold text-[#1A1A1A]">
@@ -1406,9 +1406,9 @@ const EmployerSettingsView: React.FC = () => {
               </div>
 
               {/* Role Comparison Table */}
-              <div className="bg-white border border-[#E6E6E6] rounded-xl p-6 shadow-sm overflow-x-auto">
+              <div className="bg-white border border-[#E6E6E6] rounded-xl p-4 sm:p-6 shadow-sm overflow-x-auto">
                 <h3 className="text-[15px] font-bold text-[#1A1A1A] mb-4">Role Comparison Matrix</h3>
-                <table className="w-full text-left text-xs border-collapse">
+                <table className="w-full text-left text-xs border-collapse min-w-[500px]">
                   <thead>
                     <tr className="border-b border-[#E6E6E6] text-[11px] font-bold text-[#808080] uppercase tracking-wider">
                       <th className="pb-3 pr-4">Permission</th>
@@ -1451,10 +1451,10 @@ const EmployerSettingsView: React.FC = () => {
           {activeSection === 'billing' && (
             <div className="space-y-4">
               {/* Current Plan */}
-              <div className="bg-white border border-[#E6E6E6] rounded-xl p-6 shadow-sm">
+              <div className="bg-white border border-[#E6E6E6] rounded-xl p-4 sm:p-6 shadow-sm">
                 <div className="flex items-center justify-between gap-4 mb-4">
                   <h2 className="text-[16px] font-bold text-[#1A1A1A]">Current Plan</h2>
-                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#EEFBEE] text-[#135813]">
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#EBF6FF] text-[#0047CC]">
                     {billingData?.plan?.status
                       ? billingData.plan.status.charAt(0).toUpperCase() + billingData.plan.status.slice(1).toLowerCase()
                       : billingData?.planStatus || 'Active'}
@@ -1483,7 +1483,7 @@ const EmployerSettingsView: React.FC = () => {
               </div>
 
               {/* Payment Method */}
-              <div className="bg-white border border-[#E6E6E6] rounded-xl p-6 shadow-sm">
+              <div className="bg-white border border-[#E6E6E6] rounded-xl p-4 sm:p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-[16px] font-bold text-[#1A1A1A]">Payment Method</h2>
                 </div>
@@ -1503,7 +1503,7 @@ const EmployerSettingsView: React.FC = () => {
                           </div>
                         </div>
                         {pm.isDefault && (
-                          <span className="ml-auto text-[11px] font-bold px-2 py-0.5 bg-[#EEFBEE] text-[#135813] rounded">
+                          <span className="ml-auto text-[11px] font-bold px-2 py-0.5 bg-[#EBF6FF] text-[#0047CC] rounded">
                             Default
                           </span>
                         )}
@@ -1539,7 +1539,7 @@ const EmployerSettingsView: React.FC = () => {
               </div>
 
               {/* Escrow Account & Wallet */}
-              <div className="bg-white border border-[#E6E6E6] rounded-xl p-6 shadow-sm">
+              <div className="bg-white border border-[#E6E6E6] rounded-xl p-4 sm:p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-[16px] font-bold text-[#1A1A1A]">Escrow & Wallet Summary</h2>
                 </div>
@@ -1677,7 +1677,7 @@ const EmployerSettingsView: React.FC = () => {
           {activeSection === 'security' && (
             <div className="space-y-4">
               {/* Password Card */}
-              <div className="bg-white border border-[#E6E6E6] rounded-xl p-6 shadow-sm">
+              <div className="bg-white border border-[#E6E6E6] rounded-xl p-4 sm:p-6 shadow-sm">
                 <div className="flex items-center justify-between gap-3 mb-4">
                   <h2 className="text-[16px] font-bold text-[#1A1A1A]">Password</h2>
                   <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
@@ -1774,7 +1774,7 @@ const EmployerSettingsView: React.FC = () => {
               </div>
 
               {/* Two-Factor Authentication */}
-              <div className="bg-white border border-[#E6E6E6] rounded-xl p-6 shadow-sm">
+              <div className="bg-white border border-[#E6E6E6] rounded-xl p-4 sm:p-6 shadow-sm">
                 <h2 className="text-[16px] font-bold text-[#1A1A1A] mb-3">Two-Factor Authentication</h2>
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                   <div>
@@ -1785,7 +1785,7 @@ const EmployerSettingsView: React.FC = () => {
                   </div>
                   <span className={`text-xs font-bold px-3 py-1 rounded-lg border ${
                     securityData?.twoFactorEnabled
-                      ? 'bg-[#EEFBEE] text-[#135813] border-[#2CA62C]/40'
+                      ? 'bg-[#EBF6FF] text-[#0047CC] border-[#0047CC]/20'
                       : 'bg-[#F7F7F7] text-[#808080] border-[#E6E6E6]'
                   }`}>
                     {securityData?.twoFactorEnabled ? 'Enabled' : 'Disabled (Coming Soon)'}
@@ -1794,8 +1794,8 @@ const EmployerSettingsView: React.FC = () => {
               </div>
 
               {/* Active Sessions */}
-              <div className="bg-white border border-[#E6E6E6] rounded-xl p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
+              <div className="bg-white border border-[#E6E6E6] rounded-xl p-4 sm:p-6 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                   <h2 className="text-[16px] font-bold text-[#1A1A1A]">Active Sessions</h2>
                   {authSessions.length > 1 && (
                     <Button
@@ -1831,7 +1831,7 @@ const EmployerSettingsView: React.FC = () => {
                             </div>
                           </div>
                           {s.isCurrent ? (
-                            <span className="text-[11px] font-bold px-2 py-0.5 bg-[#EEFBEE] text-[#135813] rounded-full">
+                            <span className="text-[11px] font-bold px-2 py-0.5 bg-[#EBF6FF] text-[#0047CC] rounded-full">
                               Current
                             </span>
                           ) : (
@@ -1851,7 +1851,7 @@ const EmployerSettingsView: React.FC = () => {
                           <div className="text-[13px] font-bold text-[#1A1A1A]">Current Session</div>
                           <div className="text-xs text-[#808080]">Active now</div>
                         </div>
-                        <span className="text-[11px] font-bold px-2 py-0.5 bg-[#EEFBEE] text-[#135813] rounded-full">
+                        <span className="text-[11px] font-bold px-2 py-0.5 bg-[#EBF6FF] text-[#0047CC] rounded-full">
                           Current
                         </span>
                       </div>
@@ -1868,7 +1868,7 @@ const EmployerSettingsView: React.FC = () => {
           {activeSection === 'data' && (
             <div className="space-y-4">
               {/* Data Retention */}
-              <div className="bg-white border border-[#E6E6E6] rounded-xl p-6 shadow-sm">
+              <div className="bg-white border border-[#E6E6E6] rounded-xl p-4 sm:p-6 shadow-sm">
                 <h2 className="text-[16px] font-bold text-[#1A1A1A] mb-2">Data Retention & Requests</h2>
                 <p className="text-[13px] text-[#4A4A4A] leading-relaxed mb-4">
                   VORA retains candidate interview data for a minimum of 24 months to support audit trail compliance. You may request an export or deletion of organisation records where legally permitted.
@@ -1899,7 +1899,7 @@ const EmployerSettingsView: React.FC = () => {
               </div>
 
               {/* Audit Trail Access */}
-              <div className="bg-white border border-[#E6E6E6] rounded-xl p-6 shadow-sm">
+              <div className="bg-white border border-[#E6E6E6] rounded-xl p-4 sm:p-6 shadow-sm">
                 <div className="flex items-center justify-between gap-4 mb-2">
                   <h2 className="text-[16px] font-bold text-[#1A1A1A]">Audit Trail Access</h2>
                   <Button
@@ -1923,7 +1923,7 @@ const EmployerSettingsView: React.FC = () => {
                   </div>
                 ) : auditData?.items && auditData.items.length > 0 ? (
                   <div className="overflow-x-auto border border-[#E6E6E6] rounded-lg">
-                    <table className="w-full text-left text-xs">
+                    <table className="w-full text-left text-xs min-w-[500px]">
                       <thead className="bg-[#F7F7F7] border-b border-[#E6E6E6]">
                         <tr>
                           <th className="py-2.5 px-3 font-bold text-[#4A4A4A]">Action</th>
@@ -1960,7 +1960,7 @@ const EmployerSettingsView: React.FC = () => {
           ══════════════════════════════════════════ */}
           {activeSection === 'templates' && (
             <div className="space-y-4">
-              <div className="bg-white border border-[#E6E6E6] rounded-xl p-6 shadow-sm">
+              <div className="bg-white border border-[#E6E6E6] rounded-xl p-4 sm:p-6 shadow-sm">
                 <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-[#F7F7F7] flex-wrap">
                   <div>
                     <h2 className="text-[16px] font-bold text-[#1A1A1A]">Offer Templates</h2>

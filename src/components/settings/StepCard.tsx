@@ -21,18 +21,16 @@ const StepCard: React.FC<StepCardProps> = ({
   className = '',
 }) => (
   <div
-    className={`bg-white border-[1.5px] border-[#E6E6E6] rounded-[14px] p-5 mb-4 ${className}`}
+    className={`bg-white border-[1.5px] border-[#E6E6E6] rounded-[14px] p-4 sm:p-5 mb-4 ${className}`}
   >
-    <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+    <div className="flex items-start sm:items-center justify-between gap-3 mb-4 flex-wrap">
       <div className="flex items-center gap-2.5">
         <div
-          className={`w-7 h-7 rounded-full text-white text-xs font-bold flex items-center justify-center shrink-0 ${
-            stepColor === 'green' ? 'bg-[#2CA62C]' : 'bg-[#0047CC]'
-          }`}
+          className="w-7 h-7 rounded-full text-white text-xs font-bold flex items-center justify-center shrink-0 bg-[#0047CC]"
         >
           {step}
         </div>
-        <div>
+        <div className="min-w-0">
           <Subheading className="text-[14px]">{title}</Subheading>
           {description && (
             <SectionDescription className="text-[12px] mt-0.5">{description}</SectionDescription>

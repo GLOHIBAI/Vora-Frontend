@@ -88,7 +88,7 @@ const TIER_DATA: Record<string, { cls: string; name: string; msg: string; mult: 
     mult: { t1: 2.38, t2: 1.0, t3: 0.33 },
   },
   t3: {
-    cls: 'bg-[#FFFBEB] text-[#D97706] border-[#FDE68A]',
+    cls: 'bg-[#EFF6FF] text-[#2563EB] border-[#BFDBFE]',
     name: 'Tier 3 (LMIC)',
     msg: 'You are in a Tier 3 (LMIC) market. Your local rate anchors global pricing — VORA scales it up for T1/T2 mentees so you earn globally competitive rates while remaining accessible locally.',
     mult: { t1: 7.33, t2: 3.07, t3: 1.0 },
@@ -785,7 +785,7 @@ const MentorSettingsView: React.FC = () => {
       <h1 className="text-[24px] font-bold text-[#1A1A1A] tracking-[-0.5px] mb-6">Settings</h1>
 
       {/* Settings Tab Navigation Bar */}
-      <div className="flex border-b border-[#E6E6E6] mb-8 overflow-x-auto scrollbar-hide">
+      <div className="flex border-b border-[#E6E6E6] mb-6 sm:mb-8 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
           return (
@@ -793,7 +793,7 @@ const MentorSettingsView: React.FC = () => {
               key={tab.key}
               type="button"
               onClick={() => setActiveTab(tab.key)}
-              className={`pb-3.5 px-4 text-[13px] font-bold transition-all border-b-2 whitespace-nowrap cursor-pointer ${
+              className={`pb-3.5 px-3.5 sm:px-4 text-[13px] font-bold transition-all border-b-2 whitespace-nowrap cursor-pointer shrink-0 ${
                 isActive
                   ? 'text-[#0047CC] border-[#0047CC]'
                   : 'text-[#808080] border-transparent hover:text-[#1A1A1A]'
@@ -810,7 +810,7 @@ const MentorSettingsView: React.FC = () => {
       ══════════════════════════════════════════ */}
       {activeTab === 'profile' && (
         <div className="space-y-6">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div>
               <h2 className="text-[20px] font-bold text-[#1A1A1A]">Profile</h2>
               <p className="text-xs text-[#808080] mt-1">
@@ -823,7 +823,7 @@ const MentorSettingsView: React.FC = () => {
               fullWidth={false}
               onClick={handleSaveProfile}
               disabled={updateProfileMutation.isPending || uploadAvatarMutation.isPending || isProfileLoading}
-              className="text-xs font-bold px-5"
+              className="text-xs font-bold px-5 w-full sm:w-auto shrink-0"
             >
               {updateProfileMutation.isPending ? 'Saving…' : 'Save changes'}
             </Button>
@@ -847,7 +847,7 @@ const MentorSettingsView: React.FC = () => {
                         className="w-[60px] h-[60px] rounded-full object-cover border-2 border-[#0047CC]/15"
                       />
                     ) : (
-                      <div className="w-[60px] h-[60px] rounded-full bg-[#BEE96B] text-[#283979] text-lg font-bold flex items-center justify-center border-2 border-[#0047CC]/15">
+                      <div className="w-[60px] h-[60px] rounded-full bg-[#EBF6FF] text-[#0047CC] text-lg font-bold flex items-center justify-center border-2 border-[#0047CC]/20">
                         {initials}
                       </div>
                     )}
@@ -961,7 +961,7 @@ const MentorSettingsView: React.FC = () => {
       ══════════════════════════════════════════ */}
       {activeTab === 'availability' && (
         <div className="space-y-6">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div>
               <h2 className="text-[20px] font-bold text-[#1A1A1A]">Availability & Pricing</h2>
               <p className="text-xs text-[#808080] mt-1">
@@ -974,7 +974,7 @@ const MentorSettingsView: React.FC = () => {
               fullWidth={false}
               onClick={handleSaveAvailability}
               disabled={updateAvailabilityMutation.isPending || isAvailabilityLoading}
-              className="text-xs font-bold px-5"
+              className="text-xs font-bold px-5 w-full sm:w-auto shrink-0"
             >
               {updateAvailabilityMutation.isPending ? 'Saving…' : 'Save all changes'}
             </Button>
@@ -1175,7 +1175,7 @@ const MentorSettingsView: React.FC = () => {
                                       <span className="px-2 py-0.5 rounded bg-[#F5F3FF] text-[#7C3AED] font-bold text-[11px]">
                                         T2: ${slotPPP.t2}
                                       </span>
-                                      <span className="px-2 py-0.5 rounded bg-[#FFFBEB] text-[#D97706] font-bold text-[11px]">
+                                      <span className="px-2 py-0.5 rounded bg-[#EFF6FF] text-[#2563EB] font-bold text-[11px]">
                                         T3 (You): ${slotPPP.t3}
                                       </span>
                                     </div>
@@ -1244,7 +1244,7 @@ const MentorSettingsView: React.FC = () => {
               {/* STEP 4: Global Pricing Summary */}
               <div className="bg-white border border-[#E6E6E6] rounded-xl p-5 shadow-sm space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-full bg-[#2CA62C] text-white text-xs font-bold flex items-center justify-center shrink-0">
+                  <div className="w-7 h-7 rounded-full bg-[#0047CC] text-white text-xs font-bold flex items-center justify-center shrink-0">
                     4
                   </div>
                   <div>
@@ -1265,9 +1265,9 @@ const MentorSettingsView: React.FC = () => {
                         <div className="text-[9px] font-bold text-[#7C3AED]">T2 · UMIC</div>
                         <div className="text-base font-extrabold text-[#7C3AED] mt-0.5">$460</div>
                       </div>
-                      <div className="bg-[#FFFBEB] p-2 rounded-lg">
-                        <div className="text-[9px] font-bold text-[#D97706]">T3 · LMIC</div>
-                        <div className="text-base font-extrabold text-[#D97706] mt-0.5">$150</div>
+                      <div className="bg-[#EFF6FF] p-2 rounded-lg">
+                        <div className="text-[9px] font-bold text-[#2563EB]">T3 · LMIC</div>
+                        <div className="text-base font-extrabold text-[#2563EB] mt-0.5">$150</div>
                       </div>
                     </div>
                   </div>
@@ -1283,9 +1283,9 @@ const MentorSettingsView: React.FC = () => {
                         <div className="text-[9px] font-bold text-[#7C3AED]">T2 · UMIC</div>
                         <div className="text-base font-extrabold text-[#7C3AED] mt-0.5">$245</div>
                       </div>
-                      <div className="bg-[#FFFBEB] p-2 rounded-lg">
-                        <div className="text-[9px] font-bold text-[#D97706]">T3 · LMIC</div>
-                        <div className="text-base font-extrabold text-[#D97706] mt-0.5">$80</div>
+                      <div className="bg-[#EFF6FF] p-2 rounded-lg">
+                        <div className="text-[9px] font-bold text-[#2563EB]">T3 · LMIC</div>
+                        <div className="text-base font-extrabold text-[#2563EB] mt-0.5">$80</div>
                       </div>
                     </div>
                   </div>
@@ -1329,7 +1329,7 @@ const MentorSettingsView: React.FC = () => {
       ══════════════════════════════════════════ */}
       {activeTab === 'courses' && (
         <div className="space-y-6">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div>
               <h2 className="text-[20px] font-bold text-[#1A1A1A]">Courses</h2>
               <p className="text-xs text-[#808080] mt-1">
@@ -1342,7 +1342,7 @@ const MentorSettingsView: React.FC = () => {
               fullWidth={false}
               onClick={handleSaveCourses}
               disabled={updateCoursesMutation.isPending || isCoursesLoading}
-              className="text-xs font-bold px-5"
+              className="text-xs font-bold px-5 w-full sm:w-auto shrink-0"
             >
               {updateCoursesMutation.isPending ? 'Saving…' : 'Save changes'}
             </Button>
@@ -1552,8 +1552,8 @@ const MentorSettingsView: React.FC = () => {
                       <Tag
                         key={type}
                         label={type}
-                        variant="green"
-                        className="border border-[#A7F3D0] text-[12px] py-1 px-2.5"
+                        variant="blue"
+                        className="border border-[#BFDBFE] text-[#0047CC] text-[12px] py-1 px-2.5"
                         onRemove={() => handleRemoveMentorshipType(type)}
                       />
                     ))}
@@ -1607,7 +1607,7 @@ const MentorSettingsView: React.FC = () => {
                             }
                             className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
                               selected
-                                ? 'bg-[#EEFBEE] text-[#135813] border border-[#A7F3D0]'
+                                ? 'bg-[#EBF6FF] text-[#0047CC] border border-[#0047CC]/30'
                                 : 'bg-[#F7F7F7] text-[#808080] border border-[#E6E6E6]'
                             }`}
                           >
@@ -1812,9 +1812,9 @@ const MentorSettingsView: React.FC = () => {
                 <div className="text-[13px] font-bold text-[#1A1A1A]">Credentials</div>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between border-b border-[#F7F7F7] pb-3 gap-4">
-                    <div>
+                    <div className="min-w-0 flex-1 break-words">
                       <div className="text-[10px] font-bold text-[#808080] uppercase tracking-wider">Email</div>
-                      <div className="text-sm font-semibold text-[#1A1A1A] mt-0.5">
+                      <div className="text-sm font-semibold text-[#1A1A1A] mt-0.5 truncate">
                         {accountData?.email || user?.email || 'adaeze@globalhealth.org'}
                       </div>
                       <div className="text-[11px] text-[#808080] mt-0.5">
@@ -1823,7 +1823,7 @@ const MentorSettingsView: React.FC = () => {
                           : 'No changes left (3/3 used)'}
                       </div>
                       {accountData?.pendingEmailChange && (
-                        <div className="text-[11px] text-[#D97706] mt-0.5 font-medium">
+                        <div className="text-[11px] text-[#2563EB] mt-0.5 font-medium">
                           Pending confirmation: {accountData.pendingEmailChange.requestedEmail}
                         </div>
                       )}
@@ -1835,7 +1835,7 @@ const MentorSettingsView: React.FC = () => {
                       fullWidth={false}
                       disabled={remainingEmailChanges <= 0}
                       onClick={() => setEmailModalOpen(true)}
-                      className="text-xs"
+                      className="text-xs shrink-0"
                     >
                       Change
                     </Button>
@@ -1903,7 +1903,7 @@ const MentorSettingsView: React.FC = () => {
                           </div>
                         </div>
                         {s.isCurrent ? (
-                          <span className="text-[10px] font-bold px-2 py-0.5 bg-[#EEFBEE] text-[#135813] rounded-full">
+                          <span className="text-[10px] font-bold px-2 py-0.5 bg-[#EBF6FF] text-[#0047CC] rounded-full">
                             Current
                           </span>
                         ) : (
@@ -1923,7 +1923,7 @@ const MentorSettingsView: React.FC = () => {
                         <div className="text-xs font-bold text-[#1A1A1A]">Current Browser Session</div>
                         <div className="text-[11px] text-[#808080] mt-0.5">Active now</div>
                       </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 bg-[#EEFBEE] text-[#135813] rounded-full">
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-[#EBF6FF] text-[#0047CC] rounded-full">
                         Current
                       </span>
                     </div>

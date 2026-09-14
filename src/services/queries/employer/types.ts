@@ -77,9 +77,13 @@ export type JobDisplayStatus =
 
 export interface EmployerDashboardJobItem {
   id: string;
-  title: string;
+  roleTitle?: string;
+  title?: string;
+  departmentOrUnit?: string | null;
+  applicationCode?: string;
   location?: string;
   postedDate?: string;
+  applicantCount?: number;
   applicantsCount?: number;
   applicants?: number;
   status?: string;
