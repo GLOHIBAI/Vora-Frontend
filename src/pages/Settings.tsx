@@ -1028,7 +1028,9 @@ const StandardSettingsView: React.FC = () => {
                       <div className="text-[10px] text-gray-500">Active now</div>
                     </div>
                   ) : (
-                    authSessions.map((session, i) => (
+                    [...authSessions]
+                      .sort((a, b) => (b.isCurrent ? 1 : 0) - (a.isCurrent ? 1 : 0))
+                      .map((session, i) => (
                       <div key={session.id || i} className="bg-gray-50 rounded-lg p-3 flex items-center justify-between gap-4">
                         <div>
                           <div className="text-xs font-bold text-gray-900 mb-0.5">

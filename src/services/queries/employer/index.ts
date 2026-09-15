@@ -581,7 +581,18 @@ export const useAuthSessionsQuery = (options: Record<string, any> = {}) => {
         auth: true,
       });
       const data = response?.data?.data ?? response?.data ?? response;
-      return (Array.isArray(data) ? data : data?.sessions ?? []) as AuthSession[];
+      const rawSessions = (Array.isArray(data) ? data : data?.sessions ?? []) as AuthSession[];
+
+      if (rawSessions.length > 0 && !rawSessions.some(s => s.isCurrent)) {
+        toast.error('Your session was signed out from another device.');
+        window.dispatchEvent(new Event('auth:unauthorized'));
+      }
+
+      return [...rawSessions].sort((a, b) => {
+        if (a.isCurrent && !b.isCurrent) return -1;
+        if (!a.isCurrent && b.isCurrent) return 1;
+        return new Date(b.lastActiveAt || 0).getTime() - new Date(a.lastActiveAt || 0).getTime();
+      });
     },
     ...options,
   });

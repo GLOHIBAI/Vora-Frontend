@@ -1891,7 +1891,9 @@ const MentorSettingsView: React.FC = () => {
                       <Spinner size={20} className="text-[#0047CC]" />
                     </div>
                   ) : authSessions.length > 0 ? (
-                    authSessions.map((s) => (
+                    [...authSessions]
+                      .sort((a, b) => (b.isCurrent ? 1 : 0) - (a.isCurrent ? 1 : 0))
+                      .map((s) => (
                       <div key={s.id} className="bg-[#F7F7F7] rounded-xl p-3.5 flex items-center justify-between gap-4">
                         <div>
                           <div className="text-xs font-bold text-[#1A1A1A]">

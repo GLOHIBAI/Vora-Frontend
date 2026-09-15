@@ -3,6 +3,9 @@ import type { ReactNode } from 'react';
 import type { User, AuthContextType } from '../types';
 import { SETUP_TOKEN_KEY, clearSetupToken as clearStoredSetupToken } from '../utils/oauth';
 import { isEmailLike, capitalizeName } from '../utils/userName';
+import { BASE_URL } from '../services/api';
+import { singleFlightRefresh } from '../services/api/refreshToken';
+import { toast } from 'react-hot-toast';
 
 const getAuthContext = (): React.Context<AuthContextType | undefined> => {
   const globalRef = globalThis as unknown as { __VORA_AUTH_CONTEXT__?: React.Context<AuthContextType | undefined> };
@@ -67,10 +70,73 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const handleUnauthorized = () => {
       logout();
+      if (window.location.pathname !== '/login') {
+        window.location.replace('/login');
+      }
     };
 
     window.addEventListener('auth:unauthorized', handleUnauthorized);
-    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+
+    let lastCheckTime = 0;
+    const CHECK_THROTTLE_MS = 10000; // Throttle to at most 1 check every 10s to keep backend load negligible
+
+    const verifySessionOnFocus = async () => {
+      if (document.visibilityState !== 'visible') return;
+
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+
+      const now = Date.now();
+      if (now - lastCheckTime < CHECK_THROTTLE_MS) return;
+      lastCheckTime = now;
+
+      try {
+        const res = await fetch(`${BASE_URL}/auth/sessions`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+        });
+
+        if (res.status === 401) {
+          const refreshed = await singleFlightRefresh();
+          if (!refreshed) {
+            toast.error('Your session has ended or was signed out.');
+            logout();
+            window.location.replace('/login');
+          }
+          return;
+        }
+
+        if (res.ok) {
+          const body = await res.json().catch(() => null);
+          const sessions = Array.isArray(body)
+            ? body
+            : body?.data?.sessions ?? body?.sessions ?? [];
+          if (Array.isArray(sessions) && sessions.length > 0) {
+            const hasCurrentSession = sessions.some((s: any) => s.isCurrent);
+            if (!hasCurrentSession) {
+              toast.error('Your session was signed out from another device.');
+              logout();
+              window.location.replace('/login');
+            }
+          }
+        }
+      } catch {
+        // Ignore network drops or momentary server blips
+      }
+    };
+
+    window.addEventListener('focus', verifySessionOnFocus);
+    document.addEventListener('visibilitychange', verifySessionOnFocus);
+
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+      window.removeEventListener('focus', verifySessionOnFocus);
+      document.removeEventListener('visibilitychange', verifySessionOnFocus);
+    };
   }, [logout]);
 
   const login = useCallback((userData: User, token?: string) => {

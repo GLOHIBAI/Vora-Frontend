@@ -1819,7 +1819,9 @@ const EmployerSettingsView: React.FC = () => {
                 ) : (
                   <div className="divide-y divide-[#F7F7F7]">
                     {authSessions.length > 0 ? (
-                      authSessions.map((s) => (
+                      [...authSessions]
+                        .sort((a, b) => (b.isCurrent ? 1 : 0) - (a.isCurrent ? 1 : 0))
+                        .map((s) => (
                         <div key={s.id} className="py-3 flex items-center justify-between gap-4">
                           <div>
                             <div className="text-[13px] font-bold text-[#1A1A1A]">

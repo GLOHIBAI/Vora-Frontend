@@ -23,8 +23,9 @@ export async function singleFlightRefresh(): Promise<boolean> {
 
       const data = await response.json().catch(() => ({}));
       // If the backend returns a new token in JSON payload:
-      if (data && data.token) {
-        localStorage.setItem('auth_token', data.token);
+      const newToken = data?.accessToken || data?.data?.accessToken || data?.token || data?.data?.token;
+      if (newToken) {
+        localStorage.setItem('auth_token', newToken);
       }
       return true;
     } catch (error) {
