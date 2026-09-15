@@ -147,7 +147,7 @@ const ForgotPassword: React.FC = () => {
 
   if (role) {
     return (
-      <div className="min-h-screen flex flex-col bg-white">
+      <div className="h-screen flex flex-col bg-white overflow-hidden">
         <AuthTopNav logoTo={`/role/${activeSlug}`} loginTo="" />
         <RoleApplyContextBanner role={role} />
         {forgotPasswordContent}

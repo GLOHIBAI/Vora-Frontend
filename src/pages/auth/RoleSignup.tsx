@@ -31,7 +31,7 @@ const RoleSignup: React.FC = () => {
   const showFullPage = useFullPageLoading(isAuthLoading || isRoleLoading, false);
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="h-screen flex flex-col bg-white overflow-hidden">
       <AuthTopNav logoTo={slug ? `/role/${slug}` : '/signup'} loginTo={slug ? `/role/${slug}/login` : '/login'} />
       <RoleApplyContextBanner role={role} />
 

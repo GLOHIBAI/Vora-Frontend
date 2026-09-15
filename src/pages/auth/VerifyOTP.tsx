@@ -281,7 +281,7 @@ const VerifyOTP: React.FC = () => {
 
   if (isRoleFlow && role) {
     return (
-      <div className="min-h-screen flex flex-col bg-white">
+      <div className="h-screen flex flex-col bg-white overflow-hidden">
         <AuthCenterLogoNav />
         <RoleApplyContextBanner role={role} />
         <AuthPageShell loading={showFullPage} centered={false} className="flex-1 !min-h-0 !py-10 sm:!py-16" heroContent={heroNode}>

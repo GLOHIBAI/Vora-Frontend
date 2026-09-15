@@ -28,16 +28,16 @@ export function AuthPageShell({
   if (heroContent) {
     return (
       <div
-        className={`h-screen w-full overflow-hidden bg-white ${className}`}
+        className={`${className.includes('h-') || className.includes('flex-1') ? '' : 'h-screen'} w-full overflow-hidden bg-white ${className}`}
       >
-        <div className="grid grid-cols-1 lg:grid-cols-12 h-screen">
-          {/* Hero Video Showcase Area (Left on desktop) */}
-          <div className="hidden lg:block lg:col-span-6 xl:col-span-7 h-full overflow-hidden bg-[#0A0F1D]">
+        <div className="grid grid-cols-1 lg:grid-cols-2 h-full">
+          {/* Hero Video Showcase Area (Left on desktop - exactly 50% half of screen) */}
+          <div className="hidden lg:block w-full h-full overflow-hidden bg-[#0A0F1D]">
             {heroContent}
           </div>
 
-          {/* Form Area with safe auto-centering that prevents top-clipping (Right on desktop) */}
-          <div className="col-span-12 lg:col-span-6 xl:col-span-5 h-full overflow-y-auto custom-scrollbar flex flex-col px-4 py-6 sm:px-8 sm:py-8 lg:px-10 xl:px-14">
+          {/* Form Area with safe auto-centering that prevents top-clipping (Right on desktop - exactly 50% half of screen) */}
+          <div className="w-full h-full overflow-y-auto custom-scrollbar flex flex-col px-4 py-6 sm:px-8 sm:py-8 lg:px-10 xl:px-14">
             <div className="mx-auto my-auto w-full max-w-[460px] py-4">
               {children}
             </div>
