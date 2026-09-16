@@ -1,229 +1,260 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { SAMPLE_TALENT_PROFILE } from '../../constants/mockData';
 import { 
   ChevronLeftIcon, 
   PlayIcon, 
   ArrowUpIcon,
+  CloseIcon,
+  LocationIcon,
   BriefcaseIcon
 } from '../../components/common/Icons';
-import Button from '../../components/common/Button';
-import Tag from '../../components/common/Tag';
-
-// --- Sub-components ---
-
-const ProfileCard: React.FC<{ title?: string; children: React.ReactNode; className?: string }> = ({ title, children, className }) => (
-  <div className={`bg-white border border-gray-100 rounded-[32px] p-8 shadow-sm hover:shadow-md transition-all duration-300 ${className}`}>
-    {title && <h3 className="text-[13px] font-medium text-gray-900 mb-8 uppercase tracking-[0.2em]">{title}</h3>}
-    {children}
-  </div>
-);
-
-
+import { toast } from 'react-hot-toast';
 
 const TalentProfile: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [isHireModalOpen, setIsHireModalOpen] = useState(false);
   const data = SAMPLE_TALENT_PROFILE;
+  const displayId = id || data.id;
 
   return (
-    <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 max-w-[1440px] mx-auto px-4 sm:px-6">
-      {/* Header */}
-      <div className="flex flex-col gap-6">
-        <h1 className="text-[32px] font-medium text-[#0047CC]  tracking-tight">Talents</h1>
-        
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20 max-w-[1360px] mx-auto px-4 sm:px-6">
+      {/* Top Back Navigation */}
+      <div className="pt-2">
         <button
-          onClick={() => navigate('/talents')}
-          className="flex items-center gap-2 text-gray-400 hover:text-[#0047CC] transition-colors cursor-pointer bg-transparent border-none p-0 self-start group"
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2.5 text-gray-900 hover:text-[#0047CC] transition-colors cursor-pointer bg-transparent border-none p-0 group font-bold text-[18px]"
         >
-          <ChevronLeftIcon size={18} strokeWidth={3} className="transition-transform group-hover:-translate-x-1" />
-          <span className="text-[15px] font-medium tracking-tight">{id || data.id}</span>
+          <ChevronLeftIcon size={20} strokeWidth={2.5} className="text-gray-700 transition-transform group-hover:-translate-x-1" />
+          <span>{displayId}</span>
         </button>
       </div>
 
-      {/* Masonry Grid Layout */}
-      <div className="columns-1 md:columns-2 xl:columns-3 gap-8 space-y-8">
-        {/* Left Column (Main Identity & Job Card) */}
-        <div className="break-inside-avoid mb-8">
-          <div className="bg-white border border-gray-100 rounded-[32px] p-8 shadow-sm hover:shadow-md transition-all duration-500 space-y-8">
-            <div className="flex items-center gap-6">
-              <div className="w-24 h-24 rounded-[24px] overflow-hidden border-4 border-gray-50 shadow-sm shrink-0">
+      {/* Main 2-Column Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
+        {/* Left Column (Identity, Assessment Overview, Actions) */}
+        <div className="lg:col-span-4 space-y-6">
+          {/* Identity & Applied Job Card */}
+          <div className="bg-[#FAFAFA] border border-gray-100 rounded-[20px] p-6 space-y-5">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full overflow-hidden shrink-0 border border-gray-200">
                 <img 
                   src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop" 
                   alt="Talent Avatar"
                   className="w-full h-full object-cover"
                 />
               </div>
-              <div className="space-y-1 overflow-hidden">
-                <h2 className="text-[26px] font-medium text-gray-900 leading-tight truncate">ID: {data.id}</h2>
-                <p className="text-[16px] font-medium text-gray-400 truncate">{data.role}</p>
-                <div className="flex items-center gap-4 text-[12px] font-medium text-gray-400 pt-2">
-                  <span className="flex items-center gap-1.5 shrink-0 bg-gray-50 px-3 py-1 rounded-full">
+              <div className="space-y-0.5 overflow-hidden">
+                <h2 className="text-[20px] font-bold text-gray-900 leading-tight">
+                  ID: {displayId}
+                </h2>
+                <p className="text-[13px] text-gray-500 font-normal">{data.role}</p>
+                <div className="flex items-center gap-3 text-[11px] text-gray-500 pt-0.5 font-normal">
+                  <span className="flex items-center gap-1">
+                    <LocationIcon size={12} className="text-gray-400" />
                     {data.location}
                   </span>
-                  <span className="flex items-center gap-1.5 shrink-0 bg-gray-50 px-3 py-1 rounded-full">
+                  <span className="flex items-center gap-1">
+                    <BriefcaseIcon size={12} className="text-gray-400" />
                     {data.experienceYears}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="bg-[#F9FAFB] rounded-[24px] p-6 space-y-4 border border-gray-50">
-              <div className="flex justify-between items-start">
-                <p className="text-[11px] font-medium text-gray-400 uppercase tracking-[0.1em]">Applied job</p>
-                <p className="text-[11px] font-medium text-gray-400 uppercase tracking-[0.1em]">Date: {data.appliedDate}</p>
+            <div className="bg-[#F0F2F5] rounded-[16px] p-4 space-y-2.5">
+              <div className="flex justify-between items-center text-[11px] text-gray-500 font-medium">
+                <span>Applied Job</span>
+                <span>Date: {data.appliedDate}</span>
               </div>
-              <p className="text-[15px] font-medium text-gray-800 leading-snug">
+              <p className="text-[13px] font-bold text-gray-900 leading-snug">
                 {data.appliedJob}
               </p>
-              <div className="flex items-center gap-2 pt-1">
-                <span className="text-[11px] font-medium text-gray-400 uppercase tracking-widest">Status:</span>
-                <span className="px-3 py-1 rounded-full bg-white text-[#0047CC] text-[11px] font-medium border border-blue-100">
+              <div className="flex items-center gap-2 pt-0.5 text-[12px]">
+                <span className="text-gray-500 font-normal">Status:</span>
+                <span className="px-2.5 py-0.5 rounded-full bg-[#FEF9C3] text-[#A16207] text-[11px] font-medium">
                   {data.status}
                 </span>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Interview Overview */}
-        <div className="break-inside-avoid mb-8">
-          <div className="space-y-6">
-            <h3 className="text-[13px] font-medium text-gray-900 uppercase tracking-[0.15em] ml-2">Interview overview</h3>
+          {/* Interview Overview */}
+          <div className="space-y-3">
+            <h3 className="text-[15px] font-bold text-gray-900 tracking-tight">Interview overview</h3>
             
-            <div className="grid grid-cols-1 gap-5">
-              <div className="bg-white p-8 rounded-[32px] space-y-4 relative overflow-hidden group border border-blue-100/20 shadow-sm">
-                <div className="flex items-center justify-between relative z-10">
-                  <p className="text-[13px] font-medium text-[#0047CC] uppercase tracking-widest">Psychometric Interview</p>
-                  <div className="flex items-center gap-1 text-[11px] font-medium text-[#2CA62C] bg-white/60 backdrop-blur-md px-3 py-1 rounded-full border border-green-100/30">
-                    <ArrowUpIcon size={14} strokeWidth={3} className="rotate-45" />
-                    Top 1%
-                  </div>
-                </div>
-                <p className="text-[48px] font-medium text-[#0047CC] relative z-10 tracking-tight">{data.assessment.psychometric.score}%</p>
-                <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:scale-110 transition-transform duration-700 pointer-events-none">
-                  <BriefcaseIcon size={120} />
+            <div className="space-y-3">
+              {/* Psychometric Card */}
+              <div className="bg-[#EFF6FF] p-5 rounded-[18px] border border-blue-100/60 space-y-1">
+                <p className="text-[13px] font-medium text-gray-700">Psychometric Interview</p>
+                <div className="flex items-baseline justify-between pt-1">
+                  <span className="text-[34px] font-bold text-gray-900 leading-none">{data.assessment.psychometric.score}%</span>
+                  <span className="text-[12px] font-semibold text-[#16A34A] flex items-center gap-1">
+                    <ArrowUpIcon size={13} className="rotate-45" /> Top 1%
+                  </span>
                 </div>
               </div>
 
-              <div className="bg-[#F0F7FF] p-8 rounded-[32px] space-y-4 relative overflow-hidden group border border-blue-50 shadow-sm">
-                <div className="flex items-center justify-between relative z-10">
-                  <p className="text-[13px] font-medium text-[#0047CC] uppercase tracking-widest">Situational Interview</p>
-                  <div className="flex items-center gap-1 text-[11px] font-medium text-[#2CA62C] bg-white/60 backdrop-blur-md px-3 py-1 rounded-full border border-green-100/30">
-                    <ArrowUpIcon size={14} strokeWidth={3} className="rotate-45" />
-                    Top 1%
+              {/* Situational Card */}
+              <div className="bg-[#EFF6FF] p-5 rounded-[18px] border border-blue-100/60 space-y-1">
+                <p className="text-[13px] font-medium text-gray-700">Situational Interview</p>
+                <div className="flex items-baseline justify-between pt-1">
+                  <span className="text-[34px] font-bold text-gray-900 leading-none">{data.assessment.situational.score}%</span>
+                  <span className="text-[12px] font-semibold text-[#16A34A] flex items-center gap-1">
+                    <ArrowUpIcon size={13} className="rotate-45" /> Top 1%
+                  </span>
+                </div>
+              </div>
+
+              {/* Video Preview */}
+              <div className="relative aspect-video rounded-[18px] overflow-hidden group cursor-pointer shadow-xs border border-gray-100 mt-3">
+                <img 
+                  src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=600&auto=format&fit=crop" 
+                  alt="Applicant Video"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                  <div className="w-13 h-13 bg-black/40 backdrop-blur-xs rounded-full flex items-center justify-center border border-white/60 group-hover:scale-110 transition-all duration-300 shadow-md">
+                    <PlayIcon size={22} className="text-white ml-0.5 fill-white" />
                   </div>
                 </div>
-                <p className="text-[48px] font-medium text-[#0047CC] relative z-10 tracking-tight">{data.assessment.situational.score}%</p>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Video Intro */}
-        <div className="break-inside-avoid mb-8">
-          <div className="relative aspect-video rounded-[32px] overflow-hidden group cursor-pointer shadow-md border border-gray-100">
-            <img 
-              src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=600&auto=format&fit=crop" 
-              alt="Applicant Video"
-              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-            />
-            <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-              <div className="w-20 h-20 bg-white/30 backdrop-blur-2xl rounded-full flex items-center justify-center border border-white/40 group-hover:scale-110 transition-all duration-500 shadow-2xl">
-                <PlayIcon size={32} className="text-white ml-1.5" />
-              </div>
-            </div>
+          {/* Action Buttons (Left column, below video) */}
+          <div className="space-y-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setIsHireModalOpen(true)}
+              className="w-full py-3 px-6 bg-[#0052CC] hover:bg-[#0047CC] text-white rounded-full font-semibold text-[15px] shadow-xs cursor-pointer transition-all active:scale-[0.99]"
+            >
+              Hire applicant
+            </button>
+            <button 
+              type="button"
+              onClick={() => navigate(`/jobs/0/reject/${displayId}`)}
+              className="w-full py-3 px-6 bg-[#FAFAFA] hover:bg-gray-100 border border-gray-200 text-gray-800 rounded-full font-semibold text-[15px] cursor-pointer transition-all active:scale-[0.99]"
+            >
+              Reject applicant
+            </button>
           </div>
         </div>
 
-        {/* Professional Information */}
-        <div className="break-inside-avoid mb-8">
-          <ProfileCard title="Professional Information">
-            <div className="space-y-10 pt-4">
-              <div className="space-y-4">
-                <p className="text-[12px] font-medium text-gray-400 uppercase tracking-[0.2em] flex items-center gap-3">
-                  About
-                </p>
-                <p className="text-[16px] text-gray-600 leading-relaxed font-medium">
+        {/* Right Column (Professional Information, Experience, Education) */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* Professional Information Card */}
+          <div className="bg-[#FAFAFA] border border-gray-100 rounded-[20px] p-7 space-y-5">
+            <h3 className="text-[17px] font-bold text-gray-900 tracking-tight">Professional Information</h3>
+            
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <h4 className="text-[13px] font-bold text-gray-900">About</h4>
+                <p className="text-[13px] text-gray-600 leading-relaxed">
                   {data.about}
                 </p>
               </div>
 
-              <div className="space-y-6">
-                <p className="text-[12px] font-medium text-gray-400 uppercase tracking-[0.2em] flex items-center gap-3">
-                  Skills
-                </p>
-                <div className="flex flex-wrap gap-3 pt-2">
-                  {data.skills.map((skill, idx) => (
-                    <Tag key={idx} label={skill.label} variant={skill.variant as any} />
-                  ))}
+              <div className="space-y-2 pt-1">
+                <h4 className="text-[13px] font-bold text-gray-900">Skills</h4>
+                <div className="flex flex-wrap gap-2.5">
+                  <span className="px-3.5 py-1 rounded-full text-[12px] font-medium bg-blue-50/60 text-blue-600 border border-blue-300">Research Analysis</span>
+                  <span className="px-3.5 py-1 rounded-full text-[12px] font-medium bg-amber-50/60 text-amber-600 border border-amber-300">Research Analysis</span>
+                  <span className="px-3.5 py-1 rounded-full text-[12px] font-medium bg-green-50/60 text-green-600 border border-green-300">Research Analysis</span>
+                  <span className="px-3.5 py-1 rounded-full text-[12px] font-medium bg-rose-50/60 text-rose-500 border border-rose-300">Research Analysis</span>
+                  <span className="px-3.5 py-1 rounded-full text-[12px] font-medium bg-gray-50 text-gray-600 border border-gray-300">Research Analysis</span>
                 </div>
               </div>
             </div>
-          </ProfileCard>
-        </div>
+          </div>
 
-        {/* Action Buttons */}
-        <div className="break-inside-avoid mb-8">
-          <div className="flex flex-col gap-4">
-            <Button
-              onClick={() => {}} // Handle hire logic
-              className="py-6 text-[18px] shadow-xl shadow-blue-500/20"
-            >
-              Hire applicant
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={() => navigate(`/jobs/0/reject/${id || data.id}`)}
-              className="py-6 bg-white text-gray-700 text-[18px] shadow-sm"
-            >
-              Reject applicant
-            </Button>
+          {/* Bottom 2-Card Grid (Experience & Education) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+            {/* Experience Card */}
+            <div className="bg-[#FAFAFA] border border-gray-100 rounded-[20px] p-7 space-y-5 flex flex-col">
+              <h3 className="text-[17px] font-bold text-gray-900 tracking-tight">Experience</h3>
+              
+              <div className="relative space-y-7 pl-6 flex-1">
+                {/* Vertical line */}
+                <div className="absolute left-[5px] top-2 bottom-2 w-0.5 bg-gray-200" />
+                
+                {data.experience.map((exp, idx) => (
+                  <div key={idx} className="relative space-y-2">
+                    <div className="absolute -left-[25px] top-1.5 w-3 h-3 rounded-full bg-[#0052CC] ring-4 ring-[#FAFAFA]" />
+                    <h4 className="text-[14px] font-bold text-gray-900 leading-snug">{exp.title}</h4>
+                    <span className="text-[11px] font-medium text-[#0052CC] bg-[#EBF3FE] px-2.5 py-0.5 rounded-full inline-block">{exp.period}</span>
+                    <p className="text-[12px] text-gray-500 leading-relaxed pt-0.5">
+                      {exp.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Education & Certifications Card */}
+            <div className="bg-[#FAFAFA] border border-gray-100 rounded-[20px] p-7 space-y-5 flex flex-col">
+              <h3 className="text-[17px] font-bold text-gray-900 tracking-tight">Education & Certifications</h3>
+              
+              <div className="space-y-6 flex-1">
+                {data.education.map((edu, idx) => (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <h4 className="text-[14px] font-bold text-gray-900 leading-snug">{edu.title}</h4>
+                      <span className="text-[11px] text-gray-400 shrink-0">{edu.period}</span>
+                    </div>
+                    {edu.institution && (
+                      <p className="text-[12px] text-gray-400">
+                        {edu.institution}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* Experience */}
-        <div className="break-inside-avoid mb-8">
-          <ProfileCard title="Experience">
-            <div className="relative space-y-12 pl-8 pt-6">
-              {/* Timeline Line */}
-              <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gray-50" />
-              
-              {data.experience.map((exp, idx) => (
-                <div key={idx} className="relative space-y-3">
-                  <div className="absolute -left-[30px] top-1.5 w-5 h-5 rounded-full bg-[#0047CC] border-4 border-white ring-1 ring-gray-100 z-10 shadow-sm" />
-                  <h4 className="text-[18px] font-medium text-gray-900 leading-tight tracking-tight">{exp.title}</h4>
-                  <p className="text-[12px] font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full inline-block">{exp.period}</p>
-                  <p className="text-[15px] text-gray-500 leading-relaxed pt-2 font-medium">
-                    {exp.description}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </ProfileCard>
-        </div>
-
-        {/* Education & Certifications */}
-        <div className="break-inside-avoid mb-8">
-          <ProfileCard title="Education & Certifications">
-            <div className="space-y-12 pt-6">
-              {data.education.map((edu, idx) => (
-                <div key={idx} className="space-y-4 group">
-                  <div className="flex items-start justify-between">
-                    <h4 className="text-[17px] font-medium text-gray-900 leading-tight group-hover:text-[#0047CC] transition-colors">{edu.title}</h4>
-                    <span className="text-[11px] font-medium text-gray-400 border border-gray-100 px-3 py-1 rounded-full shrink-0 uppercase tracking-widest">{edu.period}</span>
-                  </div>
-                  {edu.institution && (
-                    <p className="text-[15px] font-medium text-gray-400 flex items-center gap-2">
-                      <div className="w-1 h-1 rounded-full bg-gray-200" /> {edu.institution}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </ProfileCard>
-        </div>
       </div>
+
+      {/* Hire Applicant Confirmation Modal */}
+      {isHireModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] max-w-md w-full p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-200 relative">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[20px] font-semibold text-gray-900">Hire applicant</h3>
+              <button 
+                onClick={() => setIsHireModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
+              >
+                <CloseIcon size={20} />
+              </button>
+            </div>
+            <p className="text-[14px] text-gray-600 leading-relaxed">
+              You are about to hire <span className="font-semibold text-[#0047CC]">{displayId}</span> for this role. The applicant will be notified and the job record will be updated.
+            </p>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsHireModalOpen(false)}
+                className="flex-1 py-3.5 px-5 rounded-full border border-gray-200 text-[15px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsHireModalOpen(false);
+                  toast.success(`Successfully hired applicant ${displayId}!`);
+                }}
+                className="flex-1 py-3.5 px-5 rounded-full bg-[#0047CC] text-white text-[15px] font-medium hover:bg-[#003d99] transition-colors shadow-lg shadow-blue-500/25 cursor-pointer"
+              >
+                Hire applicant
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

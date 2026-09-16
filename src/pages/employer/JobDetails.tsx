@@ -296,7 +296,15 @@ const JobDetails: React.FC = () => {
         <ApplicantsTabView 
           data={applicantsData}
           isLoading={applicantsLoading}
+          jobId={id}
           onHire={(a: any) => {
+            setSelectedApplicant(a);
+            setIsApplicantModalOpen(true);
+          }}
+          onReject={(a: any) => {
+            navigate(`/jobs/${id}/reject/${a.id || a.assessmentId || a.talentId}`);
+          }}
+          onViewDetails={(a: any) => {
             setSelectedApplicant(a);
             setIsApplicantModalOpen(true);
           }}

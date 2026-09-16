@@ -3,8 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { 
   PlusIcon, 
   BriefcaseIcon, 
-  SearchIcon,
-  MoreVerticalIcon
+  SearchIcon
 } from '../../components/common/Icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PostJobModal from '../../components/employer/PostJobModal';
@@ -181,12 +180,11 @@ const Jobs: React.FC = () => {
               {/* Table Header - Hidden on mobile */}
               <div className="hidden lg:flex bg-[#F9FAFB] px-8 py-4 items-center text-[11px] font-medium text-gray-400 uppercase tracking-widest border-b border-gray-50">
                 <div className="flex-[3]">Job listings</div>
-                <div className="flex-1">Job type</div>
-                <div className="flex-[1.2]">Date posted</div>
-                <div className="flex-[1.2]">Expiry date</div>
+                <div className="flex-1 text-center">Job type</div>
+                <div className="flex-[1.2] text-center">Date posted</div>
+                <div className="flex-[1.2] text-center">Expiry date</div>
                 <div className="w-32 text-center">Applicants</div>
-                <div className="flex-1 pl-4">Status</div>
-                <div className="w-10"></div>
+                <div className="flex-1 text-right">Status</div>
               </div>
 
               {/* Table Body */}
@@ -246,19 +244,14 @@ const Jobs: React.FC = () => {
                       </div>
 
                       {/* Desktop columns */}
-                      <div className="hidden lg:block flex-1 text-[13px] font-medium text-gray-600">{job.jobType || '—'}</div>
-                      <div className="hidden lg:block flex-[1.2] text-[13px] font-medium text-gray-400">{job.datePosted || '—'}</div>
-                      <div className="hidden lg:block flex-[1.2] text-[13px] font-medium text-gray-400">{job.expiryDate || '—'}</div>
+                      <div className="hidden lg:block flex-1 text-center text-[13px] font-medium text-gray-600">{job.jobType || '—'}</div>
+                      <div className="hidden lg:block flex-[1.2] text-center text-[13px] font-medium text-gray-400">{job.datePosted || '—'}</div>
+                      <div className="hidden lg:block flex-[1.2] text-center text-[13px] font-medium text-gray-400">{job.expiryDate || '—'}</div>
                       <div className={`hidden lg:block w-32 text-center text-[14px] font-medium ${job.applicantCount ? 'text-[#0047CC]' : 'text-gray-300'}`}>
                         {job.applicantCount ?? '—'}
                       </div>
-                      <div className="hidden lg:block flex-1 pl-4">
+                      <div className="hidden lg:flex flex-1 justify-end">
                         <Tag label={job.displayStatus || job.status} variant={getStatusVariant(job.status) as any} />
-                      </div>
-                      <div className="flex justify-end lg:w-10">
-                        <button className="text-gray-300 hover:text-gray-600 p-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                          <MoreVerticalIcon size={18} />
-                        </button>
                       </div>
                     </div>
                   ))

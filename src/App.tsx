@@ -93,6 +93,8 @@ const RoleApplyRoute = lazy(() => import('./components/auth/RoleApplyRoute'))
 const JobPostedConfirmation = lazy(() => import('./pages/employer/JobPostedConfirmation'))
 const RoleLanding = lazy(() => import('./pages/public/RoleLanding'))
 const RoleSignup = lazy(() => import('./pages/auth/RoleSignup'))
+const CoursesList = lazy(() => import('./pages/courses/CoursesList'))
+const CourseDetails = lazy(() => import('./pages/courses/CourseDetails'))
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -196,6 +198,8 @@ const App = () => {
           <Route path="/payments/*" element={<ProtectedDashboardLayout><EmployerRoute><Payments /></EmployerRoute></ProtectedDashboardLayout>} />
           <Route path="/talents" element={<ProtectedDashboardLayout><Talents /></ProtectedDashboardLayout>} />
           <Route path="/talents/:id" element={<ProtectedDashboardLayout><TalentProfile /></ProtectedDashboardLayout>} />
+          <Route path="/courses" element={<ProtectedDashboardLayout><CoursesList /></ProtectedDashboardLayout>} />
+          <Route path="/courses/:id" element={<ProtectedDashboardLayout><CourseDetails /></ProtectedDashboardLayout>} />
           <Route path="/settings" element={<ProtectedDashboardLayout><Settings /></ProtectedDashboardLayout>} />
 
           {/* Auth Routes */}

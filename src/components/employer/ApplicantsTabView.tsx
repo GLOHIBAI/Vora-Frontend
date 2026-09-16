@@ -6,7 +6,8 @@ import {
   AlertTriangleIcon,
   ChevronDownIcon,
   PlayIcon,
-  LocationIcon
+  LocationIcon,
+  MoreVerticalIcon
 } from '../common/Icons';
 import Tag from '../common/Tag';
 import Spinner from '../common/Spinner';
@@ -21,6 +22,9 @@ interface ApplicantsTabViewProps {
   data?: EmployerApplicantsResponse;
   isLoading?: boolean;
   onHire: (applicant: any) => void;
+  jobId?: string;
+  onReject?: (applicant: any) => void;
+  onViewDetails?: (applicant: any) => void;
 }
 
 const AccordionItem: React.FC<{ 
@@ -55,7 +59,7 @@ const AccordionItem: React.FC<{
       />
     </button>
     <div 
-      className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}
+      className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-none opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}
     >
       <div className="px-6 pb-6 pt-2 border-t border-gray-50">
         {children}
@@ -87,6 +91,9 @@ const TestResultsTable: React.FC<{
   section?: EmployerTestResultSection;
   onOpenDossier: (assessmentId: string) => void;
 }> = ({ sectionName, section, onOpenDossier }) => {
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const PAGE_SIZE = 10;
+
   if (section?.available === false) {
     return (
       <p className="py-8 text-center text-[13px] font-medium text-gray-400">
@@ -104,6 +111,9 @@ const TestResultsTable: React.FC<{
     );
   }
 
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const paginatedItems = items.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   return (
     <div className="overflow-x-auto -mx-6 px-6">
       <table className="w-full text-left">
@@ -116,7 +126,7 @@ const TestResultsTable: React.FC<{
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
-          {items.map((item, i) => {
+          {paginatedItems.map((item, i) => {
             const score = item.score;
             return (
               <tr key={i} className="group hover:bg-gray-50/50 transition-colors">
@@ -157,14 +167,57 @@ const TestResultsTable: React.FC<{
           })}
         </tbody>
       </table>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-5 border-t border-gray-100 mt-2">
+          <span className="text-[12px] font-medium text-gray-500">
+            Showing {(currentPage - 1) * PAGE_SIZE + 1} to {Math.min(currentPage * PAGE_SIZE, items.length)} of {items.length} applicants
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={currentPage === 1}
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentPage((p) => Math.max(1, p - 1));
+              }}
+              className="px-3 py-1 text-[12px] font-medium rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              Previous
+            </button>
+            <span className="text-[12px] font-medium text-gray-600 px-2">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={currentPage === totalPages}
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentPage((p) => Math.min(totalPages, p + 1));
+              }}
+              className="px-3 py-1 text-[12px] font-medium rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ data, isLoading, onHire }) => {
+const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ 
+  data, 
+  isLoading, 
+  onHire,
+  jobId,
+  onReject,
+  onViewDetails
+}) => {
   const navigate = useNavigate();
   const [openSection, setOpenSection] = useState<string | null>('Overview');
   const [currentPage, setCurrentPage] = useState(1);
+  const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(null);
   const PAGE_SIZE = 10;
 
   const toggleSection = (section: string) => {
@@ -261,15 +314,22 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ data, isLoading, 
   const totalApplicants = applicants.length || Number(getMetricCount(metrics?.totalMatched)) || 0;
 
   const handleOpenDossier = (applicant: EmployerApplicant) => {
-    if (applicant.assessmentId) {
-      navigate(`/assessments/${applicant.assessmentId}/employer-report`);
+    if (onViewDetails) {
+      onViewDetails(applicant);
     } else {
       onHire(applicant);
     }
   };
 
   const handleOpenDossierById = (assessmentId: string) => {
-    navigate(`/assessments/${assessmentId}/employer-report`);
+    const match = applicants.find(a => a.assessmentId === assessmentId);
+    if (match) {
+      handleOpenDossier(match);
+    } else if (onViewDetails) {
+      onViewDetails({ assessmentId } as any);
+    } else {
+      onHire({ assessmentId } as any);
+    }
   };
 
   return (
@@ -384,16 +444,77 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ data, isLoading, 
                             className="mx-auto min-w-[110px] justify-center"
                           />
                         </td>
-                        <td className="py-4 text-right">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenDossier(applicant);
-                            }}
-                            className="px-3 py-1.5 text-[12px] font-medium text-[#0047CC] hover:bg-blue-50 rounded-lg transition-colors cursor-pointer border border-[#0047CC]/20 bg-transparent"
-                          >
-                            Dossier
-                          </button>
+                        <td className="py-4 text-right relative">
+                          <div className="inline-block relative">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuIdx(openMenuIdx === i ? null : i);
+                              }}
+                              className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer relative z-10"
+                              aria-label="Applicant options"
+                            >
+                              <MoreVerticalIcon size={18} />
+                            </button>
+
+                            {openMenuIdx === i && (
+                              <>
+                                <div 
+                                  className="fixed inset-0 z-40 bg-transparent"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenMenuIdx(null);
+                                  }}
+                                />
+                                <div className={`absolute right-0 ${i >= paginatedApplicants.length - 2 && paginatedApplicants.length > 2 ? 'bottom-full mb-1' : 'top-full mt-1'} w-44 bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden py-1.5 animate-in fade-in zoom-in-95 duration-150 origin-top-right text-left`}>
+                                  <button 
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenMenuIdx(null);
+                                      if (onViewDetails) {
+                                        onViewDetails(applicant);
+                                      } else {
+                                        onHire(applicant);
+                                      }
+                                    }}
+                                    className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                                  >
+                                    View details
+                                  </button>
+                                  <button 
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenMenuIdx(null);
+                                      onHire(applicant);
+                                    }}
+                                    className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                                  >
+                                    Hire applicant
+                                  </button>
+                                  <button 
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenMenuIdx(null);
+                                      const effectiveJobId = jobId || data?.rolePostingId;
+                                      const targetId = applicant.id || applicant.assessmentId || applicant.talentId;
+                                      if (onReject) {
+                                        onReject(applicant);
+                                      } else if (effectiveJobId && targetId) {
+                                        navigate(`/jobs/${effectiveJobId}/reject/${targetId}`);
+                                      }
+                                    }}
+                                    className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                                  >
+                                    Reject applicant
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -420,6 +541,7 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ data, isLoading, 
                       disabled={currentPage === 1}
                       onClick={(e) => {
                         e.stopPropagation();
+                        setOpenMenuIdx(null);
                         setCurrentPage((p) => Math.max(1, p - 1));
                       }}
                       className="px-3 py-1 text-[12px] font-medium rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
@@ -434,6 +556,7 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ data, isLoading, 
                       disabled={currentPage === totalPages}
                       onClick={(e) => {
                         e.stopPropagation();
+                        setOpenMenuIdx(null);
                         setCurrentPage((p) => Math.min(totalPages, p + 1));
                       }}
                       className="px-3 py-1 text-[12px] font-medium rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
