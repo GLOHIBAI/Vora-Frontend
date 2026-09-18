@@ -108,7 +108,7 @@ const RoleAssessmentStageThreeResults: React.FC = () => {
           <div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">Unable to Load Interview Results</h2>
             <p className="text-sm text-gray-500 leading-relaxed">
-              {(error as any)?.message || 'We encountered an issue retrieving your Stage 3 assessment results. Please check your connection and try again.'}
+              {(error as any)?.message || 'We encountered an issue retrieving your Stage 3 interview results. Please check your connection and try again.'}
             </p>
           </div>
           <div className="flex flex-col gap-3 pt-2">
@@ -248,7 +248,7 @@ const RoleAssessmentStageThreeResults: React.FC = () => {
         {/* 3-Stage Progress Rail Summary */}
         {stages.length > 0 ? (
           <div className="bg-white border-[1.5px] border-[#E6E6E6] rounded-[18px] p-[26px_28px] mb-[22px]">
-            <div className="text-[11px] font-[800] tracking-[0.7px] uppercase text-[#0047CC] mb-[8px]">All-gate assessment trail</div>
+            <div className="text-[11px] font-[800] tracking-[0.7px] uppercase text-[#0047CC] mb-[8px]">All-stage interview trail</div>
             <h2 className="text-[18px] font-[900] text-[#1A1A1A] tracking-[-0.2px] mb-[18px]">Your journey through the three gates</h2>
 
             <div className="flex flex-col divide-y divide-[#F0F0F0]">

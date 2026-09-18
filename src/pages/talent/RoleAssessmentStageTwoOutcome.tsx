@@ -103,7 +103,7 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
           <div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">Unable to Load Interview Outcome</h2>
             <p className="text-sm text-gray-500 leading-relaxed">
-              {(error as any)?.message || 'We encountered an issue retrieving your Stage 2 assessment outcome. Please check your connection and try again.'}
+              {(error as any)?.message || 'We encountered an issue retrieving your Stage 2 interview outcome. Please check your connection and try again.'}
             </p>
           </div>
           <div className="flex flex-col gap-3 pt-2">

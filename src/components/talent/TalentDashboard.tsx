@@ -60,7 +60,7 @@ const TalentDashboard: React.FC = () => {
 
   const firstName = greeting?.firstName || user?.firstName || 'Candidate';
   const welcomeTitle = greeting?.welcomeMessage || `Welcome, ${firstName}.`;
-  const welcomeSubtitle = greeting?.subtitle || 'Track your career journey, assessments, and tailored job matches.';
+  const welcomeSubtitle = greeting?.subtitle || 'Track your career journey, interviews, and tailored job matches.';
 
   const scoreValue = metrics?.careerReadinessScore?.value ?? 0;
   const scoreHint = metrics?.careerReadinessScore?.hint || 'Upload your CV to calculate your score.';

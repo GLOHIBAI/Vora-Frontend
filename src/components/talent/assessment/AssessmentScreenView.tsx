@@ -91,7 +91,7 @@ const SCREEN_METADATA_MAP: Record<string, ScreenMeta> = {
   pattern: {
     title: 'Identify the next shape in the pattern',
     subtitle: 'Select the option that logically completes the sequence of shapes.',
-    whyMatters: 'Solving unfamiliar visual problems tests fluid logic and abstract thinking under cognitive load.',
+    whyMatters: 'Solving unfamiliar visual problems evaluates fluid logic and abstract thinking under cognitive load.',
   },
   sjt_single_best: {
     title: 'How you handle realistic scenarios',
