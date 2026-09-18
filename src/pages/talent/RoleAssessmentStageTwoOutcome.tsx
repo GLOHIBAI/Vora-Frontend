@@ -83,24 +83,63 @@ const RoleAssessmentStageTwoOutcome: React.FC = () => {
     }
   }, [assessmentId, roleSlug, navigate]);
 
-  const { data: verdictRaw, isLoading: isVerdictLoading, isFetching: isVerdictFetching } = useGateVerdictQuery(assessmentId, 2, { enabled: !!assessmentId });
+  const {
+    data: verdictRaw,
+    isLoading: isVerdictLoading,
+    isFetching: isVerdictFetching,
+    isError,
+    error,
+    refetch,
+  } = useGateVerdictQuery(assessmentId, 2, { enabled: !!assessmentId });
   const verdict = unwrapAssessmentData<GateVerdictResponse>(verdictRaw);
 
-  if (isVerdictLoading || isVerdictFetching || !verdict) {
+  if (isError) {
+    return (
+      <div className="min-h-screen bg-[#F7F7F7] flex flex-col items-center justify-center p-6 text-center">
+        <div className="max-w-md w-full bg-white rounded-2xl p-8 border border-gray-100 shadow-lg space-y-5">
+          <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto">
+            <AlertCircleIcon className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Unable to Load Interview Outcome</h2>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              {(error as any)?.message || 'We encountered an issue retrieving your Stage 2 assessment outcome. Please check your connection and try again.'}
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 pt-2">
+            <button
+              onClick={() => refetch()}
+              className="w-full py-3 px-5 bg-[#0047CC] hover:bg-[#003bb0] text-white rounded-xl text-sm font-semibold transition-all cursor-pointer shadow-xs"
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => navigate(`/onboarding/talent/${roleSlug}/interview/journey`)}
+              className="w-full py-3 px-5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-sm font-semibold transition-all cursor-pointer border border-gray-200"
+            >
+              Return to Journey
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isVerdictLoading || isVerdictFetching || !verdict || (typeof (verdict as any)?.score !== 'number' && typeof (verdictRaw as any)?.data?.score !== 'number')) {
     return <FullPageSpinner message="Retrieving your interview outcome..." />;
   }
 
   const vData: any = (verdict as any)?.data || verdict || (verdictRaw as any)?.data || verdictRaw || {};
 
   const firstName = getCandidateFirstName(user, vData?.talent?.firstName || 'Candidate');
-  const roleTitle = vData?.role?.roleTitle || 'Role';
-  const employerName = vData?.role?.employerName || 'Vora AI';
+  const roleTitle = vData?.role?.roleTitle || '';
+  const employerName = vData?.role?.employerName || '';
   const score = vData?.score ?? 0;
   const threshold = vData?.threshold ?? 80;
 
   const heroTag = vData?.heroTag || 'Stage 2 outcome · with your next path';
-  const headline = vData?.headline || `Stage 2 interview: ${firstName}, you did not pass.`;
-  const summary = vData?.summary || `Your Stage 2 composite score of ${score}% did not clear the ${threshold}% threshold for ${roleTitle} at ${employerName}.`;
+  const headline = vData?.headline || `${firstName}, Stage 2 Outcome`;
+  const summary = vData?.summary || '';
 
   const narrativeParagraphs: string[] =
     vData?.narrativeParagraphs ||

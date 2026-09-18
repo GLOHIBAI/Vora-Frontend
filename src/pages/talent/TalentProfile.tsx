@@ -67,19 +67,17 @@ const TalentProfile: React.FC = () => {
   const appliedOn = report?.appliedOn || '—';
   const status = report?.status || 'Pending review';
 
+  // Resolved readiness flag per handoff spec
+  const isInterviewReady = Boolean(report?.interviewReady);
+
   // Resolved interview overview stages
   const interviewOverview = report?.interviewOverview;
-  const defaultStages: EmployerReportStage[] = [
-    { stage: 1, stageName: 'Getting to know you', label: 'Stage 1: Getting to know you', score: 94, status: 'passed' },
-    { stage: 2, stageName: 'Professional dimension', label: 'Stage 2: Professional dimension', score: 89, status: 'passed' },
-    { stage: 3, stageName: 'How you show up', label: 'Stage 3: How you show up', score: 90, status: 'passed' },
-  ];
-  const stages: EmployerReportStage[] = interviewOverview?.stages && interviewOverview.stages.length > 0
-    ? interviewOverview.stages
-    : defaultStages;
+  const stages: EmployerReportStage[] = interviewOverview?.stages || [];
 
-  const overallScore = interviewOverview?.overallScore ?? Math.round(
-    stages.reduce((acc, curr) => acc + (curr.score || 0), 0) / (stages.length || 1)
+  const overallScore = interviewOverview?.overallScore ?? (
+    stages.length > 0
+      ? Math.round(stages.reduce((acc, curr) => acc + (curr.score || 0), 0) / stages.length)
+      : 0
   );
 
   // Profile dossier
@@ -92,7 +90,7 @@ const TalentProfile: React.FC = () => {
 
   // Handlers for decisions
   const handleHireSubmit = async () => {
-    if (!effectiveAssessmentId) return;
+    if (!effectiveAssessmentId || !isInterviewReady) return;
     try {
       await hireMutation.mutateAsync({ assessmentId: effectiveAssessmentId });
       toast.success(`Candidate ${applicantCode} successfully confirmed for hire!`);
@@ -104,7 +102,7 @@ const TalentProfile: React.FC = () => {
   };
 
   const handleRejectSubmit = async () => {
-    if (!effectiveAssessmentId) return;
+    if (!effectiveAssessmentId || !isInterviewReady) return;
     try {
       await rejectMutation.mutateAsync({
         assessmentId: effectiveAssessmentId,
@@ -148,14 +146,14 @@ const TalentProfile: React.FC = () => {
         </span>
       </div>
 
-      {isError && (
+      {isError && !report?.profile && (
         <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-amber-800 text-[13px]">
           <div className="flex items-center gap-2">
             <AlertTriangleIcon size={16} className="text-amber-600 shrink-0" />
             <span>
               {errorMessage
-                ? `${errorMessage}. Showing available dossier information.`
-                : `Could not load live candidate report for ${applicantCode}. Showing available dossier information.`}
+                ? `${errorMessage}.`
+                : `Could not load live candidate report for ${applicantCode}.`}
             </span>
           </div>
           <button
@@ -210,101 +208,124 @@ const TalentProfile: React.FC = () => {
             </div>
           </div>
 
-          {/* Interview Overview */}
-          <div className="space-y-3">
-            <h3 className="text-[15px] font-bold text-gray-900 tracking-tight">Interview overview</h3>
+          {/* Interview Overview & Videos (Only when interviewReady === true) */}
+          {isInterviewReady ? (
+            <>
+              {/* Interview Overview */}
+              <div className="space-y-3">
+                <h3 className="text-[15px] font-bold text-gray-900 tracking-tight">Interview overview</h3>
 
-            <div className="space-y-3">
-              {/* Overall Score Card */}
-              <div className="bg-[#EFF6FF] p-5 rounded-[18px] border border-blue-100/70 space-y-1">
-                <div className="flex items-center justify-between">
-                  <p className="text-[13px] font-medium text-gray-700">Overall Interview Score</p>
-                  <span className="text-[10.5px] text-gray-400 font-medium">Avg (Stages 1–3)</span>
-                </div>
-                <div className="flex items-baseline justify-between pt-1">
-                  <span className="text-[34px] font-bold text-gray-900 leading-none tabular-nums">
-                    {overallScore}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Stage 1 to Stage 3 Breakdown */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {stages.map((st, idx) => (
-                  <div
-                    key={st.stage || idx}
-                    className="bg-white border border-gray-100 rounded-[14px] p-3.5 space-y-1 hover:border-gray-200 transition-colors shadow-2xs"
-                  >
-                    <p className="text-[11px] font-medium text-gray-500 line-clamp-1" title={st.label || st.stageName}>
-                      {st.label || `Stage ${st.stage}`}
-                    </p>
-                    <div className="flex items-baseline justify-between pt-0.5">
-                      <span className="text-[19px] font-bold text-gray-900 leading-none tabular-nums">
-                        {st.score}%
+                <div className="space-y-3">
+                  {/* Overall Score Card */}
+                  <div className="bg-[#EFF6FF] p-5 rounded-[18px] border border-blue-100/70 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[13px] font-medium text-gray-700">Overall Interview Score</p>
+                      <span className="text-[10.5px] text-gray-400 font-medium">Avg (Stages 1–3)</span>
+                    </div>
+                    <div className="flex items-baseline justify-between pt-1">
+                      <span className="text-[34px] font-bold text-gray-900 leading-none tabular-nums">
+                        {overallScore}%
                       </span>
                     </div>
                   </div>
-                ))}
+
+                  {/* Stage Breakdown */}
+                  {stages.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      {stages.map((st, idx) => (
+                        <div
+                          key={st.stage || idx}
+                          className="bg-white border border-gray-100 rounded-[14px] p-3.5 space-y-1 hover:border-gray-200 transition-colors shadow-2xs"
+                        >
+                          <p className="text-[11px] font-medium text-gray-500 line-clamp-1" title={st.label || st.stageName}>
+                            {st.label || `Stage ${st.stage}`}
+                          </p>
+                          <div className="flex items-baseline justify-between pt-0.5">
+                            <span className="text-[19px] font-bold text-gray-900 leading-none tabular-nums">
+                              {st.score}%
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
 
-          {/* Stage 3 Video Interview Uploads */}
-          <div className="space-y-3">
-            <h3 className="text-[15px] font-bold text-gray-900 tracking-tight">Interview Video</h3>
+              {/* Stage 3 Video Interview Uploads */}
+              <div className="space-y-3">
+                <h3 className="text-[15px] font-bold text-gray-900 tracking-tight">Interview Video</h3>
 
-            {videos.length > 0 ? (
-              <div className="space-y-2.5">
-                {videos.map((vid, vIdx) => (
-                  <div
-                    key={vid.itemId || vIdx}
-                    onClick={() => setActiveVideo(vid)}
-                    className="relative aspect-video rounded-[18px] overflow-hidden group cursor-pointer shadow-xs border border-gray-100 bg-slate-900"
-                  >
-                    <div className="absolute inset-0 bg-slate-950/40 group-hover:bg-slate-950/60 transition-colors flex flex-col justify-between p-4 z-10">
-                      <span className="text-white text-[12px] font-medium bg-black/50 backdrop-blur-xs px-2.5 py-1 rounded-md self-start">
-                        {vid.title || `Stage 3 Response ${vIdx + 1}`}
-                      </span>
-                      <div className="self-center w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/40 group-hover:scale-110 transition-transform">
-                        <PlayIcon size={20} className="text-white ml-0.5 fill-white" />
+                {videos.length > 0 ? (
+                  <div className="space-y-2.5">
+                    {videos.map((vid, vIdx) => (
+                      <div
+                        key={vid.itemId || vIdx}
+                        onClick={() => setActiveVideo(vid)}
+                        className="relative aspect-video rounded-[18px] overflow-hidden group cursor-pointer shadow-xs border border-gray-100 bg-slate-900"
+                      >
+                        <div className="absolute inset-0 bg-slate-950/40 group-hover:bg-slate-950/60 transition-colors flex flex-col justify-between p-4 z-10">
+                          <span className="text-white text-[12px] font-medium bg-black/50 backdrop-blur-xs px-2.5 py-1 rounded-md self-start">
+                            {vid.title || `Stage 3 Response ${vIdx + 1}`}
+                          </span>
+                          <div className="self-center w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/40 group-hover:scale-110 transition-transform">
+                            <PlayIcon size={20} className="text-white ml-0.5 fill-white" />
+                          </div>
+                          <span className="text-white/80 text-[11px] self-end">Click to play video</span>
+                        </div>
                       </div>
-                      <span className="text-white/80 text-[11px] self-end">Click to play video</span>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <div className="p-6 rounded-[18px] bg-gray-50 border border-gray-100 text-center text-[12px] text-gray-400">
+                    No video interview recording submitted
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="p-6 rounded-[18px] bg-gray-50 border border-gray-100 text-center text-[12px] text-gray-400">
-                No video interview recording submitted
+            </>
+          ) : (
+            <div className="bg-[#F8FAFC] border border-slate-200/80 rounded-[20px] p-5 space-y-3">
+              <div className="flex items-center gap-2.5 text-slate-700">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                <h3 className="text-[14px] font-bold">Interview In Progress</h3>
               </div>
-            )}
-          </div>
+              <p className="text-[12.5px] text-slate-500 leading-relaxed">
+                This candidate has not reached the employer decision stage yet. Interview scores, recordings, and narrative will appear here once Stage 4 is completed.
+              </p>
+            </div>
+          )}
 
           {/* Action Buttons (Hire, Request Alignment, Reject) */}
           <div className="space-y-3 pt-2">
             <button
               type="button"
-              disabled={hireMutation.isPending}
+              disabled={!isInterviewReady || hireMutation.isPending}
               onClick={() => setIsHireModalOpen(true)}
-              className="w-full py-3 px-6 bg-[#0052CC] hover:bg-[#0047CC] disabled:opacity-50 text-white rounded-full font-semibold text-[15px] shadow-xs cursor-pointer transition-all active:scale-[0.99]"
+              className="w-full py-3 px-6 bg-[#0052CC] hover:bg-[#0047CC] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-full font-semibold text-[15px] shadow-xs cursor-pointer transition-all active:scale-[0.99]"
             >
               Hire applicant
             </button>
             <button
               type="button"
+              disabled={!isInterviewReady}
               onClick={() => setIsAlignmentModalOpen(true)}
-              className="w-full py-3 px-6 bg-[#EFF6FF] hover:bg-blue-100 text-[#0052CC] border border-blue-200/80 rounded-full font-semibold text-[15px] cursor-pointer transition-all active:scale-[0.99]"
+              className="w-full py-3 px-6 bg-[#EFF6FF] hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed text-[#0052CC] border border-blue-200/80 rounded-full font-semibold text-[15px] cursor-pointer transition-all active:scale-[0.99]"
             >
               Request alignment session
             </button>
             <button
               type="button"
-              disabled={rejectMutation.isPending}
+              disabled={!isInterviewReady || rejectMutation.isPending}
               onClick={() => setIsRejectModalOpen(true)}
-              className="w-full py-3 px-6 bg-[#FAFAFA] hover:bg-red-50 hover:text-red-600 hover:border-red-200 border border-gray-200 text-gray-800 rounded-full font-semibold text-[15px] cursor-pointer transition-all active:scale-[0.99]"
+              className="w-full py-3 px-6 bg-[#FAFAFA] hover:bg-red-50 hover:text-red-600 hover:border-red-200 disabled:opacity-40 disabled:cursor-not-allowed border border-gray-200 text-gray-800 rounded-full font-semibold text-[15px] cursor-pointer transition-all active:scale-[0.99]"
             >
               Reject applicant
             </button>
+            {!isInterviewReady && (
+              <p className="text-[11.5px] text-center text-slate-400 font-medium">
+                Decision actions unlock when interview stages are completed.
+              </p>
+            )}
           </div>
         </div>
 

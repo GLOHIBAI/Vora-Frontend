@@ -317,3 +317,109 @@ export const useBeginAssessmentMutation = () => {
   });
 };
 
+export interface TalentDashboardGreeting {
+  firstName?: string;
+  welcomeMessage?: string;
+  subtitle?: string;
+}
+
+export interface TalentDashboardMetricScore {
+  value?: number;
+  unlocked?: boolean;
+  hint?: string;
+}
+
+export interface TalentDashboardMetricGrade {
+  grade?: string | null;
+  label?: string | null;
+  unlocked?: boolean;
+  hint?: string;
+}
+
+export interface TalentDashboardMetricJobs {
+  count?: number;
+  hint?: string | null;
+}
+
+export interface TalentDashboardMetrics {
+  careerReadinessScore?: TalentDashboardMetricScore;
+  interviewGrade?: TalentDashboardMetricGrade;
+  jobsApplied?: TalentDashboardMetricJobs;
+}
+
+export interface TalentDashboardUnlockItem {
+  locked?: boolean;
+  hrefHint?: string;
+  label?: string;
+}
+
+export interface TalentDashboardUnlocks {
+  uploadCv?: TalentDashboardUnlockItem;
+  mentors?: TalentDashboardUnlockItem;
+  jobs?: TalentDashboardUnlockItem;
+}
+
+export interface TalentDashboardActivityContext {
+  assessmentId?: string;
+  rolePostingId?: string;
+  roleTitle?: string;
+  stage?: number;
+  stageStatus?: string;
+  gate1FinalSubmitted?: boolean;
+}
+
+export interface TalentDashboardActivity {
+  id?: string;
+  type?: string;
+  priority?: number;
+  title?: string;
+  subtitle?: string;
+  ctaLabel?: string;
+  hrefHint?: string;
+  context?: TalentDashboardActivityContext;
+}
+
+export interface TalentDashboardActivities {
+  schemaVersion?: number;
+  primary?: TalentDashboardActivity;
+  activities?: TalentDashboardActivity[];
+}
+
+export interface TalentDashboardSampleOpportunity {
+  rolePostingId?: string;
+  roleLink?: string;
+  roleTitle?: string;
+  organisationName?: string;
+  employerName?: string;
+  location?: string;
+  compensationSummary?: string;
+  salaryRange?: string;
+  publishedAt?: string;
+  tags?: string[];
+  hrefHint?: string;
+}
+
+export interface TalentDashboardData {
+  schemaVersion?: number;
+  greeting?: TalentDashboardGreeting;
+  metrics?: TalentDashboardMetrics;
+  unlocks?: TalentDashboardUnlocks;
+  hasActiveCv?: boolean;
+  activities?: TalentDashboardActivities;
+  sampleOpportunities?: TalentDashboardSampleOpportunity[];
+}
+
+export const useTalentDashboardQuery = (options: Record<string, any> = {}) => {
+  return useQuery({
+    queryKey: ["talent-dashboard"],
+    queryFn: () =>
+      apiClient.get<{ data: TalentDashboardData; statusCode: number; message: string }>({
+        url: "/talent/dashboard",
+        auth: true,
+      }),
+    ...options,
+  });
+};
+
+
+

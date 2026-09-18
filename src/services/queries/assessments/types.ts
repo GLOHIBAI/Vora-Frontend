@@ -1187,6 +1187,8 @@ export interface EmployerReportData {
   roleTitle?: string;
   appliedOn?: string;
   status?: string;
+  dossierReady?: boolean;
+  interviewReady?: boolean;
   profile?: EmployerReportProfile;
   interviewOverview?: EmployerReportInterviewOverview;
   videos?: EmployerReportVideo[];

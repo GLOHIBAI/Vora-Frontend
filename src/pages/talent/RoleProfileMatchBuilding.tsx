@@ -58,20 +58,68 @@ const RoleProfileMatchBuilding: React.FC = () => {
   const hasAuthToken = !!localStorage.getItem('auth_token');
   const [devCvReady, setDevCvReady] = useState(false);
   const [devMatchReady, setDevMatchReady] = useState(false);
+  const hasNavigatedRef = useRef(false);
+
+  const buildScanFromApi = useCallback(
+    (raw: unknown) => resolveProfileMatchScan(mapApiMatchResultToScan(raw)),
+    [],
+  );
+
+  const doNavigate = useCallback(
+    (matchScan: ReturnType<typeof resolveProfileMatchScan>) => {
+      if (hasNavigatedRef.current) return;
+      hasNavigatedRef.current = true;
+
+      if (matchScan.rolePostingId) {
+        persistRolePostingId(roleSlug, matchScan.rolePostingId);
+      }
+
+      navigate(withRoleApplyPath(getPostMatchPath(matchScan), roleSlug), {
+        state: {
+          firstName,
+          lastName,
+          roleSlug,
+          matchScan,
+          matchScore: matchScan.originalRoleScore,
+        },
+      });
+    },
+    [navigate, firstName, lastName, roleSlug],
+  );
 
   // If candidate already started/unlocked their interview, skip the scanning page directly to journey
+  // Or if readiness already has the computed match result, navigate directly without re-scanning
   const { data: readinessResponse } = useGetPreAssessmentReadinessQuery(roleSlug || '');
   const readiness = readinessResponse?.data?.data || readinessResponse?.data || readinessResponse;
 
   useEffect(() => {
-    if (!roleSlug || !readiness || !hasAuthToken) return;
+    if (!roleSlug || !readiness || !hasAuthToken || hasNavigatedRef.current) return;
+
     if (
       readiness.assessmentStatus === 'IN_PROGRESS' ||
+      readiness.assessmentStatus === 'COMPLETED' ||
       (typeof readiness.stage === 'number' && readiness.stage >= 1)
     ) {
+      hasNavigatedRef.current = true;
       navigate(`/onboarding/talent/${roleSlug}/interview/journey`, { replace: true });
+      return;
     }
-  }, [roleSlug, readiness, hasAuthToken, navigate]);
+
+    if (readiness.checks?.matchOutcome || typeof readiness.checks?.matchScore === 'number') {
+      const scan = resolveProfileMatchScan({
+        originalRoleScore: Math.round((readiness.checks.matchScore ?? 0) * 100),
+        outcome: readiness.checks.matchOutcome,
+        geopoliticalEligible: readiness.checks.geopoliticalEligible !== false,
+        explanation: {
+          decision: readiness.checks.matchMet ? 'ELIGIBLE' : 'INELIGIBLE',
+          summary: readiness.checks.matchSummary || '',
+          primaryReasonCode: readiness.checks.matchPrimaryReasonCode ?? null,
+          gates: [],
+        },
+      });
+      doNavigate(scan);
+    }
+  }, [roleSlug, readiness, hasAuthToken, navigate, doNavigate]);
 
   useEffect(() => {
     if (hasAuthToken) return;
@@ -127,40 +175,17 @@ const RoleProfileMatchBuilding: React.FC = () => {
     matchReady,
   });
 
-  const buildScanFromApi = useCallback(
-    (raw: unknown) => resolveProfileMatchScan(mapApiMatchResultToScan(raw)),
-    [],
-  );
-
-  const hasNavigatedRef = useRef(false);
-
-  const doNavigate = useCallback(
-    (matchScan: ReturnType<typeof resolveProfileMatchScan>) => {
-      if (hasNavigatedRef.current) return;
-      hasNavigatedRef.current = true;
-
-      if (matchScan.rolePostingId) {
-        persistRolePostingId(roleSlug, matchScan.rolePostingId);
-      }
-
-      navigate(withRoleApplyPath(getPostMatchPath(matchScan), roleSlug), {
-        state: {
-          firstName,
-          lastName,
-          roleSlug,
-          matchScan,
-          matchScore: matchScan.originalRoleScore,
-        },
-      });
-    },
-    [navigate, firstName, lastName, roleSlug],
-  );
-
-  // Route to result page once match API is READY and loader hit 100%.
+  // Route to result page once match API is READY. If match was ALREADY ready from API, don't wait for animation!
   useEffect(() => {
-    if (!matchReady || !isComplete || hasNavigatedRef.current) return;
-    doNavigate(buildScanFromApi(matchPayload));
-  }, [matchReady, isComplete, matchPayload, buildScanFromApi, doNavigate]);
+    if (!matchReady || hasNavigatedRef.current) return;
+    if (matchReadyFromApi) {
+      doNavigate(buildScanFromApi(matchPayload));
+      return;
+    }
+    if (isComplete) {
+      doNavigate(buildScanFromApi(matchPayload));
+    }
+  }, [matchReady, isComplete, matchReadyFromApi, matchPayload, buildScanFromApi, doNavigate]);
 
   // Dev fallback when not authed or match API errors after CV ready.
   useEffect(() => {

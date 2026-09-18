@@ -71,19 +71,17 @@ const ApplicantDetailsModal: React.FC<ApplicantDetailsModalProps> = ({
   const appliedOn = report?.appliedOn || applicant.appliedOn || applicant.dateApplied || 'Recent';
   const status = report?.status || applicant.status || applicant.overallStatus || 'Pending review';
 
+  // Resolved readiness flag per handoff spec
+  const isInterviewReady = Boolean(report?.interviewReady ?? applicant?.interviewReady);
+
   // Interview overview
   const interviewOverview = report?.interviewOverview;
-  const defaultStages: EmployerReportStage[] = [
-    { stage: 1, stageName: 'Getting to know you', label: 'Stage 1: Getting to know you', score: applicant.psych ?? applicant.overallScore ?? 94, status: 'passed' },
-    { stage: 2, stageName: 'Professional dimension', label: 'Stage 2: Professional dimension', score: applicant.sjt ?? 89, status: 'passed' },
-    { stage: 3, stageName: 'How you show up', label: 'Stage 3: How you show up', score: applicant.videoScore ?? 90, status: 'passed' },
-  ];
-  const stages = interviewOverview?.stages && interviewOverview.stages.length > 0
-    ? interviewOverview.stages
-    : defaultStages;
+  const stages: EmployerReportStage[] = interviewOverview?.stages || [];
 
-  const overallScore = interviewOverview?.overallScore ?? Math.round(
-    stages.reduce((acc, curr) => acc + (curr.score || 0), 0) / (stages.length || 1)
+  const overallScore = interviewOverview?.overallScore ?? (
+    stages.length > 0
+      ? Math.round(stages.reduce((acc, curr) => acc + (curr.score || 0), 0) / stages.length)
+      : (applicant.overallScore ?? 0)
   );
 
   // Profile dossier
@@ -96,7 +94,7 @@ const ApplicantDetailsModal: React.FC<ApplicantDetailsModalProps> = ({
 
   // Action Handlers
   const handleHireSubmit = async () => {
-    if (!assessmentId) return;
+    if (!assessmentId || !isInterviewReady) return;
     try {
       await hireMutation.mutateAsync({ assessmentId });
       toast.success(`Candidate ${code} successfully confirmed for hire!`);
@@ -109,7 +107,7 @@ const ApplicantDetailsModal: React.FC<ApplicantDetailsModalProps> = ({
   };
 
   const handleRejectSubmit = async () => {
-    if (!assessmentId) return;
+    if (!assessmentId || !isInterviewReady) return;
     try {
       await rejectMutation.mutateAsync({
         assessmentId,
@@ -202,39 +200,53 @@ const ApplicantDetailsModal: React.FC<ApplicantDetailsModalProps> = ({
               </div>
             </div>
 
-            {/* Top Stats Section: Overall Score + Stages */}
-            <div className="space-y-3">
-              <div className="bg-[#EFF6FF] p-5 rounded-[18px] border border-blue-100/70 space-y-1">
-                <div className="flex items-center justify-between">
-                  <p className="text-[13px] font-medium text-gray-700">Overall Interview Score</p>
-                  <span className="text-[10.5px] text-gray-400 font-medium">Avg (Stages 1–3)</span>
-                </div>
-                <div className="flex items-baseline justify-between pt-1">
-                  <span className="text-[32px] font-bold text-gray-900 leading-none tabular-nums">
-                    {overallScore}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Stage 1 to 3 Breakdown */}
-              <div className="grid grid-cols-3 gap-2.5">
-                {stages.map((st, i) => (
-                  <div key={st.stage || i} className="bg-white border border-gray-100 rounded-[14px] p-3 space-y-1 shadow-2xs">
-                    <p className="text-[10.5px] font-medium text-gray-500 truncate" title={st.label || st.stageName}>
-                      {st.stageName || `Stage ${st.stage}`}
-                    </p>
-                    <div className="flex items-baseline justify-between pt-0.5">
-                      <span className="text-[18px] font-bold text-gray-900 leading-none tabular-nums">
-                        {st.score}%
-                      </span>
-                    </div>
+            {/* Top Stats Section / Status Badge */}
+            {isInterviewReady ? (
+              <div className="space-y-3">
+                <div className="bg-[#EFF6FF] p-5 rounded-[18px] border border-blue-100/70 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[13px] font-medium text-gray-700">Overall Interview Score</p>
+                    <span className="text-[10.5px] text-gray-400 font-medium">Avg (Stages 1–3)</span>
                   </div>
-                ))}
+                  <div className="flex items-baseline justify-between pt-1">
+                    <span className="text-[32px] font-bold text-gray-900 leading-none tabular-nums">
+                      {overallScore}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* Stage 1 to 3 Breakdown */}
+                {stages.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2.5">
+                    {stages.map((st, i) => (
+                      <div key={st.stage || i} className="bg-white border border-gray-100 rounded-[14px] p-3 space-y-1 shadow-2xs">
+                        <p className="text-[10.5px] font-medium text-gray-500 truncate" title={st.label || st.stageName}>
+                          {st.stageName || `Stage ${st.stage}`}
+                        </p>
+                        <div className="flex items-baseline justify-between pt-0.5">
+                          <span className="text-[18px] font-bold text-gray-900 leading-none tabular-nums">
+                            {st.score}%
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
+            ) : (
+              <div className="bg-[#F8FAFC] border border-slate-200/80 rounded-[16px] p-4 space-y-2">
+                <div className="flex items-center gap-2 text-slate-700">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                  <h4 className="text-[13px] font-bold">Interview In Progress</h4>
+                </div>
+                <p className="text-[12px] text-slate-500 leading-relaxed">
+                  Candidate interview metrics and recordings will appear once Stage 4 is reached.
+                </p>
+              </div>
+            )}
 
             {/* Video Section */}
-            {videos.length > 0 && (
+            {isInterviewReady && videos.length > 0 && (
               <div className="space-y-3">
                 <h3 className="text-[15px] font-bold text-gray-900 tracking-tight">Stage 3 Interview Video</h3>
                 {videos.map((vid: any, idx: number) => (
@@ -348,22 +360,25 @@ const ApplicantDetailsModal: React.FC<ApplicantDetailsModalProps> = ({
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
+                disabled={!isInterviewReady || hireMutation.isPending}
                 onClick={() => setIsHireModalOpen(true)}
-                className="py-2.5 px-3 bg-[#0047CC] hover:bg-[#003bb0] text-white rounded-xl text-[12px] font-semibold transition-all shadow-xs cursor-pointer text-center"
+                className="py-2.5 px-3 bg-[#0047CC] hover:bg-[#003bb0] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-[12px] font-semibold transition-all shadow-xs cursor-pointer text-center"
               >
                 Hire
               </button>
               <button
                 type="button"
+                disabled={!isInterviewReady}
                 onClick={() => setIsAlignmentModalOpen(true)}
-                className="py-2.5 px-3 bg-blue-50 hover:bg-blue-100 text-[#0047CC] border border-blue-200/60 rounded-xl text-[12px] font-semibold transition-all cursor-pointer text-center"
+                className="py-2.5 px-3 bg-blue-50 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed text-[#0047CC] border border-blue-200/60 rounded-xl text-[12px] font-semibold transition-all cursor-pointer text-center"
               >
                 Request align
               </button>
               <button
                 type="button"
+                disabled={!isInterviewReady || rejectMutation.isPending}
                 onClick={() => setIsRejectModalOpen(true)}
-                className="py-2.5 px-3 bg-gray-50 hover:bg-red-50 hover:text-red-600 text-gray-700 border border-gray-200 rounded-xl text-[12px] font-semibold transition-all cursor-pointer text-center"
+                className="py-2.5 px-3 bg-gray-50 hover:bg-red-50 hover:text-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700 border border-gray-200 rounded-xl text-[12px] font-semibold transition-all cursor-pointer text-center"
               >
                 Reject
               </button>

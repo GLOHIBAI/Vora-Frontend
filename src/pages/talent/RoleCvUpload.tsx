@@ -42,7 +42,7 @@ const RoleCvUpload: React.FC = () => {
       return;
     }
     const hasCvOnFile = readiness?.checks?.cvOnFile === true || readiness?.cvOnFile === true;
-    const cvUploadNotRequired = readiness?.checks?.cvUploadRequired === false || readiness?.cvUploadRequired === false;
+    const cvUploadRequired = readiness?.checks?.cvUploadRequired ?? readiness?.cvUploadRequired;
 
     // If candidate already started/unlocked their assessment, jump straight to journey
     if (
@@ -53,8 +53,8 @@ const RoleCvUpload: React.FC = () => {
       return;
     }
 
-    // If CV is already on file and ready, proceed to match calculation for this role
-    if (hasCvOnFile && !cvUploadNotRequired) {
+    // If CV upload is not required (CV already on file and reused), proceed straight to match
+    if (cvUploadRequired === false || (hasCvOnFile && cvUploadRequired !== true)) {
       navigate(`/onboarding/talent/${roleSlug}/match`, { replace: true });
       return;
     }
