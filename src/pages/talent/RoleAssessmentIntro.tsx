@@ -72,8 +72,12 @@ const RoleAssessmentIntro: React.FC = () => {
       const isPreAssessmentComplete = 
         readiness?.checks?.preAssessmentComplete === true || 
         readiness?.preAssessmentComplete === true;
+      const hasProgressedPastPreAssessment =
+        readiness?.assessmentStatus === 'COMPLETED' ||
+        readiness?.flowPhase === 'STAGE_4' ||
+        (typeof readiness?.stage === 'number' && readiness.stage >= 2);
 
-      if (isPreAssessmentRequired && !isPreAssessmentComplete) {
+      if (isPreAssessmentRequired && !isPreAssessmentComplete && !hasProgressedPastPreAssessment) {
         navigate(`/onboarding/talent/${roleSlug}/interview/asks`, { replace: true });
       }
     }

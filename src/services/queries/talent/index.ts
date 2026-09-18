@@ -317,3 +317,84 @@ export const useBeginAssessmentMutation = () => {
   });
 };
 
+export interface TalentDashboardTalent {
+  id?: string;
+  fullName?: string;
+  email?: string;
+  targetRole?: string;
+  status?: string;
+  cvParseStatus?: string;
+  cvFileName?: string;
+  cvLastAnalyzedAt?: string;
+  hasCv?: boolean;
+  skills?: string[];
+  skillsCount?: number;
+  experienceYears?: number;
+  seniority?: string;
+  profileCompleteness?: number;
+}
+
+export interface TalentDashboardActiveAssessment {
+  assessmentId?: string;
+  rolePostingId?: string;
+  roleTitle?: string;
+  employerName?: string;
+  stage?: number;
+  status?: string;
+  overallPassed?: boolean | null;
+  nextStep?: string;
+  startedAt?: string;
+  resumeUrl?: string;
+}
+
+export interface TalentDashboardAssessmentsSummary {
+  total?: number;
+  completed?: number;
+  inProgress?: number;
+  passed?: number;
+  actionRequired?: number;
+}
+
+export interface TalentDashboardMatchedRole {
+  rolePostingId?: string;
+  roleLink?: string;
+  roleTitle?: string;
+  employerName?: string;
+  location?: string;
+  workplaceType?: string;
+  matchScore?: number;
+  matchExplanation?: string;
+  salaryRange?: string;
+  applied?: boolean;
+  assessmentStatus?: string | null;
+}
+
+export interface TalentDashboardQuickAction {
+  id?: string;
+  label?: string;
+  href?: string;
+  badge?: string;
+  primary?: boolean;
+}
+
+export interface TalentDashboardData {
+  talent?: TalentDashboardTalent;
+  activeAssessment?: TalentDashboardActiveAssessment | null;
+  assessmentsSummary?: TalentDashboardAssessmentsSummary;
+  matchedRoles?: TalentDashboardMatchedRole[];
+  quickActions?: TalentDashboardQuickAction[];
+}
+
+export const useTalentDashboardQuery = (options: Record<string, any> = {}) => {
+  return useQuery({
+    queryKey: ["talent-dashboard"],
+    queryFn: () =>
+      apiClient.get<{ data: TalentDashboardData; statusCode: number; message: string }>({
+        url: "/talent/dashboard",
+        auth: true,
+      }),
+    ...options,
+  });
+};
+
+

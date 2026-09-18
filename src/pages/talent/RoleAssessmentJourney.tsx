@@ -209,8 +209,12 @@ const RoleAssessmentJourney: React.FC = () => {
       const isPreAssessmentComplete = 
         readiness?.checks?.preAssessmentComplete === true || 
         readiness?.preAssessmentComplete === true;
+      const hasProgressedPastPreAssessment =
+        readiness?.assessmentStatus === 'COMPLETED' ||
+        readiness?.flowPhase === 'STAGE_4' ||
+        (typeof readiness?.stage === 'number' && readiness.stage >= 2);
 
-      if (isPreAssessmentRequired && !isPreAssessmentComplete) {
+      if (isPreAssessmentRequired && !isPreAssessmentComplete && !hasProgressedPastPreAssessment) {
         navigate(`/onboarding/talent/${roleSlug}/interview/asks`, { replace: true });
       }
     }
@@ -780,15 +784,15 @@ const RoleAssessmentJourney: React.FC = () => {
           {isStage3Unlocked ? (
             <div 
               onClick={() => {
-                if (!isStage3Completed) {
+                if (isStage3Completed) {
+                  navigate(`/onboarding/talent/${roleSlug}/interview/stage-3/results`);
+                } else if (hasStartedStage3) {
                   navigate(`/onboarding/talent/${roleSlug}/interview/resume`);
+                } else {
+                  navigate(`/onboarding/talent/${roleSlug}/interview/stage-3`);
                 }
               }}
-              className={`bg-white border-[1.5px] rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all z-[1] ${
-                isStage3Completed 
-                  ? 'border-[#0047CC]/20 cursor-default shadow-[0_4px_12px_rgba(0,0,0,0.02)]' 
-                  : 'border-[#0047CC] cursor-pointer hover:shadow-[0_12px_32px_rgba(0,71,204,0.15)] shadow-[0_8px_24px_rgba(0,71,204,0.1)]'
-              }`}
+              className="bg-white border-[1.5px] border-[#0047CC] rounded-[16px] p-[22px_24px] flex gap-[18px] items-start relative transition-all z-[1] cursor-pointer hover:shadow-[0_12px_32px_rgba(0,71,204,0.15)] group"
             >
               <div className="w-[54px] h-[54px] rounded-[14px] flex items-center justify-center shrink-0 relative z-[2] text-[17px] font-[900] bg-gradient-to-br from-[#0047CC] to-[#387DFF] text-white shadow-[0_4px_14px_rgba(0,71,204,0.3)]">
                 {isStage3Completed ? <DocumentCheckIcon className="w-[22px] h-[22px] stroke-[3]" /> : '03'}
@@ -823,12 +827,8 @@ const RoleAssessmentJourney: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <div className={`absolute top-[22px] right-[22px] hidden sm:flex items-center gap-[6px] text-[11px] font-[800] px-[11px] py-[5px] rounded-full tracking-[0.4px] border transition-all duration-200 ${
-                isStage3Completed
-                  ? 'bg-white border-[#0047CC] text-[#0047CC]'
-                  : 'bg-white border-[#0047CC] text-[#0047CC] group-hover:bg-[#0047CC] group-hover:text-white group-hover:border-[#0047CC] hover:bg-[#0047CC] hover:text-white hover:border-[#0047CC] cursor-pointer'
-              }`}>
-                {isStage3Completed ? 'Complete' : hasStartedStage3 ? 'Resume' : 'Start here'}
+              <div className="absolute top-[22px] right-[22px] hidden sm:flex items-center gap-[6px] text-[11px] font-[800] px-[11px] py-[5px] rounded-full tracking-[0.4px] border border-[#0047CC] bg-white text-[#0047CC] transition-all duration-200 group-hover:bg-[#0047CC] group-hover:text-white cursor-pointer">
+                {isStage3Completed ? 'View results' : hasStartedStage3 ? 'Resume' : 'Start here'}
               </div>
             </div>
           ) : (
