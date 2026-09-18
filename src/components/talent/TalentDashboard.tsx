@@ -73,21 +73,60 @@ const TalentDashboard: React.FC = () => {
 
   // Handle primary activity navigation
   const handleActivityClick = (activity: TalentDashboardActivity) => {
-    if (activity.hrefHint) {
-      // Map /talent/assessment/:id/stage/:stage -> /onboarding/talent/:slug/interview/stage-:stage if appropriate, or direct route
-      const stageMatch = activity.hrefHint.match(/stage\/(\d+)/i);
-      if (stageMatch && activeRoleSlug) {
-        navigate(`/onboarding/talent/${activeRoleSlug}/interview/stage-${stageMatch[1]}`);
-        return;
+    // 1. Resolve role slug
+    let roleSlug = activeRoleSlug;
+    if (!roleSlug && activity.context?.rolePostingId && sampleOpportunities) {
+      const matchingOpp = sampleOpportunities.find(
+        (o) => o.rolePostingId === activity.context?.rolePostingId
+      );
+      if (matchingOpp?.roleLink) {
+        roleSlug = matchingOpp.roleLink;
       }
-      navigate(activity.hrefHint);
-      return;
+    }
+    if (!roleSlug && activity.context?.roleTitle) {
+      roleSlug = activity.context.roleTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    }
+    if (!roleSlug) {
+      roleSlug = 'backend-engineer';
     }
 
-    if (activity.context?.rolePostingId) {
-      navigate(`/onboarding/talent/${activeRoleSlug || activity.context.rolePostingId}/interview/journey`);
+    // 2. Persist assessment session parameters
+    const assessmentId = activity.context?.assessmentId;
+    const rolePostingId = activity.context?.rolePostingId;
+    if (assessmentId) {
+      localStorage.setItem('vora_assessment_id', assessmentId);
+      localStorage.setItem('active_assessment_id', assessmentId);
+    }
+    if (rolePostingId) {
+      localStorage.setItem('vora_role_posting_id', rolePostingId);
+    }
+    if (roleSlug) {
+      localStorage.setItem('active_assessment_role_slug', roleSlug);
+    }
+
+    const stage = activity.context?.stage;
+    if (stage === 2) {
+      localStorage.setItem('vora_stage1_completed', 'true');
+      localStorage.setItem('vora_stage2_unlocked', 'true');
+    } else if (stage === 3) {
+      localStorage.setItem('vora_stage2_completed', 'true');
+      localStorage.setItem('vora_stage3_unlocked', 'true');
+    } else if (stage === 4) {
+      localStorage.setItem('vora_stage3_completed', 'true');
+      localStorage.setItem('vora_stage4_unlocked', 'true');
+    }
+
+    // 3. Navigate directly to the corresponding interview stage or journey
+    if (stage === 4) {
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-4/decision`);
+    } else if (stage === 3) {
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-3`);
+    } else if (stage === 2) {
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-2`);
+    } else if (stage === 1) {
+      navigate(`/onboarding/talent/${roleSlug}/interview/stage-1`);
     } else {
-      navigate('/dashboard');
+      navigate(`/onboarding/talent/${roleSlug}/interview/journey`);
     }
   };
 
@@ -128,7 +167,7 @@ const TalentDashboard: React.FC = () => {
                 {primaryActivity.context?.roleTitle || primaryActivity.title}
               </h2>
               <p className="text-[13px] text-white/80 mt-1">
-                {primaryActivity.title} · Stage {primaryActivity.context?.stage ?? 1}
+                {primaryActivity.subtitle || `${primaryActivity.title} · Stage ${primaryActivity.context?.stage ?? 1}`}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -139,7 +178,7 @@ const TalentDashboard: React.FC = () => {
                 onClick={() => handleActivityClick(primaryActivity)}
                 className="bg-white text-[#0047CC] hover:bg-gray-100 rounded-xl px-5 py-2.5 text-[13px] font-bold transition-all shadow-md shrink-0 cursor-pointer"
               >
-                {primaryActivity.ctaLabel || 'Continue Journey'}
+                Resume Journey
               </button>
             </div>
           </div>

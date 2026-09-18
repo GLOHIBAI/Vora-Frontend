@@ -202,6 +202,9 @@ const App = () => {
           <Route path="/talents/:id" element={<ProtectedDashboardLayout><TalentProfile /></ProtectedDashboardLayout>} />
           <Route path="/talent/roles" element={<Navigate to="/dashboard" replace />} />
           <Route path="/talent/settings/cv" element={<Navigate to="/onboarding/talent?step=2" replace />} />
+          <Route path="/talent/jobs" element={<Navigate to="/jobs" replace />} />
+          <Route path="/talent/mentors" element={<Navigate to="/courses" replace />} />
+          <Route path="/talent/assessment/*" element={<Navigate to="/onboarding/talent/backend-engineer/interview/journey" replace />} />
           <Route path="/courses" element={<ProtectedDashboardLayout><CoursesList /></ProtectedDashboardLayout>} />
           <Route path="/courses/:id" element={<ProtectedDashboardLayout><CourseDetails /></ProtectedDashboardLayout>} />
           <Route path="/settings" element={<ProtectedDashboardLayout><Settings /></ProtectedDashboardLayout>} />
