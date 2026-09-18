@@ -60,7 +60,7 @@ export const AuthHeroRoleVideo: React.FC<AuthHeroRoleVideoProps> = ({
 
   return (
     <div
-      className={`relative w-full h-full min-h-[500px] overflow-hidden bg-[#0A0F1D] select-none ${className}`}
+      className={`relative w-full h-full overflow-hidden bg-[#0A0F1D] select-none ${className}`}
       aria-label="VORA Global Health Sign-up Hero"
     >
       {/* Background Video */}
@@ -78,45 +78,48 @@ export const AuthHeroRoleVideo: React.FC<AuthHeroRoleVideoProps> = ({
       <div className="absolute inset-0 z-20 pointer-events-none bg-gradient-to-t from-black/90 via-black/40 to-black/20" />
       <div className="absolute inset-0 z-20 pointer-events-none bg-gradient-to-r from-black/40 via-transparent to-black/20" />
 
-      {/* Top Header inside Hero */}
-      <div className="absolute top-8 left-8 right-8 z-30 flex items-center justify-between pointer-events-auto">
-        <span className="text-[12px] font-semibold text-white/90 tracking-wider uppercase drop-shadow-sm">
-          VORA · Global Health Ecosystem
-        </span>
-      </div>
-
-      {/* Bottom Content Area */}
-      <div className="absolute bottom-0 left-0 right-0 z-30 p-8 sm:p-10 lg:p-12 text-white flex flex-col justify-end">
-        {/* Category Pill */}
-        <div className="mb-3.5">
-          <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-[11px] font-bold tracking-wider uppercase text-white shadow-sm">
-            {config.roleBadge}
+      {/* Hero Flex Container: Perfectly adapts to any aspect ratio and height */}
+      <div className="relative z-30 h-full w-full flex flex-col justify-between p-4 sm:p-6 lg:p-7 xl:p-8 [@media(max-height:760px)]:p-4 [@media(max-height:640px)]:p-3 pointer-events-none">
+        {/* Top Header */}
+        <div className="flex items-center justify-between pointer-events-auto">
+          <span className="text-[10px] sm:text-[11px] [@media(max-height:640px)]:text-[9px] font-semibold text-white/90 tracking-wider uppercase drop-shadow-sm">
+            VORA · Global Health Ecosystem
           </span>
         </div>
 
-        {/* Title */}
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white leading-snug mb-2.5 drop-shadow-sm max-w-xl transition-all duration-300">
-          {config.title}
-        </h2>
-
-        {/* Description */}
-        <p className="text-[13.5px] sm:text-[14px] text-white/80 leading-relaxed max-w-lg drop-shadow-sm">
-          {config.description}
-        </p>
-
-        {/* Value Highlights */}
-        <div className="mt-6 pt-5 border-t border-white/10 flex flex-wrap items-center gap-4 text-[12px] text-white/70">
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-[#387DFF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-            </svg>
-            <span>Standardized benchmarks</span>
+        {/* Bottom Content Area */}
+        <div className="text-white flex flex-col justify-end pointer-events-auto max-w-2xl w-full">
+          {/* Category Pill */}
+          <div className="mb-3 sm:mb-4">
+            <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-[10px] sm:text-[11px] font-bold tracking-wider uppercase text-white shadow-sm">
+              {config.roleBadge}
+            </span>
           </div>
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-[#387DFF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-            </svg>
-            <span>Verified capability dossier</span>
+
+          {/* Title with Balanced Text Wrapping */}
+          <h2 className="text-[clamp(1.15rem,2.2vh+0.35rem,1.75rem)] font-bold tracking-tight text-white leading-[1.25] sm:leading-[1.2] mb-3 sm:mb-3.5 drop-shadow-sm transition-all duration-300 [text-wrap:balance]">
+            {config.title}
+          </h2>
+
+          {/* Description */}
+          <p className="text-[clamp(0.8rem,1.1vh+0.25rem,0.925rem)] text-white/85 leading-relaxed max-w-xl mb-4 sm:mb-5 drop-shadow-sm [text-wrap:pretty]">
+            {config.description}
+          </p>
+
+          {/* Value Highlights */}
+          <div className="pt-3 border-t border-white/15 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-white/70">
+            <div className="flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5 text-[#387DFF] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>Standardized benchmarks</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5 text-[#387DFF] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>Verified capability dossier</span>
+            </div>
           </div>
         </div>
       </div>

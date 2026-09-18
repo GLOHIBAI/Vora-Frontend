@@ -151,9 +151,17 @@ const getFieldValue = (card?: any, labelMatches: string[] = []): string => {
   const lowerMatches = labelMatches.map(l => l.toLowerCase().trim());
 
   if (card.fields && Array.isArray(card.fields)) {
+    // Try exact match first
+    const exact = card.fields.find((f: any) => {
+      const fieldLabel = (f.label || '').toLowerCase().trim();
+      return lowerMatches.includes(fieldLabel);
+    });
+    if (exact?.value !== undefined && exact?.value !== null) return String(exact.value).trim();
+
+    // Fall back to startsWith
     const found = card.fields.find((f: any) => {
       const fieldLabel = (f.label || '').toLowerCase().trim();
-      return lowerMatches.some(m => fieldLabel === m || fieldLabel.startsWith(m) || m.startsWith(fieldLabel));
+      return lowerMatches.some(m => fieldLabel.startsWith(m) || m.startsWith(fieldLabel));
     });
     if (found?.value !== undefined && found?.value !== null) return String(found.value).trim();
   }
@@ -196,7 +204,18 @@ const matchGroupOption = (val: string, groups: Array<{ label: string; options: A
 };
 
 const extractSalaryInfo = (card?: any) => {
-  const salaryStr = getFieldValue(card, ['Annual salary', 'Salary range', 'Compensation', 'Salary', 'Rate']) || card?.salary || '';
+  // Specifically look for salary range / rate fields, ignoring 'Compensation type', 'midpoint', and 'escrow'
+  let salaryStr = getFieldValue(card, ['Salary range', 'Salary band', 'Rate range', 'Salary']);
+  if (!salaryStr && card?.fields && Array.isArray(card.fields)) {
+    const rangeField = card.fields.find((f: any) => {
+      const l = (f.label || '').toLowerCase();
+      return (l.includes('range') || l.includes('salary') || l.includes('rate')) &&
+             !l.includes('type') && !l.includes('midpoint') && !l.includes('escrow');
+    });
+    if (rangeField?.value) salaryStr = String(rangeField.value);
+  }
+  if (!salaryStr) salaryStr = card?.salary || '';
+
   let currency = 'USD';
   if (salaryStr.includes('£') || salaryStr.includes('GBP')) currency = 'GBP';
   else if (salaryStr.includes('€') || salaryStr.includes('EUR')) currency = 'EUR';
@@ -205,6 +224,7 @@ const extractSalaryInfo = (card?: any) => {
   else if (salaryStr.includes('ZAR')) currency = 'ZAR';
   else if (salaryStr.includes('GHS')) currency = 'GHS';
   else if (salaryStr.includes('ETB')) currency = 'ETB';
+  else if (salaryStr.includes('USD') || salaryStr.includes('$')) currency = 'USD';
   else if (card?.currency) currency = card.currency;
 
   const numbers = salaryStr.match(/\d[\d,]*/g)?.map((n: string) => n.replace(/,/g, '')) || [];
@@ -254,6 +274,7 @@ const JobEditModal: React.FC<JobEditModalProps> = ({ isOpen, onClose, section, d
   const [currency, setCurrency] = useState('USD');
   const [minSalary, setMinSalary] = useState('');
   const [maxSalary, setMaxSalary] = useState('');
+  const [candidateEligibility, setCandidateEligibility] = useState('Open to all nationalities');
   const [preAssessment, setPreAssessment] = useState('');
 
   // Collaboration State
@@ -314,14 +335,29 @@ const JobEditModal: React.FC<JobEditModalProps> = ({ isOpen, onClose, section, d
       setNarrative(getFieldValue(data.experience, ['Preferred candidate profile (narrative)', 'Preferred candidate profile', 'Candidate profile', 'Sector background']) || data.experience?.sectorBackground || data.experience?.narrative || '');
 
       // 4. Compensation
-      const rawCompType = getFieldValue(data.compensation, ['Compensation type', 'Type']) || data.compensation?.type || '';
+      const rawCompType = getFieldValue(data.compensation, ['Compensation type']) || data.compensation?.type || '';
       setCompType(matchOption(rawCompType, compTypeOptions) || rawCompType || 'Annual salary');
 
       const salInfo = extractSalaryInfo(data.compensation);
       setCurrency(salInfo.currency);
       setMinSalary(salInfo.minSalary);
       setMaxSalary(salInfo.maxSalary);
-      setPreAssessment(formatTagList(data.compensation?.eligibilityPills || data.compensation?.preAssessment) || getFieldValue(data.compensation, ['Pre-interview materials required from candidates', 'Pre-interview materials', 'Pre-assessment', 'Materials required']) || '');
+
+      const rawEligibility =
+        formatTagList(data.compensation?.eligibilityPills) ||
+        getFieldValue(data.compensation, ['Candidate eligibility', 'Eligibility', 'International candidate policy']);
+      setCandidateEligibility(
+        matchOption(rawEligibility, candidatePolicyOptions) || rawEligibility || 'Open to all nationalities'
+      );
+
+      const rawPreMat =
+        getFieldValue(data.compensation, [
+          'Pre-interview materials required from candidates',
+          'Pre-interview materials',
+          'Pre-assessment',
+          'Materials required',
+        ]) || data.compensation?.preAssessment || '';
+      setPreAssessment(rawPreMat);
 
       // 5. Collaboration / Team
       setPrefStyle(formatTagList(data.team?.preferredWorkingStyle || data.collaboration?.preferredStyle) || getFieldValue(data.team || data.collaboration, ['Preferred work style', 'Work style', 'Preferred style']) || '');
@@ -547,6 +583,13 @@ const JobEditModal: React.FC<JobEditModalProps> = ({ isOpen, onClose, section, d
             <div className="bg-white border border-[#BDD9FF] rounded-xl p-4 text-[13px] text-[#1e3a8a] leading-relaxed font-medium">
               <strong>Escrow note:</strong> Changing the salary band triggers an automatic escrow recalculation. Any top-up or refund will fire to your payment method within 24 hours of this edit being confirmed.
             </div>
+
+            <Select 
+              label="Candidate eligibility"
+              options={candidatePolicyOptions}
+              value={candidateEligibility}
+              onChange={(e) => setCandidateEligibility(e.target.value)}
+            />
 
             <Input 
               label="Pre-interview materials required from candidates"

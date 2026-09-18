@@ -284,7 +284,13 @@ const JobDetails: React.FC = () => {
             if (tab === 'Applicants') {
               const count = jobDetail?.tabs?.applicantsCount ?? 0;
               return (
-                <span className="bg-gray-100 text-gray-500 text-[10px] font-medium px-2 py-0.5 rounded-full">{count}</span>
+                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full transition-colors ${
+                  activeTab === 'Applicants'
+                    ? 'bg-blue-50 text-[#0047CC]'
+                    : 'bg-gray-100 text-[#0047CC]'
+                }`}>
+                  {count}
+                </span>
               );
             }
             return null;
@@ -383,7 +389,7 @@ const JobDetails: React.FC = () => {
       <ApplicantDetailsModal 
         isOpen={isApplicantModalOpen}
         onClose={() => setIsApplicantModalOpen(false)}
-        applicant={selectedApplicant}
+        applicant={selectedApplicant ? { ...selectedApplicant, rolePostingId: selectedApplicant.rolePostingId || id } : null}
         onReject={() => {
           setIsApplicantModalOpen(false);
           navigate(`/jobs/${id}/reject/${selectedApplicant.id || selectedApplicant.assessmentId}`);

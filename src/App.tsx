@@ -7,6 +7,7 @@ import EmployerRoute from './components/auth/EmployerRoute'
 import { Toaster, toast } from 'react-hot-toast'
 import { defaultToastOptions } from './config/toastOptions'
 import FullPageSpinner from './components/common/FullPageSpinner'
+import ErrorBoundary from './components/common/ErrorBoundary'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
 
 /** Redirect legacy /assessment/* paths to /interview/* (stage-1 intro kept distinct). */
@@ -176,7 +177,8 @@ const App = () => {
         reverseOrder={false}
         toastOptions={defaultToastOptions}
       />
-      <Suspense fallback={<FullPageSpinner />}>
+      <ErrorBoundary>
+        <Suspense fallback={<FullPageSpinner />}>
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/role/:slug" element={<RoleLanding />} />
@@ -287,7 +289,8 @@ const App = () => {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
-    </MainLayout>
+    </ErrorBoundary>
+  </MainLayout>
   )
 }
 

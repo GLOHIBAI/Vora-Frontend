@@ -5,12 +5,14 @@ import { formatDateDisplay } from '../../utils/date';
 
 export interface DateInputProps {
   label?: string | React.ReactNode;
+  labelClassName?: string;
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   error?: boolean;
   helperText?: string;
   className?: string;
   icon?: React.ElementType;
+  iconPosition?: 'left' | 'right';
   min?: string;
   max?: string;
   placeholder?: string;
@@ -20,12 +22,14 @@ export interface DateInputProps {
 
 const DateInput: React.FC<DateInputProps> = ({
   label,
+  labelClassName = '',
   value = '',
   onChange,
   error = false,
   helperText = '',
   className = '',
   icon: Icon = CalendarIcon,
+  iconPosition = 'left',
   min,
   max,
   placeholder = 'dd/mm/yyyy',
@@ -58,7 +62,7 @@ const DateInput: React.FC<DateInputProps> = ({
   return (
     <div className="w-full" ref={containerRef}>
       {showLabel && (
-        <label className="block text-sm font-medium text-text-secondary mb-2.5">{label}</label>
+        <label className={labelClassName || "block text-sm font-medium text-text-secondary mb-2.5"}>{label}</label>
       )}
       <div className="relative">
         <button
@@ -68,7 +72,9 @@ const DateInput: React.FC<DateInputProps> = ({
           aria-expanded={open}
           aria-haspopup="dialog"
           aria-controls={open ? listboxId : undefined}
-          className={`w-full flex items-center gap-3 pl-12 pr-4 py-3 sm:py-3.5 rounded-lg border text-left transition-all cursor-pointer ${
+          className={`w-full flex items-center justify-between ${
+            iconPosition === 'right' ? 'pl-4 pr-11' : 'pl-12 pr-4'
+          } py-3 sm:py-3.5 rounded-lg border text-left transition-all cursor-pointer ${
             error
               ? 'border-red-500 bg-white'
               : 'border-border-default bg-white hover:border-[#0047CC]'
@@ -81,12 +87,12 @@ const DateInput: React.FC<DateInputProps> = ({
           </span>
         </button>
 
-        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-300">
+        <div className={`absolute inset-y-0 ${iconPosition === 'right' ? 'right-4' : 'left-4'} flex items-center pointer-events-none text-gray-400`}>
           <Icon size={18} />
         </div>
 
         {open && !disabled && (
-          <div id={listboxId} className="absolute left-0 top-full mt-1.5 z-[900] w-auto">
+          <div id={listboxId} className="absolute left-0 top-full mt-1.5 z-[950] w-auto">
             <DatePicker
               value={value}
               onChange={(next) => {

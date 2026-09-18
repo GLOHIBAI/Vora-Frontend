@@ -37,9 +37,11 @@ export function AuthPageShell({
           </div>
 
           {/* Form Area with safe auto-centering that prevents top-clipping (Right on desktop - exactly 50% half of screen) */}
-          <div className="w-full h-full overflow-y-auto custom-scrollbar flex flex-col px-4 py-6 sm:px-8 sm:py-8 lg:px-10 xl:px-14">
-            <div className="mx-auto my-auto w-full max-w-[460px] py-4">
-              {children}
+          <div className="w-full h-full overflow-y-auto custom-scrollbar px-4 sm:px-8 lg:px-10 xl:px-14">
+            <div className="min-h-full flex flex-col py-6 sm:py-8 [@media(max-height:700px)]:py-4">
+              <div className="mx-auto my-auto w-full max-w-[460px]">
+                {children}
+              </div>
             </div>
           </div>
         </div>
@@ -71,7 +73,7 @@ type AuthPageHeaderProps = {
 
 export function AuthPageHeader({ title, subtitle, className = '', showLogo = true }: AuthPageHeaderProps) {
   return (
-    <div className={`mb-8 text-center sm:mb-10 lg:mb-12 ${className}`}>
+    <div className={`mb-6 text-center sm:mb-8 lg:mb-10 [@media(max-height:760px)]:mb-5 [@media(max-height:640px)]:mb-4 ${className}`}>
       {showLogo && (
         <div className="flex justify-center mb-6">
           <VoraLogo size="lg" />

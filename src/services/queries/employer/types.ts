@@ -23,16 +23,21 @@ export interface EmployerDashboardBannerAlert {
 }
 
 export interface MetricCardData {
-  value: number | string;
+  value?: number | string;
+  count?: number;
   delta?: string;
+  changeLabel?: string;
   deltaType?: 'up' | 'warn';
+  amount?: number;
+  currency?: string;
+  formatted?: string;
 }
 
 export interface EmployerDashboardMetrics {
-  activeJobs: MetricCardData;
-  totalApplicants: MetricCardData;
-  alignmentSessions: MetricCardData;
-  walletBalance: MetricCardData & { formatted?: string };
+  activeJobs?: MetricCardData;
+  totalApplicants?: MetricCardData;
+  alignmentSessions?: MetricCardData;
+  walletBalance?: MetricCardData;
 }
 
 export type CheckInStatus = 'OVERDUE' | 'DUE_SOON' | 'ON_TRACK' | 'BENCHMARKS_PENDING';
@@ -53,9 +58,18 @@ export interface EmployerDashboardCheckInItem {
   daysLeft?: number;
 }
 
+export interface EmployerDashboardEscrowBreakdown {
+  inEscrowLocked?: number | string;
+  alignmentFeesPending?: number | string;
+  trueUpOwed?: number | string;
+  totalCommitted?: number | string;
+}
+
 export interface EmployerDashboardWalletEscrow {
-  availableBalance: number | string;
+  availableBalance?: number | string;
   availableBalanceFormatted?: string;
+  currency?: string;
+  walletLabel?: string;
   walletHolderName?: string;
   inEscrow?: number | string;
   inEscrowFormatted?: string;
@@ -65,6 +79,7 @@ export interface EmployerDashboardWalletEscrow {
   trueUpOwedFormatted?: string;
   totalCommitted?: number | string;
   totalCommittedFormatted?: string;
+  escrowBreakdown?: EmployerDashboardEscrowBreakdown;
 }
 
 export type JobDisplayStatus =
@@ -116,14 +131,40 @@ export type ActivityIconType =
 
 export interface EmployerDashboardActivityItem {
   id?: string;
+  type?: string;
   title: string;
   subtitle?: string;
   sub?: string;
+  amount?: number | null;
+  createdAt?: string;
+  relativeTime?: string;
   timestamp?: string;
   time?: string;
-  iconType?: ActivityIconType;
+  iconType?: ActivityIconType | string;
   iconBg?: string;
   iconColor?: string;
+}
+
+export interface EmployerDashboardAccount {
+  profile?: {
+    organisationName?: string;
+    role?: string;
+    email?: string;
+  };
+  payments?: {
+    savedPaymentMethodsCount?: number;
+  };
+  team?: {
+    memberCount?: number;
+  };
+  alerts?: {
+    unreadCount?: number;
+    mode?: string;
+  };
+  billing?: {
+    tier?: string;
+  };
+  pipelineAccessPaused?: boolean;
 }
 
 export interface EmployerDashboardData {
@@ -131,19 +172,23 @@ export interface EmployerDashboardData {
   bannerAlert?: EmployerDashboardBannerAlert;
   metrics?: EmployerDashboardMetrics;
   checkIns?: {
+    overdueCount?: number;
+    totalPendingCount?: number;
     items?: EmployerDashboardCheckInItem[];
   };
   walletEscrow?: EmployerDashboardWalletEscrow;
   activeJobs?: {
+    totalCount?: number;
     items?: EmployerDashboardJobItem[];
   };
   alignmentSessions?: {
+    totalCount?: number;
     items?: EmployerDashboardAlignmentItem[];
   };
   recentActivity?: {
     items?: EmployerDashboardActivityItem[];
   };
-  account?: Record<string, any>;
+  account?: EmployerDashboardAccount;
 }
 
 // -------------------------------------------------------------
@@ -414,10 +459,31 @@ export interface EmployerJobBadge {
   variant: 'info' | 'neutral' | 'success' | 'warning';
 }
 
+export type EmployerJobActionType =
+  | 'VIEW_DETAILS'
+  | 'EDIT'
+  | 'CONTINUE_DRAFT'
+  | 'COPY_LINK'
+  | 'CLOSE_ROLE'
+  | 'DELETE_DRAFT'
+  | string;
+
+export interface EmployerJobAction {
+  id?: string;
+  type?: EmployerJobActionType;
+  label: string;
+  action?: string;
+  url?: string;
+  enabled?: boolean;
+  destructive?: boolean;
+}
+
 export type EmployerJobStatus =
+  | 'LIVE'
   | 'ACTIVE'
   | 'ONGOING'
   | 'SCHEDULED'
+  | 'VAULT'
   | 'HIRED'
   | 'DRAFT'
   | 'UNDER_REVIEW'
@@ -436,6 +502,9 @@ export interface EmployerJobListItem {
   applicantCount?: number | null;
   status: EmployerJobStatus;
   displayStatus?: string;
+  shareUrl?: string;
+  roleLink?: string;
+  actions?: EmployerJobAction[];
   badges?: EmployerJobBadge[];
 }
 
@@ -571,6 +640,8 @@ export interface EmployerApplicant {
   status?: EmployerApplicantStatus | string;
   overallScore?: number;
   overall?: number;
+  stage?: EmployerTalentStage;
+  actions?: EmployerTalentAction[];
 }
 
 export interface EmployerTestResultItem {
@@ -684,3 +755,73 @@ export interface EmployerHiresResponse {
   totalPositions?: number;
   canHireAnother?: boolean;
 }
+
+// -------------------------------------------------------------
+// Talents (/api/v1/employers/talents)
+// -------------------------------------------------------------
+
+export interface EmployerTalentStage {
+  current: number | null;
+  name: string | null;
+  label: string;
+  completed: boolean;
+  total?: number;
+}
+
+export type EmployerTalentActionKey =
+  | 'VIEW_DETAILS'
+  | 'HIRE_APPLICANT'
+  | 'REJECT_APPLICANT'
+  | string;
+
+export interface EmployerTalentAction {
+  key: EmployerTalentActionKey;
+  label: string;
+  method: 'GET' | 'POST' | string;
+  path: string;
+  enabled: boolean;
+  destructive?: boolean;
+}
+
+export type EmployerTalentStatus =
+  | 'PENDING_REVIEW'
+  | 'UNDER_REVIEW'
+  | 'HIRED'
+  | 'REJECTED';
+
+export interface EmployerTalentItem {
+  id?: string;
+  assessmentId?: string;
+  applicantCode: string;
+  qualification?: string;
+  roleApplied: string;
+  rolePostingId?: string;
+  overallScore?: number | null;
+  stage: EmployerTalentStage;
+  appliedOn?: string;
+  overallStatus: EmployerTalentStatus | string;
+  overallStatusLabel: string;
+  actions: EmployerTalentAction[];
+}
+
+export interface EmployerTalentsPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages?: number;
+  showingLabel?: string;
+}
+
+export interface EmployerTalentsResponse {
+  items: EmployerTalentItem[];
+  pagination: EmployerTalentsPagination;
+}
+
+export interface EmployerTalentsQueryParams {
+  search?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+  enabled?: boolean;
+}
+

@@ -16,12 +16,16 @@ export const employerKeys = {
   authSessions: () => ['auth', 'sessions'] as const,
 
   // Jobs
-  jobs: (filter?: string, search?: string, page?: number, limit?: number) =>
-    [...employerKeys.all, 'jobs', { filter, search, page, limit }] as const,
+  jobs: (filter?: string, status?: string, search?: string, page?: number, limit?: number) =>
+    [...employerKeys.all, 'jobs', { filter, status, search, page, limit }] as const,
   jobDetail: (id: string) =>
     [...employerKeys.all, 'jobs', 'detail', id] as const,
   jobApplicants: (id: string) =>
     [...employerKeys.all, 'jobs', 'applicants', id] as const,
   jobHires: (id: string) =>
     [...employerKeys.all, 'jobs', 'hires', id] as const,
+
+  // Talents
+  talents: (search?: string, status?: string, page?: number, limit?: number) =>
+    [...employerKeys.all, 'talents', { search, status, page, limit }] as const,
 };

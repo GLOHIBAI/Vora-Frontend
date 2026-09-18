@@ -1120,15 +1120,83 @@ export interface EmployerReviewQueueItem {
   completedAt?: string;
 }
 
+export interface EmployerReportStage {
+  stage: number;
+  stageName: string;
+  label: string;
+  score: number;
+  status: string;
+}
+
+export interface EmployerReportInterviewOverview {
+  overallScore?: number;
+  stages?: EmployerReportStage[];
+}
+
+export interface EmployerReportExperience {
+  title?: string;
+  role?: string;
+  company?: string;
+  period?: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+  summary?: string;
+}
+
+export interface EmployerReportEducation {
+  title?: string;
+  degree?: string;
+  institution?: string;
+  school?: string;
+  period?: string;
+  year?: string | number;
+}
+
+export interface EmployerReportCertification {
+  title?: string;
+  name?: string;
+  issuer?: string;
+  period?: string;
+  year?: string | number;
+}
+
+export interface EmployerReportProfile {
+  professionalTitle?: string;
+  location?: string;
+  yearsOfExperience?: string | number;
+  about?: string;
+  skills?: string[] | Array<{ label: string; [key: string]: any }>;
+  experience?: EmployerReportExperience[];
+  education?: EmployerReportEducation[];
+  certifications?: EmployerReportCertification[];
+}
+
+export interface EmployerReportVideo {
+  itemId: string;
+  title?: string;
+  videoUrl: string;
+  sequence?: number;
+  prompt?: string;
+}
+
 export interface EmployerReportData {
+  applicantCode?: string;
   assessmentId: string;
-  talentName: string;
+  rolePostingId?: string;
+  roleTitle?: string;
+  appliedOn?: string;
+  status?: string;
+  profile?: EmployerReportProfile;
+  interviewOverview?: EmployerReportInterviewOverview;
+  videos?: EmployerReportVideo[];
+  talentName?: string;
   talentCountry?: string;
   grade?: string;
   scores?: Record<string, any>;
-  videos?: Array<{ itemId: string; videoUrl: string; sequence?: number; prompt?: string }>;
   summary?: string;
   decision?: Stage4DecisionScreen;
 }
+
 
 

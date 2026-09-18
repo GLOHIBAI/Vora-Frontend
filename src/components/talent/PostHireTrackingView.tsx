@@ -1,9 +1,6 @@
 import React from 'react';
 import { 
-  AlertTriangleIcon, 
-  CheckIcon, 
-  TrendingUpIcon, 
-  ClockIcon
+  AlertTriangleIcon
 } from '../common/Icons';
 import Button from '../common/Button';
 import Tag from '../common/Tag';
@@ -14,17 +11,17 @@ const PostHireTrackingView: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Overdue Banner */}
-      <div className="bg-[#FEF2F2] border border-[#FECACA] rounded-[14px] p-4 flex flex-col md:flex-row items-center gap-4">
-        <div className="p-2 bg-white rounded-full">
-          <AlertTriangleIcon size={18} className="text-[#DC2626]" />
+      <div className="bg-[#FFFBEB] border border-[#FDE68A] rounded-[14px] p-4 flex flex-col md:flex-row items-center gap-4">
+        <div className="p-2 bg-white rounded-full border border-[#FDE68A]">
+          <AlertTriangleIcon size={18} className="text-[#92400E]" />
         </div>
-        <p className="text-[13px] font-medium text-[#991B1B] flex-1">
+        <p className="text-[13px] font-medium text-[#78350F] flex-1">
           <strong>1 overdue check-in.</strong> Amaka Okonkwo's 30-day check-in has not been completed. Your next candidate pipeline access will be paused in 3 days if not resolved.
         </p>
         <Button 
           variant="outline"
           fullWidth={false}
-          className="px-6 py-2 bg-[#DC2626] text-white text-[12px] font-medium border-none hover:bg-[#b91c1c] whitespace-nowrap min-h-0"
+          className="px-6 py-2 !bg-[#60A5FA] hover:!bg-[#0047CC] !text-white text-[12px] font-semibold !border-none whitespace-nowrap min-h-0 transition-all duration-200 shadow-sm"
           onClick={() => {}}
         >
           Complete Now
@@ -34,14 +31,14 @@ const PostHireTrackingView: React.FC = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'ACTIVE HIRES TRACKED', value: '4', sub: 'Across 3 roles', icon: CheckIcon, color: 'text-gray-900' },
-          { label: 'CHECK-INS OVERDUE', value: '1', sub: 'Action needed', icon: AlertTriangleIcon, color: 'text-red-600' },
-          { label: 'REPORTS GENERATED', value: '1', sub: '1 cycle completed', icon: ClockIcon, color: 'text-gray-900' },
-          { label: 'AVG PREDICTION ACCURACY', value: '89%', sub: 'Across completed cycles', icon: TrendingUpIcon, color: 'text-purple-600' }
+          { label: 'ACTIVE HIRES TRACKED', value: '4', sub: 'Across 3 roles' },
+          { label: 'CHECK-INS OVERDUE', value: '1', sub: 'Action needed' },
+          { label: 'REPORTS GENERATED', value: '1', sub: '1 cycle completed' },
+          { label: 'AVG PREDICTION ACCURACY', value: '89%', sub: 'Across completed cycles' }
         ].map((stat, i) => (
           <div key={i} className="bg-white border border-gray-100 rounded-[18px] p-6 shadow-sm">
             <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mb-4">{stat.label}</p>
-            <p className={`text-[28px] font-medium ${stat.color} leading-none mb-2`}>{stat.value}</p>
+            <p className="text-[28px] font-medium text-gray-900 leading-none mb-2">{stat.value}</p>
             <p className="text-[11px] font-medium text-gray-400">{stat.sub}</p>
           </div>
         ))}
@@ -69,10 +66,10 @@ const PostHireTrackingView: React.FC = () => {
                   <p className="text-[11px] font-medium text-gray-400 mt-0.5">{talent.role}</p>
                 </div>
               </div>
-              <div className="flex-1 text-[13px] font-medium text-gray-600">{talent.hired}</div>
-              <div className="flex-1 text-[13px] font-medium text-[#0047CC]">{talent.score}</div>
+              <div className="flex-1 text-[13px] font-medium text-gray-500">{talent.hired}</div>
+              <div className="flex-1 text-[14px] font-semibold text-gray-800">{talent.score}</div>
               <div className="flex-[1.5]">
-                <p className={`text-[12px] font-medium ${talent.nextAction.includes('overdue') ? 'text-red-600' : 'text-gray-900'}`}>{talent.nextAction}</p>
+                <p className={`text-[12px] font-semibold ${talent.nextAction.includes('overdue') ? 'text-gray-900' : 'text-gray-700'}`}>{talent.nextAction}</p>
                 <p className="text-[10px] font-medium text-gray-400 mt-0.5">{talent.actionSub}</p>
               </div>
               <div className="flex-[2]">
@@ -81,8 +78,7 @@ const PostHireTrackingView: React.FC = () => {
                   variant={
                     talent.statusType === 'error' ? 'red' :
                     talent.statusType === 'success' ? 'green' :
-                    talent.statusType === 'warning' ? 'yellow' :
-                    talent.statusType === 'purple' ? 'purple' : 'gray'
+                    talent.statusType === 'warning' ? 'yellow' : 'gray'
                   }
                 />
               </div>

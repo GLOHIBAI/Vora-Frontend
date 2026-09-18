@@ -30,6 +30,8 @@ import type {
   EmployerJobDetailsResponse,
   EmployerApplicantsResponse,
   EmployerHiresResponse,
+  EmployerTalentsResponse,
+  EmployerTalentsQueryParams,
 } from './types';
 import { toast } from 'react-hot-toast';
 
@@ -654,6 +656,7 @@ export const useChangePasswordMutation = () => {
 
 export interface EmployerJobsQueryParams {
   filter?: string;
+  status?: string;
   search?: string;
   page?: number;
   limit?: number;
@@ -661,12 +664,21 @@ export interface EmployerJobsQueryParams {
 }
 
 export const useEmployerJobsQuery = (params: EmployerJobsQueryParams = {}) => {
-  const { filter = 'all', search = '', page = 1, limit = 20, enabled = true } = params;
+  const { filter = 'all', status, search = '', page = 1, limit = 20, enabled = true } = params;
   return useQuery({
-    queryKey: employerKeys.jobs(filter, search, page, limit),
+    queryKey: employerKeys.jobs(filter, status, search, page, limit),
     queryFn: async () => {
       const qs = new URLSearchParams();
       if (filter) qs.set('filter', filter);
+      if (status && status !== 'ALL') {
+        const normStatus =
+          status.toUpperCase() === 'VAULT'
+            ? 'SCHEDULED'
+            : status.toUpperCase() === 'ACTIVE'
+              ? 'LIVE'
+              : status.toUpperCase();
+        qs.set('status', normStatus);
+      }
       if (search) qs.set('search', search);
       qs.set('page', String(page));
       qs.set('limit', String(limit));
@@ -678,6 +690,46 @@ export const useEmployerJobsQuery = (params: EmployerJobsQueryParams = {}) => {
     },
     enabled,
     refetchOnWindowFocus: true,
+  });
+};
+
+export const useCloseEmployerJobMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiClient.post<any>({
+        url: `/employers/jobs/${id}/close`,
+        auth: true,
+      });
+      return response?.data?.data ?? response?.data ?? response;
+    },
+    onSuccess: () => {
+      toast.success('Role closed successfully');
+      queryClient.invalidateQueries({ queryKey: employerKeys.all });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to close role');
+    },
+  });
+};
+
+export const useDeleteEmployerJobDraftMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiClient.delete<any>({
+        url: `/employers/jobs/${id}`,
+        auth: true,
+      });
+      return response?.data?.data ?? response?.data ?? response;
+    },
+    onSuccess: () => {
+      toast.success('Draft deleted successfully');
+      queryClient.invalidateQueries({ queryKey: employerKeys.all });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to delete draft');
+    },
   });
 };
 
@@ -723,6 +775,33 @@ export const useEmployerJobHiresQuery = (id: string, options: Record<string, any
     },
     enabled: !!id,
     ...options,
+  });
+};
+
+// -------------------------------------------------------------
+// Talents (/api/v1/employers/talents)
+// -------------------------------------------------------------
+
+export const useEmployerTalentsQuery = (params: EmployerTalentsQueryParams = {}) => {
+  const { search = '', status, page = 1, limit = 20, enabled = true } = params;
+  return useQuery({
+    queryKey: employerKeys.talents(search, status, page, limit),
+    queryFn: async () => {
+      const qs = new URLSearchParams();
+      if (search) qs.set('search', search);
+      if (status && status !== 'ALL' && status !== 'All talents') {
+        qs.set('status', status);
+      }
+      qs.set('page', String(page));
+      qs.set('limit', String(limit));
+      const response = await apiClient.get<any>({
+        url: `/employers/talents?${qs.toString()}`,
+        auth: true,
+      });
+      return (response?.data?.data ?? response?.data ?? response) as EmployerTalentsResponse;
+    },
+    enabled,
+    refetchOnWindowFocus: true,
   });
 };
 

@@ -218,7 +218,7 @@ const Rejection: React.FC = () => {
           <Button 
             onClick={() => navigate('/talents')}
             fullWidth={false}
-            className="px-10 min-h-[56px] text-[15px]"
+            className="px-10 min-h-[56px] text-[15px] mx-auto"
           >
             Return to Talents
           </Button>

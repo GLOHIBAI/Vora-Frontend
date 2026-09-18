@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   UsersIcon, 
@@ -206,6 +206,197 @@ const TestResultsTable: React.FC<{
   );
 };
 
+const StageApplicantsTable: React.FC<{
+  applicants: EmployerApplicant[];
+  onOpenDossier: (applicant: EmployerApplicant) => void;
+  onHire: (applicant: EmployerApplicant) => void;
+  onReject?: (applicant: EmployerApplicant) => void;
+  jobId?: string;
+  rolePostingId?: string;
+}> = ({ applicants, onOpenDossier, onHire, onReject, jobId, rolePostingId }) => {
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [openMenuIdx, setOpenMenuIdx] = React.useState<number | null>(null);
+  const menuContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const navigate = useNavigate();
+  const PAGE_SIZE = 10;
+
+  React.useEffect(() => {
+    if (openMenuIdx === null) return;
+    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
+      if (menuContainerRef.current && !menuContainerRef.current.contains(e.target as Node)) {
+        setOpenMenuIdx(null);
+      }
+    };
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, [openMenuIdx]);
+
+  if (applicants.length === 0) {
+    return (
+      <div className="py-10 text-center text-[13px] font-medium text-gray-400">
+        No applicants currently in this stage
+      </div>
+    );
+  }
+
+  const totalPages = Math.max(1, Math.ceil(applicants.length / PAGE_SIZE));
+  const paginated = applicants.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  return (
+    <div className="overflow-x-auto -mx-6 px-6">
+      <table className="w-full text-left">
+        <thead>
+          <tr className="text-[10px] font-medium text-gray-400 uppercase tracking-widest border-b border-gray-50">
+            <th className="pb-4 font-medium">Applicant ID</th>
+            <th className="pb-4 font-medium">Qualification</th>
+            <th className="pb-4 font-medium">Location</th>
+            <th className="pb-4 font-medium">Specialization</th>
+            <th className="pb-4 font-medium text-center">Score</th>
+            <th className="pb-4 font-medium text-center">Status</th>
+            <th className="pb-4 font-medium text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-50">
+          {paginated.map((applicant, i) => {
+            const statusLabel = applicant.overallStatusLabel || applicant.overallStatus || applicant.status || 'Under review';
+            const score = applicant.overallScore ?? applicant.overall;
+            const location = applicant.location || applicant.country || '—';
+            return (
+              <tr
+                key={applicant.id || applicant.assessmentId || i}
+                onClick={() => onOpenDossier(applicant)}
+                className="group hover:bg-gray-50/50 transition-colors cursor-pointer"
+              >
+                <td className="py-4">
+                  <span className="text-[14px] font-medium text-gray-900 group-hover:text-[#0047CC] transition-colors">
+                    {applicant.applicantCode}
+                  </span>
+                </td>
+                <td className="py-4 text-[13px] font-medium text-gray-500">{formatQualification(applicant.qualification)}</td>
+                <td className="py-4 text-[13px] font-medium text-gray-500">{location}</td>
+                <td className="py-4 text-[13px] font-medium text-gray-500">{applicant.specialization || '—'}</td>
+                <td className="py-4 text-center">
+                  {score != null ? (
+                    <span className="text-[13px] font-semibold text-gray-800">{score}%</span>
+                  ) : (
+                    <span className="text-gray-300">—</span>
+                  )}
+                </td>
+                <td className="py-4 text-center">
+                  <Tag
+                    label={statusLabel}
+                    variant={getApplicantStatusVariant(applicant.overallStatus || applicant.status)}
+                    className="mx-auto min-w-[110px] justify-center"
+                  />
+                </td>
+                <td className="py-4 text-right relative">
+                  <div
+                    ref={openMenuIdx === i ? menuContainerRef : undefined}
+                    className="inline-block relative"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenMenuIdx(openMenuIdx === i ? null : i);
+                      }}
+                      className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer relative z-10"
+                      aria-label="Applicant options"
+                    >
+                      <MoreVerticalIcon size={18} />
+                    </button>
+                    {openMenuIdx === i && (
+                      <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-150 origin-top-right text-left">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuIdx(null);
+                            onOpenDossier(applicant);
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                        >
+                          View dossier
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuIdx(null);
+                            onHire(applicant);
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                        >
+                          Hire applicant
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuIdx(null);
+                            const effectiveJobId = jobId || rolePostingId;
+                            const targetId = applicant.id || applicant.assessmentId || applicant.talentId;
+                            if (onReject) {
+                              onReject(applicant);
+                            } else if (effectiveJobId && targetId) {
+                              navigate(`/jobs/${effectiveJobId}/reject/${targetId}`);
+                            }
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                        >
+                          Reject applicant
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-5 border-t border-gray-100 mt-2">
+          <span className="text-[12px] font-medium text-gray-500">
+            Showing {(currentPage - 1) * PAGE_SIZE + 1} to {Math.min(currentPage * PAGE_SIZE, applicants.length)} of {applicants.length} applicants
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={currentPage === 1}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenMenuIdx(null);
+                setCurrentPage((p) => Math.max(1, p - 1));
+              }}
+              className="px-3 py-1 text-[12px] font-medium rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              Previous
+            </button>
+            <span className="text-[12px] font-medium text-gray-600 px-2">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={currentPage === totalPages}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenMenuIdx(null);
+                setCurrentPage((p) => Math.min(totalPages, p + 1));
+              }}
+              className="px-3 py-1 text-[12px] font-medium rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ 
   data, 
   isLoading, 
@@ -218,7 +409,32 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
   const [openSection, setOpenSection] = useState<string | null>('Overview');
   const [currentPage, setCurrentPage] = useState(1);
   const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(null);
+  const menuContainerRef = useRef<HTMLDivElement | null>(null);
   const PAGE_SIZE = 10;
+
+  useEffect(() => {
+    if (openMenuIdx === null) return;
+
+    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
+      if (menuContainerRef.current && !menuContainerRef.current.contains(e.target as Node)) {
+        setOpenMenuIdx(null);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpenMenuIdx(null);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [openMenuIdx]);
 
   const toggleSection = (section: string) => {
     setOpenSection(openSection === section ? null : section);
@@ -229,6 +445,33 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
   const geo = data?.geoDistribution;
   const recommendation = data?.recommendation;
   const topCandidates = recommendation?.topCandidates ?? [];
+
+  const stage1Applicants = useMemo(() => {
+    return applicants.filter(
+      (a) =>
+        a.stage?.current === 1 ||
+        a.stage?.name?.toLowerCase().includes('getting to know you') ||
+        a.stage?.label?.toLowerCase().includes('stage 1')
+    );
+  }, [applicants]);
+
+  const stage2Applicants = useMemo(() => {
+    return applicants.filter(
+      (a) =>
+        a.stage?.current === 2 ||
+        a.stage?.name?.toLowerCase().includes('professional dimension') ||
+        a.stage?.label?.toLowerCase().includes('stage 2')
+    );
+  }, [applicants]);
+
+  const stage3Applicants = useMemo(() => {
+    return applicants.filter(
+      (a) =>
+        a.stage?.current === 3 ||
+        a.stage?.name?.toLowerCase().includes('show up') ||
+        a.stage?.label?.toLowerCase().includes('stage 3')
+    );
+  }, [applicants]);
 
   const totalPages = Math.max(1, Math.ceil(applicants.length / PAGE_SIZE));
   const paginatedApplicants = useMemo(() => {
@@ -445,7 +688,11 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
                           />
                         </td>
                         <td className="py-4 text-right relative">
-                          <div className="inline-block relative">
+                          <div 
+                            ref={openMenuIdx === i ? menuContainerRef : undefined}
+                            className="inline-block relative"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <button
                               type="button"
                               onClick={(e) => {
@@ -459,60 +706,51 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
                             </button>
 
                             {openMenuIdx === i && (
-                              <>
-                                <div 
-                                  className="fixed inset-0 z-40 bg-transparent"
+                              <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-150 origin-top-right text-left">
+                                <button 
+                                  type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setOpenMenuIdx(null);
-                                  }}
-                                />
-                                <div className={`absolute right-0 ${i >= paginatedApplicants.length - 2 && paginatedApplicants.length > 2 ? 'bottom-full mb-1' : 'top-full mt-1'} w-44 bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden py-1.5 animate-in fade-in zoom-in-95 duration-150 origin-top-right text-left`}>
-                                  <button 
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setOpenMenuIdx(null);
-                                      if (onViewDetails) {
-                                        onViewDetails(applicant);
-                                      } else {
-                                        onHire(applicant);
-                                      }
-                                    }}
-                                    className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-                                  >
-                                    View details
-                                  </button>
-                                  <button 
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setOpenMenuIdx(null);
+                                    if (onViewDetails) {
+                                      onViewDetails(applicant);
+                                    } else {
                                       onHire(applicant);
-                                    }}
-                                    className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-                                  >
-                                    Hire applicant
-                                  </button>
-                                  <button 
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setOpenMenuIdx(null);
-                                      const effectiveJobId = jobId || data?.rolePostingId;
-                                      const targetId = applicant.id || applicant.assessmentId || applicant.talentId;
-                                      if (onReject) {
-                                        onReject(applicant);
-                                      } else if (effectiveJobId && targetId) {
-                                        navigate(`/jobs/${effectiveJobId}/reject/${targetId}`);
-                                      }
-                                    }}
-                                    className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-                                  >
-                                    Reject applicant
-                                  </button>
-                                </div>
-                              </>
+                                    }
+                                  }}
+                                  className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                                >
+                                  View details
+                                </button>
+                                <button 
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenMenuIdx(null);
+                                    onHire(applicant);
+                                  }}
+                                  className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                                >
+                                  Hire applicant
+                                </button>
+                                <button 
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenMenuIdx(null);
+                                    const effectiveJobId = jobId || data?.rolePostingId;
+                                    const targetId = applicant.id || applicant.assessmentId || applicant.talentId;
+                                    if (onReject) {
+                                      onReject(applicant);
+                                    } else if (effectiveJobId && targetId) {
+                                      navigate(`/jobs/${effectiveJobId}/reject/${targetId}`);
+                                    }
+                                  }}
+                                  className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                                >
+                                  Reject applicant
+                                </button>
+                              </div>
                             )}
                           </div>
                         </td>
@@ -570,49 +808,82 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
           </div>
         </AccordionItem>
 
-        {/* Psychometric Interview Results */}
+        {/* Stage 1: Getting to know you */}
         <AccordionItem 
-          title="Psychometric Interview Results" 
+          title="Stage 1: Getting to know you" 
           icon={CheckIcon} 
-          count={data?.testResults?.psychometric?.passedCount}
-          isOpen={openSection === 'Psychometric'} 
-          onToggle={() => toggleSection('Psychometric')}
+          count={stage1Applicants.length > 0 ? stage1Applicants.length : data?.testResults?.psychometric?.passedCount ?? (data?.testResults?.psychometric?.items?.length || 0)}
+          isOpen={openSection === 'Stage1' || openSection === 'Psychometric'} 
+          onToggle={() => toggleSection('Stage1')}
         >
-          <TestResultsTable 
-            sectionName="Psychometric" 
-            section={data?.testResults?.psychometric} 
-            onOpenDossier={handleOpenDossierById}
-          />
+          {data?.testResults?.psychometric?.items && data.testResults.psychometric.items.length > 0 ? (
+            <TestResultsTable 
+              sectionName="Psychometric" 
+              section={data.testResults.psychometric} 
+              onOpenDossier={handleOpenDossierById}
+            />
+          ) : (
+            <StageApplicantsTable
+              applicants={stage1Applicants}
+              onOpenDossier={handleOpenDossier}
+              onHire={onHire}
+              onReject={onReject}
+              jobId={jobId}
+              rolePostingId={data?.rolePostingId}
+            />
+          )}
         </AccordionItem>
 
-        {/* Situational Judgement Results */}
+        {/* Stage 2: Professional dimension */}
         <AccordionItem 
-          title="Situational Judgement Interview Results" 
+          title="Stage 2: Professional dimension" 
           icon={AlertTriangleIcon} 
-          count={data?.testResults?.situationalJudgement?.passedCount}
-          isOpen={openSection === 'SJT'} 
-          onToggle={() => toggleSection('SJT')}
+          count={stage2Applicants.length > 0 ? stage2Applicants.length : data?.testResults?.situationalJudgement?.passedCount ?? (data?.testResults?.situationalJudgement?.items?.length || 0)}
+          isOpen={openSection === 'Stage2' || openSection === 'SJT'} 
+          onToggle={() => toggleSection('Stage2')}
         >
-          <TestResultsTable 
-            sectionName="Situational Judgement" 
-            section={data?.testResults?.situationalJudgement} 
-            onOpenDossier={handleOpenDossierById}
-          />
+          {data?.testResults?.situationalJudgement?.items && data.testResults.situationalJudgement.items.length > 0 ? (
+            <TestResultsTable 
+              sectionName="Situational Judgement" 
+              section={data.testResults.situationalJudgement} 
+              onOpenDossier={handleOpenDossierById}
+            />
+          ) : (
+            <StageApplicantsTable
+              applicants={stage2Applicants}
+              onOpenDossier={handleOpenDossier}
+              onHire={onHire}
+              onReject={onReject}
+              jobId={jobId}
+              rolePostingId={data?.rolePostingId}
+            />
+          )}
         </AccordionItem>
 
-        {/* Video Interview Results */}
+        {/* Stage 3: How you show up */}
         <AccordionItem 
-          title="Video Interview Results" 
+          title="Stage 3: How you show up" 
           icon={PlayIcon} 
-          count={data?.testResults?.video?.passedCount}
-          isOpen={openSection === 'Video'} 
-          onToggle={() => toggleSection('Video')}
+          count={stage3Applicants.length > 0 ? stage3Applicants.length : data?.testResults?.video?.passedCount ?? (data?.testResults?.video?.items?.length || 0)}
+          isOpen={openSection === 'Stage3' || openSection === 'Video'} 
+          onToggle={() => toggleSection('Stage3')}
         >
-          <TestResultsTable 
-            sectionName="Video Interview" 
-            section={data?.testResults?.video} 
-            onOpenDossier={handleOpenDossierById}
-          />
+          {data?.testResults?.video?.items && data.testResults.video.items.length > 0 ? (
+            <TestResultsTable 
+              sectionName="Video Interview" 
+              section={data.testResults.video} 
+              onOpenDossier={handleOpenDossierById}
+            />
+          ) : (
+            <StageApplicantsTable
+              applicants={stage3Applicants}
+              onOpenDossier={handleOpenDossier}
+              onHire={onHire}
+              onReject={onReject}
+              jobId={jobId}
+              rolePostingId={data?.rolePostingId}
+            />
+          )}
         </AccordionItem>
       </div>
 

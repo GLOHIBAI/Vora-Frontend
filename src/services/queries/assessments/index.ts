@@ -1296,6 +1296,7 @@ export const fetchEmployerReport = async (
   const res = await apiClient.get<any>({
     url: `/assessments/${assessmentId}/employer-report${qs}`,
     auth: true,
+    suppressErrorToast: true,
   });
   return (res?.data || res) as import('./types').EmployerReportData;
 };
@@ -1361,11 +1362,11 @@ export const useEmployerDecideRejectMutation = () => {
   return useMutation({
     mutationFn: ({
       assessmentId,
-      kind,
+      kind = 'LEGITIMATE',
       reason,
     }: {
       assessmentId: string;
-      kind: 'LEGITIMATE' | 'FRAUD';
+      kind?: 'LEGITIMATE' | 'FRAUD';
       reason?: string;
     }) =>
       apiClient.post<any>({
