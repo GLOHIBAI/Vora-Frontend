@@ -90,34 +90,71 @@ const RoleAssessmentStageThreeOutcome: React.FC = () => {
     }
   }, [assessmentId, roleSlug, navigate]);
 
-  const { data: verdictRaw, isLoading: isVerdictLoading, isFetching: isVerdictFetching } = useGateVerdictQuery(assessmentId, 3, { enabled: !!assessmentId });
+  const {
+    data: verdictRaw,
+    isLoading: isVerdictLoading,
+    isFetching: isVerdictFetching,
+    isError,
+    error,
+    refetch,
+  } = useGateVerdictQuery(assessmentId, 3, { enabled: !!assessmentId });
   const verdict = unwrapAssessmentData<GateVerdictResponse>(verdictRaw);
 
-  if (isVerdictLoading || isVerdictFetching || !verdict) {
+  if (isError) {
+    return (
+      <div className="min-h-screen bg-[#F7F7F7] flex flex-col items-center justify-center p-6 text-center">
+        <div className="max-w-md w-full bg-white rounded-2xl p-8 border border-gray-100 shadow-lg space-y-5">
+          <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto">
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Unable to Load Interview Outcome</h2>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              {(error as any)?.message || 'We encountered an issue retrieving your Stage 3 assessment outcome. Please check your connection and try again.'}
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 pt-2">
+            <button
+              onClick={() => refetch()}
+              className="w-full py-3 px-5 bg-[#0047CC] hover:bg-[#003bb0] text-white rounded-xl text-sm font-semibold transition-all cursor-pointer shadow-xs"
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => navigate(`/onboarding/talent/${roleSlug}/interview/journey`)}
+              className="w-full py-3 px-5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-sm font-semibold transition-all cursor-pointer border border-gray-200"
+            >
+              Return to Journey
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isVerdictLoading || isVerdictFetching || !verdict || (typeof (verdict as any)?.score !== 'number' && typeof (verdictRaw as any)?.data?.score !== 'number')) {
     return <FullPageSpinner message="Retrieving your interview outcome..." />;
   }
 
   const vData: any = (verdict as any)?.data || verdict || (verdictRaw as any)?.data || verdictRaw || {};
 
   const firstName = getCandidateFirstName(user, vData?.talent?.firstName || 'Candidate');
-  const roleTitle = vData?.role?.roleTitle || 'Role';
-  const employerName = vData?.role?.employerName || 'Vora AI';
-  const score = vData?.score ?? 71;
+  const roleTitle = vData?.role?.roleTitle || '';
+  const employerName = vData?.role?.employerName || '';
+  const score = vData?.score ?? 0;
   const threshold = vData?.threshold ?? 80;
-  const overallScore = vData?.overallScore ?? 81;
+  const overallScore = vData?.overallScore ?? score;
 
   const heroTag = vData?.heroTag || 'Stage 3 outcome · with your next path';
-  const headline = vData?.headline || `Stage 3 interview: ${firstName}, you did not pass.`;
-  const summary =
-    vData?.summary ||
-    `Your Stage 3 score of ${score}% did not clear the ${threshold}% threshold for ${roleTitle} at ${employerName}. While your overall profile score across all three gates is ${overallScore}%, Stage 3 is a required gate and cannot be averaged out.`;
+  const headline = vData?.headline || `${firstName}, Stage 3 Outcome`;
+  const summary = vData?.summary || '';
 
   const narrativeParagraphs: string[] = vData?.narrativeParagraphs || [];
-  const stages: Array<{ gate: number; label: string; score: number; status: string }> = vData?.stages || [
-    { gate: 1, label: 'Stage 1 · Foundation', score: 86, status: 'passed' },
-    { gate: 2, label: 'Stage 2 · Knowledge & Expertise', score: 85, status: 'passed' },
-    { gate: 3, label: 'Stage 3 · How you show up', score: score, status: 'failed' },
-  ];
+  const stages: Array<{ gate: number; label: string; score: number; status: string }> = vData?.stages || [];
 
   const rawGaps =
     vData?.gaps ||
