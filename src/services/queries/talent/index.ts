@@ -317,72 +317,96 @@ export const useBeginAssessmentMutation = () => {
   });
 };
 
-export interface TalentDashboardTalent {
-  id?: string;
-  fullName?: string;
-  email?: string;
-  targetRole?: string;
-  status?: string;
-  cvParseStatus?: string;
-  cvFileName?: string;
-  cvLastAnalyzedAt?: string;
-  hasCv?: boolean;
-  skills?: string[];
-  skillsCount?: number;
-  experienceYears?: number;
-  seniority?: string;
-  profileCompleteness?: number;
+export interface TalentDashboardGreeting {
+  firstName?: string;
+  welcomeMessage?: string;
+  subtitle?: string;
 }
 
-export interface TalentDashboardActiveAssessment {
+export interface TalentDashboardMetricScore {
+  value?: number;
+  unlocked?: boolean;
+  hint?: string;
+}
+
+export interface TalentDashboardMetricGrade {
+  grade?: string | null;
+  label?: string | null;
+  unlocked?: boolean;
+  hint?: string;
+}
+
+export interface TalentDashboardMetricJobs {
+  count?: number;
+  hint?: string | null;
+}
+
+export interface TalentDashboardMetrics {
+  careerReadinessScore?: TalentDashboardMetricScore;
+  interviewGrade?: TalentDashboardMetricGrade;
+  jobsApplied?: TalentDashboardMetricJobs;
+}
+
+export interface TalentDashboardUnlockItem {
+  locked?: boolean;
+  hrefHint?: string;
+  label?: string;
+}
+
+export interface TalentDashboardUnlocks {
+  uploadCv?: TalentDashboardUnlockItem;
+  mentors?: TalentDashboardUnlockItem;
+  jobs?: TalentDashboardUnlockItem;
+}
+
+export interface TalentDashboardActivityContext {
   assessmentId?: string;
   rolePostingId?: string;
   roleTitle?: string;
-  employerName?: string;
   stage?: number;
-  status?: string;
-  overallPassed?: boolean | null;
-  nextStep?: string;
-  startedAt?: string;
-  resumeUrl?: string;
+  stageStatus?: string;
+  gate1FinalSubmitted?: boolean;
 }
 
-export interface TalentDashboardAssessmentsSummary {
-  total?: number;
-  completed?: number;
-  inProgress?: number;
-  passed?: number;
-  actionRequired?: number;
+export interface TalentDashboardActivity {
+  id?: string;
+  type?: string;
+  priority?: number;
+  title?: string;
+  subtitle?: string;
+  ctaLabel?: string;
+  hrefHint?: string;
+  context?: TalentDashboardActivityContext;
 }
 
-export interface TalentDashboardMatchedRole {
+export interface TalentDashboardActivities {
+  schemaVersion?: number;
+  primary?: TalentDashboardActivity;
+  activities?: TalentDashboardActivity[];
+}
+
+export interface TalentDashboardSampleOpportunity {
   rolePostingId?: string;
   roleLink?: string;
   roleTitle?: string;
+  organisationName?: string;
   employerName?: string;
   location?: string;
-  workplaceType?: string;
-  matchScore?: number;
-  matchExplanation?: string;
+  compensationSummary?: string;
   salaryRange?: string;
-  applied?: boolean;
-  assessmentStatus?: string | null;
-}
-
-export interface TalentDashboardQuickAction {
-  id?: string;
-  label?: string;
-  href?: string;
-  badge?: string;
-  primary?: boolean;
+  publishedAt?: string;
+  tags?: string[];
+  hrefHint?: string;
 }
 
 export interface TalentDashboardData {
-  talent?: TalentDashboardTalent;
-  activeAssessment?: TalentDashboardActiveAssessment | null;
-  assessmentsSummary?: TalentDashboardAssessmentsSummary;
-  matchedRoles?: TalentDashboardMatchedRole[];
-  quickActions?: TalentDashboardQuickAction[];
+  schemaVersion?: number;
+  greeting?: TalentDashboardGreeting;
+  metrics?: TalentDashboardMetrics;
+  unlocks?: TalentDashboardUnlocks;
+  hasActiveCv?: boolean;
+  activities?: TalentDashboardActivities;
+  sampleOpportunities?: TalentDashboardSampleOpportunity[];
 }
 
 export const useTalentDashboardQuery = (options: Record<string, any> = {}) => {
@@ -396,5 +420,6 @@ export const useTalentDashboardQuery = (options: Record<string, any> = {}) => {
     ...options,
   });
 };
+
 
 
