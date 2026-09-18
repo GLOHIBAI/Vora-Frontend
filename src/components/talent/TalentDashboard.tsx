@@ -5,6 +5,7 @@ import StatCard from '../dashboard/StatCard';
 import QuickActionCard from '../dashboard/QuickActionCard';
 import JobCard from '../dashboard/JobCard';
 import { InfoIcon } from '../common/Icons';
+import FullPageSpinner from '../common/FullPageSpinner';
 import { TALENT_SAMPLE_JOBS } from '../../constants/mockData';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -56,7 +57,11 @@ const TalentDashboard: React.FC = () => {
     return mapApiResponseToRoleData(activeRoleSlug, apiData);
   }, [roleResponse, activeRoleSlug]);
 
-  if (!user && !isDashboardLoading) return null;
+  if (isDashboardLoading) {
+    return <FullPageSpinner message="Loading dashboard..." />;
+  }
+
+  if (!user) return null;
 
   const firstName = greeting?.firstName || user?.firstName || 'Candidate';
   const welcomeTitle = greeting?.welcomeMessage || `Welcome, ${firstName}.`;
