@@ -11,9 +11,11 @@ import { useAuth } from '../../context/AuthContext';
 import {
   useGetPublicRoleQuery,
   useTalentDashboardQuery,
+  useTalentJobsQuery,
   type TalentDashboardData,
   type TalentDashboardActivity,
   type TalentDashboardSampleOpportunity,
+  type TalentJobListItem,
 } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 
@@ -24,6 +26,12 @@ const TalentDashboard: React.FC = () => {
   // 1. Fetch live Talent Dashboard data: GET /api/v1/talent/dashboard
   const { data: dashboardResponse, isLoading: isDashboardLoading } = useTalentDashboardQuery();
   const dashboardData: TalentDashboardData | undefined = dashboardResponse?.data || (dashboardResponse as any);
+
+  // 2. Fetch live Talent Jobs (applied & available): GET /api/v1/talent/jobs
+  const { data: jobsResponse } = useTalentJobsQuery();
+  const jobsData = jobsResponse?.data;
+  const appliedJobs = jobsData?.appliedJobs || [];
+  const availableJobs = jobsData?.availableJobs || [];
 
   const greeting = dashboardData?.greeting;
   const metrics = dashboardData?.metrics;
@@ -73,7 +81,7 @@ const TalentDashboard: React.FC = () => {
   const gradeValue = metrics?.interviewGrade?.grade || metrics?.interviewGrade?.label || '--';
   const gradeHint = metrics?.interviewGrade?.hint || 'Upload CV to unlock Grade.';
 
-  const jobsAppliedCount = metrics?.jobsApplied?.count ?? 0;
+  const jobsAppliedCount = appliedJobs.length > 0 ? appliedJobs.length : (metrics?.jobsApplied?.count ?? 0);
   const jobsAppliedHint = metrics?.jobsApplied?.hint || (jobsAppliedCount > 0 ? `${jobsAppliedCount} application active` : 'Explore available roles');
 
   // Handle primary activity navigation
@@ -347,18 +355,60 @@ const TalentDashboard: React.FC = () => {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-lg font-medium text-gray-900 mb-1">
-              Sample Opportunities on the Platform
+              {availableJobs.length > 0 ? 'Available Opportunities' : 'Sample Opportunities on the Platform'}
             </h2>
             <p className="text-sm text-gray-500 font-medium">
-              Upload your CV to get jobs tailored specifically for you.
+              {availableJobs.length > 0
+                ? 'Verified roles matching your skills. Apply and proceed through assessment gates.'
+                : 'Upload your CV to get jobs tailored specifically for you.'}
             </p>
           </div>
+          {availableJobs.length > 0 && (
+            <button
+              onClick={() => navigate('/jobs')}
+              className="text-sm font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
+            >
+              View All ({availableJobs.length})
+            </button>
+          )}
         </div>
         <div className="columns-1 md:columns-2 xl:columns-3 gap-6 space-y-6">
-          {sampleOpportunities && sampleOpportunities.length > 0 ? (
+          {availableJobs.length > 0 ? (
+            availableJobs.map((job: TalentJobListItem, index: number) => {
+              const formatJobSalary = (min?: number | null, max?: number | null, currency?: string | null) => {
+                if (!min && !max) return 'Competitive';
+                const curr = currency || 'USD';
+                const sym = curr === 'USD' ? '$' : curr === 'GBP' ? '£' : curr === 'EUR' ? '€' : `${curr} `;
+                if (min && max) return `${sym}${(min / 1000).toFixed(0)}k - ${sym}${(max / 1000).toFixed(0)}k`;
+                if (min) return `From ${sym}${(min / 1000).toFixed(0)}k`;
+                return `Up to ${sym}${(max! / 1000).toFixed(0)}k`;
+              };
+
+              return (
+                <div 
+                  key={job.id || `avail-job-${index}`} 
+                  className="break-inside-avoid cursor-pointer"
+                  onClick={() => navigate(`/jobs/${job.id}`)}
+                >
+                  <JobCard 
+                    title={job.roleTitle || 'Job Opportunity'}
+                    company={job.companyName || 'Company'}
+                    location={job.location || 'Remote'}
+                    postedAt={job.createdAt ? new Date(job.createdAt).toLocaleDateString() : 'Recent'}
+                    salary={formatJobSalary(job.salaryMin, job.salaryMax, job.salaryCurrency)}
+                    description={job.department ? `Department: ${job.department}` : 'Verified opportunity on Vora.'}
+                    tags={[
+                      ...(job.employmentType ? [job.employmentType.replace('_', ' ')] : []),
+                      ...(typeof job.matchScore === 'number' ? [`${job.matchScore}% MATCH`] : []),
+                    ]}
+                  />
+                </div>
+              );
+            })
+          ) : sampleOpportunities && sampleOpportunities.length > 0 ? (
             sampleOpportunities.map((opp: TalentDashboardSampleOpportunity, idx: number) => (
               <div 
-                key={opp.rolePostingId || idx} 
+                key={opp.rolePostingId || `sample-opp-${idx}`} 
                 className="break-inside-avoid"
                 onClick={() => {
                   if (opp.roleLink) {
@@ -381,7 +431,7 @@ const TalentDashboard: React.FC = () => {
             ))
           ) : (
             TALENT_SAMPLE_JOBS.map((job, idx) => (
-              <div key={idx} className="break-inside-avoid">
+              <div key={job.title || `sample-job-${idx}`} className="break-inside-avoid">
                 <JobCard {...job} />
               </div>
             ))

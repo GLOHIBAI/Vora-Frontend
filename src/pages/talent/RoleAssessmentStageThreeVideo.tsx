@@ -924,18 +924,39 @@ const RoleAssessmentStageThreeVideo: React.FC = () => {
 
   if (isPreparingContent || !currentItem) {
     if (apiError) {
+      const isGateLocked =
+        apiError.toLowerCase().includes('stage 2') ||
+        apiError.toLowerCase().includes('gate 2') ||
+        apiError.toLowerCase().includes('locked') ||
+        apiError.toLowerCase().includes('passed');
+
       return (
         <div className="min-h-screen bg-[#F7F7F7] flex flex-col items-center justify-center p-6 text-center font-sans">
           <div className="bg-white p-8 rounded-2xl shadow-sm border border-[#E6E6E6] max-w-md w-full">
-            <h2 className="text-xl font-bold text-[#1A1A1A] mb-2">Unable to load questions</h2>
+            <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4 font-bold text-xl">
+              !
+            </div>
+            <h2 className="text-xl font-bold text-[#1A1A1A] mb-2">
+              {isGateLocked ? 'Stage 3 Locked' : 'Unable to load questions'}
+            </h2>
             <p className="text-sm text-[#666] mb-6">{apiError}</p>
-            <Button
-              variant="primary"
-              onClick={() => window.location.reload()}
-              className="w-full"
-            >
-              Retry
-            </Button>
+            {isGateLocked ? (
+              <Button
+                variant="primary"
+                onClick={() => navigate(`/onboarding/talent/${roleSlug}/interview/stage-2`)}
+                className="w-full"
+              >
+                Go to Stage 2
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                onClick={() => window.location.reload()}
+                className="w-full"
+              >
+                Retry
+              </Button>
+            )}
           </div>
         </div>
       );

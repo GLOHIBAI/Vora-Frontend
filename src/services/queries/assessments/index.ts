@@ -614,10 +614,10 @@ export const useAssessmentGatesProgressQuery = (
   });
 
 /**
- * GET /assessments/:assessmentId/gates/{gate}/verdict
+ * GET /assessments/:assessmentId/gates/{gate}
  *
- * Poll until verdict !== 'pending'. Backend scores asynchronously after all
- * gate-1 screens are submitted same pattern as CV parse status polling.
+ * Verdict & scoring details for Gate 1, 2, or 3.
+ * Poll until status !== 'generating' or verdict is ready.
  */
 export const useGateVerdictQuery = (
   assessmentId: string,
@@ -628,7 +628,7 @@ export const useGateVerdictQuery = (
     queryKey: assessmentKeys.verdict(assessmentId, gate),
     queryFn: () =>
       apiClient.get<GateVerdictResponse>({
-        url: `/assessments/${assessmentId}/gates/${gate}/verdict`,
+        url: `/assessments/${assessmentId}/gates/${gate}`,
         auth: true,
         suppressErrorToast: true,
       }),

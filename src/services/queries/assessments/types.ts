@@ -465,8 +465,15 @@ export interface GateVerdictResponse {
   status?: "generating" | "ready";
 
   gate: number;
-  verdict: "pass" | "fail" | "pending" | "qualified" | "not_yet";
+  verdict?: "pass" | "fail" | "pending" | "qualified" | "not_yet" | {
+    headline?: string;
+    summary?: string;
+    details?: string;
+    actionItems?: string[];
+    [key: string]: any;
+  } | string | null;
   passed?: boolean;
+  isComplete?: boolean;
   score?: number;
   threshold?: number;
   outcome?: "passed" | "failed";
@@ -486,11 +493,18 @@ export interface GateVerdictResponse {
   parts?: Array<{
     key?: string;
     part?: number;
+    partIndex?: number;
+    partName?: string;
     partLabel?: string;
     displayLabel?: string;
     description?: string;
     shortDetail?: string;
-    scorePercent: number;
+    score?: number;
+    maxScore?: number;
+    scorePercent?: number;
+    feedback?: string | null;
+    strengths?: string[];
+    improvements?: string[];
   }>;
   curator?: {
     eyebrow?: string;

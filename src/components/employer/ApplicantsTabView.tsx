@@ -919,11 +919,11 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
                       <div className="flex items-center gap-4">
                         <div className="flex-1 space-y-1">
                           <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">Overall Fit</p>
-                          <div className="h-2 bg-gray-50 rounded-full overflow-hidden">
-                            <div className="h-full bg-green-500" style={{ width: `${score}%` }} />
+                          <div className="h-2 bg-blue-50 rounded-full overflow-hidden">
+                            <div className="h-full bg-[#0047CC] rounded-full" style={{ width: `${score}%` }} />
                           </div>
                         </div>
-                        <span className="text-[18px] font-medium text-green-600">{score}%</span>
+                        <span className="text-[18px] font-medium text-[#0047CC]">{score}%</span>
                       </div>
                     )}
                     <button 

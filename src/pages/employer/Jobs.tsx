@@ -174,8 +174,16 @@ const resolveJobActions = (job: any): EmployerJobAction[] => {
   return actions;
 };
 
+import TalentJobsView from '../../components/talent/TalentJobsView';
+
 const Jobs: React.FC = () => {
   const { user } = useAuth();
+  const isTalent = user?.role?.toUpperCase() === 'TALENT';
+
+  if (isTalent) {
+    return <TalentJobsView />;
+  }
+
   const isEmployer = user?.role?.toLowerCase() === 'employer';
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();

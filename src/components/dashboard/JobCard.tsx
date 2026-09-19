@@ -10,7 +10,7 @@ const JobCard: React.FC<JobCardProps> = ({
   postedAt, 
   salary, 
   description, 
-  tags 
+  tags = [] 
 }) => {
   return (
     <div className="bg-white border border-gray-100 rounded-2xl p-6 hover:shadow-lg hover:border-blue-100 transition-all duration-300 group cursor-pointer">
@@ -18,14 +18,16 @@ const JobCard: React.FC<JobCardProps> = ({
         <div className="flex gap-4">
           <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center overflow-hidden border border-gray-50 group-hover:scale-105 transition-transform">
             {logo ? (
-              <img src={logo} alt={company} className="w-full h-full object-cover" />
+              <img src={logo} alt={company || 'Company'} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-[#0047CC] font-medium text-lg">{company.charAt(0)}</span>
+              <span className="text-[#0047CC] font-medium text-lg">
+                {company?.charAt(0).toUpperCase() || '?'}
+              </span>
             )}
           </div>
           <div>
             <h3 className="font-medium text-gray-900 group-hover:text-[#0047CC] transition-colors">{title}</h3>
-            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">{company}</p>
+            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">{company || 'Company'}</p>
           </div>
         </div>
         <div className="text-right">

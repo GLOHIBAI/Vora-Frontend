@@ -200,10 +200,18 @@ const DynamicDetailCard: React.FC<{
   );
 };
 
+import TalentJobDetailsView from '../../components/talent/TalentJobDetailsView';
+
 const JobDetails: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isTalent = user?.role?.toUpperCase() === 'TALENT';
+
+  if (isTalent) {
+    return <TalentJobDetailsView />;
+  }
+
   const isEmployer = user?.role?.toLowerCase() === 'employer';
   const [activeTab, setActiveTab] = useState('Details');
   const [editSection, setEditSection] = useState<'details' | 'responsibilities' | 'experience' | 'compensation' | 'collaboration' | null>(null);

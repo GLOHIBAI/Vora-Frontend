@@ -421,5 +421,50 @@ export const useTalentDashboardQuery = (options: Record<string, any> = {}) => {
   });
 };
 
+export type {
+  TalentJobStage,
+  TalentJobListItem,
+  TalentJobsResponse,
+  TalentJobCompany,
+  TalentJobApplication,
+  TalentJobDetail,
+  GateVerdictPart,
+  GateVerdictData,
+} from "../../../types/talentJobs";
+import type { TalentJobsResponse, TalentJobDetail } from "../../../types/talentJobs";
 
+/**
+ * Fetch all talent opportunities split into appliedJobs and availableJobs.
+ * Backend: GET /talent/jobs
+ */
+export const useTalentJobsQuery = (options: Record<string, any> = {}) => {
+  return useQuery({
+    queryKey: ["talent", "jobs"],
+    queryFn: () =>
+      apiClient.get<{ data: TalentJobsResponse; statusCode: number; message: string }>({
+        url: "/talent/jobs",
+        auth: true,
+      }),
+    ...options,
+  });
+};
 
+/**
+ * Fetch single job details with application state.
+ * Backend: GET /talent/jobs/:id
+ */
+export const useTalentJobDetailQuery = (
+  jobId: string,
+  options: Record<string, any> = {},
+) => {
+  return useQuery({
+    queryKey: ["talent", "jobs", jobId],
+    queryFn: () =>
+      apiClient.get<{ data: TalentJobDetail; statusCode: number; message: string }>({
+        url: `/talent/jobs/${encodeURIComponent(jobId)}`,
+        auth: true,
+      }),
+    enabled: !!jobId,
+    ...options,
+  });
+};

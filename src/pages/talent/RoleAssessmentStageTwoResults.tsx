@@ -243,11 +243,11 @@ const RoleAssessmentStageTwoResults: React.FC = () => {
                     {p.displayLabel || `Part ${p.part} · ${p.partLabel}`}
                   </div>
                   <div className="text-[18px] font-[900] text-[#0047CC] tracking-[-0.3px] tabular-nums">
-                    {p.scorePercent}<small className="text-[11.5px] font-[700] text-[#808080] ml-[2px]">%</small>
+                    {p.scorePercent ?? (p.score != null && p.maxScore ? Math.round((p.score / p.maxScore) * 100) : 0)}<small className="text-[11.5px] font-[700] text-[#808080] ml-[2px]">%</small>
                   </div>
                 </div>
                 <div className="h-[8px] bg-[#F7F7F7] rounded-full overflow-hidden mb-[8px]">
-                  <div className="h-full bg-gradient-to-r from-[#0047CC] to-[#387DFF] rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, p.scorePercent)}%` }} />
+                  <div className="h-full bg-gradient-to-r from-[#0047CC] to-[#387DFF] rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, p.scorePercent ?? 0)}%` }} />
                 </div>
                 <p className="text-[12.5px] text-[#808080] leading-[1.55]">
                   {p.shortDetail || p.description}
