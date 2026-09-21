@@ -13,7 +13,8 @@ VORA is a high-fidelity, enterprise-grade talent assessment, clinical simulation
     - [2. 🏢 Employer Job Wizard, Hiring Vaults \& Applicant Management](#2--employer-job-wizard-hiring-vaults--applicant-management)
     - [3. 💳 Payments, Escrow \& Wallet Infrastructure](#3--payments-escrow--wallet-infrastructure)
     - [4. 🎓 Mentor Portal \& Upskilling Catalog](#4--mentor-portal--upskilling-catalog)
-    - [5. 🛡️ Anti-Cheat, Resiliency \& Offline Safeguards](#5-️-anti-cheat-resiliency--offline-safeguards)
+    - [5. 📚 Courses \& Upskilling Catalog](#5--courses--upskilling-catalog)
+    - [6. 🛡️ Anti-Cheat, Resiliency \& Offline Safeguards](#6-️-anti-cheat-resiliency--offline-safeguards)
   - [🛠️ Technology Stack](#️-technology-stack)
   - [📂 Project Architecture \& Directory Structure](#-project-architecture--directory-structure)
   - [⚙️ Environment Configuration](#️-environment-configuration)
@@ -102,7 +103,16 @@ VORA is a high-fidelity, enterprise-grade talent assessment, clinical simulation
 
 ---
 
-### 5. 🛡️ Anti-Cheat, Resiliency & Offline Safeguards
+### 5. 📚 Courses & Upskilling Catalog
+
+* **Course Browsing (`CoursesList`)**:
+  * Searchable, filterable catalog of upskilling courses across domains and proficiency levels with rich card layouts and engagement metrics.
+* **Course Details (`CourseDetails`)**:
+  * In-depth course view with curriculum breakdowns, mentor profiles, enrollment actions, and related course recommendations.
+
+---
+
+### 6. 🛡️ Anti-Cheat, Resiliency & Offline Safeguards
 
 * **Anti-Cheat Engine**:
   * **Tab-Switch Detection**: Monitors document visibility states (`visibilitychange`). Dispatches warnings and automatically submits timed sessions upon exceeding cheat thresholds (configurable via `VITE_ENABLE_ANTI_CHEAT_TAB_SWITCH`).
@@ -144,7 +154,7 @@ Vora-Frontend/
 │   ├── catalog/                  # Assessment shape catalog reference
 │   ├── components/               # Modular component library
 │   │   ├── auth/                 # Route guards (EmployerRoute, RoleApplyRoute) & auth forms
-│   │   ├── common/               # 47+ reusable UI primitives (Buttons, Inputs, DatePicker, Selects, etc.)
+│   │   ├── common/               # 49 reusable UI primitives (Buttons, Inputs, DatePicker, Selects, etc.)
 │   │   ├── dashboard/            # Stat cards, quick actions, job cards
 │   │   ├── employer/             # PostJobWizard, modals, applicant tables
 │   │   ├── jobs/                 # Job management views
@@ -155,15 +165,22 @@ Vora-Frontend/
 │   │   ├── talent/               # Talent assessment screens, journey rails, match cards
 │   │   │   ├── assessment/       # AssessmentItemRenderer, Gate1ScreenView, SessionRails
 │   │   │   │   ├── items/        # 20 item type renderers (MCQ, Cloze, Code, Rank, etc.)
-│   │   │   │   └── shared/       # DataDisplayBlock, ReasonTextarea, CustomSelect, OptionButton
-│   │   │   └── profileMatch/     # Match state cards (Building, Result, Upskill, Blocked)
+│   │   │   │   └── shared/       # 12 shared primitives (DataDisplayBlock, ReasonTextarea, OptionButton, EvidenceMap, ProctoringCamera, etc.)
+│   │   │   ├── cvUpload/         # CV upload components
+│   │   │   ├── profileMatch/     # Match state cards (Building, Result, Upskill, Blocked)
+│   │   │   ├── profileMatchBlocked/  # Blocked match UI
+│   │   │   ├── profileMatchResult/   # Match result details
+│   │   │   ├── profileMatchUpskill/  # Upskill recommendation cards
+│   │   │   ├── profileWaitlist/      # Waitlist state components
+│   │   │   └── rolesFound/           # Alternative roles matched
 │   │   └── vault/                # Vault edit meters, escrow recalculations, countdowns
 │   ├── config/                   # Global configuration (gate1Api, toastOptions)
 │   ├── constants/                # Currencies, brand colors, navigation, wizard constants
 │   ├── context/                  # AuthContext (multi-token support, session handling)
 │   ├── data/                     # Static reference datasets
-│   ├── hooks/                    # 19 custom hooks (useAssessmentScreen, useCountdown, useOnlineStatus, etc.)
+│   ├── hooks/                    # 21 custom hooks (useAssessmentScreen, useCountdown, useOnlineStatus, useGate1ResumePresentation, etc.)
 │   ├── layout/                   # MainLayout, DashboardLayout, ProtectedDashboardLayout
+│   ├── lib/                      # Library integrations (Google Auth initialization)
 │   ├── mocks/                    # Mock data generators for Gate 1 & Stage 1 offline testing
 │   ├── pages/                    # Route page components
 │   │   ├── auth/                 # Login, Signup, RoleSignup, VerifyOTP, SelectAccountType
@@ -171,20 +188,28 @@ Vora-Frontend/
 │   │   ├── mentor/               # MentorApply, MentorOnboarding
 │   │   ├── onboarding/           # Welcome, OnboardingContainer
 │   │   ├── public/               # RoleLanding
-│   │   ├── talent/               # 66 assessment stages, gates, simulations & match views
+│   │   ├── courses/              # CoursesList, CourseDetails (upskilling catalog browsing)
+│   │   ├── talent/               # 46 assessment stages, gates, simulations & match views
 │   │   ├── Dashboard.tsx         # Unified role-aware dashboard
 │   │   ├── Settings.tsx          # User & company settings
 │   │   └── NotFound.tsx          # Custom 404 page
 │   ├── services/                 # API & Data services
 │   │   ├── api/                  # Fetch wrapper, single-flight refresh token interceptor, error formatter
-│   │   └── queries/              # TanStack Query hooks (assessments, auth, onboarding, rolePostings, talent)
-│   ├── types/                    # 27 TypeScript domain type definition files
-│   ├── utils/                    # 44 helper utilities (assessmentFlow, validation, dates, OAuth, etc.)
+│   │   └── queries/              # TanStack Query hooks (assessments, auth, employer, mentor, onboarding, rolePostings, talent)
+│   ├── types/                    # 28 TypeScript domain type definition files
+│   ├── utils/                    # 49 helper utilities (assessmentFlow, validation, dates, OAuth, etc.)
 │   ├── App.tsx                   # Master routing configuration with suspense & guards
 │   ├── index.css                 # Tailwind CSS v4 design tokens & Raleway typography
 │   └── main.tsx                  # Application bootstrap (QueryClientProvider, BrowserRouter, AuthProvider)
+├── docs/                         # Test fixtures & reference documentation
+├── VORA_complete_flow/           # Strategic logic docs & complete flow visualizations
+├── eslint.config.js              # ESLint flat configuration
+├── index.html                    # Vite entry HTML
 ├── package.json                  # Dependencies & execution scripts
-├── tsconfig.json                 # TypeScript compiler configuration
+├── tsconfig.json                 # TypeScript compiler configuration (project references)
+├── tsconfig.app.json             # Application TypeScript configuration
+├── tsconfig.node.json            # Node/tooling TypeScript configuration
+├── vercel.json                   # Vercel deployment configuration
 └── vite.config.ts                # Vite 8 & Tailwind CSS configuration
 ```
 
@@ -205,6 +230,9 @@ cp .env.example .env
 | `VITE_GATE1_API_ENABLED` | Set to `"true"` to communicate with live Gate 1 endpoints; `"false"` to use in-app simulation mocks | `false` |
 | `VITE_ENABLE_ANTI_CHEAT_TAB_SWITCH` | Set to `"true"` to enable tab-switch visibility warnings & auto-submit triggers; `"false"` for local debugging | `false` |
 | `VITE_ENABLE_ANTI_CHEAT_PASTE` | Set to `"true"` to restrict clipboard paste operations in open textareas; `"false"` for dev debugging | `false` |
+| `VITE_ENABLE_TIMER_EXPIRY` | Set to `"true"` to enforce auto-submit when assessment timer expires (e.g., Stage 2); `"false"` to prevent timer from affecting assessments | `false` |
+| `VITE_ENABLE_CAMERA_RECORDING` | Set to `"true"` to enable proctoring camera feed emulator during Stage 1 & Stage 2 assessments; `"false"` for dev debugging | `true` |
+| `VITE_ENABLE_FRONTEND_TRANSCRIPTION` | Set to `"true"` to silently transcribe Stage 3 audio and upload transcript with video; `"false"` to disable | `true` |
 
 ---
 
