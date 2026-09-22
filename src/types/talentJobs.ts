@@ -1,29 +1,92 @@
 export type TalentJobStage = 'GATE_1' | 'GATE_2' | 'GATE_3' | 'HIRED' | 'REJECTED';
 
-export interface TalentJobListItem {
-  id: string;
+export interface TalentAppliedJobStage {
+  current: number;
+  total: number;
+  name: string;
+  label: string;
+  completed: boolean;
+}
+
+export interface TalentAppliedJob {
+  assessmentId: string;
+  rolePostingId: string;
   roleTitle: string;
-  department?: string | null;
-  location?: string | null;
-  employmentType?: string | null;
+  roleLink: string;
+  organisationName: string;
+  location: string;
+  compensationSummary: string;
+  tags: string[];
+  status: string;
+  overallPassed: boolean | null;
+  stage: TalentAppliedJobStage;
+  overallScore: number | null;
+  applicantCode: string | null;
+  decisionStatus: string | null;
+  appliedAt: string;
+  lastActivityAt: string;
+  hrefHint: string;
+
+  // Compatibility aliases
+  id?: string;
+  companyName?: string;
+  companySlug?: string | null;
+  companyLogo?: string | null;
+  currentStage?: TalentJobStage | string | null;
+  stageProgress?: number | null;
   salaryMin?: number | null;
   salaryMax?: number | null;
   salaryCurrency?: string | null;
-  status: string;
-  createdAt: string;
-  companyName: string;
-  companySlug?: string | null;
-  companyLogo?: string | null;
+  department?: string | null;
+  employmentType?: string | null;
+  createdAt?: string;
   matchScore?: number | null;
-  currentStage?: TalentJobStage | string | null;
-  stageProgress?: number | null;
-  assessmentId?: string | null;
-  appliedAt?: string | null;
 }
 
+export interface TalentAvailableJob {
+  rolePostingId: string;
+  roleLink: string;
+  roleTitle: string;
+  organisationName: string;
+  location: string;
+  compensationSummary: string;
+  tags: string[];
+  publishedAt: string;
+  isApplied: boolean;
+  matchScore: number | null;
+  matchOutcome: string | null;
+  hrefHint: string;
+
+  // Compatibility aliases
+  id?: string;
+  companyName?: string;
+  companySlug?: string | null;
+  companyLogo?: string | null;
+  currentStage?: TalentJobStage | string | null;
+  stageProgress?: number | null;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  salaryCurrency?: string | null;
+  department?: string | null;
+  employmentType?: string | null;
+  createdAt?: string;
+  assessmentId?: string | null;
+  appliedAt?: string | null;
+  status?: string;
+}
+
+export interface TalentJobsMetrics {
+  totalApplied: number;
+  inProgressCount: number;
+  completedCount: number;
+}
+
+export type TalentJobListItem = TalentAppliedJob | TalentAvailableJob;
+
 export interface TalentJobsResponse {
-  appliedJobs: TalentJobListItem[];
-  availableJobs: TalentJobListItem[];
+  appliedJobs: TalentAppliedJob[];
+  availableJobs: TalentAvailableJob[];
+  metrics?: TalentJobsMetrics;
 }
 
 export interface TalentJobCompany {
@@ -45,7 +108,9 @@ export interface TalentJobApplication {
 }
 
 export interface TalentJobDetail {
-  id: string;
+  id?: string;
+  rolePostingId?: string;
+  roleLink?: string;
   roleTitle: string;
   department?: string | null;
   location?: string | null;
@@ -53,17 +118,26 @@ export interface TalentJobDetail {
   salaryMin?: number | null;
   salaryMax?: number | null;
   salaryCurrency?: string | null;
+  compensationSummary?: string | null;
+  tags?: string[];
   description?: string | null;
   requirements?: string[] | string | null;
   responsibilities?: string[] | string | null;
   skills?: string[] | null;
   experienceLevel?: string | null;
   status: string;
-  createdAt: string;
-  company: TalentJobCompany;
-  hasApplied: boolean;
-  application: TalentJobApplication | null;
+  createdAt?: string;
+  publishedAt?: string;
+  company?: TalentJobCompany;
+  organisationName?: string;
+  hasApplied?: boolean;
+  isApplied?: boolean;
+  application?: TalentJobApplication | null;
   matchScore?: number | null;
+  stage?: TalentAppliedJobStage;
+  overallScore?: number | null;
+  applicantCode?: string | null;
+  hrefHint?: string;
 }
 
 export interface GateVerdictPart {

@@ -42,7 +42,7 @@ const TalentDashboard: React.FC = () => {
   // Primary active activity (assessment or application step)
   const primaryActivity = activities?.primary || (activities?.activities && activities.activities[0]);
 
-  // 2. Fallback to localStorage active assessment parameters if not provided by API
+  // Fallback to localStorage active assessment parameters if not provided by API
   const activeRoleSlug = localStorage.getItem('active_assessment_role_slug');
   const isStage2Unlocked = localStorage.getItem('vora_stage2_unlocked') === 'true';
   const isStage2Completed = localStorage.getItem('vora_stage2_completed') === 'true';
@@ -81,7 +81,11 @@ const TalentDashboard: React.FC = () => {
   const gradeValue = metrics?.interviewGrade?.grade || metrics?.interviewGrade?.label || '--';
   const gradeHint = metrics?.interviewGrade?.hint || 'Upload CV to unlock Grade.';
 
-  const jobsAppliedCount = appliedJobs.length > 0 ? appliedJobs.length : (metrics?.jobsApplied?.count ?? 0);
+  const jobsAppliedCount = typeof jobsData?.metrics?.totalApplied === 'number'
+    ? jobsData.metrics.totalApplied
+    : appliedJobs.length > 0 
+    ? appliedJobs.length 
+    : (metrics?.jobsApplied?.count ?? 0);
   const jobsAppliedHint = metrics?.jobsApplied?.hint || (jobsAppliedCount > 0 ? `${jobsAppliedCount} application active` : 'Explore available roles');
 
   // Handle primary activity navigation
@@ -384,21 +388,32 @@ const TalentDashboard: React.FC = () => {
                 return `Up to ${sym}${(max! / 1000).toFixed(0)}k`;
               };
 
+              const orgName = (job as any).organisationName || job.companyName || 'Verified Employer';
+              const salaryText = (job as any).compensationSummary || formatJobSalary(job.salaryMin, job.salaryMax, job.salaryCurrency);
+              const postedDate = (job as any).publishedAt ? new Date((job as any).publishedAt).toLocaleDateString() : job.createdAt ? new Date(job.createdAt).toLocaleDateString() : 'Recent';
+              const roleSlug = (job as any).roleLink || job.roleTitle?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'role';
+
               return (
                 <div 
-                  key={job.id || `avail-job-${index}`} 
+                  key={(job as any).rolePostingId || job.id || `avail-job-${index}`} 
                   className="break-inside-avoid cursor-pointer"
-                  onClick={() => navigate(`/jobs/${job.id}`)}
+                  onClick={() => {
+                    localStorage.setItem('active_assessment_role_slug', roleSlug);
+                    if ((job as any).rolePostingId) {
+                      localStorage.setItem('vora_role_posting_id', (job as any).rolePostingId);
+                    }
+                    navigate(`/role/${roleSlug}`);
+                  }}
                 >
                   <JobCard 
                     title={job.roleTitle || 'Job Opportunity'}
-                    company={job.companyName || 'Company'}
+                    company={orgName}
                     location={job.location || 'Remote'}
-                    postedAt={job.createdAt ? new Date(job.createdAt).toLocaleDateString() : 'Recent'}
-                    salary={formatJobSalary(job.salaryMin, job.salaryMax, job.salaryCurrency)}
+                    postedAt={postedDate}
+                    salary={salaryText}
                     description={job.department ? `Department: ${job.department}` : 'Verified opportunity on Vora.'}
                     tags={[
-                      ...(job.employmentType ? [job.employmentType.replace('_', ' ')] : []),
+                      ...((job as any).tags ? (job as any).tags.map((t: string) => t.replace(/_/g, ' ')) : job.employmentType ? [job.employmentType.replace('_', ' ')] : []),
                       ...(typeof job.matchScore === 'number' ? [`${job.matchScore}% MATCH`] : []),
                     ]}
                   />

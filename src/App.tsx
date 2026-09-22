@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect } from 'react'
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import MainLayout from './layout/MainLayout'
 import ProtectedDashboardLayout from './layout/ProtectedDashboardLayout'
 import ProtectedRoute from './components/auth/ProtectedRoute'
@@ -18,6 +18,12 @@ const AssessmentToInterviewRedirect = () => {
     nextPath = `${nextPath}/intro`;
   }
   return <Navigate to={`${nextPath}${location.search}${location.hash}`} replace />;
+};
+
+/** Redirect /talent/roles/:slug to public /role/:slug */
+const TalentRoleRedirect = () => {
+  const { slug } = useParams<{ slug: string }>();
+  return <Navigate to={slug ? `/role/${slug}` : '/jobs'} replace />;
 };
 
 // Lazy load pages for performance
@@ -201,6 +207,7 @@ const App = () => {
           <Route path="/talents" element={<ProtectedDashboardLayout><Talents /></ProtectedDashboardLayout>} />
           <Route path="/talents/:id" element={<ProtectedDashboardLayout><TalentProfile /></ProtectedDashboardLayout>} />
           <Route path="/talent/roles" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/talent/roles/:slug" element={<TalentRoleRedirect />} />
           <Route path="/talent/settings/cv" element={<Navigate to="/onboarding/talent?step=2" replace />} />
           <Route path="/talent/jobs" element={<Navigate to="/jobs" replace />} />
           <Route path="/talent/mentors" element={<Navigate to="/courses" replace />} />

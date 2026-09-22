@@ -1,10 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   SearchIcon, 
   BriefcaseIcon, 
   MapPinIcon, 
-  ArrowRightIcon
+  ArrowRightIcon,
+  SparklesIcon,
+  DollarSignIcon,
+  CheckIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
 } from '../common/Icons';
 import TabSlider from '../common/TabSlider';
 import Input from '../common/Input';
@@ -13,112 +18,233 @@ import EmptyState from '../common/EmptyState';
 import Tag from '../common/Tag';
 import Button from '../common/Button';
 import { useTalentJobsQuery } from '../../services/queries/talent';
-import type { TalentJobListItem } from '../../types/talentJobs';
+import type { 
+  TalentAppliedJob, 
+  TalentAvailableJob 
+} from '../../types/talentJobs';
 
-const STAGE_LABELS: Record<string, string> = {
-  GATE_1: 'Gate 1: Culture & Context',
-  GATE_2: 'Gate 2: Technical Assessment',
-  GATE_3: 'Gate 3: Live Video Session',
-  HIRED: 'Offer Extended / Hired',
-  REJECTED: 'Application Closed',
+const ITEMS_PER_PAGE = 9;
+
+const formatTagLabel = (tag: string): string => {
+  const map: Record<string, string> = {
+    HYBRID: 'Hybrid',
+    REMOTE_NO_TIMEZONE: 'Remote (Any Timezone)',
+    REMOTE_TIMEZONE: 'Remote (Timezone Bound)',
+    FLEXIBLE: 'Flexible',
+    SENIOR: 'Senior',
+    MID: 'Mid-Level',
+    ENTRY: 'Entry-Level',
+    STUDENT_GRADUATE: 'Student / Graduate',
+    EXECUTIVE: 'Executive',
+  };
+  return map[tag] || tag.replace(/_/g, ' ');
 };
 
-const STAGE_VARIANTS: Record<string, 'blue-light' | 'yellow' | 'purple' | 'green' | 'gray'> = {
-  GATE_1: 'blue-light',
-  GATE_2: 'yellow',
-  GATE_3: 'purple',
-  HIRED: 'green',
-  REJECTED: 'gray',
+const formatDate = (dateStr?: string | null): string => {
+  if (!dateStr) return 'Recent';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return 'Recent';
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return 'Recent';
+  }
+};
+
+const STATUS_CONFIG: Record<string, { label: string; variant: 'blue-light' | 'yellow' | 'purple' | 'green' | 'gray' }> = {
+  IN_PROGRESS: { label: 'In Progress', variant: 'blue-light' },
+  COMPLETED: { label: 'Completed', variant: 'green' },
+  PASSED: { label: 'Passed', variant: 'green' },
+  FAILED: { label: 'Closed', variant: 'gray' },
+  HIRED: { label: 'Hired', variant: 'green' },
 };
 
 export const TalentJobsView: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'available' | 'applied'>('available');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDepartment, setSelectedDepartment] = useState('ALL');
+  const [selectedTag, setSelectedTag] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Tag scrolling state
+  const tagScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   const { data: response, isLoading, isError, refetch } = useTalentJobsQuery();
   const jobsData = response?.data;
 
-  const appliedJobs = useMemo(() => jobsData?.appliedJobs || [], [jobsData]);
-  const availableJobs = useMemo(() => jobsData?.availableJobs || [], [jobsData]);
+  const appliedJobs = useMemo<TalentAppliedJob[]>(() => jobsData?.appliedJobs || [], [jobsData]);
+  const availableJobs = useMemo<TalentAvailableJob[]>(() => jobsData?.availableJobs || [], [jobsData]);
+  const metrics = jobsData?.metrics || {
+    totalApplied: appliedJobs.length,
+    inProgressCount: appliedJobs.filter(j => j.status === 'IN_PROGRESS').length,
+    completedCount: appliedJobs.filter(j => j.status === 'COMPLETED').length,
+  };
 
-  const departments = useMemo(() => {
+  // Dynamically extract all available tags from the active list
+  const availableTags = useMemo(() => {
     const list = activeTab === 'available' ? availableJobs : appliedJobs;
-    const deps = new Set<string>();
+    const tagSet = new Set<string>();
     list.forEach(j => {
-      if (j.department) deps.add(j.department);
+      if (Array.isArray(j.tags)) {
+        j.tags.forEach(t => tagSet.add(t));
+      }
     });
-    return ['ALL', ...Array.from(deps)];
+    return ['ALL', ...Array.from(tagSet)];
   }, [activeTab, availableJobs, appliedJobs]);
 
+  // Check scroll position of tag filter container
+  const checkTagScroll = () => {
+    const el = tagScrollRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanScrollLeft(scrollLeft > 4);
+    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 4);
+  };
+
+  useEffect(() => {
+    checkTagScroll();
+    window.addEventListener('resize', checkTagScroll);
+    return () => window.removeEventListener('resize', checkTagScroll);
+  }, [availableTags]);
+
+  const handleScrollTags = (direction: 'left' | 'right') => {
+    const el = tagScrollRef.current;
+    if (!el) return;
+    const scrollAmount = direction === 'left' ? -200 : 200;
+    el.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    setTimeout(checkTagScroll, 250);
+  };
+
+  // Filter jobs by search & tag
   const filteredJobs = useMemo(() => {
     const list = activeTab === 'available' ? availableJobs : appliedJobs;
     return list.filter(job => {
-      const matchSearch = 
-        !searchQuery ||
-        job.roleTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        job.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (job.location && job.location.toLowerCase().includes(searchQuery.toLowerCase()));
+      const orgName = (job as any).organisationName || (job as any).companyName || '';
+      const tagsString = Array.isArray(job.tags) ? job.tags.join(' ') : '';
+      const compensation = (job as any).compensationSummary || '';
       
-      const matchDept = 
-        selectedDepartment === 'ALL' || 
-        job.department?.toLowerCase() === selectedDepartment.toLowerCase();
+      const q = searchQuery.toLowerCase().trim();
+      const matchSearch = 
+        !q ||
+        job.roleTitle.toLowerCase().includes(q) ||
+        orgName.toLowerCase().includes(q) ||
+        (job.location && job.location.toLowerCase().includes(q)) ||
+        tagsString.toLowerCase().includes(q) ||
+        compensation.toLowerCase().includes(q);
 
-      return matchSearch && matchDept;
+      const matchTag = 
+        selectedTag === 'ALL' || 
+        (Array.isArray(job.tags) && job.tags.includes(selectedTag));
+
+      return matchSearch && matchTag;
     });
-  }, [activeTab, availableJobs, appliedJobs, searchQuery, selectedDepartment]);
+  }, [activeTab, availableJobs, appliedJobs, searchQuery, selectedTag]);
 
-  const formatSalary = (min?: number | null, max?: number | null, currency?: string | null) => {
-    if (!min && !max) return null;
-    const curr = currency || 'USD';
-    const sym = curr === 'USD' ? '$' : curr === 'GBP' ? '£' : curr === 'EUR' ? '€' : `${curr} `;
-    if (min && max) return `${sym}${(min / 1000).toFixed(0)}k - ${sym}${(max / 1000).toFixed(0)}k`;
-    if (min) return `From ${sym}${(min / 1000).toFixed(0)}k`;
-    return `Up to ${sym}${(max! / 1000).toFixed(0)}k`;
-  };
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedTag, activeTab]);
 
-  const handleJobClick = (job: TalentJobListItem) => {
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredJobs.length / ITEMS_PER_PAGE) || 1;
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedJobs = useMemo(() => {
+    return filteredJobs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredJobs, startIndex]);
+
+  // Navigate to resume or view assessment
+  const handleResumeAssessment = (job: TalentAppliedJob, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+
     if (job.assessmentId) {
       localStorage.setItem('vora_assessment_id', job.assessmentId);
       localStorage.setItem('active_assessment_id', job.assessmentId);
     }
-    const slug = job.companySlug || job.roleTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    localStorage.setItem('active_assessment_role_slug', slug);
-
-    navigate(`/jobs/${job.id}`);
-  };
-
-  const handleResumeAssessment = (job: TalentJobListItem, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (job.assessmentId) {
-      localStorage.setItem('vora_assessment_id', job.assessmentId);
-      localStorage.setItem('active_assessment_id', job.assessmentId);
+    if (job.rolePostingId) {
+      localStorage.setItem('vora_role_posting_id', job.rolePostingId);
     }
-    const slug = job.companySlug || job.roleTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const slug = job.roleLink || job.roleTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     localStorage.setItem('active_assessment_role_slug', slug);
 
-    if (job.currentStage === 'GATE_3') {
+    const stageNum = job.stage?.current;
+    const stageName = (job.stage?.name || '').toLowerCase();
+
+    if (stageNum === 3 || stageName.includes('show up') || stageName.includes('video')) {
       navigate(`/onboarding/talent/${slug}/interview/stage-3`);
-    } else if (job.currentStage === 'GATE_2') {
+    } else if (stageNum === 2 || stageName.includes('technical') || stageName.includes('knowledge')) {
       navigate(`/onboarding/talent/${slug}/interview/stage-2`);
+    } else if (stageNum === 1 || stageName.includes('culture') || stageName.includes('context')) {
+      navigate(`/onboarding/talent/${slug}/interview/stage-1`);
     } else {
       navigate(`/onboarding/talent/${slug}/interview/journey`);
     }
   };
 
-  const tabOptions = [`Available Roles (${availableJobs.length})`, `My Applications (${appliedJobs.length})`];
+  const handleAvailableJobClick = (job: TalentAvailableJob) => {
+    if (job.rolePostingId) {
+      localStorage.setItem('vora_role_posting_id', job.rolePostingId);
+    }
+    const slug = job.roleLink || job.roleTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    localStorage.setItem('active_assessment_role_slug', slug);
+
+    if (job.isApplied) {
+      const matchingApplied = appliedJobs.find(
+        a => a.rolePostingId === job.rolePostingId || a.roleLink === job.roleLink
+      );
+      if (matchingApplied) {
+        handleResumeAssessment(matchingApplied);
+        return;
+      }
+      navigate(`/onboarding/talent/${slug}/interview/journey`);
+      return;
+    }
+
+    // Direct to public role landing page to review details and begin match
+    navigate(`/role/${slug}`);
+  };
+
+  const tabOptions = [
+    `Available Roles (${availableJobs.length})`, 
+    `My Applications (${appliedJobs.length})`
+  ];
   const currentTabLabel = activeTab === 'available' ? tabOptions[0] : tabOptions[1];
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Header & Metric Cards */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Opportunities & Applications</h1>
           <p className="text-sm text-gray-500 mt-1">
             Browse verified job roles, view match compatibility, and track your assessment progress.
           </p>
+        </div>
+
+        {/* Dynamic Metric Badges */}
+        <div className="flex items-center gap-3">
+          <div className="bg-white border border-gray-100 rounded-xl px-4 py-2 shadow-xs flex items-center gap-2.5">
+            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+            <div>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Available</p>
+              <p className="text-sm font-bold text-gray-900">{availableJobs.length}</p>
+            </div>
+          </div>
+          <div className="bg-white border border-gray-100 rounded-xl px-4 py-2 shadow-xs flex items-center gap-2.5">
+            <span className="w-2 h-2 rounded-full bg-amber-500" />
+            <div>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">In Progress</p>
+              <p className="text-sm font-bold text-gray-900">{metrics.inProgressCount ?? 0}</p>
+            </div>
+          </div>
+          <div className="bg-white border border-gray-100 rounded-xl px-4 py-2 shadow-xs flex items-center gap-2.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <div>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Completed</p>
+              <p className="text-sm font-bold text-gray-900">{metrics.completedCount ?? 0}</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -129,37 +255,68 @@ export const TalentJobsView: React.FC = () => {
           activeTab={currentTabLabel} 
           onTabChange={(tab: string) => {
             setActiveTab(tab.startsWith('Available') ? 'available' : 'applied');
-            setSelectedDepartment('ALL');
+            setSelectedTag('ALL');
           }} 
         />
       </div>
 
-      {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row items-center gap-3">
-        <div className="relative flex-1 w-full">
+      {/* Search Bar & Tag Filter Pills */}
+      <div className="space-y-3">
+        {/* Full-width Search Input */}
+        <div className="w-full">
           <Input 
             label=""
-            placeholder="Search by role title, company, or location..."
+            placeholder="Search by role title, organization, location, compensation, or tags..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             icon={SearchIcon}
           />
         </div>
-        {departments.length > 1 && (
-          <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto py-1">
-            {departments.map((dept) => (
+
+        {/* Dynamic Tag Filter Pills with Chevron Buttons */}
+        {availableTags.length > 1 && (
+          <div className="relative flex items-center group/tags">
+            {canScrollLeft && (
               <button
-                key={dept}
-                onClick={() => setSelectedDepartment(dept)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
-                  selectedDepartment === dept
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+                type="button"
+                onClick={() => handleScrollTags('left')}
+                aria-label="Scroll tags left"
+                className="absolute left-0 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white shadow-md border border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-all cursor-pointer -translate-x-1"
               >
-                {dept === 'ALL' ? 'All Departments' : dept}
+                <ChevronLeftIcon size={14} />
               </button>
-            ))}
+            )}
+
+            <div 
+              ref={tagScrollRef}
+              onScroll={checkTagScroll}
+              className="flex items-center gap-2 overflow-x-auto py-1 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-1 w-full"
+            >
+              {availableTags.map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => setSelectedTag(tag)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap cursor-pointer shrink-0 ${
+                    selectedTag === tag
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {tag === 'ALL' ? 'All Roles' : formatTagLabel(tag)}
+                </button>
+              ))}
+            </div>
+
+            {canScrollRight && (
+              <button
+                type="button"
+                onClick={() => handleScrollTags('right')}
+                aria-label="Scroll tags right"
+                className="absolute right-0 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white shadow-md border border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-all cursor-pointer translate-x-1"
+              >
+                <ChevronRightIcon size={14} />
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -184,135 +341,289 @@ export const TalentJobsView: React.FC = () => {
           description={
             activeTab === 'applied'
               ? 'Explore available roles and apply to start your assessment journey.'
-              : searchQuery
-              ? 'Try adjusting your search terms or filters.'
+              : searchQuery || selectedTag !== 'ALL'
+              ? 'Try adjusting your search terms or filter tags.'
               : 'New verified job postings are added regularly.'
           }
           action={
             activeTab === 'applied'
               ? {
                   label: 'Browse Available Roles',
-                  onClick: () => setActiveTab('available'),
+                  onClick: () => {
+                    setActiveTab('available');
+                    setSelectedTag('ALL');
+                    setSearchQuery('');
+                  },
                 }
               : undefined
           }
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredJobs.map((job) => {
-            const salaryText = formatSalary(job.salaryMin, job.salaryMax, job.salaryCurrency);
-            const isApplied = activeTab === 'applied' || Boolean(job.appliedAt);
+        <>
+          {/* Jobs Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {activeTab === 'applied' ? (
+              (paginatedJobs as TalentAppliedJob[]).map((job) => {
+                const orgName = job.organisationName || (job as any).companyName || 'Verified Employer';
+                const stageCurrent = job.stage?.current ?? 1;
+                const stageTotal = job.stage?.total ?? 3;
+                const progressPct = Math.min(100, Math.max(0, Math.round((stageCurrent / stageTotal) * 100)));
+                const statusConfig = STATUS_CONFIG[job.status] || { label: job.status, variant: 'blue-light' };
 
-            return (
-              <div
-                key={job.id}
-                onClick={() => handleJobClick(job)}
-                className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs hover:shadow-md hover:border-blue-100 transition-all cursor-pointer flex flex-col justify-between group relative"
-              >
-                <div>
-                  {/* Top Bar: Company & Match Score */}
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {job.companyLogo ? (
-                        <img 
-                          src={job.companyLogo} 
-                          alt={job.companyName ?? 'Company'} 
-                          className="w-10 h-10 rounded-xl object-contain bg-gray-50 border border-gray-100 p-1"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0">
-                          {job.companyName?.charAt(0) ?? '?'}
+                return (
+                  <div
+                    key={job.rolePostingId || job.assessmentId}
+                    onClick={() => handleResumeAssessment(job)}
+                    className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs hover:shadow-md hover:border-blue-100 transition-all cursor-pointer flex flex-col justify-between group relative"
+                  >
+                    <div>
+                      {/* Top Row: Organisation (fully visible) & Badges */}
+                      <div className="flex items-start justify-between gap-3 mb-2.5">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0 border border-blue-100">
+                            {orgName.charAt(0)}
+                          </div>
+                          <span className="text-xs font-semibold text-gray-700 leading-snug break-words">
+                            {orgName}
+                          </span>
+                        </div>
+
+                        <div className="shrink-0 flex items-center flex-wrap justify-end gap-1.5">
+                          {typeof job.overallScore === 'number' && (
+                            <span className="inline-flex items-center bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap">
+                              {job.overallScore}% Score
+                            </span>
+                          )}
+                          <Tag variant={statusConfig.variant} label={statusConfig.label} />
+                        </div>
+                      </div>
+
+                      {/* Full-width Role Title */}
+                      <h3 className="text-base font-bold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1 mb-2.5">
+                        {job.roleTitle}
+                      </h3>
+
+                      {/* Metadata Chips */}
+                      <div className="flex flex-wrap items-center gap-1.5 mb-3 text-xs text-gray-600">
+                        {job.location && (
+                          <span className="inline-flex items-center gap-1 bg-gray-50 px-2.5 py-1 rounded-md">
+                            <MapPinIcon size={12} className="text-gray-400" />
+                            {job.location}
+                          </span>
+                        )}
+                        {job.compensationSummary && (
+                          <span className="inline-flex items-center gap-1 font-semibold text-gray-800 bg-gray-50 px-2.5 py-1 rounded-md">
+                            <DollarSignIcon size={12} className="text-gray-400" />
+                            {job.compensationSummary}
+                          </span>
+                        )}
+                        {Array.isArray(job.tags) && job.tags.map((tag) => (
+                          <span key={tag} className="inline-flex items-center bg-gray-50 px-2 py-0.5 rounded-md text-[11px] font-medium text-gray-600">
+                            {formatTagLabel(tag)}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Applicant Code */}
+                      {job.applicantCode && (
+                        <div className="mb-3 text-[11px] font-mono text-gray-500 bg-gray-50/90 px-2.5 py-1 rounded-md inline-block">
+                          Ref: {job.applicantCode}
                         </div>
                       )}
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium text-gray-500 truncate">{job.companyName ?? 'Unknown Company'}</p>
-                        <h3 className="text-base font-semibold text-gray-900 group-hover:text-blue-600 transition-colors truncate">
-                          {job.roleTitle}
-                        </h3>
-                      </div>
                     </div>
 
-                    {typeof job.matchScore === 'number' && (
-                      <div className="shrink-0 flex items-center bg-blue-50 text-blue-700 border border-blue-200/60 px-2.5 py-0.5 rounded-full text-xs font-semibold">
-                        <span>{job.matchScore}% Match</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Metadata Chips */}
-                  <div className="flex flex-wrap items-center gap-2 mb-4 text-xs text-gray-600">
-                    {job.location && (
-                      <span className="inline-flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-md">
-                        <MapPinIcon size={12} className="text-gray-400" />
-                        {job.location}
-                      </span>
-                    )}
-                    {job.employmentType && (
-                      <span className="inline-flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-md uppercase text-[10px] tracking-wide font-medium">
-                        {job.employmentType.replace('_', ' ')}
-                      </span>
-                    )}
-                    {job.department && (
-                      <span className="inline-flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-md">
-                        {job.department}
-                      </span>
-                    )}
-                    {salaryText && (
-                      <span className="inline-flex items-center font-semibold text-gray-800 bg-gray-50 px-2 py-1 rounded-md">
-                        {salaryText}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Bottom Section: Application Progress or Action */}
-                <div className="border-t border-gray-50 pt-3 mt-2">
-                  {isApplied ? (
-                    <div className="space-y-2">
+                    {/* Bottom Section: Stage Progress & Action */}
+                    <div className="border-t border-gray-50 pt-3 mt-2 space-y-2">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-500 font-medium">Stage Progress:</span>
-                        <Tag 
-                          variant={(job.currentStage && STAGE_VARIANTS[job.currentStage]) || 'blue-light'} 
-                          label={(job.currentStage && STAGE_LABELS[job.currentStage]) || job.currentStage || 'Application Submitted'}
+                        <span className="text-gray-600 font-medium truncate">
+                          {job.stage?.label || `Stage ${stageCurrent} of ${stageTotal}: ${job.stage?.name || 'In Progress'}`}
+                        </span>
+                        <span className="text-blue-700 font-bold ml-2 shrink-0">{progressPct}%</span>
+                      </div>
+
+                      <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                        <div 
+                          className="bg-blue-600 h-full rounded-full transition-all duration-500"
+                          style={{ width: `${progressPct}%` }}
                         />
                       </div>
-
-                      {typeof job.stageProgress === 'number' && (
-                        <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                          <div 
-                            className="bg-blue-600 h-full rounded-full transition-all duration-500"
-                            style={{ width: `${Math.min(100, Math.max(0, job.stageProgress))}%` }}
-                          />
-                        </div>
-                      )}
 
                       <div className="flex items-center justify-between pt-1">
                         <span className="text-[11px] text-gray-400">
-                          {job.appliedAt ? `Applied ${new Date(job.appliedAt).toLocaleDateString()}` : 'In progress'}
+                          Applied {formatDate(job.appliedAt)}
                         </span>
                         <button
                           onClick={(e) => handleResumeAssessment(job, e)}
                           className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer"
                         >
-                          Continue
+                          Continue Stage {stageCurrent}
                           <ArrowRightIcon size={12} />
                         </button>
                       </div>
                     </div>
-                  ) : (
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-400">Verified Role</span>
+                  </div>
+                );
+              })
+            ) : (
+              (paginatedJobs as TalentAvailableJob[]).map((job) => {
+                const orgName = job.organisationName || (job as any).companyName || 'Verified Employer';
+
+                return (
+                  <div
+                    key={job.rolePostingId}
+                    onClick={() => handleAvailableJobClick(job)}
+                    className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs hover:shadow-md hover:border-blue-100 transition-all cursor-pointer flex flex-col justify-between group relative"
+                  >
+                    <div>
+                      {/* Top Row: Organisation (fully visible) & Badges */}
+                      <div className="flex items-start justify-between gap-3 mb-2.5">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0 border border-blue-100">
+                            {orgName.charAt(0)}
+                          </div>
+                          <span className="text-xs font-semibold text-gray-700 leading-snug break-words">
+                            {orgName}
+                          </span>
+                        </div>
+
+                        <div className="shrink-0 flex items-center flex-wrap justify-end gap-1.5">
+                          {job.isApplied && (
+                            <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200/80 px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap">
+                              <CheckIcon size={9} />
+                              Applied
+                            </span>
+                          )}
+                          {typeof job.matchScore === 'number' && (
+                            <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap">
+                              <SparklesIcon size={11} className="text-emerald-600" />
+                              <span>{job.matchScore}% Match</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Full-width Role Title */}
+                      <h3 className="text-base font-bold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1 mb-2.5">
+                        {job.roleTitle}
+                      </h3>
+
+                      {/* Metadata Chips */}
+                      <div className="flex flex-wrap items-center gap-1.5 mb-4 text-xs text-gray-600">
+                        {job.location && (
+                          <span className="inline-flex items-center gap-1 bg-gray-50 px-2.5 py-1 rounded-md">
+                            <MapPinIcon size={12} className="text-gray-400" />
+                            {job.location}
+                          </span>
+                        )}
+                        {job.compensationSummary && (
+                          <span className="inline-flex items-center gap-1 font-semibold text-gray-800 bg-gray-50 px-2.5 py-1 rounded-md">
+                            <DollarSignIcon size={12} className="text-gray-400" />
+                            {job.compensationSummary}
+                          </span>
+                        )}
+                        {Array.isArray(job.tags) && job.tags.map((tag) => (
+                          <span key={tag} className="inline-flex items-center bg-gray-50 px-2 py-0.5 rounded-md text-[11px] font-medium text-gray-600">
+                            {formatTagLabel(tag)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Bottom Section: Verified Role & Action */}
+                    <div className="border-t border-gray-50 pt-3 mt-2 flex items-center justify-between">
+                      <span className="text-xs text-gray-400">
+                        Posted {formatDate(job.publishedAt)}
+                      </span>
                       <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 group-hover:translate-x-0.5 transition-transform">
-                        View Role
+                        {job.isApplied ? 'Continue Application' : 'View Role'}
                         <ArrowRightIcon size={12} />
                       </span>
                     </div>
-                  )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-gray-100 mt-8">
+              <p className="text-xs sm:text-sm text-gray-500 font-medium">
+                Showing <span className="font-semibold text-gray-900">{startIndex + 1}</span> to{' '}
+                <span className="font-semibold text-gray-900">{Math.min(startIndex + ITEMS_PER_PAGE, filteredJobs.length)}</span> of{' '}
+                <span className="font-semibold text-gray-900">{filteredJobs.length}</span> roles
+              </p>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrentPage(p => Math.max(1, p - 1));
+                    window.scrollTo({ top: 180, behavior: 'smooth' });
+                  }}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <ChevronLeftIcon size={14} />
+                  Previous
+                </button>
+
+                {/* Page Number Buttons */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                    if (
+                      pageNum === 1 || 
+                      pageNum === totalPages || 
+                      Math.abs(pageNum - currentPage) <= 1
+                    ) {
+                      return (
+                        <button
+                          key={pageNum}
+                          type="button"
+                          onClick={() => {
+                            setCurrentPage(pageNum);
+                            window.scrollTo({ top: 180, behavior: 'smooth' });
+                          }}
+                          className={`w-8 h-8 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                            currentPage === pageNum
+                              ? 'bg-blue-600 text-white shadow-xs'
+                              : 'text-gray-700 hover:bg-gray-100 border border-transparent'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    }
+                    if (
+                      (pageNum === 2 && currentPage > 3) ||
+                      (pageNum === totalPages - 1 && currentPage < totalPages - 2)
+                    ) {
+                      return (
+                        <span key={pageNum} className="px-1 text-gray-400 text-xs">
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
+                  })}
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrentPage(p => Math.min(totalPages, p + 1));
+                    window.scrollTo({ top: 180, behavior: 'smooth' });
+                  }}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  Next
+                  <ChevronRightIcon size={14} />
+                </button>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

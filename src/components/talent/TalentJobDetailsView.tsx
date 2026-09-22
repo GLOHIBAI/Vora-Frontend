@@ -71,7 +71,10 @@ export const TalentJobDetailsView: React.FC = () => {
       localStorage.setItem('vora_assessment_id', job.application.assessmentId);
       localStorage.setItem('active_assessment_id', job.application.assessmentId);
     }
-    localStorage.setItem('vora_role_posting_id', job.id);
+    const rolePostingId = job.rolePostingId || job.id;
+    if (rolePostingId) {
+      localStorage.setItem('vora_role_posting_id', rolePostingId);
+    }
     localStorage.setItem('active_assessment_role_slug', roleSlug);
 
     if (job.hasApplied && job.application) {

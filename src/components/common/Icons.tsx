@@ -207,6 +207,7 @@ export const LockIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
   </svg>
 );
 
+
 export const ChevronRightIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
   <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
