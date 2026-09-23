@@ -178,7 +178,7 @@ const TalentDashboard: React.FC = () => {
             </div>
             <div className="flex-1 min-w-0">
               <span className="text-[10px] font-[800] uppercase tracking-wider text-white/70">
-                {primaryActivity.subtitle || 'Active Interview Journey'}
+                Active Interview Journey
               </span>
               <h2 className="text-[18px] font-bold mt-1">
                 {primaryActivity.context?.roleTitle || primaryActivity.title}

@@ -18,8 +18,8 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
   className = '',
   bodyClassName = '',
 }) => (
-  <div className={`bg-white border border-[#E6E6E6] rounded-xl mb-5 overflow-hidden ${className}`}>
-    <div className="px-5 py-4 border-b border-[#E6E6E6] flex items-center justify-between gap-3">
+  <div className={`bg-white border border-[#E6E6E6] rounded-xl mb-5 ${className}`}>
+    <div className="px-5 py-4 border-b border-[#E6E6E6] rounded-t-xl flex items-center justify-between gap-3">
       <div>
         <CardTitle as="h2" className="text-[15px] font-medium">
           {title}

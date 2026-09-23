@@ -51,6 +51,7 @@ export interface SelectProps {
   helperText?: string;
   hint?: string;
   className?: string;
+  containerClassName?: string;
   disabled?: boolean;
   onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   onBlur?: () => void;

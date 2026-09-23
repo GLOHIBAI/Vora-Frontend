@@ -82,7 +82,7 @@ const WithdrawStepAccount: React.FC<WithdrawStepAccountProps> = ({ method, onCon
           error={stripeForm.fieldError('payoutCurrency')}
           helperText={stripeForm.showError('payoutCurrency')}
         />
-        <Button variant="primary" pill={false} className="!rounded-lg gap-2 mt-2" onClick={handleContinue}>
+        <Button variant="primary" pill={false} className="!rounded-lg gap-2 mt-6" onClick={handleContinue}>
           Review Withdrawal
         </Button>
       </>
@@ -148,7 +148,7 @@ const WithdrawStepAccount: React.FC<WithdrawStepAccountProps> = ({ method, onCon
         error={bankForm.fieldError('country')}
         helperText={bankForm.showError('country')}
       />
-      <Button variant="primary" pill={false} className="!rounded-lg gap-2 mt-2" onClick={handleContinue}>
+      <Button variant="primary" pill={false} className="!rounded-lg gap-2 mt-6" onClick={handleContinue}>
         Review Withdrawal
       </Button>
     </>

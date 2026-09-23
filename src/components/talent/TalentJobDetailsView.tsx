@@ -5,7 +5,6 @@ import {
   BuildingIcon, 
   MapPinIcon, 
   BriefcaseIcon, 
-  DollarSignIcon, 
   SparklesIcon, 
   CheckCircleIcon,
   ExternalLinkIcon,

@@ -119,7 +119,7 @@ const StripeTopUpPanel: React.FC<StripeTopUpPanelProps> = ({
         options={STRIPE_BILLING_COUNTRIES.map((c) => ({ label: c, value: c }))}
         error={form.fieldError('country')}
         helperText={form.showError('country')}
-        className="mb-[18px]"
+        containerClassName="mb-[18px]"
       />
 
       <Button

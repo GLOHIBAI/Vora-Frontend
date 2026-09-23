@@ -17,6 +17,7 @@ const Select: React.FC<SelectProps> = ({
   helperText = '',
   hint = '',
   className = '',
+  containerClassName = '',
   disabled = false,
   onChange,
   onBlur,
@@ -142,10 +143,10 @@ const Select: React.FC<SelectProps> = ({
   };
 
   const menuClass = isInline
-    ? `absolute left-1/2 -translate-x-1/2 top-full mt-1 z-20 w-[4.75rem] rounded-lg bg-white shadow-[0_4px_16px_rgba(0,0,0,0.12)] p-1 max-h-44 overflow-y-auto custom-scrollbar border-0 ${menuClassName}`
+    ? `absolute left-1/2 -translate-x-1/2 top-full mt-1 z-50 w-[4.75rem] rounded-lg bg-white shadow-[0_4px_16px_rgba(0,0,0,0.12)] p-1 max-h-44 overflow-y-auto custom-scrollbar border-0 ${menuClassName}`
     : isCompact
-    ? `absolute z-50 mt-1 left-0 min-w-full w-max max-w-[220px] rounded-xl border border-[#E6E6E6] bg-white shadow-lg p-1.5 max-h-60 overflow-y-auto custom-scrollbar ${menuClassName}`
-    : `absolute z-20 mt-1.5 w-full min-w-full rounded-xl border border-border-default bg-white shadow-lg p-1.5 max-h-72 overflow-y-auto overflow-x-hidden custom-scrollbar ${menuClassName}`;
+    ? `absolute z-50 top-full mt-1 left-0 min-w-full w-max max-w-[220px] rounded-xl border border-[#E6E6E6] bg-white shadow-xl p-1.5 max-h-60 overflow-y-auto custom-scrollbar ${menuClassName}`
+    : `absolute z-50 top-full mt-1.5 left-0 w-full min-w-full rounded-xl border border-[#E6E6E6] bg-white shadow-xl p-1.5 max-h-64 overflow-y-auto overflow-x-hidden custom-scrollbar ${menuClassName}`;
 
   const triggerClass = isInline
     ? `w-auto min-w-[3.25rem] px-1 py-0.5 rounded-md border-0 bg-transparent font-bold text-sm hover:bg-[#F7F7F7] focus:outline-none transition-all cursor-pointer flex items-center justify-center gap-0.5 ${isOpen || value ? 'text-[#0047CC]' : 'text-[#1A1A1A]'} ${className}`
@@ -155,7 +156,7 @@ const Select: React.FC<SelectProps> = ({
 
   return (
     <div
-      className={isInline ? 'w-auto' : isCompact ? 'w-auto inline-block relative' : 'w-full'}
+      className={isInline ? `w-auto ${containerClassName}` : isCompact ? `w-auto inline-block relative ${containerClassName}` : `w-full ${containerClassName}`}
       ref={containerRef}
       onMouseDown={isInline ? (e) => e.stopPropagation() : undefined}
     >
@@ -164,7 +165,7 @@ const Select: React.FC<SelectProps> = ({
           {label}
         </label>
       )}
-      <div className={`relative ${isOpen ? 'z-30' : ''}`}>
+      <div className={`relative ${isOpen ? 'z-50' : ''}`}>
         <button
           type="button"
           onClick={handleToggle}

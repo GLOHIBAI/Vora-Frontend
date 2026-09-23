@@ -100,8 +100,12 @@ const RoleApplyRoute = lazy(() => import('./components/auth/RoleApplyRoute'))
 const JobPostedConfirmation = lazy(() => import('./pages/employer/JobPostedConfirmation'))
 const RoleLanding = lazy(() => import('./pages/public/RoleLanding'))
 const RoleSignup = lazy(() => import('./pages/auth/RoleSignup'))
+const CoursesPage = lazy(() => import('./pages/courses/CoursesPage'))
 const CoursesList = lazy(() => import('./pages/courses/CoursesList'))
 const CourseDetails = lazy(() => import('./pages/courses/CourseDetails'))
+const TalentMyProfile = lazy(() => import('./pages/talent/TalentMyProfile'))
+const TalentMentorshipPage = lazy(() => import('./pages/talent/TalentMentorshipPage'))
+const MentorCoursesPage = lazy(() => import('./pages/mentor/MentorCoursesPage'))
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -206,14 +210,18 @@ const App = () => {
           <Route path="/payments/*" element={<ProtectedDashboardLayout><EmployerRoute><Payments /></EmployerRoute></ProtectedDashboardLayout>} />
           <Route path="/talents" element={<ProtectedDashboardLayout><Talents /></ProtectedDashboardLayout>} />
           <Route path="/talents/:id" element={<ProtectedDashboardLayout><TalentProfile /></ProtectedDashboardLayout>} />
+          <Route path="/profile" element={<ProtectedDashboardLayout><TalentMyProfile /></ProtectedDashboardLayout>} />
+          <Route path="/talent/profile" element={<Navigate to="/profile" replace />} />
           <Route path="/talent/roles" element={<Navigate to="/dashboard" replace />} />
           <Route path="/talent/roles/:slug" element={<TalentRoleRedirect />} />
           <Route path="/talent/settings/cv" element={<Navigate to="/onboarding/talent?step=2" replace />} />
           <Route path="/talent/jobs" element={<Navigate to="/jobs" replace />} />
-          <Route path="/talent/mentors" element={<Navigate to="/courses" replace />} />
+          <Route path="/mentors" element={<ProtectedDashboardLayout><TalentMentorshipPage /></ProtectedDashboardLayout>} />
+          <Route path="/talent/mentors" element={<Navigate to="/mentors" replace />} />
           <Route path="/talent/assessment/*" element={<Navigate to="/onboarding/talent/backend-engineer/interview/journey" replace />} />
-          <Route path="/courses" element={<ProtectedDashboardLayout><CoursesList /></ProtectedDashboardLayout>} />
+          <Route path="/courses" element={<ProtectedDashboardLayout><CoursesPage /></ProtectedDashboardLayout>} />
           <Route path="/courses/:id" element={<ProtectedDashboardLayout><CourseDetails /></ProtectedDashboardLayout>} />
+          <Route path="/mentor/courses" element={<ProtectedDashboardLayout><MentorCoursesPage /></ProtectedDashboardLayout>} />
           <Route path="/settings" element={<ProtectedDashboardLayout><Settings /></ProtectedDashboardLayout>} />
 
           {/* Auth Routes */}

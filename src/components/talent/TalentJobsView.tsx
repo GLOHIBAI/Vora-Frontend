@@ -6,7 +6,6 @@ import {
   MapPinIcon, 
   ArrowRightIcon,
   SparklesIcon,
-  DollarSignIcon,
   CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon
@@ -76,11 +75,6 @@ export const TalentJobsView: React.FC = () => {
 
   const appliedJobs = useMemo<TalentAppliedJob[]>(() => jobsData?.appliedJobs || [], [jobsData]);
   const availableJobs = useMemo<TalentAvailableJob[]>(() => jobsData?.availableJobs || [], [jobsData]);
-  const metrics = jobsData?.metrics || {
-    totalApplied: appliedJobs.length,
-    inProgressCount: appliedJobs.filter(j => j.status === 'IN_PROGRESS').length,
-    completedCount: appliedJobs.filter(j => j.status === 'COMPLETED').length,
-  };
 
   // Dynamically extract all available tags from the active list
   const availableTags = useMemo(() => {
@@ -213,39 +207,12 @@ export const TalentJobsView: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {/* Header & Metric Cards */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Opportunities & Applications</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Browse verified job roles, view match compatibility, and track your assessment progress.
-          </p>
-        </div>
-
-        {/* Dynamic Metric Badges */}
-        <div className="flex items-center gap-3">
-          <div className="bg-white border border-gray-100 rounded-xl px-4 py-2 shadow-xs flex items-center gap-2.5">
-            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
-            <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Available</p>
-              <p className="text-sm font-bold text-gray-900">{availableJobs.length}</p>
-            </div>
-          </div>
-          <div className="bg-white border border-gray-100 rounded-xl px-4 py-2 shadow-xs flex items-center gap-2.5">
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
-            <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">In Progress</p>
-              <p className="text-sm font-bold text-gray-900">{metrics.inProgressCount ?? 0}</p>
-            </div>
-          </div>
-          <div className="bg-white border border-gray-100 rounded-xl px-4 py-2 shadow-xs flex items-center gap-2.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Completed</p>
-              <p className="text-sm font-bold text-gray-900">{metrics.completedCount ?? 0}</p>
-            </div>
-          </div>
-        </div>
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Opportunities & Applications</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Browse verified job roles, view match compatibility, and track your assessment progress.
+        </p>
       </div>
 
       {/* Tabs */}
@@ -412,8 +379,7 @@ export const TalentJobsView: React.FC = () => {
                           </span>
                         )}
                         {job.compensationSummary && (
-                          <span className="inline-flex items-center gap-1 font-semibold text-gray-800 bg-gray-50 px-2.5 py-1 rounded-md">
-                            <DollarSignIcon size={12} className="text-gray-400" />
+                          <span className="inline-flex items-center font-semibold text-gray-800 bg-gray-50 px-2.5 py-1 rounded-md">
                             {job.compensationSummary}
                           </span>
                         )}
@@ -516,8 +482,7 @@ export const TalentJobsView: React.FC = () => {
                           </span>
                         )}
                         {job.compensationSummary && (
-                          <span className="inline-flex items-center gap-1 font-semibold text-gray-800 bg-gray-50 px-2.5 py-1 rounded-md">
-                            <DollarSignIcon size={12} className="text-gray-400" />
+                          <span className="inline-flex items-center font-semibold text-gray-800 bg-gray-50 px-2.5 py-1 rounded-md">
                             {job.compensationSummary}
                           </span>
                         )}

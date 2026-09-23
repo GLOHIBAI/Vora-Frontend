@@ -2,25 +2,30 @@ import React from 'react';
 import { ModalTitle } from './Typography';
 
 interface ModalDialogProps {
-  open: boolean;
+  open?: boolean;
+  isOpen?: boolean;
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   onClose: () => void;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  actions?: React.ReactNode;
   maxWidth?: string;
 }
 
 const ModalDialog: React.FC<ModalDialogProps> = ({
   open,
+  isOpen,
   title,
   subtitle,
   onClose,
   children,
   footer,
+  actions,
   maxWidth = 'max-w-[480px]',
 }) => {
-  if (!open) return null;
+  const isVisible = open ?? isOpen ?? false;
+  if (!isVisible) return null;
 
   return (
     <div
@@ -44,7 +49,11 @@ const ModalDialog: React.FC<ModalDialogProps> = ({
           )}
           <div className="px-5 sm:px-6 pb-5">{children}</div>
         </div>
-        {footer && <div className="px-5 sm:px-6 pb-5 pt-3 border-t border-[#F7F7F7] shrink-0">{footer}</div>}
+        {(footer || actions) && (
+          <div className="px-5 sm:px-6 pb-5 pt-3 border-t border-[#F7F7F7] shrink-0">
+            {footer || actions}
+          </div>
+        )}
       </div>
     </div>
   );
