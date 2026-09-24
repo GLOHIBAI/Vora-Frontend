@@ -10,6 +10,7 @@ import {
   useEmployerDecideRejectMutation,
 } from '../../services/queries/assessments';
 import type { EmployerReportStage } from '../../services/queries/assessments/types';
+import { resolveAssessmentId } from '../../utils/assessmentDecision';
 
 interface ApplicantDetailsModalProps {
   isOpen: boolean;
@@ -41,8 +42,8 @@ const ApplicantDetailsModal: React.FC<ApplicantDetailsModalProps> = ({
     if (isOpen) setShouldRender(true);
   }, [isOpen]);
 
-  const assessmentId = applicant?.assessmentId || applicant?.id;
   const rolePostingId = applicant?.rolePostingId;
+  const assessmentId = resolveAssessmentId(applicant, rolePostingId) || applicant?.assessmentId || applicant?.id;
 
   // Query candidate report: GET /api/v1/assessments/:assessmentId/employer-report?rolePostingId=<uuid>
   const { data: report, isLoading, refetch } = useEmployerReportQuery(assessmentId, rolePostingId, {
@@ -377,7 +378,13 @@ const ApplicantDetailsModal: React.FC<ApplicantDetailsModalProps> = ({
               <button
                 type="button"
                 disabled={!isInterviewReady || rejectMutation.isPending}
-                onClick={() => setIsRejectModalOpen(true)}
+                onClick={() => {
+                  if (onReject) {
+                    onReject();
+                  } else {
+                    setIsRejectModalOpen(true);
+                  }
+                }}
                 className="py-2.5 px-3 bg-gray-50 hover:bg-red-50 hover:text-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700 border border-gray-200 rounded-xl text-[12px] font-semibold transition-all cursor-pointer text-center"
               >
                 Reject

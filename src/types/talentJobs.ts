@@ -43,6 +43,8 @@ export interface TalentAppliedJob {
   matchScore?: number | null;
 }
 
+export type TalentGradeCode = 'B1' | 'B2' | 'C1' | 'C2' | 'D' | 'E' | 'F';
+
 export interface TalentAvailableJob {
   rolePostingId: string;
   roleLink: string;
@@ -55,6 +57,9 @@ export interface TalentAvailableJob {
   isApplied: boolean;
   matchScore: number | null;
   matchOutcome: string | null;
+  eligibilityStatus: string | null;
+  grade: TalentGradeCode | null;
+  gradePrescription: string | null;
   hrefHint: string;
 
   // Compatibility aliases
@@ -79,6 +84,17 @@ export interface TalentJobsMetrics {
   totalApplied: number;
   inProgressCount: number;
   completedCount: number;
+  availableMatchedCount?: number;
+}
+
+export interface TalentGrade {
+  grade: TalentGradeCode | null;
+  gradePrescription: string | null;
+}
+
+export interface TalentJobsMatching {
+  queued: boolean;
+  hint?: string | null;
 }
 
 export type TalentJobListItem = TalentAppliedJob | TalentAvailableJob;
@@ -87,6 +103,8 @@ export interface TalentJobsResponse {
   appliedJobs: TalentAppliedJob[];
   availableJobs: TalentAvailableJob[];
   metrics?: TalentJobsMetrics;
+  talentGrade?: TalentGrade;
+  matching?: TalentJobsMatching;
 }
 
 export interface TalentJobCompany {

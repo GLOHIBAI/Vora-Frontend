@@ -84,6 +84,58 @@ export interface TalentProfileResponse {
   professionalTitle?: string;
   photoUrl?: string;
   avatarUrl?: string;
+  country?: string;
+  location?: string;
+  timezone?: string;
+  availability?: string;
+  bio?: string;
+  about?: string;
+  grade?: string | null;
+  careerReadinessScore?: number | null;
+  activeCv?: {
+    cvUploadId?: string;
+    originalName?: string;
+    fileName?: string;
+    fileSize?: string;
+    uploadedAt?: string;
+    parseStatus?: 'NONE' | 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+    parsedData?: any;
+    profile?: {
+      about?: string;
+      bio?: string;
+      headline?: string;
+      professionalTitle?: string;
+      roles?: Array<{
+        id?: string;
+        role: string;
+        company: string;
+        location?: string;
+        employmentType?: string;
+        startDate: string;
+        endDate: string;
+        current?: boolean;
+        description?: string;
+        technologies?: string[];
+      }>;
+      skills?: Array<string | { name: string; category?: string; verified?: boolean }>;
+      education?: Array<{
+        id?: string;
+        degree: string;
+        school: string;
+        fieldOfStudy?: string;
+        startYear?: string;
+        endYear?: string;
+        grade?: string;
+      }>;
+      certs?: Array<{
+        id?: string;
+        name: string;
+        issuingOrg?: string;
+        issueDate?: string;
+        credentialUrl?: string;
+      }>;
+    };
+  };
 }
 
 export const useGetTalentProfileQuery = (enabled = true) => {

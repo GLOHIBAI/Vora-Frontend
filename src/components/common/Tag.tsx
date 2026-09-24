@@ -5,7 +5,7 @@ interface TagProps {
   label: React.ReactNode;
   onRemove?: () => void;
   className?: string;
-  variant?: 'blue' | 'solid-blue' | 'solid-dark' | 'green' | 'red' | 'gray' | 'yellow' | 'blue-light' | 'green-light' | 'outline' | 'purple' | 'blue-soft';
+  variant?: 'blue' | 'solid-blue' | 'solid-dark' | 'green' | 'red' | 'gray' | 'yellow' | 'blue-light' | 'green-light' | 'outline' | 'purple' | 'blue-soft' | 'orange';
 }
 
 const Tag: React.FC<TagProps> = ({ label, onRemove, className = '', variant = 'blue' }) => {
@@ -21,6 +21,7 @@ const Tag: React.FC<TagProps> = ({ label, onRemove, className = '', variant = 'b
     'green-light': 'bg-[#F0FDF4] text-[#15803D] border-transparent',
     outline: 'bg-white border border-gray-200 text-gray-600',
     purple: 'bg-[#F5F3FF] text-[#6D28D9] border-transparent',
+    orange: 'bg-[#FFF7ED] text-[#C2410C] border-transparent',
     'blue-soft': 'bg-[#F0F5FF] text-[#0047CC] border-transparent',
   };
 

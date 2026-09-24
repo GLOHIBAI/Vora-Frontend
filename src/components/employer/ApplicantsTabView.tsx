@@ -11,12 +11,15 @@ import {
 } from '../common/Icons';
 import Tag from '../common/Tag';
 import Spinner from '../common/Spinner';
+import GeoDistributionMap from './GeoDistributionMap';
 import type { 
   EmployerApplicantsResponse, 
   EmployerApplicant,
   EmployerTestResultSection,
   EmployerTestResultItem 
 } from '../../services/queries/employer/types';
+import { toast } from 'react-hot-toast';
+import { resolveAssessmentId, isCandidateEligibleForRejection } from '../../utils/assessmentDecision';
 
 interface ApplicantsTabViewProps {
   data?: EmployerApplicantsResponse;
@@ -73,7 +76,9 @@ const getApplicantStatusVariant = (status?: string): any => {
   if (s === 'PENDING_REVIEW' || s === 'PENDING') return 'gray';
   if (s === 'UNDER_REVIEW' || s === 'IN_PROGRESS') return 'yellow';
   if (['HIRED', 'PASSED'].includes(s || '')) return 'green';
-  if (['REJECTED', 'FAILED'].includes(s || '')) return 'red';
+  if (s === 'REJECTED') return 'red';
+  if (s === 'FAILED') return 'orange';
+  if (s === 'INELIGIBLE') return 'purple';
   return 'gray';
 };
 
@@ -335,12 +340,26 @@ const StageApplicantsTable: React.FC<{
                           onClick={(e) => {
                             e.stopPropagation();
                             setOpenMenuIdx(null);
+                            const eligibility = isCandidateEligibleForRejection(applicant);
+                            if (!eligibility.eligible) {
+                              toast.error(eligibility.message || 'Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-assessment exits stay Failed, not this form.');
+                              return;
+                            }
                             const effectiveJobId = jobId || rolePostingId;
-                            const targetId = applicant.id || applicant.assessmentId || applicant.talentId;
+                            const assessmentId = resolveAssessmentId(applicant, effectiveJobId);
+                            const applicantCode = applicant.applicantCode || applicant.id || applicant.talentId || 'candidate';
+                            const rejectAction = applicant.actions?.find((a: any) => (a.key || '').toUpperCase() === 'REJECT_APPLICANT');
                             if (onReject) {
                               onReject(applicant);
-                            } else if (effectiveJobId && targetId) {
-                              navigate(`/jobs/${effectiveJobId}/reject/${targetId}`);
+                            } else if (effectiveJobId) {
+                              navigate(`/jobs/${effectiveJobId}/reject/${encodeURIComponent(applicantCode)}${assessmentId ? `?assessmentId=${encodeURIComponent(assessmentId)}` : ''}`, {
+                                state: {
+                                  assessmentId,
+                                  rolePostingId: effectiveJobId,
+                                  applicant,
+                                  actionPath: rejectAction?.path,
+                                },
+                              });
                             }
                           }}
                           className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
@@ -605,15 +624,7 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-[13px] font-medium text-gray-900 uppercase tracking-tight">Geo Distribution</h4>
                 </div>
-                <div className="h-48 bg-gray-50 rounded-xl flex items-center justify-center border border-dashed border-gray-200">
-                  <div className="text-center">
-                    <LocationIcon size={32} className="text-gray-300 mx-auto mb-2" />
-                    <p className="text-[12px] font-medium text-gray-400">Interactive Map Visualization</p>
-                    {geo?.countryCodes && geo.countryCodes.length > 0 && (
-                      <p className="text-[11px] text-gray-400 mt-1">Countries: {geo.countryCodes.join(', ')}</p>
-                    )}
-                  </div>
-                </div>
+                <GeoDistributionMap geo={geo} applicants={applicants} totalApplicants={totalApplicants} />
               </div>
               <div className="space-y-4">
                 <h4 className="text-[13px] font-medium text-gray-900 uppercase tracking-tight">Top Countries</h4>
@@ -738,12 +749,26 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setOpenMenuIdx(null);
+                                    const eligibility = isCandidateEligibleForRejection(applicant);
+                                    if (!eligibility.eligible) {
+                                      toast.error(eligibility.message || 'Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-assessment exits stay Failed, not this form.');
+                                      return;
+                                    }
                                     const effectiveJobId = jobId || data?.rolePostingId;
-                                    const targetId = applicant.id || applicant.assessmentId || applicant.talentId;
+                                    const assessmentId = resolveAssessmentId(applicant, effectiveJobId);
+                                    const applicantCode = applicant.applicantCode || applicant.id || applicant.talentId || 'candidate';
+                                    const rejectAction = applicant.actions?.find((a: any) => (a.key || '').toUpperCase() === 'REJECT_APPLICANT');
                                     if (onReject) {
                                       onReject(applicant);
-                                    } else if (effectiveJobId && targetId) {
-                                      navigate(`/jobs/${effectiveJobId}/reject/${targetId}`);
+                                    } else if (effectiveJobId) {
+                                      navigate(`/jobs/${effectiveJobId}/reject/${encodeURIComponent(applicantCode)}${assessmentId ? `?assessmentId=${encodeURIComponent(assessmentId)}` : ''}`, {
+                                        state: {
+                                          assessmentId,
+                                          rolePostingId: effectiveJobId,
+                                          applicant,
+                                          actionPath: rejectAction?.path,
+                                        },
+                                      });
                                     }
                                   }}
                                   className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"

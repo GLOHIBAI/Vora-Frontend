@@ -428,6 +428,9 @@ export type {
   TalentJobCompany,
   TalentJobApplication,
   TalentJobDetail,
+  TalentGradeCode,
+  TalentGrade,
+  TalentJobsMatching,
   GateVerdictPart,
   GateVerdictData,
 } from "../../../types/talentJobs";
@@ -466,5 +469,80 @@ export const useTalentJobDetailQuery = (
       }),
     enabled: !!jobId,
     ...options,
+  });
+};
+
+export interface TalentCvParsedRole {
+  id?: string;
+  role: string;
+  company: string;
+  location?: string;
+  employmentType?: string;
+  startDate: string;
+  endDate: string;
+  current?: boolean;
+  description?: string;
+  technologies?: string[];
+}
+
+export interface TalentCvParsedEducation {
+  id?: string;
+  degree: string;
+  school: string;
+  fieldOfStudy?: string;
+  startYear?: string;
+  endYear?: string;
+  grade?: string;
+}
+
+export interface TalentCvParsedCert {
+  id?: string;
+  name: string;
+  issuingOrg?: string;
+  issueDate?: string;
+  credentialUrl?: string;
+}
+
+export interface TalentCvProfileData {
+  cvUploadId?: string;
+  originalName?: string;
+  fileName?: string;
+  fileSize?: string;
+  uploadedAt?: string;
+  parseStatus?: 'NONE' | 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  profile?: {
+    about?: string;
+    bio?: string;
+    headline?: string;
+    professionalTitle?: string;
+    roles?: TalentCvParsedRole[];
+    skills?: Array<string | { name: string; category?: string; verified?: boolean }>;
+    education?: TalentCvParsedEducation[];
+    certs?: TalentCvParsedCert[];
+  };
+}
+
+/**
+ * Lightweight CV dossier fetch & polling endpoint.
+ * Backend: GET /api/v1/talent/cv/profile
+ * Returns the parsed CV dossier only. Poll until parseStatus === 'COMPLETED'.
+ */
+export const useGetTalentCvProfileQuery = (options?: {
+  enabled?: boolean;
+  refetchInterval?:
+    | number
+    | false
+    | ((query: { state: { data?: unknown } }) => number | false);
+}) => {
+  return useQuery({
+    queryKey: ["talent", "cv-profile"],
+    queryFn: () =>
+      apiClient.get<any>({
+        url: "/talent/cv/profile",
+        auth: true,
+        suppressErrorToast: true,
+      }),
+    enabled: options?.enabled ?? true,
+    refetchInterval: options?.refetchInterval ?? false,
   });
 };

@@ -12,7 +12,11 @@ import {
   DEFAULT_ROLES_FOUND_SUMMARY,
 } from '../../constants/talentRolesFound';
 import { useAuth } from '../../context/AuthContext';
-import { useGetPublicRoleQuery } from '../../services/queries/talent';
+import { 
+  useGetPublicRoleQuery,
+  useTalentDashboardQuery,
+  useTalentJobsQuery,
+} from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
 import type { PublicRoleLandingData } from '../../types/roleLanding';
 import {
@@ -43,6 +47,12 @@ const RoleProfileRolesFound: React.FC = () => {
   );
 
   const { data: response } = useGetPublicRoleQuery(roleSlug || '');
+  const { data: dashboardResponse } = useTalentDashboardQuery();
+  const dashboardData = dashboardResponse?.data || (dashboardResponse as any);
+
+  const { data: jobsResponse } = useTalentJobsQuery();
+  const jobsData = jobsResponse?.data;
+  const availableJobs = jobsData?.availableJobs || [];
 
   const appliedRole: PublicRoleLandingData | null = useMemo(() => {
     if (!roleSlug) return null;
@@ -57,12 +67,47 @@ const RoleProfileRolesFound: React.FC = () => {
   const matchThresholdDecimal = resolveMatchThresholdDecimal(matchScan);
 
   const matchedRoles = useMemo(() => {
-    return mapTalentMatchesToListings(
-      matchScan.alternateMatches,
-      roleSlug,
-      matchThresholdDecimal,
-    );
-  }, [matchScan.alternateMatches, roleSlug, matchThresholdDecimal]);
+    if (matchScan.alternateMatches && matchScan.alternateMatches.length > 0) {
+      return mapTalentMatchesToListings(
+        matchScan.alternateMatches,
+        roleSlug,
+        matchThresholdDecimal,
+      );
+    }
+    if (availableJobs && availableJobs.length > 0) {
+      return availableJobs.map((job, idx) => {
+        const score = job.matchScore ?? 85;
+        const org = job.organisationName || 'Employer';
+        return {
+          id: job.rolePostingId || `avail-${idx}`,
+          roleTitle: job.roleTitle,
+          companyName: org,
+          companyInitials: org.split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('') || 'VR',
+          salaryAmount: job.compensationSummary || 'Competitive',
+          salaryPeriod: 'monthly',
+          matchPercent: score,
+          matchVariant: (score >= 85 ? 'green' : 'blue') as 'green' | 'blue',
+          locationLine: job.location || 'Remote',
+          formatPill: 'Remote',
+          postedLine: job.publishedAt ? new Date(job.publishedAt).toLocaleDateString() : 'Posted recently',
+          contractPill: 'Full-time',
+          contractMeta: [],
+          timezone: '',
+          eligibility: {
+            title: 'Eligibility verified',
+            body: job.gradePrescription || 'Your profile matches this role.',
+          },
+          tags: job.tags || [],
+          metaItems: ['Full-time', job.location || 'Remote'],
+          aboutRole: '',
+          responsibilities: [],
+          requirements: [],
+          eligibilityRows: [],
+        };
+      });
+    }
+    return [];
+  }, [matchScan.alternateMatches, roleSlug, matchThresholdDecimal, availableJobs]);
 
   const summary = useMemo(
     () => ({
@@ -71,8 +116,9 @@ const RoleProfileRolesFound: React.FC = () => {
         resolveRoleTitleFromScan(matchScan, appliedRole?.roleTitle ?? DEFAULT_ROLES_FOUND_SUMMARY.originalRoleTitle),
       originalScore: matchScan.originalRoleScore,
       matchThreshold,
-      matchedRoleCount: matchedRoles.length,
-      careerReadinessScore: matchScan.careerReadinessScore,
+      matchedRoleCount: matchedRoles.length || (jobsData?.metrics?.availableMatchedCount ?? availableJobs.length),
+      careerReadinessScore: dashboardData?.metrics?.careerReadinessScore?.value ?? matchScan.careerReadinessScore ?? DEFAULT_ROLES_FOUND_SUMMARY.careerReadinessScore,
+      assessmentGrade: dashboardData?.metrics?.interviewGrade?.grade || jobsData?.talentGrade?.grade || DEFAULT_ROLES_FOUND_SUMMARY.assessmentGrade,
       explanationSummary: resolveMatchSummary(matchScan),
     }),
     [
@@ -80,6 +126,9 @@ const RoleProfileRolesFound: React.FC = () => {
       matchScan,
       matchThreshold,
       matchedRoles.length,
+      dashboardData,
+      jobsData,
+      availableJobs.length,
     ],
   );
 
@@ -110,8 +159,17 @@ const RoleProfileRolesFound: React.FC = () => {
   const displayName = buildUserDisplayName(firstName, lastName);
   const welcomeName = firstName.trim() || displayName.split(' ')[0] || 'there';
 
-  const handleGoToAssessment = (_roleId: string) => {
-    // Assessment flow TBD, mock no-op for now
+  const handleGoToAssessment = (roleId: string) => {
+    const matchingAvailable = availableJobs.find((j) => j.rolePostingId === roleId);
+    if (matchingAvailable?.hrefHint) {
+      navigate(matchingAvailable.hrefHint);
+      return;
+    }
+    if (matchingAvailable?.roleLink) {
+      navigate(`/onboarding/talent/${matchingAvailable.roleLink}/interview/journey`);
+      return;
+    }
+    navigate(`/onboarding/talent/${roleSlug}/interview/journey`);
   };
 
   return (

@@ -21,6 +21,8 @@ import {
   useEmployerJobHiresQuery,
 } from '../../services/queries/employer';
 import type { EmployerJobDetailCard, EmployerJobDetailField } from '../../services/queries/employer/types';
+import { toast } from 'react-hot-toast';
+import { resolveAssessmentId, isCandidateEligibleForRejection } from '../../utils/assessmentDecision';
 
 // --- Sub-components for Job Details ---
 
@@ -316,7 +318,22 @@ const JobDetails: React.FC = () => {
             setIsApplicantModalOpen(true);
           }}
           onReject={(a: any) => {
-            navigate(`/jobs/${id}/reject/${a.id || a.assessmentId || a.talentId}`);
+            const eligibility = isCandidateEligibleForRejection(a);
+            if (!eligibility.eligible) {
+              toast.error(eligibility.message || 'Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-assessment exits stay Failed, not this form.');
+              return;
+            }
+            const assessmentId = resolveAssessmentId(a, id);
+            const applicantCode = a.applicantCode || a.id || a.talentId || 'candidate';
+            const rejectAction = a.actions?.find((act: any) => (act.key || '').toUpperCase() === 'REJECT_APPLICANT');
+            navigate(`/jobs/${id}/reject/${encodeURIComponent(applicantCode)}${assessmentId ? `?assessmentId=${encodeURIComponent(assessmentId)}` : ''}`, {
+              state: {
+                assessmentId,
+                rolePostingId: id,
+                applicant: a,
+                actionPath: rejectAction?.path,
+              },
+            });
           }}
           onViewDetails={(a: any) => {
             setSelectedApplicant(a);
@@ -400,7 +417,23 @@ const JobDetails: React.FC = () => {
         applicant={selectedApplicant ? { ...selectedApplicant, rolePostingId: selectedApplicant.rolePostingId || id } : null}
         onReject={() => {
           setIsApplicantModalOpen(false);
-          navigate(`/jobs/${id}/reject/${selectedApplicant.id || selectedApplicant.assessmentId}`);
+          if (!selectedApplicant) return;
+          const eligibility = isCandidateEligibleForRejection(selectedApplicant);
+          if (!eligibility.eligible) {
+            toast.error(eligibility.message || 'Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-assessment exits stay Failed, not this form.');
+            return;
+          }
+          const assessmentId = resolveAssessmentId(selectedApplicant, id);
+          const applicantCode = selectedApplicant.applicantCode || selectedApplicant.id || selectedApplicant.talentId || 'candidate';
+          const rejectAction = selectedApplicant.actions?.find((act: any) => (act.key || '').toUpperCase() === 'REJECT_APPLICANT');
+          navigate(`/jobs/${id}/reject/${encodeURIComponent(applicantCode)}${assessmentId ? `?assessmentId=${encodeURIComponent(assessmentId)}` : ''}`, {
+            state: {
+              assessmentId,
+              rolePostingId: id,
+              applicant: selectedApplicant,
+              actionPath: rejectAction?.path,
+            },
+          });
         }}
         onHire={() => {
           setIsApplicantModalOpen(false);

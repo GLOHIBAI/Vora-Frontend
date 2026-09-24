@@ -20,6 +20,8 @@ import {
   type EmployerTalentItem,
   type EmployerTalentAction,
 } from '../../services/queries/employer';
+import { toast } from 'react-hot-toast';
+import { resolveAssessmentId, isCandidateEligibleForRejection } from '../../utils/assessmentDecision';
 
 const STATUS_FILTERS = ['All talents', 'Pending review', 'Under review', 'Hired', 'Rejected'];
 
@@ -115,12 +117,14 @@ const Talents: React.FC = () => {
     return 'bg-[#0047CC]';
   };
 
-  const getStatusVariant = (status?: string): 'gray' | 'yellow' | 'green' | 'red' => {
+  const getStatusVariant = (status?: string): 'gray' | 'yellow' | 'green' | 'red' | 'purple' | 'orange' => {
     const s = (status || '').toUpperCase();
     if (s === 'PENDING_REVIEW' || s === 'PENDING REVIEW' || s === 'PENDING') return 'gray';
     if (s === 'UNDER_REVIEW' || s === 'UNDER REVIEW' || s === 'IN_PROGRESS') return 'yellow';
     if (s === 'HIRED' || s === 'PASSED') return 'green';
-    if (s === 'REJECTED' || s === 'FAILED') return 'red';
+    if (s === 'REJECTED') return 'red';
+    if (s === 'FAILED') return 'orange';
+    if (s === 'INELIGIBLE') return 'purple';
     return 'gray';
   };
 
@@ -157,6 +161,13 @@ const Talents: React.FC = () => {
       (talent as any).status === 'Hired' ||
       (talent as any).status === 'Rejected';
 
+    const isStage3Passed =
+      talent.stage?.completed === true ||
+      (talent.stage?.current === 3 && talent.stage?.completed) ||
+      talent.overallStatus === 'COMPLETED' ||
+      talent.overallStatus === 'READY_FOR_DECISION' ||
+      (talent as any).overallPassed === true;
+
     return [
       {
         key: 'VIEW_DETAILS',
@@ -170,14 +181,14 @@ const Talents: React.FC = () => {
         label: 'Hire applicant',
         method: 'POST',
         path: `/api/v1/assessments/${talent.assessmentId || talent.id}/decision/hire`,
-        enabled: !isHiredOrRejected,
+        enabled: isStage3Passed && !isHiredOrRejected,
       },
       {
         key: 'REJECT_APPLICANT',
         label: 'Reject applicant',
         method: 'POST',
         path: `/api/v1/assessments/${talent.assessmentId || talent.id}/decision/reject`,
-        enabled: !isHiredOrRejected,
+        enabled: isStage3Passed && !isHiredOrRejected,
         destructive: true,
       },
     ];
@@ -191,12 +202,20 @@ const Talents: React.FC = () => {
   };
 
   const handleActionClick = (action: EmployerTalentAction, talent: EmployerTalentItem) => {
-    if (action.enabled === false) return;
     setOpenMenuIdx(null);
 
     const key = (action.key || '').toUpperCase();
     const label = (action.label || '').toLowerCase();
-    const applicantIdentifier = talent.applicantCode || talent.id;
+    const applicantIdentifier = talent.applicantCode || talent.id || 'candidate';
+
+    if (action.enabled === false) {
+      if (key === 'REJECT_APPLICANT' || label.includes('reject')) {
+        toast.error('Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-assessment exits stay Failed.');
+      } else {
+        toast.error('This action is currently unavailable for this candidate.');
+      }
+      return;
+    }
 
     if (key === 'VIEW_DETAILS' || label.includes('view details') || label.includes('view')) {
       openTalentProfile(talent);
@@ -210,8 +229,21 @@ const Talents: React.FC = () => {
     }
 
     if (key === 'REJECT_APPLICANT' || label.includes('reject')) {
+      const eligibility = isCandidateEligibleForRejection(talent);
+      if (!eligibility.eligible) {
+        toast.error(eligibility.message || 'Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-assessment exits stay Failed.');
+        return;
+      }
       const jobId = talent.rolePostingId || '1';
-      navigate(`/jobs/${jobId}/reject/${applicantIdentifier}`);
+      const assessmentId = resolveAssessmentId(talent, jobId);
+      navigate(`/jobs/${jobId}/reject/${encodeURIComponent(applicantIdentifier)}${assessmentId ? `?assessmentId=${encodeURIComponent(assessmentId)}` : ''}`, {
+        state: {
+          assessmentId,
+          rolePostingId: jobId,
+          applicant: talent,
+          actionPath: action.path,
+        },
+      });
       return;
     }
 
@@ -706,9 +738,24 @@ const Talents: React.FC = () => {
         applicant={selectedApplicant}
         onReject={() => {
           setIsApplicantModalOpen(false);
+          if (!selectedApplicant) return;
+          const eligibility = isCandidateEligibleForRejection(selectedApplicant);
+          if (!eligibility.eligible) {
+            toast.error(eligibility.message || 'Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-assessment exits stay Failed.');
+            return;
+          }
           const jobId = selectedApplicant?.rolePostingId || '1';
-          const applicantId = selectedApplicant?.applicantCode || selectedApplicant?.id;
-          navigate(`/jobs/${jobId}/reject/${applicantId}`);
+          const applicantId = selectedApplicant?.applicantCode || selectedApplicant?.id || 'candidate';
+          const assessmentId = resolveAssessmentId(selectedApplicant, jobId);
+          const rejectAction = selectedApplicant?.actions?.find((a: any) => (a.key || '').toUpperCase() === 'REJECT_APPLICANT');
+          navigate(`/jobs/${jobId}/reject/${encodeURIComponent(applicantId)}${assessmentId ? `?assessmentId=${encodeURIComponent(assessmentId)}` : ''}`, {
+            state: {
+              assessmentId,
+              rolePostingId: jobId,
+              applicant: selectedApplicant,
+              actionPath: rejectAction?.path,
+            },
+          });
         }}
         onHire={() => {
           setIsApplicantModalOpen(false);

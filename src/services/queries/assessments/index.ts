@@ -1356,6 +1356,9 @@ export const useEmployerDecideAlignMutation = () => {
 
 /**
  * POST /assessments/:assessmentId/decision/reject
+ *
+ * Only after Stage 3 pass (COMPLETED + overall passed).
+ * kind = 'LEGITIMATE' for form reasons; 'FRAUD' forfeits deposit.
  */
 export const useEmployerDecideRejectMutation = () => {
   const queryClient = useQueryClient();
@@ -1363,15 +1366,23 @@ export const useEmployerDecideRejectMutation = () => {
     mutationFn: ({
       assessmentId,
       kind = 'LEGITIMATE',
+      primaryReason,
+      details,
       reason,
     }: {
       assessmentId: string;
       kind?: 'LEGITIMATE' | 'FRAUD';
+      primaryReason?: string;
+      details?: string;
       reason?: string;
     }) =>
       apiClient.post<any>({
         url: `/assessments/${assessmentId}/decision/reject`,
-        body: { kind, reason },
+        body: {
+          kind,
+          primaryReason: primaryReason || 'OTHER',
+          details: details || reason || 'No additional details provided.',
+        },
         auth: true,
       }),
     onSuccess: (_, variables) => {
