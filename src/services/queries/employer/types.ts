@@ -623,22 +623,27 @@ export type EmployerApplicantStatus =
   | 'PENDING_REVIEW'
   | 'UNDER_REVIEW'
   | 'HIRED'
-  | 'REJECTED';
+  | 'FAILED'
+  | 'REJECTED'
+  | 'INELIGIBLE';
 
 export interface EmployerApplicant {
   id?: string;
-  assessmentId?: string;
+  assessmentId?: string | null;
+  matchResultId?: string | null;
   talentId?: string;
   applicantCode: string;
-  qualification?: string;
-  location?: string;
-  country?: string;
-  specialization?: string;
-  appliedOn?: string;
-  overallStatus?: string;
+  qualification?: string | null;
+  location?: string | null;
+  country?: string | null;
+  specialization?: string | null;
+  roleApplied?: string;
+  rolePostingId?: string;
+  appliedOn?: string | null;
+  overallStatus?: EmployerApplicantStatus | string;
   overallStatusLabel?: string;
   status?: EmployerApplicantStatus | string;
-  overallScore?: number;
+  overallScore?: number | null;
   overall?: number;
   stage?: EmployerTalentStage;
   actions?: EmployerTalentAction[];
@@ -681,12 +686,22 @@ export interface EmployerApplicantsResponse {
   metrics: EmployerApplicantMetrics;
   geoDistribution?: EmployerGeoDistribution;
   applicants: EmployerApplicant[];
-  testResults?: {
-    psychometric?: EmployerTestResultSection;
-    situationalJudgement?: EmployerTestResultSection;
-    video?: EmployerTestResultSection;
-  };
   recommendation?: EmployerRecommendation;
+}
+
+/**
+ * Separate endpoint for stage test results.
+ * GET /api/v1/employers/jobs/:jobId/applicants/test-results
+ * Only call when opening the stage-results detail UI.
+ */
+export interface EmployerApplicantTestResultsResponse {
+  rolePostingId?: string;
+  roleTitle?: string;
+  testResults: {
+    gettingToKnowYou?: EmployerTestResultSection;
+    professionalDimension?: EmployerTestResultSection;
+    howYouShowUp?: EmployerTestResultSection;
+  };
 }
 
 // --- Hired ---

@@ -20,6 +20,7 @@ import type {
 } from '../../services/queries/employer/types';
 import { toast } from 'react-hot-toast';
 import { resolveAssessmentId, isCandidateEligibleForRejection } from '../../utils/assessmentDecision';
+import { useEmployerJobApplicantTestResultsQuery } from '../../services/queries/employer';
 
 interface ApplicantsTabViewProps {
   data?: EmployerApplicantsResponse;
@@ -29,6 +30,22 @@ interface ApplicantsTabViewProps {
   onReject?: (applicant: any) => void;
   onViewDetails?: (applicant: any) => void;
 }
+
+// ── Filter chips ─────────────────────────────────────────────
+
+type StatusFilter = 'ALL' | 'PENDING_REVIEW' | 'UNDER_REVIEW' | 'HIRED' | 'FAILED' | 'INELIGIBLE' | 'REJECTED';
+
+const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
+  { key: 'ALL', label: 'All' },
+  { key: 'PENDING_REVIEW', label: 'Pending review' },
+  { key: 'UNDER_REVIEW', label: 'Under review' },
+  { key: 'HIRED', label: 'Hired' },
+  { key: 'FAILED', label: 'Failed' },
+  { key: 'INELIGIBLE', label: 'Ineligible' },
+  { key: 'REJECTED', label: 'Rejected' },
+];
+
+// ── Accordion ────────────────────────────────────────────────
 
 const AccordionItem: React.FC<{ 
   title: string; 
@@ -71,6 +88,8 @@ const AccordionItem: React.FC<{
   </div>
 );
 
+// ── Status → badge variant ───────────────────────────────────
+
 const getApplicantStatusVariant = (status?: string): any => {
   const s = status?.toUpperCase();
   if (s === 'PENDING_REVIEW' || s === 'PENDING') return 'gray';
@@ -82,7 +101,9 @@ const getApplicantStatusVariant = (status?: string): any => {
   return 'gray';
 };
 
-const formatQualification = (q?: string): string => {
+// ── Qualification formatter ──────────────────────────────────
+
+const formatQualification = (q?: string | null): string => {
   if (!q) return '—';
   if (q === 'SENIOR_LEVEL') return 'Senior level';
   if (q === 'MID_LEVEL') return 'Mid level';
@@ -90,6 +111,8 @@ const formatQualification = (q?: string): string => {
   if (q === 'STUDENT_GRADUATE') return 'Student / Graduate';
   return q.replace(/_/g, ' ');
 };
+
+// ── Test-results sub-table (for stage accordions) ────────────
 
 const TestResultsTable: React.FC<{
   sectionName: string;
@@ -211,6 +234,8 @@ const TestResultsTable: React.FC<{
   );
 };
 
+// ── Stage applicants sub-table ───────────────────────────────
+
 const StageApplicantsTable: React.FC<{
   applicants: EmployerApplicant[];
   onOpenDossier: (applicant: EmployerApplicant) => void;
@@ -263,14 +288,22 @@ const StageApplicantsTable: React.FC<{
         </thead>
         <tbody className="divide-y divide-gray-50">
           {paginated.map((applicant, i) => {
+            // Use overallStatusLabel for badge text (do not remap)
             const statusLabel = applicant.overallStatusLabel || applicant.overallStatus || applicant.status || 'Under review';
-            const score = applicant.overallScore ?? applicant.overall;
+            const score = applicant.overallScore;
             const location = applicant.location || applicant.country || '—';
+
+            // Drive menu from actions[] array
+            const viewAction = applicant.actions?.find((a) => a.key === 'VIEW_DETAILS');
+            const hireAction = applicant.actions?.find((a) => a.key === 'HIRE_APPLICANT');
+            const rejectAction = applicant.actions?.find((a) => a.key === 'REJECT_APPLICANT');
+            const hasAnyActions = (applicant.actions ?? []).length > 0;
+
             return (
               <tr
                 key={applicant.id || applicant.assessmentId || i}
-                onClick={() => onOpenDossier(applicant)}
-                className="group hover:bg-gray-50/50 transition-colors cursor-pointer"
+                onClick={() => viewAction ? onOpenDossier(applicant) : undefined}
+                className={`group hover:bg-gray-50/50 transition-colors ${viewAction ? 'cursor-pointer' : ''}`}
               >
                 <td className="py-4">
                   <span className="text-[14px] font-medium text-gray-900 group-hover:text-[#0047CC] transition-colors">
@@ -295,80 +328,90 @@ const StageApplicantsTable: React.FC<{
                   />
                 </td>
                 <td className="py-4 text-right relative">
-                  <div
-                    ref={openMenuIdx === i ? menuContainerRef : undefined}
-                    className="inline-block relative"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setOpenMenuIdx(openMenuIdx === i ? null : i);
-                      }}
-                      className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer relative z-10"
-                      aria-label="Applicant options"
+                  {hasAnyActions ? (
+                    <div
+                      ref={openMenuIdx === i ? menuContainerRef : undefined}
+                      className="inline-block relative"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      <MoreVerticalIcon size={18} />
-                    </button>
-                    {openMenuIdx === i && (
-                      <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-150 origin-top-right text-left">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenuIdx(null);
-                            onOpenDossier(applicant);
-                          }}
-                          className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-                        >
-                          View dossier
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenuIdx(null);
-                            onHire(applicant);
-                          }}
-                          className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-                        >
-                          Hire applicant
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenuIdx(null);
-                            const eligibility = isCandidateEligibleForRejection(applicant);
-                            if (!eligibility.eligible) {
-                              toast.error(eligibility.message || 'Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-assessment exits stay Failed, not this form.');
-                              return;
-                            }
-                            const effectiveJobId = jobId || rolePostingId;
-                            const assessmentId = resolveAssessmentId(applicant, effectiveJobId);
-                            const applicantCode = applicant.applicantCode || applicant.id || applicant.talentId || 'candidate';
-                            const rejectAction = applicant.actions?.find((a: any) => (a.key || '').toUpperCase() === 'REJECT_APPLICANT');
-                            if (onReject) {
-                              onReject(applicant);
-                            } else if (effectiveJobId) {
-                              navigate(`/jobs/${effectiveJobId}/reject/${encodeURIComponent(applicantCode)}${assessmentId ? `?assessmentId=${encodeURIComponent(assessmentId)}` : ''}`, {
-                                state: {
-                                  assessmentId,
-                                  rolePostingId: effectiveJobId,
-                                  applicant,
-                                  actionPath: rejectAction?.path,
-                                },
-                              });
-                            }
-                          }}
-                          className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-                        >
-                          Reject applicant
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuIdx(openMenuIdx === i ? null : i);
+                        }}
+                        className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer relative z-10"
+                        aria-label="Applicant options"
+                      >
+                        <MoreVerticalIcon size={18} />
+                      </button>
+                      {openMenuIdx === i && (
+                        <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-150 origin-top-right text-left">
+                          {viewAction && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuIdx(null);
+                                onOpenDossier(applicant);
+                              }}
+                              className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                            >
+                              {viewAction.label || 'View dossier'}
+                            </button>
+                          )}
+                          {hireAction && (
+                            <button
+                              type="button"
+                              disabled={!hireAction.enabled}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuIdx(null);
+                                onHire(applicant);
+                              }}
+                              className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              {hireAction.label || 'Hire applicant'}
+                            </button>
+                          )}
+                          {rejectAction && (
+                            <button
+                              type="button"
+                              disabled={!rejectAction.enabled}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuIdx(null);
+                                if (!rejectAction.enabled) {
+                                  toast.error('Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-assessment exits stay Failed, not this form.');
+                                  return;
+                                }
+                                const effectiveJobId = jobId || rolePostingId;
+                                const assessmentId = resolveAssessmentId(applicant, effectiveJobId);
+                                const applicantCode = applicant.applicantCode || applicant.id || applicant.talentId || 'candidate';
+                                if (onReject) {
+                                  onReject(applicant);
+                                } else if (effectiveJobId) {
+                                  navigate(`/jobs/${effectiveJobId}/reject/${encodeURIComponent(applicantCode)}${assessmentId ? `?assessmentId=${encodeURIComponent(assessmentId)}` : ''}`, {
+                                    state: {
+                                      assessmentId,
+                                      rolePostingId: effectiveJobId,
+                                      applicant,
+                                      actionPath: rejectAction.path,
+                                    },
+                                  });
+                                }
+                              }}
+                              className={`w-full px-4 py-2.5 text-left text-[13px] font-medium ${rejectAction.destructive ? 'text-red-600 hover:bg-red-50' : 'text-gray-700 hover:bg-gray-50'} transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed`}
+                            >
+                              {rejectAction.label || 'Reject applicant'}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-gray-300 text-[12px]">—</span>
+                  )}
                 </td>
               </tr>
             );
@@ -416,6 +459,8 @@ const StageApplicantsTable: React.FC<{
   );
 };
 
+// ── Main: ApplicantsTabView ──────────────────────────────────
+
 const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({ 
   data, 
   isLoading, 
@@ -426,9 +471,14 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
 }) => {
   const navigate = useNavigate();
   const [openSection, setOpenSection] = useState<string | null>('Overview');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(null);
   const menuContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Track whether any stage accordion has been opened to lazily fetch test results
+  const [stageOpened, setStageOpened] = useState(false);
+
   const PAGE_SIZE = 10;
 
   useEffect(() => {
@@ -457,7 +507,17 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
 
   const toggleSection = (section: string) => {
     setOpenSection(openSection === section ? null : section);
+    // Lazily trigger test-results fetch when a stage accordion is first opened
+    if (['Stage1', 'Stage2', 'Stage3'].includes(section) && !stageOpened) {
+      setStageOpened(true);
+    }
   };
+
+  // Fetch test results ONLY when a stage accordion is opened
+  const { data: testResultsData } = useEmployerJobApplicantTestResultsQuery(
+    jobId || '',
+    { enabled: stageOpened && !!jobId }
+  );
 
   const metrics = data?.metrics;
   const applicants = data?.applicants ?? [];
@@ -465,6 +525,34 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
   const recommendation = data?.recommendation;
   const topCandidates = recommendation?.topCandidates ?? [];
 
+  // Filter applicants by status chip
+  const filteredApplicants = useMemo(() => {
+    if (statusFilter === 'ALL') return applicants;
+    return applicants.filter((a) => {
+      const s = (a.overallStatus || a.status || '').toUpperCase();
+      return s === statusFilter;
+    });
+  }, [applicants, statusFilter]);
+
+  // Status chip counts
+  const statusCounts = useMemo(() => {
+    const counts: Record<StatusFilter, number> = {
+      ALL: applicants.length,
+      PENDING_REVIEW: 0,
+      UNDER_REVIEW: 0,
+      HIRED: 0,
+      FAILED: 0,
+      INELIGIBLE: 0,
+      REJECTED: 0,
+    };
+    for (const a of applicants) {
+      const s = (a.overallStatus || a.status || '').toUpperCase() as StatusFilter;
+      if (s in counts) counts[s]++;
+    }
+    return counts;
+  }, [applicants]);
+
+  // Stage filtering using stage.current
   const stage1Applicants = useMemo(() => {
     return applicants.filter(
       (a) =>
@@ -492,11 +580,16 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
     );
   }, [applicants]);
 
-  const totalPages = Math.max(1, Math.ceil(applicants.length / PAGE_SIZE));
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredApplicants.length / PAGE_SIZE));
   const paginatedApplicants = useMemo(() => {
     const start = (currentPage - 1) * PAGE_SIZE;
-    return applicants.slice(start, start + PAGE_SIZE);
-  }, [applicants, currentPage]);
+    return filteredApplicants.slice(start, start + PAGE_SIZE);
+  }, [filteredApplicants, currentPage]);
 
   if (isLoading) {
     return (
@@ -594,6 +687,9 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
     }
   };
 
+  // Resolve test-result sections from the separate endpoint
+  const testResults = testResultsData?.testResults;
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-7xl mx-auto">
       {/* Stats Grid */}
@@ -619,6 +715,7 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
           onToggle={() => toggleSection('Overview')}
         >
           <div className="space-y-6">
+            {/* Geo distribution */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-4">
                 <div className="flex items-center justify-between mb-2">
@@ -650,6 +747,34 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
               </div>
             </div>
 
+            {/* Status filter chips */}
+            <div className="flex flex-wrap gap-2 pt-2">
+              {STATUS_FILTERS.map((f) => {
+                const count = statusCounts[f.key];
+                const isActive = statusFilter === f.key;
+                return (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => setStatusFilter(f.key)}
+                    className={`px-3 py-1.5 text-[12px] font-medium rounded-full border transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-[#0047CC] text-white border-[#0047CC]'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {f.label}
+                    {count > 0 && (
+                      <span className={`ml-1.5 text-[10px] font-semibold ${isActive ? 'text-white/80' : 'text-gray-400'}`}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Main applicants table */}
             <div className="overflow-x-auto -mx-6 px-6">
               <table className="w-full text-left">
                 <thead>
@@ -658,6 +783,7 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
                     <th className="pb-4 font-medium">Qualification</th>
                     <th className="pb-4 font-medium">Location</th>
                     <th className="pb-4 font-medium">Specialization</th>
+                    <th className="pb-4 font-medium">Stage</th>
                     <th className="pb-4 font-medium">Applied On</th>
                     <th className="pb-4 font-medium text-center">Score</th>
                     <th className="pb-4 font-medium text-center">Overall Status</th>
@@ -666,14 +792,25 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {paginatedApplicants.map((applicant: EmployerApplicant, i: number) => {
+                    // Badge text from overallStatusLabel (do not remap)
                     const statusLabel = applicant.overallStatusLabel || applicant.overallStatus || applicant.status || '—';
-                    const score = applicant.overallScore ?? applicant.overall;
+                    // Score from overallScore — show — if null
+                    const score = applicant.overallScore;
                     const location = applicant.location || applicant.country || '—';
+                    // Stage column from stage.label
+                    const stageLabel = applicant.stage?.label || '—';
+
+                    // Drive menu from actions[] array
+                    const viewAction = applicant.actions?.find((a) => a.key === 'VIEW_DETAILS');
+                    const hireAction = applicant.actions?.find((a) => a.key === 'HIRE_APPLICANT');
+                    const rejectAction = applicant.actions?.find((a) => a.key === 'REJECT_APPLICANT');
+                    const hasAnyActions = (applicant.actions ?? []).length > 0;
+
                     return (
                       <tr 
                         key={i} 
-                        onClick={() => handleOpenDossier(applicant)}
-                        className="group hover:bg-gray-50/50 transition-colors cursor-pointer"
+                        onClick={() => viewAction ? handleOpenDossier(applicant) : undefined}
+                        className={`group hover:bg-gray-50/50 transition-colors ${viewAction ? 'cursor-pointer' : ''}`}
                       >
                         <td className="py-4">
                           <span className="text-[14px] font-medium text-gray-900 group-hover:text-[#0047CC] transition-colors">
@@ -683,6 +820,7 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
                         <td className="py-4 text-[13px] font-medium text-gray-500">{formatQualification(applicant.qualification)}</td>
                         <td className="py-4 text-[13px] font-medium text-gray-500">{location}</td>
                         <td className="py-4 text-[13px] font-medium text-gray-500">{applicant.specialization || '—'}</td>
+                        <td className="py-4 text-[13px] font-medium text-gray-500">{stageLabel}</td>
                         <td className="py-4 text-[13px] font-medium text-gray-400">{applicant.appliedOn || '—'}</td>
                         <td className="py-4 text-center">
                           {score != null ? (
@@ -699,93 +837,104 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
                           />
                         </td>
                         <td className="py-4 text-right relative">
-                          <div 
-                            ref={openMenuIdx === i ? menuContainerRef : undefined}
-                            className="inline-block relative"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setOpenMenuIdx(openMenuIdx === i ? null : i);
-                              }}
-                              className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer relative z-10"
-                              aria-label="Applicant options"
+                          {hasAnyActions ? (
+                            <div 
+                              ref={openMenuIdx === i ? menuContainerRef : undefined}
+                              className="inline-block relative"
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              <MoreVerticalIcon size={18} />
-                            </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenuIdx(openMenuIdx === i ? null : i);
+                                }}
+                                className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer relative z-10"
+                                aria-label="Applicant options"
+                              >
+                                <MoreVerticalIcon size={18} />
+                              </button>
 
-                            {openMenuIdx === i && (
-                              <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-150 origin-top-right text-left">
-                                <button 
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setOpenMenuIdx(null);
-                                    if (onViewDetails) {
-                                      onViewDetails(applicant);
-                                    } else {
-                                      onHire(applicant);
-                                    }
-                                  }}
-                                  className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-                                >
-                                  View details
-                                </button>
-                                <button 
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setOpenMenuIdx(null);
-                                    onHire(applicant);
-                                  }}
-                                  className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-                                >
-                                  Hire applicant
-                                </button>
-                                <button 
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setOpenMenuIdx(null);
-                                    const eligibility = isCandidateEligibleForRejection(applicant);
-                                    if (!eligibility.eligible) {
-                                      toast.error(eligibility.message || 'Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-assessment exits stay Failed, not this form.');
-                                      return;
-                                    }
-                                    const effectiveJobId = jobId || data?.rolePostingId;
-                                    const assessmentId = resolveAssessmentId(applicant, effectiveJobId);
-                                    const applicantCode = applicant.applicantCode || applicant.id || applicant.talentId || 'candidate';
-                                    const rejectAction = applicant.actions?.find((a: any) => (a.key || '').toUpperCase() === 'REJECT_APPLICANT');
-                                    if (onReject) {
-                                      onReject(applicant);
-                                    } else if (effectiveJobId) {
-                                      navigate(`/jobs/${effectiveJobId}/reject/${encodeURIComponent(applicantCode)}${assessmentId ? `?assessmentId=${encodeURIComponent(assessmentId)}` : ''}`, {
-                                        state: {
-                                          assessmentId,
-                                          rolePostingId: effectiveJobId,
-                                          applicant,
-                                          actionPath: rejectAction?.path,
-                                        },
-                                      });
-                                    }
-                                  }}
-                                  className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-                                >
-                                  Reject applicant
-                                </button>
-                              </div>
-                            )}
-                          </div>
+                              {openMenuIdx === i && (
+                                <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-150 origin-top-right text-left">
+                                  {viewAction && (
+                                    <button 
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setOpenMenuIdx(null);
+                                        if (onViewDetails) {
+                                          onViewDetails(applicant);
+                                        } else {
+                                          onHire(applicant);
+                                        }
+                                      }}
+                                      className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                                    >
+                                      {viewAction.label || 'View details'}
+                                    </button>
+                                  )}
+                                  {hireAction && (
+                                    <button 
+                                      type="button"
+                                      disabled={!hireAction.enabled}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setOpenMenuIdx(null);
+                                        onHire(applicant);
+                                      }}
+                                      className="w-full px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                                    >
+                                      {hireAction.label || 'Hire applicant'}
+                                    </button>
+                                  )}
+                                  {rejectAction && (
+                                    <button 
+                                      type="button"
+                                      disabled={!rejectAction.enabled}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setOpenMenuIdx(null);
+                                        if (!rejectAction.enabled) {
+                                          toast.error('Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-assessment exits stay Failed, not this form.');
+                                          return;
+                                        }
+                                        const effectiveJobId = jobId || data?.rolePostingId;
+                                        const assessmentId = resolveAssessmentId(applicant, effectiveJobId);
+                                        const applicantCode = applicant.applicantCode || applicant.id || applicant.talentId || 'candidate';
+                                        if (onReject) {
+                                          onReject(applicant);
+                                        } else if (effectiveJobId) {
+                                          navigate(`/jobs/${effectiveJobId}/reject/${encodeURIComponent(applicantCode)}${assessmentId ? `?assessmentId=${encodeURIComponent(assessmentId)}` : ''}`, {
+                                            state: {
+                                              assessmentId,
+                                              rolePostingId: effectiveJobId,
+                                              applicant,
+                                              actionPath: rejectAction.path,
+                                            },
+                                          });
+                                        }
+                                      }}
+                                      className={`w-full px-4 py-2.5 text-left text-[13px] font-medium ${rejectAction.destructive ? 'text-red-600 hover:bg-red-50' : 'text-gray-700 hover:bg-gray-50'} transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed`}
+                                    >
+                                      {rejectAction.label || 'Reject applicant'}
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            /* INELIGIBLE applicants have no actions */
+                            <span className="text-gray-300 text-[12px]">—</span>
+                          )}
                         </td>
                       </tr>
                     );
                   })}
-                  {applicants.length === 0 && (
+                  {filteredApplicants.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-[13px] font-medium text-gray-400">
-                        No applicants yet
+                      <td colSpan={9} className="py-12 text-center text-[13px] font-medium text-gray-400">
+                        {statusFilter === 'ALL' ? 'No applicants yet' : `No ${STATUS_FILTERS.find(f => f.key === statusFilter)?.label?.toLowerCase() || ''} applicants`}
                       </td>
                     </tr>
                   )}
@@ -796,7 +945,7 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
               {totalPages > 1 && (
                 <div className="flex items-center justify-between pt-5 border-t border-gray-100 mt-2">
                   <span className="text-[12px] font-medium text-gray-500">
-                    Showing {(currentPage - 1) * PAGE_SIZE + 1} to {Math.min(currentPage * PAGE_SIZE, applicants.length)} of {applicants.length} applicants
+                    Showing {(currentPage - 1) * PAGE_SIZE + 1} to {Math.min(currentPage * PAGE_SIZE, filteredApplicants.length)} of {filteredApplicants.length} applicants
                   </span>
                   <div className="flex items-center gap-1.5">
                     <button
@@ -837,14 +986,14 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
         <AccordionItem 
           title="Stage 1: Getting to know you" 
           icon={CheckIcon} 
-          count={stage1Applicants.length > 0 ? stage1Applicants.length : data?.testResults?.psychometric?.passedCount ?? (data?.testResults?.psychometric?.items?.length || 0)}
-          isOpen={openSection === 'Stage1' || openSection === 'Psychometric'} 
+          count={stage1Applicants.length}
+          isOpen={openSection === 'Stage1'} 
           onToggle={() => toggleSection('Stage1')}
         >
-          {data?.testResults?.psychometric?.items && data.testResults.psychometric.items.length > 0 ? (
+          {testResults?.gettingToKnowYou?.items && testResults.gettingToKnowYou.items.length > 0 ? (
             <TestResultsTable 
-              sectionName="Psychometric" 
-              section={data.testResults.psychometric} 
+              sectionName="Getting to know you" 
+              section={testResults.gettingToKnowYou} 
               onOpenDossier={handleOpenDossierById}
             />
           ) : (
@@ -863,14 +1012,14 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
         <AccordionItem 
           title="Stage 2: Professional dimension" 
           icon={AlertTriangleIcon} 
-          count={stage2Applicants.length > 0 ? stage2Applicants.length : data?.testResults?.situationalJudgement?.passedCount ?? (data?.testResults?.situationalJudgement?.items?.length || 0)}
-          isOpen={openSection === 'Stage2' || openSection === 'SJT'} 
+          count={stage2Applicants.length}
+          isOpen={openSection === 'Stage2'} 
           onToggle={() => toggleSection('Stage2')}
         >
-          {data?.testResults?.situationalJudgement?.items && data.testResults.situationalJudgement.items.length > 0 ? (
+          {testResults?.professionalDimension?.items && testResults.professionalDimension.items.length > 0 ? (
             <TestResultsTable 
-              sectionName="Situational Judgement" 
-              section={data.testResults.situationalJudgement} 
+              sectionName="Professional dimension" 
+              section={testResults.professionalDimension} 
               onOpenDossier={handleOpenDossierById}
             />
           ) : (
@@ -889,14 +1038,14 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
         <AccordionItem 
           title="Stage 3: How you show up" 
           icon={PlayIcon} 
-          count={stage3Applicants.length > 0 ? stage3Applicants.length : data?.testResults?.video?.passedCount ?? (data?.testResults?.video?.items?.length || 0)}
-          isOpen={openSection === 'Stage3' || openSection === 'Video'} 
+          count={stage3Applicants.length}
+          isOpen={openSection === 'Stage3'} 
           onToggle={() => toggleSection('Stage3')}
         >
-          {data?.testResults?.video?.items && data.testResults.video.items.length > 0 ? (
+          {testResults?.howYouShowUp?.items && testResults.howYouShowUp.items.length > 0 ? (
             <TestResultsTable 
-              sectionName="Video Interview" 
-              section={data.testResults.video} 
+              sectionName="How you show up" 
+              section={testResults.howYouShowUp} 
               onOpenDossier={handleOpenDossierById}
             />
           ) : (

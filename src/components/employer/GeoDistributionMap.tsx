@@ -13,8 +13,8 @@ interface GeoData {
 }
 
 interface ApplicantItem {
-  location?: string;
-  country?: string;
+  location?: string | null;
+  country?: string | null;
   applicantCode?: string;
 }
 

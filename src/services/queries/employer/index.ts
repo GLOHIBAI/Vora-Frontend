@@ -29,6 +29,7 @@ import type {
   EmployerJobsListResponse,
   EmployerJobDetailsResponse,
   EmployerApplicantsResponse,
+  EmployerApplicantTestResultsResponse,
   EmployerHiresResponse,
   EmployerTalentsResponse,
   EmployerTalentsQueryParams,
@@ -772,6 +773,26 @@ export const useEmployerJobHiresQuery = (id: string, options: Record<string, any
         auth: true,
       });
       return (response?.data?.data ?? response?.data ?? response) as EmployerHiresResponse;
+    },
+    enabled: !!id,
+    ...options,
+  });
+};
+
+/**
+ * Fetch stage test results separately.
+ * GET /api/v1/employers/jobs/:jobId/applicants/test-results
+ * Only call when opening stage-results detail UI — NOT on every table load.
+ */
+export const useEmployerJobApplicantTestResultsQuery = (id: string, options: Record<string, any> = {}) => {
+  return useQuery({
+    queryKey: employerKeys.jobApplicantTestResults(id),
+    queryFn: async () => {
+      const response = await apiClient.get<any>({
+        url: `/employers/jobs/${id}/applicants/test-results`,
+        auth: true,
+      });
+      return (response?.data?.data ?? response?.data ?? response) as EmployerApplicantTestResultsResponse;
     },
     enabled: !!id,
     ...options,

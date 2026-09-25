@@ -24,6 +24,8 @@ export const employerKeys = {
     [...employerKeys.all, 'jobs', 'applicants', id] as const,
   jobHires: (id: string) =>
     [...employerKeys.all, 'jobs', 'hires', id] as const,
+  jobApplicantTestResults: (id: string) =>
+    [...employerKeys.all, 'jobs', 'applicants', 'test-results', id] as const,
 
   // Talents
   talents: (search?: string, status?: string, page?: number, limit?: number) =>
