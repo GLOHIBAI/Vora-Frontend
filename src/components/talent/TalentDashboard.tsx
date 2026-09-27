@@ -150,12 +150,12 @@ const TalentDashboard: React.FC = () => {
   // Helper to handle unlock action redirection
   const handleUnlockClick = (hrefHint?: string) => {
     if (!hrefHint) return;
-    if (hrefHint === '/talent/settings/cv') {
-      navigate('/onboarding/talent?step=2');
-    } else if (hrefHint === '/talent/jobs' || hrefHint === '/talent/roles') {
+    if (hrefHint === '/talent/settings/cv' || hrefHint === '/talent/cv' || hrefHint === '/profile') {
+      navigate('/profile');
+    } else if (hrefHint === '/talent/jobs' || hrefHint === '/talent/roles' || hrefHint === '/jobs') {
       navigate('/jobs');
-    } else if (hrefHint === '/talent/mentors') {
-      navigate('/courses');
+    } else if (hrefHint === '/talent/mentors' || hrefHint === '/mentors') {
+      navigate('/mentors');
     } else {
       navigate(hrefHint);
     }
@@ -298,14 +298,14 @@ const TalentDashboard: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {unlocks ? (
             <>
-              {/* Upload CV */}
+              {/* Update CV */}
               <QuickActionCard 
                 variant="primary"
-                title={unlocks.uploadCv?.label || 'Upload CV & Build Profile'}
+                title={unlocks.uploadCv?.label || 'Update your CV'}
                 description="Get your personalized Career Readiness Score and unlock platform features."
-                buttonText={unlocks.uploadCv?.label || 'Upload CV/resume'}
+                buttonText={unlocks.uploadCv?.label || 'Update your CV'}
                 isLocked={unlocks.uploadCv?.locked ?? false}
-                onClick={() => handleUnlockClick(unlocks.uploadCv?.hrefHint || '/talent/settings/cv')}
+                onClick={() => handleUnlockClick(unlocks.uploadCv?.hrefHint || '/profile')}
               />
 
               {/* Mentors */}
@@ -315,7 +315,7 @@ const TalentDashboard: React.FC = () => {
                 description="Gain access to mentors and get insights into your field."
                 buttonText="Explore mentors"
                 isLocked={unlocks.mentors?.locked ?? false}
-                onClick={() => handleUnlockClick(unlocks.mentors?.hrefHint || '/talent/mentors')}
+                onClick={() => handleUnlockClick(unlocks.mentors?.hrefHint || '/mentors')}
               />
 
               {/* Jobs */}
@@ -325,29 +325,31 @@ const TalentDashboard: React.FC = () => {
                 description="Explore available verified job roles matching your skill set."
                 buttonText="View available jobs"
                 isLocked={unlocks.jobs?.locked ?? false}
-                onClick={() => handleUnlockClick(unlocks.jobs?.hrefHint || '/talent/jobs')}
+                onClick={() => handleUnlockClick(unlocks.jobs?.hrefHint || '/jobs')}
               />
             </>
           ) : (
             <>
               <QuickActionCard 
                 variant="primary"
-                title="Upload CV & Build Profile"
+                title="Update your CV"
                 description="Get your personalized Career Readiness Score and unlock platform features."
-                buttonText="Upload CV/resume"
-                onClick={() => navigate('/onboarding/talent')}
+                buttonText="Update your CV"
+                onClick={() => navigate('/profile')}
               />
               <QuickActionCard 
-                isLocked
+                variant="white"
                 title="Access to Mentors"
-                description="Gain access to mentors and get insights into your field"
+                description="Gain access to mentors and get insights into your field."
                 buttonText="Explore mentors"
+                onClick={() => navigate('/mentors')}
               />
               <QuickActionCard 
-                isLocked
+                variant="white"
                 title="Access Jobs"
-                description="Provide your CV/resume and get your career readiness score"
+                description="Explore available verified job roles matching your skill set."
                 buttonText="View available jobs"
+                onClick={() => navigate('/jobs')}
               />
             </>
           )}

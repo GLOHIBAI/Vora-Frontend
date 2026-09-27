@@ -15,8 +15,28 @@ import type {
   MentorAccountSettings,
   UpdateMentorAccountDto,
   EmailChangeRequestDto,
+  MentorDashboardHomeResponse,
 } from './types';
 import { toast } from 'react-hot-toast';
+
+// -------------------------------------------------------------
+// Mentor Home Dashboard (schemaVersion = 1)
+// -------------------------------------------------------------
+
+export const useMentorDashboardQuery = (options: Record<string, any> = {}) => {
+  return useQuery({
+    queryKey: mentorKeys.dashboard(),
+    queryFn: async () => {
+      const response = await apiClient.get<any>({
+        url: '/mentors/dashboard',
+        auth: true,
+      });
+      const data = response?.data?.data ?? response?.data ?? response;
+      return data as MentorDashboardHomeResponse;
+    },
+    ...options,
+  });
+};
 
 // -------------------------------------------------------------
 // Settings - Profile

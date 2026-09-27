@@ -15,8 +15,11 @@ const QuickActionCard: React.FC<QuickActionCardProps> = ({
   const isPrimary = variant === 'primary';
   
   return (
-    <div className={`
+    <div 
+      onClick={!isLocked && onClick ? onClick : undefined}
+      className={`
       relative rounded-2xl p-7 flex flex-col h-full transition-all duration-300 min-h-[190px] border border-gray-100
+      ${!isLocked && onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}
       ${isPrimary 
         ? 'bg-[#0047CC] text-white' 
         : 'bg-white text-gray-900'}
@@ -33,7 +36,10 @@ const QuickActionCard: React.FC<QuickActionCardProps> = ({
       <div className="mt-auto flex items-center justify-between">
         <Button 
           variant="link"
-          onClick={onClick}
+          onClick={(e) => {
+            e?.stopPropagation?.();
+            if (!isLocked && onClick) onClick();
+          }}
           disabled={isLocked}
           fullWidth={false}
           className={`

@@ -215,7 +215,7 @@ const App = () => {
           <Route path="/talent/profile" element={<Navigate to="/profile" replace />} />
           <Route path="/talent/roles" element={<Navigate to="/dashboard" replace />} />
           <Route path="/talent/roles/:slug" element={<TalentRoleRedirect />} />
-          <Route path="/talent/settings/cv" element={<Navigate to="/onboarding/talent?step=2" replace />} />
+          <Route path="/talent/settings/cv" element={<Navigate to="/profile" replace />} />
           <Route path="/talent/jobs" element={<Navigate to="/jobs" replace />} />
           <Route path="/mentors" element={<ProtectedDashboardLayout><TalentMentorshipPage /></ProtectedDashboardLayout>} />
           <Route path="/talent/mentors" element={<Navigate to="/mentors" replace />} />

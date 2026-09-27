@@ -1,5 +1,6 @@
 export const mentorKeys = {
   all: ['mentor'] as const,
+  dashboard: () => [...mentorKeys.all, 'dashboard'] as const,
   settings: () => [...mentorKeys.all, 'settings'] as const,
   settingsProfile: () => [...mentorKeys.settings(), 'profile'] as const,
   settingsAvailability: () => [...mentorKeys.settings(), 'availability'] as const,
