@@ -115,12 +115,16 @@ export interface EmailChangeRequestDto {
 // -------------------------------------------------------------
 
 export interface MentorDashboardGreeting {
+  timeOfDay?: string;
   welcomeMessage: string;
   dateLabel: string;
-  subtitle: string;
+  subtitle?: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 export interface MentorHeaderAction {
+  key?: string;
   label: string;
   hrefHint?: string;
   variant?: 'primary' | 'outline' | 'secondary' | string;
@@ -149,12 +153,15 @@ export interface MentorNextSession {
 }
 
 export interface MentorMonthRevenueMetric {
-  formattedAmount: string;
-  rawAmount?: number;
-  comparisonLabel?: string;
-  deltaDirection?: 'UP' | 'DOWN' | 'NEUTRAL' | 'up' | 'down' | 'neutral';
   label?: string;
-  tiers?: Array<{ label: string; amount?: string; formattedAmount?: string }>;
+  amount?: number;
+  currency?: string;
+  formattedAmount: string;
+  previousAmount?: number;
+  deltaAmount?: number;
+  deltaDirection?: 'up' | 'down' | 'flat' | 'neutral' | string;
+  comparisonLabel?: string;
+  tiers?: Array<{ label: string; amount?: string | number; formattedAmount?: string }>;
 }
 
 export interface MentorMetricCount {
@@ -196,16 +203,21 @@ export interface MentorUpcomingSessionItem {
 }
 
 export interface MentorEarningsSeriesItem {
-  day: string;
+  day: number | string;
   amount: number;
   label?: string;
 }
 
 export interface MentorEarningsSnapshot {
+  monthLabel?: string;
+  daysIntoMonth?: number;
+  periodLabel?: string;
+  amount?: number;
+  currency?: string;
   formattedTotal?: string;
   formattedAmount?: string;
-  periodLabel?: string;
   pendingPayoutAmount?: number;
+  pendingPayoutCurrency?: string;
   formattedPendingPayout: string;
   pendingPayoutLabel: string;
   series: MentorEarningsSeriesItem[];
@@ -218,6 +230,9 @@ export interface MentorGapIntelligence {
   headline: string;
   kicker?: string;
   tags?: (string | { label: string })[];
+  topSignals?: (string | { label: string })[];
+  criticalCount?: number;
+  highCount?: number;
   criticalGapsCount?: number | string;
   analysedCount?: number | string;
   hrefHint?: string;
@@ -242,9 +257,10 @@ export interface MentorActiveCourseItem {
 }
 
 export interface MentorActiveCoursesBlock {
-  items: MentorActiveCourseItem[];
+  draftsWaiting?: number;
   draftsLabel?: string | null;
-  draftsHrefHint?: string;
+  manageHref?: string;
+  items: MentorActiveCourseItem[];
 }
 
 export interface MentorPendingRequestItem {
@@ -277,10 +293,18 @@ export interface MentorRecentActivityItem {
 
 export interface MentorQuickActionItem {
   id?: string;
+  key?: string;
   label: string;
   hrefHint: string;
   icon?: string;
   color?: string;
+}
+
+export interface MentorDashboardLinks {
+  notifications?: string;
+  upcomingSessions?: string;
+  requests?: string;
+  activity?: string;
 }
 
 export interface MentorDashboardHomeResponse {
@@ -298,4 +322,5 @@ export interface MentorDashboardHomeResponse {
   pendingRequests: MentorPendingRequestItem[];
   recentActivity: MentorRecentActivityItem[];
   quickActions: MentorQuickActionItem[];
+  links?: MentorDashboardLinks;
 }

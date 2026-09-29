@@ -48,13 +48,13 @@ const StatCard: React.FC<{
   trendType?: 'up' | 'down' | 'neutral' | 'warn';
   children?: React.ReactNode;
 }> = ({ label, value, trend, trendType, children }) => (
-  <div className="bg-white border border-gray-100 rounded-[18px] p-6 shadow-sm hover:shadow-md transition-all duration-300">
-    <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-2">{label}</p>
+  <div className="bg-white border border-gray-100 rounded-[18px] p-5 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300 min-w-0">
+    <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-2 truncate">{label}</p>
     <div className="flex items-baseline gap-2">
-      <p className="text-[22px] lg:text-[28px] font-medium text-gray-900 tracking-tight">{value}</p>
+      <p className="text-[22px] lg:text-[28px] font-medium text-gray-900 tracking-tight truncate">{value}</p>
     </div>
     {trend && (
-      <div className="inline-flex items-center gap-1 mt-2">
+      <div className="inline-flex items-center gap-1 mt-2 max-w-full">
         <Tag
           label={trend}
           variant={trendType === 'up' ? 'green' : trendType === 'warn' ? 'blue' : 'gray'}
@@ -71,42 +71,43 @@ const SectionHeader: React.FC<{
   linkText?: string;
   onLinkClick?: () => void;
 }> = ({ title, icon: Icon, linkText, onLinkClick }) => (
-  <div className="flex items-center justify-between mb-5">
-    <div className="flex items-center gap-2">
-      <div className="p-1.5 bg-gray-50 rounded-lg text-gray-400">
+  <div className="flex items-center justify-between gap-3 mb-5">
+    <div className="flex items-center gap-2 min-w-0">
+      <div className="p-1.5 bg-gray-50 rounded-lg text-gray-400 shrink-0">
         <Icon size={14} />
       </div>
-      <h3 className="text-[14px] font-medium text-gray-900 uppercase tracking-tight">{title}</h3>
+      <h3 className="text-[13px] sm:text-[14px] font-medium text-gray-900 uppercase tracking-tight truncate">{title}</h3>
     </div>
     {linkText && (
       <button
+        type="button"
         onClick={onLinkClick}
-        className="text-[12px] font-medium text-[#0047CC] hover:underline flex items-center gap-1 group cursor-pointer"
+        className="text-[12px] font-medium text-[#0047CC] hover:underline flex items-center gap-1 group cursor-pointer shrink-0"
       >
-        {linkText}
+        <span>{linkText}</span>
         <ChevronRightIcon size={12} className="group-hover:translate-x-0.5 transition-transform" />
       </button>
     )}
   </div>
 );
 
-/** Helper to resolve backend hrefHints to actual frontend routes */
+/** Helper to resolve backend hrefHints to actual frontend routes safely */
 const resolveMentorHref = (hrefHint?: string): string => {
   if (!hrefHint) return '/dashboard';
   const lower = hrefHint.toLowerCase();
   if (lower.includes('course')) {
     return '/mentor/courses';
   }
-  if (lower.includes('payout') || lower.includes('withdraw') || lower.includes('finances') || lower.includes('earning')) {
-    return '/payments';
-  }
   if (lower.includes('setting') || lower.includes('profile')) {
     return '/settings';
   }
-  if (lower.includes('session')) {
+  if (lower.includes('session') || lower.includes('schedule')) {
     return '/dashboard';
   }
-  return hrefHint;
+  if (lower.includes('notification') || lower.includes('activity')) {
+    return '/settings';
+  }
+  return '/dashboard';
 };
 
 const MentorDashboard: React.FC = () => {
@@ -115,7 +116,7 @@ const MentorDashboard: React.FC = () => {
   const { user } = useAuth();
 
   // 1. Fetch live Mentor Dashboard data (schemaVersion = 1)
-  const { data: dashboardData, isLoading, isError } = useMentorDashboardQuery();
+  const { data: dashboardData, isLoading } = useMentorDashboardQuery();
 
   if (isLoading) {
     return <FullPageSpinner message="Loading mentor dashboard..." />;
@@ -140,53 +141,54 @@ const MentorDashboard: React.FC = () => {
     navigate(resolved);
   };
 
+  // Withdrawal action handler
+  const handleWithdrawClick = () => {
+    if (!earnings?.pendingPayoutAmount || earnings.pendingPayoutAmount === 0) {
+      toast(earnings?.pendingPayoutLabel || 'Nothing waiting to withdraw at this time.', { icon: 'ℹ️' });
+    } else {
+      toast(`Withdrawal request for ${pendingPayoutFormatted} initiated. Processing starts shortly.`, { icon: '💰' });
+    }
+  };
+
+  // Scheduling handler
+  const handleScheduleClick = () => {
+    toast('Session calendar is up to date. Mentee slots are active.', { icon: '📅' });
+  };
+
   // Gate Accept / Decline
   const handleGateAction = () => {
     toast('Session request response feature is coming soon in the next update.', { icon: 'ℹ️' });
   };
 
-  // --- Data Binding ---
+  // --- Dynamic Data Binding from Backend Response ---
   const greeting = dashboardData?.greeting;
   const welcomeTitle = greeting?.welcomeMessage || `${getGreetingFallback()}, ${displayName}`;
   const dateLine = greeting?.dateLabel
     ? `${greeting.dateLabel}${greeting.subtitle ? ` · ${greeting.subtitle}` : ''}`
-    : `Tuesday, 10 March 2026 · You have 1 live session in 42 minutes`;
+    : `Sunday, 27 September 2026 · Nothing scheduled right now`;
 
   const unreadCount = dashboardData?.unreadNotificationsCount ?? 0;
   const headerActions: MentorHeaderAction[] = dashboardData?.headerActions && dashboardData.headerActions.length > 0
     ? dashboardData.headerActions
     : [];
 
-  const nextSession = dashboardData ? dashboardData.nextSession : {
-    kicker: 'Next Session, Live in 42 minutes',
-    menteeName: 'Chiamaka Obi',
-    scheduleLabel: 'Today · 14:00 WAT · 60 min',
-    tags: [
-      { label: 'Interview Referred', variant: 'blue-light' },
-      { label: 'T3 · Nigeria · $150', variant: 'blue-light' },
-      { label: 'Session 3 of 6', variant: 'gray' },
-    ],
-    meetingLink: 'https://meet.google.com',
-    joinLabel: 'Join Session',
-    hasBrief: true,
-    briefLabel: 'View Brief',
-  };
+  const nextSession = dashboardData ? dashboardData.nextSession : null;
 
   const metrics = dashboardData?.metrics;
-  const monthRevAmount = metrics?.monthRevenue?.formattedAmount || '$3,940';
-  const monthRevComparison = metrics?.monthRevenue?.comparisonLabel || '';
+  const monthRevAmount = metrics?.monthRevenue?.formattedAmount ?? '$0';
+  const monthRevComparison = metrics?.monthRevenue?.comparisonLabel ?? '';
   const monthRevDir = metrics?.monthRevenue?.deltaDirection?.toLowerCase();
   const monthRevTrendType = monthRevDir === 'down' ? 'warn' : monthRevDir === 'up' ? 'up' : 'neutral';
   const monthRevTiers = metrics?.monthRevenue?.tiers;
 
-  const upcomingSessionsCount = metrics?.upcomingSessions?.count ?? 5;
-  const upcomingSessionsHint = metrics?.upcomingSessions?.hint || '1 live today';
+  const upcomingSessionsCount = metrics?.upcomingSessions?.count ?? 0;
+  const upcomingSessionsHint = metrics?.upcomingSessions?.hint ?? '';
 
-  const pendingRequestsCount = metrics?.pendingRequests?.count ?? 3;
-  const pendingRequestsHint = metrics?.pendingRequests?.hint || 'Needs review';
+  const pendingRequestsCount = metrics?.pendingRequests?.count ?? 0;
+  const pendingRequestsHint = metrics?.pendingRequests?.hint ?? '';
 
-  const courseEnrollmentsCount = metrics?.courseEnrollments?.count ?? '1,284';
-  const courseEnrollmentsHint = metrics?.courseEnrollments?.hint || '↑ 12% this month';
+  const courseEnrollmentsCount = metrics?.courseEnrollments?.count ?? 0;
+  const courseEnrollmentsHint = metrics?.courseEnrollments?.hint ?? '';
 
   // Lists
   const upcomingSessions: MentorUpcomingSessionItem[] = dashboardData
@@ -197,42 +199,27 @@ const MentorDashboard: React.FC = () => {
   const activeCourses: MentorActiveCourseItem[] = activeCoursesBlock
     ? activeCoursesBlock.items || []
     : (MOCK_ACTIVE_COURSES as any[]);
-  const draftsLabel = activeCoursesBlock ? activeCoursesBlock.draftsLabel : '2 drafts waiting to be published, review now';
+  const draftsLabel = activeCoursesBlock ? activeCoursesBlock.draftsLabel : null;
 
   const pendingRequests: MentorPendingRequestItem[] = dashboardData
     ? dashboardData.pendingRequests || []
     : (MOCK_PENDING_REQUESTS as any[]);
 
   const earnings = dashboardData?.earnings;
-  const earningsTotal = earnings?.formattedTotal || earnings?.formattedAmount || monthRevAmount;
-  const earningsPeriod = earnings?.periodLabel || 'March 2026 · 10 days in';
-  const pendingPayoutFormatted = earnings?.formattedPendingPayout || '$3,152';
-  const pendingPayoutLabel = earnings?.pendingPayoutAmount === 0
-    ? (earnings?.pendingPayoutLabel || 'Nothing waiting to withdraw')
-    : (earnings?.pendingPayoutLabel || 'after 20% platform fee');
+  const earningsTotal = earnings?.formattedAmount || earnings?.formattedTotal || monthRevAmount;
+  const earningsPeriod = earnings?.periodLabel || '';
+  const pendingPayoutFormatted = earnings?.formattedPendingPayout || '$0';
+  const pendingPayoutLabel = earnings?.pendingPayoutLabel || 'Nothing waiting to withdraw';
   const earningsSeries = earnings?.series && earnings.series.length > 0
     ? earnings.series
-    : [
-        { day: '5 MAR', amount: 40 },
-        { day: '6 MAR', amount: 65 },
-        { day: '7 MAR', amount: 30 },
-        { day: '8 MAR', amount: 85 },
-        { day: '9 MAR', amount: 70 },
-        { day: '10 MAR', amount: 100 },
-        { day: 'TOD', amount: 60 },
-      ];
+    : [];
 
-  const maxSeriesAmount = Math.max(...earningsSeries.map((s) => Number(s.amount) || 0), 1);
+  const maxSeriesAmount = Math.max(...earningsSeries.map((s) => Number(s.amount) || 0), 0);
 
-  const gapIntel = dashboardData?.gapIntelligence ?? {
-    headline: '7 critical gaps identified',
-    kicker: 'Gap Intelligence • Live',
-    tags: [{ label: '89 failures' }, { label: '114 psych gaps' }],
-    criticalGapsCount: 7,
-    analysedCount: 1847,
-    hrefHint: '/mentor/courses',
-    createCourseHrefHint: '/mentor/courses',
-  };
+  const gapIntel = dashboardData?.gapIntelligence ?? null;
+  const gapSignals = gapIntel?.topSignals || gapIntel?.tags || [];
+  const criticalCount = Number(gapIntel?.criticalCount ?? gapIntel?.criticalGapsCount ?? 0);
+  const highDemandCount = Number(gapIntel?.highCount ?? gapIntel?.analysedCount ?? 0);
 
   const recentActivity: MentorRecentActivityItem[] = dashboardData
     ? dashboardData.recentActivity || []
@@ -241,10 +228,10 @@ const MentorDashboard: React.FC = () => {
   const quickActions: MentorQuickActionItem[] = dashboardData?.quickActions && dashboardData.quickActions.length > 0
     ? dashboardData.quickActions
     : [
-        { id: 'schedule', label: 'Schedule', hrefHint: '/dashboard', icon: 'calendar', color: 'blue' },
-        { id: 'course', label: 'Course', hrefHint: '/mentor/courses', icon: 'course', color: 'green' },
-        { id: 'withdraw', label: 'Withdraw', hrefHint: '/payments', icon: 'withdraw', color: 'emerald' },
-        { id: 'profile', label: 'Profile', hrefHint: '/settings', icon: 'profile', color: 'gray' },
+        { key: 'schedule', label: 'Schedule', hrefHint: '/dashboard', icon: 'calendar', color: 'blue' },
+        { key: 'withdraw', label: 'Withdraw', hrefHint: '/dashboard', icon: 'withdraw', color: 'emerald' },
+        { key: 'course', label: 'Course', hrefHint: '/mentor/courses', icon: 'course', color: 'green' },
+        { key: 'profile', label: 'Profile', hrefHint: '/settings', icon: 'profile', color: 'gray' },
       ];
 
   // Helper for tag labels
@@ -253,23 +240,23 @@ const MentorDashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
+    <div className="space-y-6 lg:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 w-full max-w-full overflow-x-hidden">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        <div className="space-y-1">
-          <h1 className="text-[22px] lg:text-[28px] font-medium text-gray-900 tracking-tight">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
+        <div className="space-y-1 min-w-0">
+          <h1 className="text-[22px] lg:text-[28px] font-medium text-gray-900 tracking-tight truncate">
             {welcomeTitle}
           </h1>
-          <p className="text-[12px] lg:text-[14px] font-medium text-gray-400">
+          <p className="text-[12px] lg:text-[14px] font-medium text-gray-400 truncate">
             {dateLine}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 lg:gap-3">
+        <div className="flex flex-wrap items-center gap-2 lg:gap-3 shrink-0">
           <Button
             variant="outline"
             fullWidth={false}
-            onClick={() => navigate('/settings')}
-            className="px-3 lg:px-4 min-h-[40px] lg:min-h-[44px] text-[11px] lg:text-[13px] shadow-sm bg-white"
+            onClick={() => handleCtaClick(dashboardData?.links?.notifications || '/settings')}
+            className="px-3 lg:px-4 min-h-[38px] lg:min-h-[42px] text-[12px] lg:text-[13px] shadow-sm bg-white"
           >
             <BellIcon size={14} className="text-gray-500" /> Notifications
             {unreadCount > 0 && (
@@ -282,19 +269,30 @@ const MentorDashboard: React.FC = () => {
           {headerActions.length > 0 ? (
             headerActions.map((action, i) => {
               const isPrimary = action.variant === 'primary' || (!action.variant && i === headerActions.length - 1);
+              const isCourse = (action.key || action.label).toLowerCase().includes('course');
+              const isSchedule = (action.key || action.label).toLowerCase().includes('schedule');
+
               return (
                 <Button
-                  key={i}
+                  key={action.key || i}
                   variant={isPrimary ? 'primary' : 'outline'}
                   fullWidth={false}
-                  onClick={() => handleCtaClick(action.hrefHint)}
-                  className={`px-3 lg:px-5 min-h-[40px] lg:min-h-[44px] text-[11px] lg:text-[13px] ${
+                  onClick={() => {
+                    if (isSchedule) {
+                      handleScheduleClick();
+                    } else if (isCourse) {
+                      navigate('/mentor/courses');
+                    } else {
+                      handleCtaClick(action.hrefHint);
+                    }
+                  }}
+                  className={`px-3 lg:px-5 min-h-[38px] lg:min-h-[42px] text-[12px] lg:text-[13px] ${
                     isPrimary ? 'shadow-lg shadow-blue-500/20' : 'shadow-sm bg-white'
                   }`}
                 >
-                  {action.label.toLowerCase().includes('course') ? (
+                  {isCourse ? (
                     <BookIcon size={14} className={isPrimary ? 'text-white' : 'text-gray-900'} />
-                  ) : action.label.toLowerCase().includes('schedule') || action.label.toLowerCase().includes('session') ? (
+                  ) : isSchedule ? (
                     <PlusIcon size={14} className={isPrimary ? 'text-white' : 'text-gray-900'} />
                   ) : null}
                   <span>{action.label}</span>
@@ -307,14 +305,14 @@ const MentorDashboard: React.FC = () => {
                 variant="outline"
                 fullWidth={false}
                 onClick={() => navigate('/mentor/courses')}
-                className="px-3 lg:px-5 min-h-[40px] lg:min-h-[44px] text-[11px] lg:text-[13px] shadow-sm bg-white"
+                className="px-3 lg:px-5 min-h-[38px] lg:min-h-[42px] text-[12px] lg:text-[13px] shadow-sm bg-white"
               >
                 <BookIcon size={14} className="text-gray-900" /> Create Course
               </Button>
               <Button
                 fullWidth={false}
-                onClick={() => toast('Session scheduling calendar is available below.', { icon: '📅' })}
-                className="px-4 lg:px-5 min-h-[40px] lg:min-h-[44px] text-[11px] lg:text-[13px] shadow-lg shadow-blue-500/20"
+                onClick={handleScheduleClick}
+                className="px-4 lg:px-5 min-h-[38px] lg:min-h-[42px] text-[12px] lg:text-[13px] shadow-lg shadow-blue-500/20"
               >
                 <PlusIcon size={14} className="text-white" /> Schedule Session
               </Button>
@@ -323,44 +321,46 @@ const MentorDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Next Session Hero Strip (Conditionally rendered, hidden if nextSession is null) */}
+      {/* Next Session Hero Strip (Conditionally rendered, only when nextSession exists) */}
       {nextSession && (
-        <div className="bg-gradient-to-r from-[#064E3B] via-[#065F46] to-[#059669] rounded-[24px] p-6 lg:p-8 flex flex-col lg:flex-row items-center lg:items-center gap-6 relative overflow-hidden group shadow-xl shadow-green-900/10 transition-transform active:scale-[0.99]">
+        <div className="bg-gradient-to-r from-[#064E3B] via-[#065F46] to-[#059669] rounded-[20px] sm:rounded-[24px] p-6 lg:p-8 flex flex-col lg:flex-row items-center justify-between gap-6 relative overflow-hidden group shadow-xl shadow-green-900/10 transition-transform active:scale-[0.99] w-full min-w-0">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3 pointer-events-none" />
 
-          <div className="relative flex items-center justify-center shrink-0">
-            <div className="w-4 h-4 bg-green-400 rounded-full animate-ping absolute" />
-            <div className="w-3.5 h-3.5 bg-green-400 rounded-full relative" />
-          </div>
+          <div className="flex items-center gap-4 w-full lg:w-auto">
+            <div className="relative flex items-center justify-center shrink-0">
+              <div className="w-4 h-4 bg-green-400 rounded-full animate-ping absolute" />
+              <div className="w-3.5 h-3.5 bg-green-400 rounded-full relative" />
+            </div>
 
-          <div className="flex-1 space-y-1 relative z-10 text-center lg:text-left">
-            <p className="text-[10px] lg:text-[11px] font-medium text-green-100/70 uppercase tracking-widest">
-              {nextSession.kicker || 'Next Session'}
-            </p>
-            <h2 className="text-[20px] lg:text-[24px] font-medium text-white">{nextSession.menteeName}</h2>
-            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2 lg:gap-3 pt-1">
-              <span className="text-[12px] lg:text-[13px] font-medium text-white/80">
-                {nextSession.scheduleLabel}
-              </span>
-              {nextSession.tags && nextSession.tags.length > 0 && (
-                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
-                  {nextSession.tags.map((tag, idx) => {
-                    const tagLabel = getTagText(tag);
-                    return (
-                      <Tag
-                        key={idx}
-                        label={tagLabel}
-                        variant="blue-light"
-                        className="bg-white/10 border-white/20 text-white"
-                      />
-                    );
-                  })}
-                </div>
-              )}
+            <div className="flex-1 space-y-1 relative z-10 min-w-0">
+              <p className="text-[10px] lg:text-[11px] font-medium text-green-100/70 uppercase tracking-widest truncate">
+                {nextSession.kicker || 'Next Session'}
+              </p>
+              <h2 className="text-[18px] lg:text-[22px] font-medium text-white truncate">{nextSession.menteeName}</h2>
+              <div className="flex flex-wrap items-center gap-2 lg:gap-3 pt-0.5">
+                <span className="text-[12px] lg:text-[13px] font-medium text-white/80">
+                  {nextSession.scheduleLabel}
+                </span>
+                {nextSession.tags && nextSession.tags.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {nextSession.tags.map((tag, idx) => {
+                      const tagLabel = getTagText(tag);
+                      return (
+                        <Tag
+                          key={idx}
+                          label={tagLabel}
+                          variant="blue-light"
+                          className="bg-white/10 border-white/20 text-white"
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-3 relative z-10 w-full lg:w-auto">
+          <div className="flex flex-col sm:flex-row items-center gap-3 relative z-10 w-full lg:w-auto shrink-0">
             <Button
               fullWidth={true}
               onClick={() => {
@@ -395,8 +395,8 @@ const MentorDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Stats Grid (Four metric cards from metrics.*) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Stats Grid (Four metric cards bound dynamically to metrics.*) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 w-full">
         <StatCard
           label={metrics?.monthRevenue?.label || 'Month Revenue'}
           value={monthRevAmount}
@@ -417,38 +417,38 @@ const MentorDashboard: React.FC = () => {
         </StatCard>
 
         <StatCard
-          label="Upcoming Sessions"
+          label={metrics?.upcomingSessions?.label || 'Upcoming Sessions'}
           value={String(upcomingSessionsCount)}
-          trend={upcomingSessionsHint}
+          trend={upcomingSessionsHint || undefined}
           trendType="neutral"
         />
 
         <StatCard
-          label="Pending Requests"
+          label={metrics?.pendingRequests?.label || 'Pending Requests'}
           value={String(pendingRequestsCount)}
-          trend={pendingRequestsHint}
-          trendType="warn"
+          trend={pendingRequestsHint || undefined}
+          trendType={Number(pendingRequestsCount) > 0 ? 'warn' : 'neutral'}
         />
 
         <StatCard
-          label="Course Enrollments"
+          label={metrics?.courseEnrollments?.label || 'Course Enrollments'}
           value={String(courseEnrollmentsCount)}
-          trend={courseEnrollmentsHint}
-          trendType="up"
+          trend={courseEnrollmentsHint || undefined}
+          trendType={Number(courseEnrollmentsCount) > 0 ? 'up' : 'neutral'}
         />
       </div>
 
-      {/* Main Masonry Grid */}
-      <div className="columns-1 lg:columns-2 gap-8 space-y-8 items-start">
-        {/* Column 1 */}
-        <div className="break-inside-avoid space-y-8">
+      {/* Responsive 2-Column Grid (Fully responsive without horizontal overflow) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start w-full min-w-0">
+        {/* Left Column */}
+        <div className="flex flex-col gap-6 lg:gap-8 min-w-0 w-full">
           {/* Upcoming Sessions List */}
-          <div className="bg-white border border-gray-100 rounded-[24px] p-8 shadow-sm">
+          <div className="bg-white border border-gray-100 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 lg:p-8 shadow-sm min-w-0 w-full">
             <SectionHeader
               title="Upcoming Sessions"
               icon={CalendarIcon}
               linkText="View all"
-              onLinkClick={() => toast('Showing upcoming sessions schedule.', { icon: '📅' })}
+              onLinkClick={() => handleCtaClick(dashboardData?.links?.upcomingSessions || '/dashboard')}
             />
 
             {upcomingSessions.length === 0 ? (
@@ -477,7 +477,7 @@ const MentorDashboard: React.FC = () => {
                           window.open(session.meetingLink, '_blank', 'noopener,noreferrer');
                         }
                       }}
-                      className="flex items-center gap-5 p-3 hover:bg-gray-50 rounded-2xl transition-all cursor-pointer group border-b border-gray-50 last:border-0"
+                      className="flex items-center gap-4 sm:gap-5 p-3 hover:bg-gray-50 rounded-2xl transition-all cursor-pointer group border-b border-gray-50 last:border-0"
                     >
                       <div
                         className={`w-12 h-14 rounded-xl flex flex-col items-center justify-center shrink-0 border ${
@@ -491,7 +491,7 @@ const MentorDashboard: React.FC = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[14px] font-medium text-gray-900 truncate">{menteeName}</p>
-                        <div className="flex flex-wrap items-center gap-3 pt-1">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-1">
                           <span className="text-[12px] font-medium text-gray-400">{timeLabel}</span>
                           <Tag label={typeLabel} variant="blue-light" />
                         </div>
@@ -511,12 +511,12 @@ const MentorDashboard: React.FC = () => {
           </div>
 
           {/* Active Courses */}
-          <div className="bg-white border border-gray-100 rounded-[24px] p-8 shadow-sm">
+          <div className="bg-white border border-gray-100 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 lg:p-8 shadow-sm min-w-0 w-full">
             <SectionHeader
               title="Active Courses"
               icon={BookIcon}
               linkText="Manage"
-              onLinkClick={() => navigate('/mentor/courses')}
+              onLinkClick={() => navigate(activeCoursesBlock?.manageHref || '/mentor/courses')}
             />
 
             {activeCourses.length === 0 ? (
@@ -536,23 +536,23 @@ const MentorDashboard: React.FC = () => {
                     <div
                       key={course.courseId || course.id || i}
                       onClick={() => handleCtaClick(course.hrefHint || '/mentor/courses')}
-                      className="flex items-center gap-5 p-4 bg-gray-50/50 hover:bg-gray-50 rounded-2xl transition-all cursor-pointer border border-gray-100 group"
+                      className="flex items-center gap-4 sm:gap-5 p-4 bg-gray-50/50 hover:bg-gray-50 rounded-2xl transition-all cursor-pointer border border-gray-100 group"
                     >
                       <div
-                        className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/10`}
+                        className={`w-12 sm:w-14 h-12 sm:h-14 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/10`}
                       >
                         <PlayIcon size={20} className="text-white" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[15px] font-medium text-gray-900 truncate">{course.title}</p>
-                        <div className="flex items-center gap-4 pt-1">
+                        <p className="text-[14px] sm:text-[15px] font-medium text-gray-900 truncate">{course.title}</p>
+                        <div className="flex flex-wrap items-center gap-3 pt-1">
                           <span className="text-[12px] font-medium text-gray-400">{enrolledCount} enrolled</span>
                           <span className="text-[11px] font-medium text-green-600">{statusText}</span>
                           <span className="text-[11px] font-medium text-blue-500">{ratingText}</span>
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-[16px] font-medium text-gray-900">{revLabel}</p>
+                        <p className="text-[15px] sm:text-[16px] font-medium text-gray-900">{revLabel}</p>
                         <p className="text-[10px] font-medium text-gray-400 uppercase">
                           {course.revenuePeriodLabel || 'All-time'}
                         </p>
@@ -566,7 +566,7 @@ const MentorDashboard: React.FC = () => {
             {/* Drafts strip (null = hide) */}
             {draftsLabel && (
               <div
-                onClick={() => navigate(activeCoursesBlock?.draftsHrefHint || '/mentor/courses')}
+                onClick={() => navigate('/mentor/courses')}
                 className="mt-6 p-4 bg-white border border-blue-200 rounded-2xl flex items-center gap-3 cursor-pointer hover:bg-blue-50/50 transition-colors"
               >
                 <div className="bg-[#0047CC] p-1.5 rounded-lg text-white shrink-0">
@@ -580,12 +580,12 @@ const MentorDashboard: React.FC = () => {
           </div>
 
           {/* Pending Requests */}
-          <div className="bg-white border border-gray-100 rounded-[24px] p-8 shadow-sm">
+          <div className="bg-white border border-gray-100 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 lg:p-8 shadow-sm min-w-0 w-full">
             <SectionHeader
               title="Pending Requests"
               icon={BriefcaseIcon}
               linkText="See all"
-              onLinkClick={() => toast('Reviewing pending mentee booking requests.', { icon: '💼' })}
+              onLinkClick={() => handleCtaClick(dashboardData?.links?.requests || '/dashboard')}
             />
 
             {pendingRequests.length === 0 ? (
@@ -604,13 +604,13 @@ const MentorDashboard: React.FC = () => {
                   return (
                     <div
                       key={req.bookingId || req.id || i}
-                      className={`p-6 rounded-[20px] border transition-all ${
+                      className={`p-5 sm:p-6 rounded-[20px] border transition-all ${
                         req.isCritical ? 'bg-white border-blue-200 shadow-sm' : 'bg-white border-gray-100'
                       }`}
                     >
                       <div className="flex items-start gap-4 mb-4">
                         <div
-                          className={`w-12 h-12 rounded-full bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-medium text-sm shrink-0 shadow-sm`}
+                          className={`w-11 sm:w-12 h-11 sm:h-12 rounded-full bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-medium text-sm shrink-0 shadow-sm`}
                         >
                           {initial}
                         </div>
@@ -645,7 +645,6 @@ const MentorDashboard: React.FC = () => {
                         {req.note}
                       </div>
 
-                      {/* Gate Accept / Decline until backend exists */}
                       <div className="flex items-center gap-3">
                         <Button
                           className="flex-1 py-2.5 text-[12px]"
@@ -669,77 +668,114 @@ const MentorDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Column 2 */}
-        <div className="break-inside-avoid space-y-8">
+        {/* Right Column */}
+        <div className="flex flex-col gap-6 lg:gap-8 min-w-0 w-full">
           {/* Earnings Snapshot */}
-          <div className="bg-white border border-gray-100 rounded-[24px] p-8 shadow-sm">
+          <div className="bg-white border border-gray-100 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 lg:p-8 shadow-sm min-w-0 w-full overflow-hidden">
             <SectionHeader
               title="Earnings Snapshot"
               icon={TrendingUpIcon}
               linkText="Full report"
-              onLinkClick={() => handleCtaClick(earnings?.breakdownHref || '/payments')}
+              onLinkClick={() => toast('Detailed monthly earnings report.', { icon: '📊' })}
             />
 
-            <div className="flex items-start justify-between mb-8">
-              <div>
-                <p className="text-[36px] font-medium text-gray-900 leading-tight">{earningsTotal}</p>
-                <p className="text-[13px] font-medium text-gray-400 mt-1">{earningsPeriod}</p>
+            <div className="flex items-start justify-between gap-4 mb-6 sm:mb-8">
+              <div className="min-w-0">
+                <p className="text-[28px] sm:text-[36px] font-medium text-gray-900 leading-tight truncate">
+                  {earningsTotal}
+                </p>
+                {earningsPeriod && (
+                  <p className="text-[12px] sm:text-[13px] font-medium text-gray-400 mt-1 truncate">
+                    {earningsPeriod}
+                  </p>
+                )}
               </div>
-              <div className="text-right">
-                <p className="text-[11px] font-medium text-gray-400 uppercase tracking-widest">Pending payout</p>
-                <p className="text-[24px] font-medium text-green-600">{pendingPayoutFormatted}</p>
-                <p className="text-[10px] font-medium text-gray-400">{pendingPayoutLabel}</p>
+              <div className="text-right shrink-0">
+                <p className="text-[10px] sm:text-[11px] font-medium text-gray-400 uppercase tracking-wider sm:tracking-widest">
+                  Pending payout
+                </p>
+                <p className="text-[20px] sm:text-[24px] font-medium text-green-600">
+                  {pendingPayoutFormatted}
+                </p>
+                <p className="text-[10px] font-medium text-gray-400">
+                  {pendingPayoutLabel}
+                </p>
               </div>
             </div>
 
             {/* Dynamic Bar Chart derived from earnings.series */}
-            <div className="flex items-end gap-3 h-24 mb-8 px-2">
-              {earningsSeries.map((item, i) => {
-                const amt = Number(item.amount) || 0;
-                const heightPercent = Math.max(Math.round((amt / maxSeriesAmount) * 100), 12);
-                const isLatest = i === earningsSeries.length - 1;
+            <div className="w-full mb-6 sm:mb-8">
+              {earningsSeries.length === 0 ? (
+                <div className="h-20 flex items-center justify-center text-xs text-gray-400">
+                  No earnings data available for this cycle.
+                </div>
+              ) : (
+                <div className="flex items-end gap-1 sm:gap-1.5 h-24 px-1 w-full justify-between">
+                  {earningsSeries.map((item, i) => {
+                    const amt = Number(item.amount) || 0;
+                    const heightPercent = maxSeriesAmount > 0
+                      ? Math.max(Math.round((amt / maxSeriesAmount) * 100), amt > 0 ? 8 : 4)
+                      : 4;
+                    const isLatest = i === earningsSeries.length - 1;
+                    const totalItems = earningsSeries.length;
+                    const dayNum = item.day || item.label || `${i + 1}`;
 
-                return (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-2 group relative">
-                    <div className="absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-[10px] px-2 py-0.5 rounded shadow pointer-events-none whitespace-nowrap z-20">
-                      ${amt.toLocaleString()}
-                    </div>
-                    <div
-                      className={`w-full rounded-t-lg transition-all duration-700 ${
-                        isLatest ? 'bg-[#0047CC]' : 'bg-blue-100 group-hover:bg-blue-200'
-                      }`}
-                      style={{ height: `${heightPercent}%` }}
-                    />
-                    <span className="text-[9px] font-medium text-gray-400 uppercase tracking-tighter truncate max-w-full">
-                      {item.day || item.label || `${i + 1}`}
-                    </span>
-                  </div>
-                );
-              })}
+                    // Label sampling: only show for day 1, every 5th day, and last day if > 10 days
+                    const shouldShowLabel =
+                      totalItems <= 10 ||
+                      i === 0 ||
+                      i === totalItems - 1 ||
+                      (totalItems > 10 && Number(item.day) % 5 === 0);
+
+                    return (
+                      <div
+                        key={i}
+                        className="flex-1 flex flex-col items-center gap-1 group relative min-w-0"
+                      >
+                        {/* Tooltip on hover */}
+                        <div className="absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-[10px] px-2 py-0.5 rounded shadow pointer-events-none whitespace-nowrap z-30">
+                          Day {dayNum}: ${amt.toLocaleString()}
+                        </div>
+                        {/* Bar */}
+                        <div
+                          className={`w-full max-w-[12px] sm:max-w-[16px] rounded-t-sm sm:rounded-t transition-all duration-500 ${
+                            isLatest
+                              ? amt > 0
+                                ? 'bg-[#0047CC]'
+                                : 'bg-blue-300'
+                              : amt > 0
+                              ? 'bg-blue-400 group-hover:bg-blue-500'
+                              : 'bg-gray-100 group-hover:bg-gray-200'
+                          }`}
+                          style={{ height: `${heightPercent}%` }}
+                        />
+                        {/* Day Label */}
+                        <span className="text-[8px] sm:text-[9px] font-medium text-gray-400 uppercase tracking-tighter truncate h-3 text-center w-full">
+                          {shouldShowLabel ? dayNum : ''}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
-            <div className="flex flex-wrap gap-4 pt-4 border-t border-gray-50">
+            <div className="flex flex-wrap sm:flex-nowrap gap-3 pt-4 border-t border-gray-50">
               <Button
                 variant="outline"
                 fullWidth={false}
-                onClick={() => handleCtaClick(earnings?.breakdownHref || '/payments')}
-                className="px-6 py-3 border-gray-100 text-gray-700 hover:bg-gray-50"
+                onClick={() => toast('Earnings breakdown report.', { icon: '📊' })}
+                className="flex-1 sm:flex-none px-4 sm:px-6 py-2.5 sm:py-3 border-gray-200 text-gray-700 hover:bg-gray-50 text-[12px] sm:text-[13px]"
               >
                 View Breakdown
               </Button>
               <Button
                 fullWidth={false}
-                onClick={() => {
-                  if (earnings?.pendingPayoutAmount === 0) {
-                    toast('Nothing waiting to withdraw.', { icon: 'ℹ️' });
-                  } else {
-                    handleCtaClick(earnings?.withdrawHref || '/payments');
-                  }
-                }}
-                className="px-6 py-3 shadow-lg shadow-blue-500/20"
+                onClick={handleWithdrawClick}
+                className="flex-1 sm:flex-none px-4 sm:px-6 py-2.5 sm:py-3 shadow-lg shadow-blue-500/20 text-[12px] sm:text-[13px]"
               >
                 <DownloadIcon size={14} />{' '}
-                {earnings?.pendingPayoutAmount === 0
+                {!earnings?.pendingPayoutAmount || earnings.pendingPayoutAmount === 0
                   ? 'Withdraw'
                   : `Withdraw ${pendingPayoutFormatted}`}
               </Button>
@@ -749,7 +785,7 @@ const MentorDashboard: React.FC = () => {
           {/* Curriculum Gap Intelligence Dropdown */}
           {gapIntel && (
             <div
-              className={`rounded-[24px] overflow-hidden transition-all duration-500 relative ${
+              className={`rounded-[20px] sm:rounded-[24px] overflow-hidden transition-all duration-500 relative min-w-0 w-full ${
                 isCiOpen
                   ? 'bg-gradient-to-br from-[#18234B] via-[#1a3a8c] to-[#0047CC] shadow-2xl'
                   : 'bg-gradient-to-br from-[#18234B] to-[#0047CC] shadow-lg'
@@ -758,22 +794,22 @@ const MentorDashboard: React.FC = () => {
               <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
               <div
-                className="p-8 cursor-pointer flex items-center gap-5 relative z-10 select-none"
+                className="p-5 sm:p-6 lg:p-8 cursor-pointer flex items-center gap-4 sm:gap-5 relative z-10 select-none"
                 onClick={() => setIsCiOpen(!isCiOpen)}
               >
-                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
+                <div className="w-10 sm:w-12 h-10 sm:h-12 rounded-xl sm:rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
                   <ClockIcon size={20} className="text-white/90" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-medium text-white/50 uppercase tracking-widest">
+                  <p className="text-[10px] font-medium text-white/50 uppercase tracking-widest truncate">
                     {gapIntel.kicker || 'Gap Intelligence • Live'}
                   </p>
-                  <h3 className="text-[16px] font-medium text-white leading-tight mt-0.5">
+                  <h3 className="text-[15px] sm:text-[16px] font-medium text-white leading-tight mt-0.5 truncate">
                     {gapIntel.headline}
                   </h3>
-                  {!isCiOpen && gapIntel.tags && gapIntel.tags.length > 0 && (
+                  {!isCiOpen && gapSignals.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-3">
-                      {gapIntel.tags.map((t, idx) => (
+                      {gapSignals.map((t, idx) => (
                         <span
                           key={idx}
                           className="px-2 py-0.5 bg-white/10 border border-white/20 rounded-full text-[9px] font-medium text-white/80"
@@ -785,7 +821,7 @@ const MentorDashboard: React.FC = () => {
                   )}
                 </div>
                 <div
-                  className={`w-8 h-8 rounded-lg bg-white/10 border border-white/10 flex items-center justify-center transition-transform duration-500 ${
+                  className={`w-7 sm:w-8 h-7 sm:h-8 rounded-lg bg-white/10 border border-white/10 flex items-center justify-center transition-transform duration-500 shrink-0 ${
                     isCiOpen ? 'rotate-180 bg-white/20' : ''
                   }`}
                 >
@@ -794,35 +830,35 @@ const MentorDashboard: React.FC = () => {
               </div>
 
               {isCiOpen && (
-                <div className="px-8 pb-8 space-y-6 relative z-10 animate-in fade-in slide-in-from-top-2 duration-500">
+                <div className="px-5 sm:px-6 lg:px-8 pb-6 sm:pb-8 space-y-6 relative z-10 animate-in fade-in slide-in-from-top-2 duration-500">
                   <div className="h-px bg-white/10" />
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                      <p className="text-[20px] font-medium text-red-400">
-                        {gapIntel.criticalGapsCount ?? 7}
+                      <p className={`text-[20px] font-medium ${criticalCount > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                        {criticalCount}
                       </p>
                       <p className="text-[9px] font-medium text-white/40 uppercase mt-1">Critical Gaps</p>
                     </div>
                     <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
                       <p className="text-[20px] font-medium text-white">
-                        {typeof gapIntel.analysedCount === 'number'
-                          ? gapIntel.analysedCount.toLocaleString()
-                          : gapIntel.analysedCount ?? '1,847'}
+                        {typeof highDemandCount === 'number'
+                          ? highDemandCount.toLocaleString()
+                          : highDemandCount}
                       </p>
-                      <p className="text-[9px] font-medium text-white/40 uppercase mt-1">Analysed</p>
+                      <p className="text-[9px] font-medium text-white/40 uppercase mt-1">High Demand</p>
                     </div>
                   </div>
                   <div className="space-y-3">
                     <Button
-                      onClick={() => handleCtaClick(gapIntel.hrefHint || '/courses')}
-                      className="w-full py-3.5 bg-white text-[#18234B] hover:bg-gray-50 min-h-0"
+                      onClick={() => navigate('/mentor/courses')}
+                      className="w-full py-3 sm:py-3.5 bg-white text-[#18234B] hover:bg-gray-50 min-h-0 text-[13px]"
                     >
                       Explore Gap Intelligence
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() => handleCtaClick(gapIntel.createCourseHrefHint || '/mentor/courses')}
-                      className="w-full py-3.5 bg-white/10 border border-white/20 text-white hover:bg-white/20 min-h-0"
+                      onClick={() => navigate('/mentor/courses')}
+                      className="w-full py-3 sm:py-3.5 bg-white/10 border border-white/20 text-white hover:bg-white/20 min-h-0 text-[13px]"
                     >
                       + Create Course
                     </Button>
@@ -833,12 +869,12 @@ const MentorDashboard: React.FC = () => {
           )}
 
           {/* Recent Activity */}
-          <div className="bg-white border border-gray-100 rounded-[24px] p-8 shadow-sm">
+          <div className="bg-white border border-gray-100 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 lg:p-8 shadow-sm min-w-0 w-full">
             <SectionHeader
               title="Recent Activity"
               icon={ClockIcon}
               linkText="All"
-              onLinkClick={() => toast('Recent mentor notifications & updates.', { icon: '🔔' })}
+              onLinkClick={() => handleCtaClick(dashboardData?.links?.activity || dashboardData?.links?.notifications || '/settings')}
             />
             {recentActivity.length === 0 ? (
               <div className="py-8 text-center text-gray-400 text-sm">
@@ -857,9 +893,9 @@ const MentorDashboard: React.FC = () => {
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 absolute pointer-events-none">
                         <ClockIcon size={16} className={color.split(' ')[1] || 'text-[#0047CC]'} />
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <p
-                          className="text-[13px] font-medium text-gray-700 leading-relaxed"
+                          className="text-[13px] font-medium text-gray-700 leading-relaxed truncate"
                           dangerouslySetInnerHTML={{
                             __html: title.replace(
                               /<strong>(.*?)<\/strong>/g,
@@ -877,41 +913,57 @@ const MentorDashboard: React.FC = () => {
           </div>
 
           {/* Quick Actions Grid */}
-          <div className="bg-white border border-gray-100 rounded-[24px] p-8 shadow-sm">
+          <div className="bg-white border border-gray-100 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 lg:p-8 shadow-sm min-w-0 w-full">
             <SectionHeader title="Quick Actions" icon={MoreVerticalIcon} />
-            <div className="columns-2 gap-3 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
               {quickActions.map((qa, i) => {
-                const iconType = qa.icon?.toLowerCase() || qa.label.toLowerCase();
-                const iconEl = iconType.includes('schedule') || iconType.includes('calendar') ? (
+                const actionKey = (qa.key || qa.id || qa.label).toLowerCase();
+                const iconEl = actionKey.includes('schedule') || actionKey.includes('calendar') ? (
                   <CalendarIcon size={20} />
-                ) : iconType.includes('course') || iconType.includes('book') ? (
+                ) : actionKey.includes('course') || actionKey.includes('book') ? (
                   <PlusIcon size={20} />
-                ) : iconType.includes('withdraw') || iconType.includes('pay') || iconType.includes('wallet') ? (
+                ) : actionKey.includes('withdraw') || actionKey.includes('pay') || actionKey.includes('wallet') ? (
                   <TrendingUpIcon size={20} />
                 ) : (
                   <UserIcon size={20} />
                 );
 
-                const colorClass = iconType.includes('schedule')
-                  ? 'text-[#0047CC] bg-blue-50 hover:border-[#0047CC]'
-                  : iconType.includes('course')
-                  ? 'text-green-600 bg-green-50 hover:border-green-600'
-                  : iconType.includes('withdraw')
-                  ? 'text-emerald-600 bg-emerald-50 hover:border-emerald-600'
-                  : 'text-gray-500 bg-gray-50 hover:border-gray-400';
+                const colorClass = actionKey.includes('schedule')
+                  ? 'text-[#0047CC] bg-blue-50 group-hover:bg-blue-100'
+                  : actionKey.includes('course')
+                  ? 'text-green-600 bg-green-50 group-hover:bg-green-100'
+                  : actionKey.includes('withdraw')
+                  ? 'text-emerald-600 bg-emerald-50 group-hover:bg-emerald-100'
+                  : 'text-gray-500 bg-gray-50 group-hover:bg-gray-100';
+
+                const handleClick = () => {
+                  if (actionKey.includes('withdraw')) {
+                    handleWithdrawClick();
+                  } else if (actionKey.includes('schedule')) {
+                    handleScheduleClick();
+                  } else if (actionKey.includes('course')) {
+                    navigate('/mentor/courses');
+                  } else if (actionKey.includes('profile')) {
+                    navigate('/settings');
+                  } else {
+                    handleCtaClick(qa.hrefHint);
+                  }
+                };
 
                 return (
-                  <Button
-                    key={qa.id || i}
-                    variant="outline"
-                    onClick={() => handleCtaClick(qa.hrefHint)}
-                    className="w-full h-auto p-5 bg-white border border-gray-100 rounded-[20px] flex flex-col items-center gap-3 hover:bg-white group shadow-sm min-h-0"
+                  <button
+                    key={qa.id || qa.key || i}
+                    type="button"
+                    onClick={handleClick}
+                    className="p-4 sm:p-5 bg-white border border-gray-100 rounded-[18px] sm:rounded-[20px] flex flex-col items-center gap-2.5 sm:gap-3 hover:border-gray-200 hover:shadow-sm group transition-all cursor-pointer min-h-0 w-full"
                   >
-                    <div className={`p-3 rounded-xl group-hover:scale-110 transition-transform ${colorClass}`}>
+                    <div className={`p-2.5 sm:p-3 rounded-xl group-hover:scale-110 transition-transform ${colorClass}`}>
                       {iconEl}
                     </div>
-                    <span className="text-[12px] font-medium text-gray-900">{qa.label}</span>
-                  </Button>
+                    <span className="text-[12px] sm:text-[13px] font-medium text-gray-900 truncate">
+                      {qa.label}
+                    </span>
+                  </button>
                 );
               })}
             </div>

@@ -341,9 +341,86 @@ export interface TalentDashboardMetricJobs {
   hint?: string | null;
 }
 
+export interface TalentDashboardGrade {
+  grade?: string | null;
+  label?: string | null;
+  unlocked?: boolean;
+  hint?: string;
+  prescription?: string;
+}
+
+export interface TalentDashboardPendingActionCta {
+  label?: string;
+  hrefHint?: string;
+  enabled?: boolean;
+}
+
+export interface TalentDashboardPendingAction {
+  stage?: number;
+  name?: string;
+  label?: string;
+  description?: string;
+  durationMins?: number;
+  status?: 'not_started' | 'in_progress' | 'passed' | 'failed' | 'locked' | string;
+  statusLabel?: string;
+  cta?: TalentDashboardPendingActionCta;
+  expiresAt?: string | null;
+}
+
+export interface TalentDashboardActivitySnapshotNextStep {
+  label?: string;
+  hrefHint?: string;
+  tone?: string;
+}
+
+export interface TalentDashboardActivitySnapshot {
+  cvRevampsCount?: number;
+  coursesCount?: number;
+  mentorshipCount?: number;
+  hiringDecisionPendingCount?: number;
+  lastLedgerUpdateAt?: string | null;
+  nextAutoRematch?: 'on_assessment_complete' | string | null;
+  profileCompletenessPercent?: number;
+  nextSteps?: TalentDashboardActivitySnapshotNextStep[];
+}
+
+export interface TalentDashboardRole {
+  rolePostingId?: string;
+  roleLink?: string;
+  roleTitle?: string;
+  organisationName?: string;
+  location?: string;
+  compensationSummary?: string;
+  matchScore?: number;
+  tags?: string[];
+  pipelineStatus?: string;
+  pipelineStatusLabel?: string;
+  publishedAt?: string;
+  hrefHint?: string;
+  gap?: string;
+  suggestedAction?: string;
+  projectedLift?: string;
+}
+
+export interface TalentDashboardProfile {
+  firstName?: string;
+  lastName?: string;
+  initials?: string;
+  headline?: string;
+  location?: string;
+  memberSince?: string;
+  rightToWork?: {
+    status?: 'verified' | 'unverified' | 'unknown' | string;
+    label?: string;
+  };
+}
+
 export interface TalentDashboardMetrics {
   careerReadinessScore?: TalentDashboardMetricScore;
+  grade?: TalentDashboardGrade;
   interviewGrade?: TalentDashboardMetricGrade;
+  matchesCount?: number;
+  reachRolesCount?: number;
   jobsApplied?: TalentDashboardMetricJobs;
 }
 
@@ -401,10 +478,15 @@ export interface TalentDashboardSampleOpportunity {
 
 export interface TalentDashboardData {
   schemaVersion?: number;
+  profile?: TalentDashboardProfile;
   greeting?: TalentDashboardGreeting;
   metrics?: TalentDashboardMetrics;
   unlocks?: TalentDashboardUnlocks;
   hasActiveCv?: boolean;
+  pendingActions?: TalentDashboardPendingAction[];
+  activitySnapshot?: TalentDashboardActivitySnapshot;
+  matchedRoles?: TalentDashboardRole[];
+  reachRoles?: TalentDashboardRole[];
   activities?: TalentDashboardActivities;
   sampleOpportunities?: TalentDashboardSampleOpportunity[];
 }
@@ -415,6 +497,303 @@ export const useTalentDashboardQuery = (options: Record<string, any> = {}) => {
     queryFn: () =>
       apiClient.get<{ data: TalentDashboardData; statusCode: number; message: string }>({
         url: "/talent/dashboard",
+        auth: true,
+      }),
+    ...options,
+  });
+};
+
+export interface TalentSkillItem {
+  skillKey?: string;
+  displayName?: string;
+  status?: 'CLAIMED' | 'EVIDENCED' | 'VERIFIED' | 'MISSING' | string;
+  statusLabel?: string;
+  sourceLabel?: string;
+  barWeight?: number;
+  isMissing?: boolean;
+  missingReason?: string;
+}
+
+export interface TalentSkillCategory {
+  key?: 'TECHNICAL' | 'DOMAIN_SOFT' | 'CREDENTIAL' | string;
+  label?: string;
+  items?: TalentSkillItem[];
+}
+
+export interface TalentSkillsLedgerTotals {
+  skillsCount?: number;
+  verified?: number;
+  evidenced?: number;
+  claimed?: number;
+  missing?: number;
+}
+
+export interface TalentSkillsConfidenceBreakdown {
+  verified?: number;
+  evidenced?: number;
+  claimed?: number;
+  elevateHint?: string;
+}
+
+export interface TalentSkillsLedgerData {
+  schemaVersion?: number;
+  banner?: {
+    message?: string;
+  };
+  totals?: TalentSkillsLedgerTotals;
+  categories?: TalentSkillCategory[];
+  confidenceBreakdown?: TalentSkillsConfidenceBreakdown;
+  howItWorks?: string[];
+}
+
+export const useTalentSkillsLedgerQuery = (options: Record<string, any> = {}) => {
+  return useQuery({
+    queryKey: ["talent", "skills-ledger"],
+    queryFn: () =>
+      apiClient.get<{ data: TalentSkillsLedgerData; statusCode: number; message: string }>({
+        url: "/talent/profile/skills-ledger",
+        auth: true,
+      }),
+    ...options,
+  });
+};
+
+export interface TalentMatchesRolesSummary {
+  matchedCount?: number;
+  reachCount?: number;
+}
+
+export interface TalentRevampHistoryItem {
+  revampNumber?: number;
+  completedAt?: string;
+  roleTitle?: string;
+  organisationName?: string;
+  matchDeltaPercent?: number;
+  beforeHighlights?: string[];
+  afterHighlights?: string[];
+}
+
+export interface TalentInterventionUnlockedRole {
+  roleTitle?: string;
+  organisationName?: string;
+  matchScore?: number;
+}
+
+export interface TalentInterventionProjectedUnlock {
+  roleTitle?: string;
+  organisationName?: string;
+  matchScore?: number;
+  projectedMatchScore?: number;
+}
+
+export interface TalentInterventionMapItem {
+  status?: 'completed' | 'pending' | string;
+  title?: string;
+  completedAt?: string;
+  unlockedRoles?: TalentInterventionUnlockedRole[];
+  projectedUnlocks?: TalentInterventionProjectedUnlock[];
+  cta?: {
+    label?: string;
+    hrefHint?: string;
+  };
+}
+
+export interface TalentMatchesRolesData {
+  schemaVersion?: number;
+  summary?: TalentMatchesRolesSummary;
+  revampHistory?: TalentRevampHistoryItem[];
+  interventionMap?: TalentInterventionMapItem[];
+  reachRoles?: TalentDashboardRole[];
+}
+
+export const useTalentMatchesRolesQuery = (options: Record<string, any> = {}) => {
+  return useQuery({
+    queryKey: ["talent", "matches-roles"],
+    queryFn: () =>
+      apiClient.get<{ data: TalentMatchesRolesData; statusCode: number; message: string }>({
+        url: "/talent/profile/matches-roles",
+        auth: true,
+      }),
+    ...options,
+  });
+};
+
+export interface TalentProgressStage {
+  stage?: number;
+  name?: string;
+  label?: string;
+  status?: string;
+  statusLabel?: string;
+  cta?: {
+    label?: string;
+    hrefHint?: string;
+    enabled?: boolean;
+  } | null;
+}
+
+export interface TalentProgressJourney {
+  assessmentId?: string;
+  rolePostingId?: string;
+  roleTitle?: string;
+  organisationName?: string;
+  overallStatus?: string;
+  overallStatusLabel?: string;
+  stages?: TalentProgressStage[];
+}
+
+export interface TalentProgressTimelineItem {
+  at?: string;
+  type?: string;
+  title?: string;
+  subtitle?: string;
+  badges?: string[];
+  hrefHint?: string;
+}
+
+export interface TalentProgressScoreProgression {
+  at?: string;
+  label?: string;
+  score?: number;
+  kind?: 'actual' | 'projected' | string;
+}
+
+export interface TalentProgressData {
+  schemaVersion?: number;
+  journeys?: TalentProgressJourney[];
+  timeline?: TalentProgressTimelineItem[];
+  scoreProgression?: TalentProgressScoreProgression[];
+}
+
+export const useTalentProgressQuery = (options: Record<string, any> = {}) => {
+  return useQuery({
+    queryKey: ["talent", "progress"],
+    queryFn: () =>
+      apiClient.get<{ data: TalentProgressData; statusCode: number; message: string }>({
+        url: "/talent/profile/progress",
+        auth: true,
+      }),
+    ...options,
+  });
+};
+
+export interface TalentMyDataPersonal {
+  fullName?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string | null;
+  dateOfBirth?: string | null;
+  nationality?: string | null;
+  gender?: string | null;
+  onboardingDate?: string;
+  professionalTitle?: string;
+}
+
+export interface TalentMyDataGeographicLegal {
+  country?: string;
+  city?: string;
+  ipLocation?: string;
+  rightToWorkStatus?: string;
+  rightToWorkVerified?: boolean;
+  rightToWorkLabel?: string;
+  workAuthorisation?: string[];
+  lastIpCheck?: string;
+  timezone?: string;
+}
+
+export interface TalentMyDataActiveCv {
+  cvUploadId?: string;
+  originalName?: string;
+  uploadedAt?: string;
+  parseStatus?: string;
+  isActive?: boolean;
+}
+
+export interface TalentMyDataCertificate {
+  id?: string;
+  title?: string;
+  verified?: boolean;
+  statusLabel?: string;
+  issuedAt?: string;
+  shareableUrl?: string;
+}
+
+export interface TalentMyDataDocuments {
+  cvUploadLimitNote?: string;
+  activeCv?: TalentMyDataActiveCv | null;
+  certificates?: TalentMyDataCertificate[];
+}
+
+export interface TalentMyDataAssessmentResult {
+  assessmentId?: string;
+  stage?: number;
+  stageName?: string;
+  label?: string;
+  status?: string;
+  statusLabel?: string;
+}
+
+export interface TalentMyDataGrade {
+  grade?: string | null;
+  label?: string | null;
+  prescription?: string;
+}
+
+export interface TalentMyDataProfileResetHistoryItem {
+  requestedAt?: string;
+  reason?: string;
+  status?: string;
+}
+
+export interface TalentMyDataProfileReset {
+  windowDays?: number;
+  maxPerWindow?: number;
+  resetsUsed?: number;
+  resetsRemaining?: number;
+  policyNote?: string;
+  history?: TalentMyDataProfileResetHistoryItem[];
+}
+
+export interface TalentMyDataDangerZone {
+  deleteHrefHint?: string;
+  warning?: string;
+}
+
+export interface TalentMyDataData {
+  schemaVersion?: number;
+  personal?: TalentMyDataPersonal;
+  geographicLegal?: TalentMyDataGeographicLegal;
+  documents?: TalentMyDataDocuments;
+  assessmentResults?: TalentMyDataAssessmentResult[];
+  grade?: TalentMyDataGrade;
+  profileReset?: TalentMyDataProfileReset;
+  dangerZone?: TalentMyDataDangerZone;
+}
+
+export const useTalentMyDataQuery = (options: Record<string, any> = {}) => {
+  return useQuery({
+    queryKey: ["talent", "my-data"],
+    queryFn: () =>
+      apiClient.get<{ data: TalentMyDataData; statusCode: number; message: string }>({
+        url: "/talent/profile/my-data",
+        auth: true,
+      }),
+    ...options,
+  });
+};
+
+export interface TalentDeleteDataResponse {
+  queued?: boolean;
+  requestId?: string;
+  status?: string;
+  message?: string;
+}
+
+export const useDeleteTalentDataMutation = (options: Record<string, any> = {}) => {
+  return useMutation({
+    mutationFn: () =>
+      apiClient.post<{ data: TalentDeleteDataResponse; statusCode: number; message: string }>({
+        url: "/talent/profile/my-data/delete-request",
         auth: true,
       }),
     ...options,
