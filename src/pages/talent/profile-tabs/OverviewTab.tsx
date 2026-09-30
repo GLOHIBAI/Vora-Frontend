@@ -12,6 +12,7 @@ import type {
   TalentDashboardRole,
 } from '../../../services/queries/talent';
 import { capitalizeName } from '../../../utils/userName';
+import { formatCurrencyString } from '../../../utils/currency';
 
 export const GRADE_CONTINUUM = [
   { grade: 'F', label: 'Entry', bg: 'bg-slate-100 text-slate-800 border-slate-700' },
@@ -475,7 +476,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                         <p className="text-xs text-gray-500 font-semibold">{role.organisationName}</p>
                         <h4 className="text-sm sm:text-base font-bold text-gray-900">{role.roleTitle}</h4>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          {[role.location, role.compensationSummary].filter(Boolean).join(' · ')}
+                          {[role.location, formatCurrencyString(role.compensationSummary)].filter(Boolean).join(' · ')}
                         </p>
                       </div>
                     </div>

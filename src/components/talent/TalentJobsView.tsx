@@ -21,6 +21,7 @@ import type {
   TalentAppliedJob, 
   TalentAvailableJob 
 } from '../../types/talentJobs';
+import { formatCurrencyString } from '../../utils/currency';
 
 const ITEMS_PER_PAGE = 9;
 
@@ -416,7 +417,7 @@ export const TalentJobsView: React.FC = () => {
                       )}
                       {job.compensationSummary && (
                         <span className="inline-flex items-center font-semibold text-gray-800 bg-gray-50 px-2.5 py-1 rounded-md">
-                          {job.compensationSummary}
+                          {formatCurrencyString(job.compensationSummary)}
                         </span>
                       )}
                       {Array.isArray(job.tags) && job.tags.map((tag) => (
@@ -527,7 +528,7 @@ export const TalentJobsView: React.FC = () => {
                         )}
                         {job.compensationSummary && (
                           <span className="inline-flex items-center font-semibold text-gray-800 bg-gray-50 px-2.5 py-1 rounded-md">
-                            {job.compensationSummary}
+                            {formatCurrencyString(job.compensationSummary)}
                           </span>
                         )}
                         {Array.isArray(job.tags) && job.tags.map((tag) => (

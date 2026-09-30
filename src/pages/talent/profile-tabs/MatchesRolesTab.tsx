@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Spinner from '../../../components/common/Spinner';
 import { CheckIcon, ClockIcon } from '../../../components/common/Icons';
 import type { TalentMatchesRolesData } from '../../../services/queries/talent';
+import { formatCurrencyString } from '../../../utils/currency';
 
 interface MatchesRolesTabProps {
   data?: TalentMatchesRolesData;
@@ -250,7 +251,7 @@ export const MatchesRolesTab: React.FC<MatchesRolesTabProps> = ({ data, isLoadin
                         <p className="text-xs text-gray-500 font-semibold">{role.organisationName}</p>
                         <h4 className="text-sm font-bold text-gray-900">{role.roleTitle}</h4>
                         <p className="text-xs text-gray-400">
-                          {[role.location, role.compensationSummary].filter(Boolean).join(' · ')}
+                          {[role.location, formatCurrencyString(role.compensationSummary)].filter(Boolean).join(' · ')}
                         </p>
                       </div>
                     </div>

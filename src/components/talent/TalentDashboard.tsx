@@ -18,6 +18,7 @@ import {
   type TalentJobListItem,
 } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
+import { formatJobSalary } from '../../utils/currency';
 
 const TalentDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -378,27 +379,20 @@ const TalentDashboard: React.FC = () => {
             </button>
           )}
         </div>
-        <div className="columns-1 md:columns-2 xl:columns-3 gap-6 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {availableJobs.length > 0 ? (
             availableJobs.map((job: TalentJobListItem, index: number) => {
-              const formatJobSalary = (min?: number | null, max?: number | null, currency?: string | null) => {
-                if (!min && !max) return 'Competitive';
-                const curr = currency || 'USD';
-                const sym = curr === 'USD' ? '$' : curr === 'GBP' ? '£' : curr === 'EUR' ? '€' : `${curr} `;
-                if (min && max) return `${sym}${(min / 1000).toFixed(0)}k - ${sym}${(max / 1000).toFixed(0)}k`;
-                if (min) return `From ${sym}${(min / 1000).toFixed(0)}k`;
-                return `Up to ${sym}${(max! / 1000).toFixed(0)}k`;
-              };
-
               const orgName = (job as any).organisationName || job.companyName || 'Verified Employer';
-              const salaryText = (job as any).compensationSummary || formatJobSalary(job.salaryMin, job.salaryMax, job.salaryCurrency);
+              const salaryFormatted = (job as any).compensationSummary 
+                || ((job.salaryMin || job.salaryMax) ? formatJobSalary(job.salaryMin, job.salaryMax, job.salaryCurrency).amount : 'Competitive');
+              const jobPeriod = (job as any).salaryPeriod || (job as any).period;
               const postedDate = (job as any).publishedAt ? new Date((job as any).publishedAt).toLocaleDateString() : job.createdAt ? new Date(job.createdAt).toLocaleDateString() : 'Recent';
               const roleSlug = (job as any).roleLink || job.roleTitle?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'role';
 
               return (
                 <div 
                   key={(job as any).rolePostingId || job.id || `avail-job-${index}`} 
-                  className="break-inside-avoid cursor-pointer"
+                  className="cursor-pointer h-full"
                   onClick={() => {
                     localStorage.setItem('active_assessment_role_slug', roleSlug);
                     if ((job as any).rolePostingId) {
@@ -412,7 +406,8 @@ const TalentDashboard: React.FC = () => {
                     company={orgName}
                     location={job.location || 'Remote'}
                     postedAt={postedDate}
-                    salary={salaryText}
+                    salary={salaryFormatted}
+                    period={jobPeriod}
                     description={job.department ? `Department: ${job.department}` : 'Verified opportunity on Vora.'}
                     tags={[
                       ...((job as any).tags ? (job as any).tags.map((t: string) => t.replace(/_/g, ' ')) : job.employmentType ? [job.employmentType.replace('_', ' ')] : []),
@@ -426,7 +421,7 @@ const TalentDashboard: React.FC = () => {
             sampleOpportunities.map((opp: TalentDashboardSampleOpportunity, idx: number) => (
               <div 
                 key={opp.rolePostingId || `sample-opp-${idx}`} 
-                className="break-inside-avoid"
+                className="cursor-pointer h-full"
                 onClick={() => {
                   if (opp.roleLink) {
                     navigate(`/onboarding/talent/${opp.roleLink}/match`);
@@ -448,8 +443,8 @@ const TalentDashboard: React.FC = () => {
             ))
           ) : (
             TALENT_SAMPLE_JOBS.map((job, idx) => (
-              <div key={job.title || `sample-job-${idx}`} className="break-inside-avoid">
-                <JobCard {...job} />
+              <div key={job.title || `sample-job-${idx}`} className="h-full">
+                <JobCard {...job} period="monthly" />
               </div>
             ))
           )}

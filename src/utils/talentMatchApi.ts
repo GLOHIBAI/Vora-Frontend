@@ -2,6 +2,7 @@ import type { ProfileMatchBreakdownItem } from '../constants/profileMatchResult'
 import { DEFAULT_MATCH_SCORE_CONFIG } from '../constants/profileMatchResult';
 import type { MatchedRoleListing } from '../types/talentRolesFound';
 import { normalizeMatchScoreConfig } from './profileMatchResult';
+import { getCurrencySymbol, formatCurrencyString } from './currency';
 
 const DIMENSION_LABELS: Record<string, string> = {
   responsibilities: 'Responsibilities',
@@ -79,13 +80,15 @@ const initialsFromName = (name: string): string =>
 const formatSalaryFromRolePosting = (role: Record<string, unknown>): { amount: string; period: string } => {
   const min = role?.salaryMin;
   const max = role?.salaryMax;
+  const curr = (role?.salaryCurrency || role?.currency) as string || 'NGN';
+  const sym = getCurrencySymbol(curr);
   if (typeof min === 'number' && typeof max === 'number') {
-    return { amount: `${min.toLocaleString()} – ${max.toLocaleString()}`, period: 'monthly' };
+    return { amount: `${sym}${min.toLocaleString()} – ${sym}${max.toLocaleString()}`, period: (role?.salaryPeriod as string) ?? 'monthly' };
   }
   if (typeof min === 'number') {
-    return { amount: min.toLocaleString(), period: 'monthly' };
+    return { amount: `${sym}${min.toLocaleString()}`, period: (role?.salaryPeriod as string) ?? 'monthly' };
   }
-  return { amount: role?.salaryAmount as string ?? '—', period: (role?.salaryPeriod as string) ?? 'monthly' };
+  return { amount: formatCurrencyString(role?.salaryAmount as string ?? '—'), period: (role?.salaryPeriod as string) ?? 'monthly' };
 };
 
 export const mapTalentMatchesToListings = (

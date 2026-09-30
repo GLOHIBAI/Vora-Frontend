@@ -29,6 +29,7 @@ export interface JobCardProps {
   location: string;
   postedAt: string;
   salary: string;
+  period?: string;
   description: string;
   tags: string[];
 }
