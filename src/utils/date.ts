@@ -58,3 +58,11 @@ export const isAfterDay = (a: Date, b: Date): boolean => {
   const db = new Date(b.getFullYear(), b.getMonth(), b.getDate()).getTime();
   return da > db;
 };
+
+export const formatMemberSince = (iso?: string): string => {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+};
+

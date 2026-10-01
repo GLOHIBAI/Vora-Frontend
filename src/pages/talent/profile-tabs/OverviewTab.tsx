@@ -13,6 +13,7 @@ import type {
 } from '../../../services/queries/talent';
 import { capitalizeName } from '../../../utils/userName';
 import { formatCurrencyString } from '../../../utils/currency';
+import { formatMemberSince } from '../../../utils/date';
 
 export const GRADE_CONTINUUM = [
   { grade: 'F', label: 'Entry', bg: 'bg-slate-100 text-slate-800 border-slate-700' },
@@ -51,6 +52,14 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
     ? `${capitalizeName(profile.firstName)} ${capitalizeName(profile.lastName || '')}`.trim()
     : 'Talent Profile';
   const initials = profile?.initials || (profile?.firstName ? profile.firstName[0].toUpperCase() : 'V');
+
+  const rawRtwLabel = profile?.rightToWork?.label?.trim();
+  const cleanRtwLabel = rawRtwLabel
+    ? rawRtwLabel.replace(/^Right to Work:\s*/i, '')
+    : (profile?.rightToWork?.status === 'verified' ? 'Verified' : 'Not set');
+  const isRtwVerified =
+    profile?.rightToWork?.status === 'verified' ||
+    cleanRtwLabel.toLowerCase() === 'verified';
 
   const pendingActions: TalentDashboardPendingAction[] = dashboard?.pendingActions || [];
   const activitySnapshot = dashboard?.activitySnapshot;
@@ -115,14 +124,18 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                   <>
                     <span className="inline-flex items-center gap-1.5">
                       <ClockIcon size={13} className="text-blue-300" />
-                      <span>Member since {profile.memberSince}</span>
+                      <span>Member since {formatMemberSince(profile.memberSince)}</span>
                     </span>
                     <span className="w-1 h-1 rounded-full bg-white/30" />
                   </>
                 )}
-                <span className="inline-flex items-center gap-1.5 text-emerald-400 font-semibold">
+                <span
+                  className={`inline-flex items-center gap-1.5 font-semibold ${
+                    isRtwVerified ? 'text-emerald-400' : 'text-amber-300'
+                  }`}
+                >
                   <CheckCircleIcon size={13} />
-                  <span>Right to Work: {profile?.rightToWork?.label || 'Verified'}</span>
+                  <span>Right to Work: {cleanRtwLabel}</span>
                 </span>
               </div>
 

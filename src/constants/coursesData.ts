@@ -1,3 +1,7 @@
+/**
+ * @deprecated Legacy mock courses data. Courses now use backend APIs via
+ * `src/services/queries/courses` and types in `src/types/courses.ts`.
+ */
 export interface ChapterItem {
   id: number;
   chapterNumber: number;
