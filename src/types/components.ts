@@ -53,6 +53,7 @@ export interface SelectProps {
   className?: string;
   containerClassName?: string;
   disabled?: boolean;
+  align?: 'left' | 'right';
   onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   onBlur?: () => void;
 }

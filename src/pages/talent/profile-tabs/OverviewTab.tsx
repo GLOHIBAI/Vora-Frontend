@@ -5,11 +5,13 @@ import {
   MapPinIcon,
   ClockIcon,
   CheckCircleIcon,
+  ArrowRightIcon,
 } from '../../../components/common/Icons';
 import type {
   TalentDashboardData,
   TalentDashboardPendingAction,
   TalentDashboardRole,
+  TalentCareerMapData,
 } from '../../../services/queries/talent';
 import { capitalizeName } from '../../../utils/userName';
 import { formatCurrencyString } from '../../../utils/currency';
@@ -27,13 +29,15 @@ export const GRADE_CONTINUUM = [
 
 interface OverviewTabProps {
   dashboard?: TalentDashboardData;
+  careerMap?: TalentCareerMapData;
   isLoading?: boolean;
-  onNavigateTab: (tab: 'overview' | 'ledger' | 'matches' | 'progress' | 'data') => void;
+  onNavigateTab: (tab: 'overview' | 'careermap' | 'ledger' | 'matches' | 'progress' | 'data') => void;
   onOpenUploadModal: () => void;
 }
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({
   dashboard,
+  careerMap,
   isLoading,
   onNavigateTab,
   onOpenUploadModal,
@@ -71,6 +75,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
     if (action.cta?.hrefHint) {
       if (action.cta.hrefHint.startsWith('/talent/profile/progress') || action.cta.hrefHint === 'progress') {
         onNavigateTab('progress');
+      } else if (action.cta.hrefHint.startsWith('/talent/profile/career-map') || action.cta.hrefHint === 'careermap') {
+        onNavigateTab('careermap');
       } else {
         navigate(action.cta.hrefHint);
       }
@@ -247,6 +253,106 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
             {gradeInfo?.prescription ||
               'To advance your grade: complete a CV revamp, enrol in an elevated course, or combine course + mentorship + revamp.'}
           </span>
+        </div>
+      </div>
+
+      {/* CAREER MAP & PROGRESSION JOURNEY SPOTLIGHT */}
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h3 className="text-sm sm:text-base font-bold text-gray-900">Career Map &amp; Progression Journey</h3>
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-[#0047CC] border border-blue-200">
+              Stage 3 Gate 1 Verified
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onNavigateTab('careermap')}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0047CC] hover:text-[#003bb5] hover:underline cursor-pointer self-start sm:self-auto"
+          >
+            <span>Explore Full 58-Milestone Career Map</span>
+            <ArrowRightIcon size={13} />
+          </button>
+        </div>
+
+        {/* L1 - L6 Continuum Roadmap */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-semibold text-gray-600">Technical Readiness Level</span>
+            <span className="font-bold text-[#0047CC]">
+              {careerMap?.summary ? `${careerMap.summary.currentLevel} ${careerMap.summary.currentLevelTitle}` : 'L4 Staff / Lead'} · Stage 3 Gate 1
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            {(careerMap?.readinessLevels || [
+              { level: 'L1', title: 'Associate', status: 'COMPLETED' },
+              { level: 'L2', title: 'Engineer', status: 'COMPLETED' },
+              { level: 'L3', title: 'Senior', status: 'COMPLETED' },
+              { level: 'L4', title: 'Staff / Lead', status: 'CURRENT' },
+              { level: 'L5', title: 'Principal', status: 'TARGET' },
+              { level: 'L6', title: 'Director', status: 'LOCKED' },
+            ]).map((step) => {
+              const isCurrent = step.status === 'CURRENT';
+              const isDone = step.status === 'COMPLETED';
+              return (
+                <div
+                  key={step.level}
+                  className={`p-2.5 rounded-xl border text-center transition-all ${
+                    isCurrent
+                      ? 'bg-blue-50/80 border-[#0047CC] text-[#0047CC] shadow-2xs'
+                      : isDone
+                      ? 'bg-emerald-50/50 border-emerald-200 text-emerald-800'
+                      : 'bg-gray-50/60 border-gray-200/60 text-gray-400'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span className="font-bold text-xs">{step.level}</span>
+                    {isDone && <CheckCircleIcon size={12} className="text-emerald-600" />}
+                  </div>
+                  <div className="text-[10px] font-medium truncate mt-0.5">{step.title}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Quick Highlights Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+          <div className="p-3 rounded-xl bg-gray-50/80 border border-gray-100">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Milestones</p>
+            <p className="text-base sm:text-lg font-bold text-gray-900 mt-0.5">
+              {careerMap?.summary?.totalMilestones || 58} Total
+            </p>
+            <p className="text-[11px] text-emerald-600 font-medium">
+              {careerMap?.summary?.verifiedMilestones || 41} verified
+            </p>
+          </div>
+
+          <div className="p-3 rounded-xl bg-gray-50/80 border border-gray-100">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Target Focus</p>
+            <p className="text-base sm:text-lg font-bold text-[#0047CC] mt-0.5">
+              {careerMap?.pathLadder?.length || careerMap?.summary?.inProgressCount || 9} Milestones
+            </p>
+            <p className="text-[11px] text-gray-500 font-medium">L4 → L5 ladder</p>
+          </div>
+
+          <div className="p-3 rounded-xl bg-gray-50/80 border border-gray-100">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Career Eras</p>
+            <p className="text-base sm:text-lg font-bold text-gray-900 mt-0.5">
+              {careerMap?.eras?.length || 5} Eras
+            </p>
+            <p className="text-[11px] text-gray-500 font-medium">2018 — 2026</p>
+          </div>
+
+          <div className="p-3 rounded-xl bg-gray-50/80 border border-gray-100">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Next Target</p>
+            <p className="text-xs font-bold text-gray-900 mt-0.5 truncate" title="Multi-Region Active-Active Sharding">
+              Sharding &amp; Telemetry
+            </p>
+            <p className="text-[11px] text-amber-600 font-semibold">Q4 2026 Target</p>
+          </div>
         </div>
       </div>
 

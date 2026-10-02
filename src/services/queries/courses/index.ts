@@ -9,6 +9,8 @@ import type {
   EnrollCourseResponseData,
   RecordProgressParams,
   RecordProgressResponseData,
+  InstructorHubData,
+  CreateCourseDto,
 } from '../../../types/courses';
 
 /**
@@ -157,6 +159,128 @@ export const useProgressMutation = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['courses', 'enrollments'] });
       queryClient.invalidateQueries({ queryKey: ['courses', 'detail', variables.courseId] });
+    },
+  });
+};
+
+// ============================================================================
+// INSTRUCTOR PORTAL (MENTOR HUB) HOOKS
+// ============================================================================
+
+/**
+ * Hook to fetch the full Instructor Hub for a mentor.
+ * Endpoint: GET /courses/instructor/hub
+ * Envelope: { statusCode, message, data: { schemaVersion: 1, metrics, myCourses, roster, mentorship, ... } }
+ */
+export const useInstructorHub = () => {
+  return useQuery({
+    queryKey: ['courses', 'instructor', 'hub'],
+    queryFn: async () => {
+      const res = await apiClient.get<CourseApiEnvelope<InstructorHubData>>({
+        url: '/courses/instructor/hub',
+        auth: true,
+      });
+
+      if (res?.data && res.data.schemaVersion !== 1) {
+        console.warn(`[useInstructorHub] Unexpected schemaVersion: ${res.data.schemaVersion}`);
+      }
+
+      return res?.data;
+    },
+  });
+};
+
+/**
+ * Mutation to create a new draft course.
+ * Endpoint: POST /courses
+ */
+export const useCreateCourseMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: CreateCourseDto) => {
+      const res = await apiClient.post<CourseApiEnvelope<any>>({
+        url: '/courses',
+        body: payload,
+        auth: true,
+      });
+
+      return res?.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['courses', 'instructor', 'hub'] });
+      queryClient.invalidateQueries({ queryKey: ['courses', 'recommended'] });
+    },
+  });
+};
+
+/**
+ * Mutation to publish a course.
+ * Endpoint: PUT /courses/:id/publish
+ */
+export const usePublishCourseMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (courseId: string) => {
+      const res = await apiClient.put<CourseApiEnvelope<any>>({
+        url: `/courses/${courseId}/publish`,
+        body: {},
+        auth: true,
+      });
+
+      return res?.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['courses', 'instructor', 'hub'] });
+      queryClient.invalidateQueries({ queryKey: ['courses', 'recommended'] });
+    },
+  });
+};
+
+/**
+ * Mutation to unpublish a course.
+ * Endpoint: PUT /courses/:id/unpublish
+ */
+export const useUnpublishCourseMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (courseId: string) => {
+      const res = await apiClient.put<CourseApiEnvelope<any>>({
+        url: `/courses/${courseId}/unpublish`,
+        body: {},
+        auth: true,
+      });
+
+      return res?.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['courses', 'instructor', 'hub'] });
+      queryClient.invalidateQueries({ queryKey: ['courses', 'recommended'] });
+    },
+  });
+};
+
+/**
+ * Mutation to delete (archive) a course.
+ * Endpoint: DELETE /courses/:id
+ */
+export const useDeleteCourseMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (courseId: string) => {
+      const res = await apiClient.delete<CourseApiEnvelope<any>>({
+        url: `/courses/${courseId}`,
+        auth: true,
+      });
+
+      return res?.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['courses', 'instructor', 'hub'] });
+      queryClient.invalidateQueries({ queryKey: ['courses', 'recommended'] });
     },
   });
 };

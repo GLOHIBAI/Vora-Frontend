@@ -19,6 +19,7 @@ const Select: React.FC<SelectProps> = ({
   className = '',
   containerClassName = '',
   disabled = false,
+  align = 'left',
   onChange,
   onBlur,
 }) => {
@@ -111,14 +112,14 @@ const Select: React.FC<SelectProps> = ({
           key={option.value}
           type="button"
           onClick={() => handleSelect(option.value)}
-          className={`w-full text-left px-3 py-1.5 text-xs rounded-lg transition-colors cursor-pointer mb-0.5 last:mb-0 whitespace-nowrap flex items-center justify-between gap-2 ${
+          className={`w-full text-left px-3 py-2 text-xs rounded-xl transition-colors cursor-pointer mb-0.5 last:mb-0 flex items-center justify-between gap-3 ${
             isSelected
-              ? 'bg-[#0047CC] text-white font-medium'
-              : 'text-[#374151] hover:bg-[#F7F7F7]'
+              ? 'bg-[#0047CC] text-white font-semibold shadow-2xs'
+              : 'text-gray-700 hover:bg-[#EFF6FF] hover:text-[#0047CC]'
           }`}
         >
-          <span>{option.label}</span>
-          {isSelected && <CheckIcon size={12} className="text-white shrink-0" />}
+          <span className="truncate">{option.label}</span>
+          {isSelected && <CheckIcon size={13} className="text-white shrink-0" />}
         </button>
       );
     }
@@ -142,11 +143,13 @@ const Select: React.FC<SelectProps> = ({
     );
   };
 
+  const alignClass = align === 'right' ? 'right-0 left-auto' : 'left-0';
+
   const menuClass = isInline
     ? `absolute left-1/2 -translate-x-1/2 top-full mt-1 z-50 w-[4.75rem] rounded-lg bg-white shadow-[0_4px_16px_rgba(0,0,0,0.12)] p-1 max-h-44 overflow-y-auto custom-scrollbar border-0 ${menuClassName}`
     : isCompact
-    ? `absolute z-50 top-full mt-1 left-0 min-w-full w-max max-w-[220px] rounded-xl border border-[#E6E6E6] bg-white shadow-xl p-1.5 max-h-60 overflow-y-auto custom-scrollbar ${menuClassName}`
-    : `absolute z-50 top-full mt-1.5 left-0 w-full min-w-full rounded-xl border border-[#E6E6E6] bg-white shadow-xl p-1.5 max-h-64 overflow-y-auto overflow-x-hidden custom-scrollbar ${menuClassName}`;
+    ? `absolute z-50 top-full mt-1 ${alignClass} min-w-full w-max max-w-[340px] sm:max-w-[400px] rounded-2xl border border-gray-200 bg-white shadow-2xl p-1.5 max-h-64 overflow-y-auto custom-scrollbar ${menuClassName}`
+    : `absolute z-50 top-full mt-1.5 ${alignClass} w-full min-w-full rounded-2xl border border-gray-200 bg-white shadow-2xl p-1.5 max-h-64 overflow-y-auto overflow-x-hidden custom-scrollbar ${menuClassName}`;
 
   const triggerClass = isInline
     ? `w-auto min-w-[3.25rem] px-1 py-0.5 rounded-md border-0 bg-transparent font-bold text-sm hover:bg-[#F7F7F7] focus:outline-none transition-all cursor-pointer flex items-center justify-center gap-0.5 ${isOpen || value ? 'text-[#0047CC]' : 'text-[#1A1A1A]'} ${className}`

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
@@ -16,26 +16,57 @@ import {
   useTalentMatchesRolesQuery,
   useTalentProgressQuery,
   useTalentMyDataQuery,
+  useTalentCareerMapQuery,
   useDeleteTalentDataMutation,
   useUploadCvMutation,
   useGetTalentCvProfileQuery,
 } from '../../services/queries/talent';
 import { OverviewTab } from './profile-tabs/OverviewTab';
+import { CareerMapTab } from './profile-tabs/CareerMapTab';
 import { SkillsLedgerTab } from './profile-tabs/SkillsLedgerTab';
 import { MatchesRolesTab } from './profile-tabs/MatchesRolesTab';
 import { ProgressViewTab } from './profile-tabs/ProgressViewTab';
 import { MyDataTab } from './profile-tabs/MyDataTab';
 
-type TabType = 'overview' | 'ledger' | 'matches' | 'progress' | 'data';
+type TabType = 'overview' | 'careermap' | 'ledger' | 'matches' | 'progress' | 'data';
+
+const VALID_TABS: TabType[] = ['overview', 'careermap', 'ledger', 'matches', 'progress', 'data'];
 
 const TalentMyProfile: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const cvInputRef = useRef<HTMLInputElement>(null);
 
-  // Tab State
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+  // Tab State with URL query sync (?tab=careermap)
+  const tabFromUrl = searchParams.get('tab') as TabType;
+  const [activeTab, setActiveTab] = useState<TabType>(
+    VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'overview'
+  );
+
+  useEffect(() => {
+    const currentParam = searchParams.get('tab') as TabType;
+    if (currentParam && VALID_TABS.includes(currentParam) && currentParam !== activeTab) {
+      setActiveTab(currentParam);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (tab === 'overview') {
+          next.delete('tab');
+        } else {
+          next.set('tab', tab);
+        }
+        return next;
+      },
+      { replace: true }
+    );
+  };
 
   // Modals
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -56,7 +87,13 @@ const TalentMyProfile: React.FC = () => {
   } = useTalentDashboardQuery();
   const dashboard = dashboardResponse?.data;
 
-  // 2) Per-tab queries (lazy-loaded when tab is active)
+  // 2) Per-tab queries
+  const {
+    data: careerMapResponse,
+    isLoading: isCareerMapLoading,
+  } = useTalentCareerMapQuery();
+  const careerMapData = careerMapResponse?.data;
+
   const {
     data: skillsLedgerResponse,
     isLoading: isLedgerLoading,
@@ -256,7 +293,19 @@ const TalentMyProfile: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setActiveTab('progress')}
+            onClick={() => handleTabChange('careermap')}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer shadow-2xs transition-colors ${
+              activeTab === 'careermap'
+                ? 'bg-[#0047CC] text-white'
+                : 'bg-white hover:bg-gray-50 text-gray-800 border border-gray-200'
+            }`}
+          >
+            <span>Career Map</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleTabChange('progress')}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0047CC] hover:bg-[#003bb5] text-white text-xs font-semibold cursor-pointer shadow-2xs transition-colors"
           >
             <span>View Progress</span>
@@ -268,7 +317,7 @@ const TalentMyProfile: React.FC = () => {
       <div className="flex items-center gap-1.5 sm:gap-2 p-1.5 bg-gray-100/80 rounded-2xl border border-gray-200/80 overflow-x-auto">
         <button
           type="button"
-          onClick={() => setActiveTab('overview')}
+          onClick={() => handleTabChange('overview')}
           className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'overview'
               ? 'bg-white text-[#0047CC] shadow-xs'
@@ -279,7 +328,18 @@ const TalentMyProfile: React.FC = () => {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('ledger')}
+          onClick={() => handleTabChange('careermap')}
+          className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'careermap'
+              ? 'bg-white text-[#0047CC] shadow-xs'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+          }`}
+        >
+          Career Map
+        </button>
+        <button
+          type="button"
+          onClick={() => handleTabChange('ledger')}
           className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'ledger'
               ? 'bg-white text-[#0047CC] shadow-xs'
@@ -290,7 +350,7 @@ const TalentMyProfile: React.FC = () => {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('matches')}
+          onClick={() => handleTabChange('matches')}
           className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'matches'
               ? 'bg-white text-[#0047CC] shadow-xs'
@@ -301,7 +361,7 @@ const TalentMyProfile: React.FC = () => {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('progress')}
+          onClick={() => handleTabChange('progress')}
           className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'progress'
               ? 'bg-white text-[#0047CC] shadow-xs'
@@ -312,7 +372,7 @@ const TalentMyProfile: React.FC = () => {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('data')}
+          onClick={() => handleTabChange('data')}
           className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'data'
               ? 'bg-white text-[#0047CC] shadow-xs'
@@ -327,9 +387,18 @@ const TalentMyProfile: React.FC = () => {
       {activeTab === 'overview' && (
         <OverviewTab
           dashboard={dashboard}
+          careerMap={careerMapData}
           isLoading={isDashboardLoading}
-          onNavigateTab={setActiveTab}
+          onNavigateTab={handleTabChange}
           onOpenUploadModal={() => setIsUploadModalOpen(true)}
+        />
+      )}
+
+      {activeTab === 'careermap' && (
+        <CareerMapTab
+          data={careerMapData}
+          profile={dashboard?.profile}
+          isLoading={isCareerMapLoading}
         />
       )}
 

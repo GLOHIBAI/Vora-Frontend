@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { 
   PlayIcon, 
   CloseIcon, 
-  StarIcon,
   CheckCircleIcon
 } from '../../components/common/Icons';
 import { toast } from 'react-hot-toast';
@@ -16,11 +15,13 @@ import type {
   CourseBrowseItem,
   EnrollmentItem,
 } from '../../types/courses';
+import {
+  getMediaUrl,
+  DEFAULT_COURSE_BANNER,
+  DEFAULT_MENTOR_AVATAR,
+} from '../../utils/media';
 
 type TabType = 'ongoing' | 'completed' | 'recommended';
-
-const DEFAULT_BANNER = 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=1200&auto=format&fit=crop';
-const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop';
 
 const CoursesList: React.FC = () => {
   const navigate = useNavigate();
@@ -48,6 +49,7 @@ const CoursesList: React.FC = () => {
 
   // Enroll Country state
   const [selectedCountry, setSelectedCountry] = useState('US');
+  const [countryError, setCountryError] = useState('');
 
   const ongoingCourses: EnrollmentItem[] = enrollmentsData?.ongoing || [];
   const completedCourses: EnrollmentItem[] = enrollmentsData?.completed || [];
@@ -67,6 +69,12 @@ const CoursesList: React.FC = () => {
   const handleEnrollSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!enrollCourse) return;
+
+    if (!selectedCountry.trim()) {
+      setCountryError('Please select your country of residence.');
+      return;
+    }
+    setCountryError('');
 
     try {
       await enrollMutation.mutateAsync({
@@ -154,6 +162,11 @@ const CoursesList: React.FC = () => {
                 </div>
               ))}
             </div>
+          ) : enrollmentsError ? (
+            <div className="text-center py-12 bg-red-50/50 rounded-[24px] border border-red-100 p-6">
+              <p className="text-red-700 font-semibold text-[14px]">Failed to load ongoing courses.</p>
+              <p className="text-red-500 text-[12px] pt-1">Please refresh or check your internet connection.</p>
+            </div>
           ) : ongoingCourses.length === 0 ? (
             <div className="text-center py-16 bg-[#FAFAFA] rounded-[24px] border border-gray-100 space-y-3">
               <p className="text-gray-500 text-[15px] font-medium">You have no active ongoing courses.</p>
@@ -166,92 +179,101 @@ const CoursesList: React.FC = () => {
               </button>
             </div>
           ) : (
-            ongoingCourses.map(course => (
-              <div
-                key={course.enrollmentId}
-                className="bg-white border border-gray-100 rounded-[24px] p-5 sm:p-8 flex flex-col gap-5 sm:gap-6 shadow-xs hover:border-blue-100 transition-all"
-              >
-                {/* Header Row: Instructor Avatar + Info + Resume Button */}
-                <div className="order-2 sm:order-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5 sm:gap-4">
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden shrink-0 border-2 border-gray-100 bg-gray-100">
-                      <img
-                        src={course.mentor?.avatarUrl || DEFAULT_AVATAR}
-                        alt={course.mentor?.name || 'Instructor'}
-                        className="w-full h-full object-cover"
+            ongoingCourses.map(enrollment => {
+              const courseTitle = enrollment.course?.title || enrollment.title || 'Course';
+              const courseId = enrollment.course?.id || enrollment.courseId || '';
+              const mentorName = enrollment.mentor?.displayName || enrollment.mentor?.name || 'Course Instructor';
+              const mentorPhoto = getMediaUrl(enrollment.mentor?.photoS3Key || enrollment.mentor?.avatarUrl, DEFAULT_MENTOR_AVATAR);
+              const courseBanner = getMediaUrl(enrollment.course?.thumbnailS3Key || enrollment.thumbnailUrl, DEFAULT_COURSE_BANNER);
+              const continueHref = enrollment.cta?.continueLearning?.hrefHint || enrollment.cta?.resumeLesson?.href || `/courses/${courseId}`;
+
+              return (
+                <div
+                  key={enrollment.enrollmentId}
+                  className="bg-white border border-gray-100 rounded-[24px] p-5 sm:p-8 flex flex-col gap-5 sm:gap-6 shadow-xs hover:border-blue-100 transition-all"
+                >
+                  {/* Header Row: Instructor Avatar + Info + Resume Button */}
+                  <div className="order-2 sm:order-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5 sm:gap-4">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden shrink-0 border-2 border-gray-100 bg-gray-100">
+                        <img
+                          src={mentorPhoto}
+                          alt={mentorName}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="space-y-0.5 min-w-0">
+                        <h3 className="text-[15px] sm:text-[16px] font-bold text-gray-900 leading-tight">
+                          {mentorName}
+                        </h3>
+                        <h4 className="text-[13px] sm:text-[14px] font-semibold text-gray-700">
+                          {courseTitle}
+                        </h4>
+                        {enrollment.mentor?.instructorLabel && (
+                          <p className="text-[11px] text-gray-400 font-medium">
+                            {enrollment.mentor.instructorLabel}
+                          </p>
+                        )}
+                        {enrollment.cta?.resumeLesson?.lessonTitle && (
+                          <p className="text-[12px] text-[#0052CC] font-semibold pt-0.5">
+                            Current Lesson • {enrollment.cta.resumeLesson.lessonTitle}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Resume Course Button */}
+                    <div className="shrink-0 w-full sm:w-auto">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenCourse(courseId, continueHref)}
+                        className="w-full sm:w-auto px-7 py-3 bg-[#0052CC] hover:bg-[#0047CC] text-white rounded-full font-semibold text-[14px] shadow-xs cursor-pointer transition-all active:scale-[0.98]"
+                      >
+                        {enrollment.progressPercent > 0 ? 'Resume course' : 'Start course'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Progress Strip */}
+                  <div className="order-3 sm:order-2 space-y-1.5 pt-1">
+                    <div className="flex items-center justify-between text-[12px]">
+                      <span className="text-gray-600 font-medium">
+                        {enrollment.progressLabel || `${enrollment.progressPercent}% completed`}
+                      </span>
+                      <span className="text-gray-400 text-[11px]">
+                        {enrollment.statusLabel || (enrollment.status === 'ACTIVE' ? 'In Progress' : enrollment.status)}
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-[#0052CC] rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(100, Math.max(0, enrollment.progressPercent))}%` }}
                       />
                     </div>
-                    <div className="space-y-0.5 min-w-0">
-                      <h3 className="text-[15px] sm:text-[16px] font-bold text-gray-900 leading-tight">
-                        {course.mentor?.name || 'Course Instructor'}
-                      </h3>
-                      <h4 className="text-[13px] sm:text-[14px] font-semibold text-gray-700">
-                        {course.title}
-                      </h4>
-                      {course.mentor?.instructorLabel && (
-                        <p className="text-[11px] text-gray-400 font-medium">
-                          {course.mentor.instructorLabel}
-                        </p>
-                      )}
-                      {course.cta?.resumeLesson?.lessonTitle && (
-                        <p className="text-[12px] text-[#0052CC] font-semibold pt-0.5">
-                          Current Lesson • {course.cta.resumeLesson.lessonTitle}
-                        </p>
-                      )}
-                    </div>
                   </div>
 
-                  {/* Resume Course Button */}
-                  <div className="shrink-0 w-full sm:w-auto">
-                    <button
-                      type="button"
-                      onClick={() => handleOpenCourse(course.courseId, course.cta?.resumeLesson?.href)}
-                      className="w-full sm:w-auto px-7 py-3 bg-[#0052CC] hover:bg-[#0047CC] text-white rounded-full font-semibold text-[14px] shadow-xs cursor-pointer transition-all active:scale-[0.98]"
-                    >
-                      {course.progressPercent > 0 ? 'Resume course' : 'Start course'}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Progress Strip */}
-                <div className="order-3 sm:order-2 space-y-1.5 pt-1">
-                  <div className="flex items-center justify-between text-[12px]">
-                    <span className="text-gray-600 font-medium">
-                      {course.progressLabel || `${course.progressPercent}% completed`}
-                    </span>
-                    <span className="text-gray-400 text-[11px]">
-                      {course.statusLabel || 'In Progress'}
-                    </span>
-                  </div>
-                  <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-[#0052CC] rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, Math.max(0, course.progressPercent))}%` }}
+                  {/* Wide Video Banner with "Watch lesson" overlay */}
+                  <div
+                    onClick={() => handleOpenCourse(courseId, continueHref)}
+                    className="order-1 sm:order-3 relative aspect-16/9 sm:aspect-21/9 md:aspect-24/9 rounded-[20px] overflow-hidden group cursor-pointer shadow-xs border border-gray-100 bg-gray-100"
+                  >
+                    <img
+                      src={courseBanner}
+                      alt={courseTitle}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-102"
                     />
-                  </div>
-                </div>
-
-                {/* Wide Video Banner with "Watch lesson" overlay */}
-                <div
-                  onClick={() => handleOpenCourse(course.courseId, course.cta?.resumeLesson?.href)}
-                  className="order-1 sm:order-3 relative aspect-16/9 sm:aspect-21/9 md:aspect-24/9 rounded-[20px] overflow-hidden group cursor-pointer shadow-xs border border-gray-100 bg-gray-100"
-                >
-                  <img
-                    src={course.thumbnailUrl || DEFAULT_BANNER}
-                    alt={course.title}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-102"
-                  />
-                  <div className="absolute inset-0 bg-black/25 group-hover:bg-black/35 transition-colors flex flex-col items-center justify-center gap-2">
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-black/40 backdrop-blur-xs flex items-center justify-center border-2 border-white/80 text-white shadow-lg group-hover:scale-110 transition-transform duration-300">
-                      <PlayIcon size={22} className="ml-0.5 fill-white" />
+                    <div className="absolute inset-0 bg-black/25 group-hover:bg-black/35 transition-colors flex flex-col items-center justify-center gap-2">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-black/40 backdrop-blur-xs flex items-center justify-center border-2 border-white/80 text-white shadow-lg group-hover:scale-110 transition-transform duration-300">
+                        <PlayIcon size={22} className="ml-0.5 fill-white" />
+                      </div>
+                      <span className="text-white text-[12px] sm:text-[13px] font-semibold drop-shadow-sm">
+                        {enrollment.progressPercent > 0 ? 'Continue learning' : 'Start lesson'}
+                      </span>
                     </div>
-                    <span className="text-white text-[12px] sm:text-[13px] font-semibold drop-shadow-sm">
-                      {course.progressPercent > 0 ? 'Continue learning' : 'Start lesson'}
-                    </span>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
@@ -280,85 +302,92 @@ const CoursesList: React.FC = () => {
               </button>
             </div>
           ) : (
-            completedCourses.map(course => (
-              <div
-                key={course.enrollmentId}
-                className="bg-white border border-gray-100/90 rounded-[20px] p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-blue-100 transition-all"
-              >
-                {/* Left Portion: Thumbnail + Meta + Progress */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5 flex-1 min-w-0">
-                  <div 
-                    onClick={() => handleOpenCourse(course.courseId)}
-                    className="w-full sm:w-36 h-28 rounded-[14px] overflow-hidden shrink-0 relative group cursor-pointer border border-gray-100 bg-gray-100"
-                  >
-                    <img
-                      src={course.thumbnailUrl || DEFAULT_BANNER}
-                      alt={course.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-black/25 flex items-center justify-center transition-colors group-hover:bg-black/35">
-                      <div className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-xs flex items-center justify-center border border-white/70 shadow-sm text-white">
-                        <PlayIcon size={14} className="ml-0.5 fill-white" />
+            completedCourses.map(enrollment => {
+              const courseTitle = enrollment.course?.title || enrollment.title || 'Completed Course';
+              const courseId = enrollment.course?.id || enrollment.courseId || '';
+              const mentorName = enrollment.mentor?.displayName || enrollment.mentor?.name || 'Instructor';
+              const courseBanner = getMediaUrl(enrollment.course?.thumbnailS3Key || enrollment.thumbnailUrl, DEFAULT_COURSE_BANNER);
+
+              return (
+                <div
+                  key={enrollment.enrollmentId}
+                  className="bg-white border border-gray-100/90 rounded-[20px] p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-blue-100 transition-all"
+                >
+                  {/* Left Portion: Thumbnail + Meta + Progress */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5 flex-1 min-w-0">
+                    <div 
+                      onClick={() => handleOpenCourse(courseId)}
+                      className="w-full sm:w-36 h-28 rounded-[14px] overflow-hidden shrink-0 relative group cursor-pointer border border-gray-100 bg-gray-100"
+                    >
+                      <img
+                        src={courseBanner}
+                        alt={courseTitle}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-black/25 flex items-center justify-center transition-colors group-hover:bg-black/35">
+                        <div className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-xs flex items-center justify-center border border-white/70 shadow-sm text-white">
+                          <PlayIcon size={14} className="ml-0.5 fill-white" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <h3
+                        onClick={() => handleOpenCourse(courseId)}
+                        className="text-[15px] sm:text-[16px] font-bold text-gray-900 truncate hover:text-[#0052CC] transition-colors cursor-pointer"
+                      >
+                        {courseTitle}
+                      </h3>
+                      <p className="text-[12px] text-gray-500 truncate">
+                        {mentorName}
+                      </p>
+                      
+                      {/* Progress Bar */}
+                      <div className="pt-1.5">
+                        <span className="text-[11px] text-gray-500 font-medium">
+                          {enrollment.progressLabel || '100% completed'}
+                        </span>
+                        <div className="w-full max-w-[260px] h-1.5 bg-gray-100 rounded-full overflow-hidden mt-1">
+                          <div
+                            className="h-full bg-[#0052CC] rounded-full"
+                            style={{ width: `${Math.min(100, Math.max(0, enrollment.progressPercent || 100))}%` }}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-1 min-w-0 flex-1">
-                    <h3
-                      onClick={() => handleOpenCourse(course.courseId)}
-                      className="text-[15px] sm:text-[16px] font-bold text-gray-900 truncate hover:text-[#0052CC] transition-colors cursor-pointer"
-                    >
-                      {course.title}
-                    </h3>
-                    <p className="text-[12px] text-gray-500 truncate">
-                      {course.mentor?.name || 'Instructor'}
-                    </p>
-                    
-                    {/* Progress Bar */}
-                    <div className="pt-1.5">
-                      <span className="text-[11px] text-gray-500 font-medium">
-                        {course.progressLabel || '100% completed'}
-                      </span>
-                      <div className="w-full max-w-[260px] h-1.5 bg-gray-100 rounded-full overflow-hidden mt-1">
-                        <div
-                          className="h-full bg-[#0052CC] rounded-full"
-                          style={{ width: `${Math.min(100, Math.max(0, course.progressPercent || 100))}%` }}
-                        />
+                  {/* Right Portion: Certificate CTA (strictly gated per handoff: only when enabled) */}
+                  <div className="bg-[#FAFAFA] border border-gray-100/90 rounded-[16px] p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 md:w-[320px] lg:w-[360px] shrink-0">
+                    <div className="space-y-0.5">
+                      <span className="text-[11px] text-gray-400 font-medium">Status</span>
+                      <div className="text-[16px] font-bold text-emerald-600 leading-tight flex items-center gap-1.5">
+                        <CheckCircleIcon size={18} className="text-emerald-500" />
+                        {enrollment.statusLabel || 'Completed'}
                       </div>
                     </div>
+
+                    {enrollment.cta?.downloadCertificate?.enabled ? (
+                      <button
+                        type="button"
+                        onClick={() => setCertificateCourse(enrollment)}
+                        className="w-full sm:w-auto bg-[#0052CC] hover:bg-[#0047CC] text-white px-5 sm:px-6 py-2.5 rounded-full text-[13px] font-semibold whitespace-nowrap shadow-xs cursor-pointer transition-all active:scale-[0.98]"
+                      >
+                        Download certificate
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenCourse(courseId)}
+                        className="w-full sm:w-auto bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 sm:px-6 py-2.5 rounded-full text-[13px] font-semibold whitespace-nowrap cursor-pointer transition-all"
+                      >
+                        Review Course
+                      </button>
+                    )}
                   </div>
                 </div>
-
-                {/* Right Portion: Certificate CTA (strictly gated per handoff: only when enabled) */}
-                <div className="bg-[#FAFAFA] border border-gray-100/90 rounded-[16px] p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 md:w-[320px] lg:w-[360px] shrink-0">
-                  <div className="space-y-0.5">
-                    <span className="text-[11px] text-gray-400 font-medium">Status</span>
-                    <div className="text-[16px] font-bold text-emerald-600 leading-tight flex items-center gap-1.5">
-                      <CheckCircleIcon size={18} className="text-emerald-500" />
-                      {course.statusLabel || 'Completed'}
-                    </div>
-                  </div>
-
-                  {course.cta?.downloadCertificate?.enabled ? (
-                    <button
-                      type="button"
-                      onClick={() => setCertificateCourse(course)}
-                      className="w-full sm:w-auto bg-[#0052CC] hover:bg-[#0047CC] text-white px-5 sm:px-6 py-2.5 rounded-full text-[13px] font-semibold whitespace-nowrap shadow-xs cursor-pointer transition-all active:scale-[0.98]"
-                    >
-                      Download certificate
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleOpenCourse(course.courseId)}
-                      className="w-full sm:w-auto bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 sm:px-6 py-2.5 rounded-full text-[13px] font-semibold whitespace-nowrap cursor-pointer transition-all"
-                    >
-                      Review Course
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
@@ -369,10 +398,10 @@ const CoursesList: React.FC = () => {
           
           {/* Hero Banner: Gain Experience from the World's Best */}
           <div className="bg-white rounded-[24px] p-6 sm:p-8 md:p-12 border border-gray-200/80 relative overflow-hidden flex flex-col lg:flex-row items-center justify-between gap-8 shadow-xs">
-            <div className="space-y-3 max-w-md z-10 w-full text-center lg:text-left">
-              <h2 className="text-[28px] sm:text-[38px] md:text-[44px] font-bold text-gray-900 leading-[1.15] tracking-tight">
-                Gain Experience <br className="hidden sm:inline" />
-                from the <br className="hidden sm:inline" />
+            <div className="space-y-3 w-full lg:max-w-md z-10 text-center lg:text-left">
+              <h2 className="text-[20px] sm:text-[26px] md:text-[32px] lg:text-[44px] font-bold text-gray-900 leading-[1.15] tracking-tight sm:whitespace-nowrap lg:whitespace-normal">
+                Gain Experience <br className="hidden lg:inline" />
+                from the <br className="hidden lg:inline" />
                 World&apos;s Best
               </h2>
             </div>
@@ -440,35 +469,40 @@ const CoursesList: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {masterclassCourses.map(course => (
-                  <div
-                    key={course.id}
-                    onClick={() => setPreviewCourse(course)}
-                    className="group cursor-pointer space-y-3"
-                  >
-                    <div className="aspect-4/5 rounded-[22px] overflow-hidden relative shadow-sm group-hover:shadow-md transition-all duration-300 bg-gray-900">
-                      <img
-                        src={course.thumbnailUrl || DEFAULT_BANNER}
-                        alt={course.title}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-90"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-5 text-white">
-                        <span className="text-[11px] font-semibold text-blue-300 uppercase tracking-wider">
-                          Masterclass
-                        </span>
-                        <h4 className="text-[16px] font-bold leading-snug pt-1">
-                          {course.title}
-                        </h4>
-                        <p className="text-[12px] text-gray-300 line-clamp-2 pt-1 font-normal">
-                          {course.tagline}
-                        </p>
-                        <p className="text-[11px] text-gray-400 pt-2 font-medium">
-                          {course.mentor?.name}
-                        </p>
+                {masterclassCourses.map(course => {
+                  const banner = getMediaUrl(course.thumbnailS3Key || course.thumbnailUrl, DEFAULT_COURSE_BANNER);
+                  const mentorName = course.mentor?.displayName || course.mentor?.name || 'Domain Expert';
+
+                  return (
+                    <div
+                      key={course.id}
+                      onClick={() => setPreviewCourse(course)}
+                      className="group cursor-pointer space-y-3"
+                    >
+                      <div className="aspect-4/5 rounded-[22px] overflow-hidden relative shadow-sm group-hover:shadow-md transition-all duration-300 bg-gray-900">
+                        <img
+                          src={banner}
+                          alt={course.title}
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-90"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-5 text-white">
+                          <span className="text-[11px] font-semibold text-blue-300 uppercase tracking-wider">
+                            Masterclass
+                          </span>
+                          <h4 className="text-[16px] font-bold leading-snug pt-1">
+                            {course.title}
+                          </h4>
+                          <p className="text-[12px] text-gray-300 line-clamp-2 pt-1 font-normal">
+                            {course.subtitle || course.tagline}
+                          </p>
+                          <p className="text-[11px] text-gray-400 pt-2 font-medium">
+                            {mentorName}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -486,96 +520,101 @@ const CoursesList: React.FC = () => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {(catalogCourses.length > 0 ? catalogCourses : masterclassCourses).map(course => (
-                    <div
-                      key={course.id}
-                      className="bg-white border border-gray-100 rounded-[22px] overflow-hidden shadow-xs flex flex-col hover:border-blue-100 hover:shadow-md transition-all duration-300 group"
-                    >
-                      {/* Thumbnail with Play button */}
-                      <div 
-                        onClick={() => setPreviewCourse(course)}
-                        className="w-full aspect-16/9 overflow-hidden relative group cursor-pointer bg-gray-100"
+                  {(catalogCourses.length > 0 ? catalogCourses : masterclassCourses).map(course => {
+                    const banner = getMediaUrl(course.thumbnailS3Key || course.thumbnailUrl, DEFAULT_COURSE_BANNER);
+                    const mentorName = course.mentor?.displayName || course.mentor?.name || 'Instructor';
+
+                    return (
+                      <div
+                        key={course.id}
+                        className="bg-white border border-gray-100 rounded-[22px] overflow-hidden shadow-xs flex flex-col hover:border-blue-100 hover:shadow-md transition-all duration-300 group"
                       >
-                        <img
-                          src={course.thumbnailUrl || DEFAULT_BANNER}
-                          alt={course.title}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-black/25 flex items-center justify-center transition-colors group-hover:bg-black/35">
-                          <div className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-xs flex items-center justify-center border-2 border-white/80 text-white shadow-md group-hover:scale-110 transition-transform">
-                            <PlayIcon size={18} className="ml-0.5 fill-white" />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Course Info */}
-                      <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-4">
-                        <div className="space-y-2">
-                          <h4 
-                            onClick={() => setPreviewCourse(course)}
-                            className="text-[15px] sm:text-[16px] font-bold text-gray-900 leading-snug group-hover:text-[#0052CC] transition-colors cursor-pointer"
-                          >
-                            {course.title}
-                          </h4>
-                          <p className="text-[12px] text-gray-500 font-medium">
-                            {course.mentor?.name}
-                            {course.mentor?.instructorLabel ? ` (${course.mentor.instructorLabel})` : ''}
-                          </p>
-
-                          <div className="flex items-center gap-2 text-[11px] text-gray-400">
-                            {course.stats?.videoHoursLabel && (
-                              <span>{course.stats.videoHoursLabel}</span>
-                            )}
-                            {course.stats?.ratings !== null && course.stats?.ratings?.average != null && (
-                              <>
-                                <span>•</span>
-                                <span className="flex items-center gap-1 text-amber-500 font-semibold">
-                                  ★ {course.stats.ratings.average} 
-                                  {course.stats.ratings.count ? (
-                                    <span className="text-gray-400 font-normal">({course.stats.ratings.count} reviews)</span>
-                                  ) : null}
-                                </span>
-                              </>
-                            )}
-                          </div>
-
-                          {/* Dynamic Pills */}
-                          {course.pills && course.pills.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 pt-1">
-                              {course.pills.map((pill, idx) => (
-                                <span 
-                                  key={idx} 
-                                  className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-600"
-                                >
-                                  {pill}
-                                </span>
-                              ))}
+                        {/* Thumbnail with Play button */}
+                        <div 
+                          onClick={() => setPreviewCourse(course)}
+                          className="w-full aspect-16/9 overflow-hidden relative group cursor-pointer bg-gray-100"
+                        >
+                          <img
+                            src={banner}
+                            alt={course.title}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                          <div className="absolute inset-0 bg-black/25 flex items-center justify-center transition-colors group-hover:bg-black/35">
+                            <div className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-xs flex items-center justify-center border-2 border-white/80 text-white shadow-md group-hover:scale-110 transition-transform">
+                              <PlayIcon size={18} className="ml-0.5 fill-white" />
                             </div>
-                          )}
+                          </div>
                         </div>
 
-                        <div className="pt-3 border-t border-gray-100">
-                          {course.enrolled ? (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenCourse(course.id)}
-                              className="text-[12px] font-bold text-[#0052CC] hover:text-[#003d99] flex items-center gap-1.5 cursor-pointer transition-colors"
-                            >
-                              Go to course →
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
+                        {/* Course Info */}
+                        <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-4">
+                          <div className="space-y-2">
+                            <h4 
                               onClick={() => setPreviewCourse(course)}
-                              className="text-[12px] font-bold text-[#0052CC] hover:text-[#003d99] flex items-center gap-1.5 cursor-pointer transition-colors"
+                              className="text-[15px] sm:text-[16px] font-bold text-gray-900 leading-snug group-hover:text-[#0052CC] transition-colors cursor-pointer"
                             >
-                              Take this course →
-                            </button>
-                          )}
+                              {course.title}
+                            </h4>
+                            <p className="text-[12px] text-gray-500 font-medium">
+                              {course.mentor?.instructorLabel || mentorName}
+                            </p>
+
+                            <div className="flex items-center gap-2 text-[11px] text-gray-400">
+                              {course.stats?.videoHoursLabel && (
+                                <span>{course.stats.videoHoursLabel}</span>
+                              )}
+                              {/* Ratings strictly hidden while null per backend handoff */}
+                              {course.stats?.ratings !== null && course.stats?.ratings != null && (
+                                <>
+                                  <span>•</span>
+                                  <span className="flex items-center gap-1 text-amber-500 font-semibold">
+                                    ★ {course.stats.ratings} 
+                                    {course.stats.ratingsCount ? (
+                                      <span className="text-gray-400 font-normal">({course.stats.ratingsCount} reviews)</span>
+                                    ) : null}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Dynamic Pills */}
+                            {course.pills && course.pills.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {course.pills.map((pill, idx) => (
+                                  <span 
+                                    key={idx} 
+                                    className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-600"
+                                  >
+                                    {pill}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="pt-3 border-t border-gray-100">
+                            {course.enrolled ? (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenCourse(course.id, course.cta?.hrefHint)}
+                                className="text-[12px] font-bold text-[#0052CC] hover:text-[#003d99] flex items-center gap-1.5 cursor-pointer transition-colors"
+                              >
+                                Go to course →
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setPreviewCourse(course)}
+                                className="text-[12px] font-bold text-[#0052CC] hover:text-[#003d99] flex items-center gap-1.5 cursor-pointer transition-colors"
+                              >
+                                {course.cta?.label || 'Take this course →'}
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -599,7 +638,7 @@ const CoursesList: React.FC = () => {
             {/* Video Banner */}
             <div className="relative h-44 sm:h-52 w-full bg-gray-900 shrink-0 overflow-hidden">
               <img
-                src={previewCourse.thumbnailUrl || DEFAULT_BANNER}
+                src={getMediaUrl(previewCourse.thumbnailS3Key || previewCourse.thumbnailUrl, DEFAULT_COURSE_BANNER)}
                 alt={previewCourse.title}
                 className="w-full h-full object-cover opacity-90"
               />
@@ -619,17 +658,17 @@ const CoursesList: React.FC = () => {
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-12 h-12 rounded-[14px] overflow-hidden shrink-0 border border-gray-200 bg-gray-100">
                     <img
-                      src={previewCourse.mentor?.avatarUrl || DEFAULT_AVATAR}
-                      alt={previewCourse.mentor?.name || 'Instructor'}
+                      src={getMediaUrl(previewCourse.mentor?.photoS3Key || previewCourse.mentor?.avatarUrl, DEFAULT_MENTOR_AVATAR)}
+                      alt={previewCourse.mentor?.displayName || previewCourse.mentor?.name || 'Instructor'}
                       className="w-full h-full object-cover"
                     />
                   </div>
                   <div className="min-w-0">
                     <h4 className="text-[15px] font-bold text-gray-900 leading-snug truncate">
-                      {previewCourse.mentor?.name}
+                      {previewCourse.mentor?.displayName || previewCourse.mentor?.name}
                     </h4>
                     <p className="text-[11px] text-gray-500 line-clamp-1">
-                      {previewCourse.mentor?.instructorLabel || previewCourse.mentor?.headline || 'Instructor'}
+                      {previewCourse.mentor?.instructorLabel || previewCourse.mentor?.professionalTitle || 'Instructor'}
                     </p>
                   </div>
                 </div>
@@ -639,7 +678,7 @@ const CoursesList: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setPreviewCourse(null);
-                      handleOpenCourse(previewCourse.id);
+                      handleOpenCourse(previewCourse.id, previewCourse.cta?.hrefHint);
                     }}
                     className="w-full sm:w-auto px-6 py-2.5 bg-[#0052CC] hover:bg-[#0047CC] text-white rounded-full font-bold text-[13px] shadow-xs cursor-pointer whitespace-nowrap transition-all active:scale-[0.98] text-center shrink-0"
                   >
@@ -664,15 +703,15 @@ const CoursesList: React.FC = () => {
                   {previewCourse.title}
                 </h3>
                 <p className="text-[12px] text-gray-600 leading-relaxed">
-                  {previewCourse.tagline}
+                  {previewCourse.description || previewCourse.subtitle || previewCourse.tagline}
                 </p>
               </div>
 
               {/* Pills & Format */}
               <div className="flex flex-wrap gap-2 pt-1">
-                {previewCourse.formatLabel && (
+                {previewCourse.format && (
                   <span className="px-3 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-[#0052CC]">
-                    {previewCourse.formatLabel}
+                    {previewCourse.formatLabel || previewCourse.format.replace(/_/g, ' ')}
                   </span>
                 )}
                 {previewCourse.pills?.map((pill, idx) => (
@@ -707,7 +746,7 @@ const CoursesList: React.FC = () => {
               <div className="flex justify-between items-start text-[13px] pt-1">
                 <div>
                   <p className="font-bold text-gray-900">{enrollCourse.title}</p>
-                  <p className="text-gray-500 text-[12px]">Instructor: {enrollCourse.mentor?.name}</p>
+                  <p className="text-gray-500 text-[12px]">Instructor: {enrollCourse.mentor?.displayName || enrollCourse.mentor?.name}</p>
                 </div>
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700">
                   Included
@@ -716,7 +755,9 @@ const CoursesList: React.FC = () => {
               <div className="border-t border-gray-200/80 pt-2 space-y-1 text-[12px] text-gray-500">
                 <div className="flex justify-between">
                   <span>Format</span>
-                  <span className="text-gray-900 font-medium">{enrollCourse.formatLabel}</span>
+                  <span className="text-gray-900 font-medium">
+                    {enrollCourse.formatLabel || enrollCourse.format.replace(/_/g, ' ')}
+                  </span>
                 </div>
                 {enrollCourse.stats?.videoHoursLabel && (
                   <div className="flex justify-between">
@@ -728,15 +769,21 @@ const CoursesList: React.FC = () => {
             </div>
 
             <form onSubmit={handleEnrollSubmit} className="space-y-5">
-              {/* Country Selection */}
+              {/* Country Selection (PPP Body fields) */}
               <div className="space-y-2">
                 <label className="text-[13px] font-bold text-gray-900">Country of Residence</label>
                 <p className="text-[11px] text-gray-400">Used to localize your learning path and certificate</p>
                 <select
                   value={selectedCountry}
-                  onChange={e => setSelectedCountry(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-[12px] border border-gray-200 text-[13px] focus:outline-none focus:border-[#0052CC] bg-white cursor-pointer"
+                  onChange={e => {
+                    setSelectedCountry(e.target.value);
+                    if (countryError) setCountryError('');
+                  }}
+                  className={`w-full px-4 py-2.5 rounded-[12px] border text-[13px] focus:outline-none bg-white cursor-pointer transition-colors ${
+                    countryError ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#0052CC]'
+                  }`}
                 >
+                  <option value="">Select country...</option>
                   <option value="US">United States (US)</option>
                   <option value="GB">United Kingdom (GB)</option>
                   <option value="CA">Canada (CA)</option>
@@ -748,13 +795,16 @@ const CoursesList: React.FC = () => {
                   <option value="DE">Germany (DE)</option>
                   <option value="FR">France (FR)</option>
                 </select>
+                {countryError && (
+                  <p className="text-[11px] text-red-500 font-medium">{countryError}</p>
+                )}
               </div>
 
               {/* Submit Button */}
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={enrollMutation.isPending}
+                  disabled={enrollMutation.isPending || !selectedCountry}
                   className="w-full py-3.5 px-6 bg-[#0052CC] hover:bg-[#0047CC] disabled:opacity-50 text-white rounded-full font-bold text-[14px] shadow-sm cursor-pointer transition-all active:scale-[0.99]"
                 >
                   {enrollMutation.isPending ? 'Enrolling...' : 'Confirm & Start Learning'}
@@ -784,7 +834,9 @@ const CoursesList: React.FC = () => {
               <span className="text-[12px] font-semibold text-[#0052CC] uppercase tracking-wider">VORA Verified Certificate</span>
               <h3 className="text-[20px] sm:text-[22px] font-bold text-gray-900">Certificate of Completion</h3>
               <p className="text-[13px] text-gray-500">Awarded for successfully mastering the curriculum of</p>
-              <p className="text-[15px] sm:text-[16px] font-bold text-gray-900 pt-1 leading-snug">{certificateCourse.title}</p>
+              <p className="text-[15px] sm:text-[16px] font-bold text-gray-900 pt-1 leading-snug">
+                {certificateCourse.course?.title || certificateCourse.title}
+              </p>
             </div>
 
             <div className="bg-[#F8FAFC] border border-gray-100 rounded-[16px] p-3 sm:p-4 text-[12px] text-gray-600 grid grid-cols-2 gap-2 text-center">
@@ -794,7 +846,9 @@ const CoursesList: React.FC = () => {
               </div>
               <div>
                 <p className="text-gray-400 text-[10px] sm:text-[11px]">Instructor</p>
-                <p className="font-bold text-gray-800 text-[13px] truncate">{certificateCourse.mentor?.name || 'Verified Mentor'}</p>
+                <p className="font-bold text-gray-800 text-[13px] truncate">
+                  {certificateCourse.mentor?.displayName || certificateCourse.mentor?.name || 'Verified Mentor'}
+                </p>
               </div>
             </div>
 
@@ -802,12 +856,18 @@ const CoursesList: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  toast.success('Certificate download initiated');
+                  const shareUrl = certificateCourse.certificate?.shareableUrl || certificateCourse.cta?.downloadCertificate?.href;
+                  if (shareUrl) {
+                    window.open(shareUrl, '_blank');
+                    toast.success('Certificate download opened');
+                  } else {
+                    toast.success('Certificate verified and issued');
+                  }
                   setCertificateCourse(null);
                 }}
                 className="flex-1 py-3 bg-[#0052CC] hover:bg-[#0047CC] text-white rounded-full font-bold text-[14px] shadow-xs cursor-pointer transition-all"
               >
-                Download PDF
+                Download Certificate
               </button>
             </div>
           </div>

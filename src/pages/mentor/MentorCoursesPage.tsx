@@ -1,27 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
 import {
-  CoursesIcon,
-  PlayIcon,
   PlusIcon,
   PencilIcon,
   TrashIcon,
-  UsersIcon,
   StarIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  DollarSignIcon,
-  AwardIcon,
-  BookOpenIcon,
-  MessageSquareIcon,
   CalendarIcon,
-  ExternalLinkIcon,
-  EyeIcon,
   SearchIcon,
-  CheckIcon,
-  CloseIcon,
-  ArrowRightIcon,
 } from '../../components/common/Icons';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -29,551 +14,429 @@ import Select from '../../components/common/Select';
 import Textarea from '../../components/common/Textarea';
 import ModalDialog from '../../components/common/ModalDialog';
 import { toast } from 'react-hot-toast';
+import {
+  useInstructorHub,
+  useCreateCourseMutation,
+  usePublishCourseMutation,
+  useUnpublishCourseMutation,
+  useDeleteCourseMutation,
+} from '../../services/queries/courses';
+import type {
+  InstructorCourseItem,
+  InstructorRosterItem,
+  CourseFormat,
+} from '../../types/courses';
+import {
+  getMediaUrl,
+  DEFAULT_COURSE_BANNER,
+  DEFAULT_MENTOR_AVATAR,
+} from '../../utils/media';
 
-interface InstructorCourse {
-  id: string;
-  title: string;
-  category: string;
-  level: string;
-  thumbnail: string;
-  status: 'PUBLISHED' | 'IN_REVIEW' | 'DRAFT';
-  price: number;
-  isFree?: boolean;
-  chaptersCount: number;
-  totalHours: number;
-  enrolledStudents: number;
-  revenue: number;
-  rating: number;
-  reviewsCount: number;
-  lastUpdated: string;
-  description: string;
-}
+interface MentorCoursesPageProps {}
 
-interface StudentSubmission {
-  id: string;
-  studentName: string;
-  studentAvatar: string;
-  courseTitle: string;
-  progress: number;
-  lastActive: string;
-  submissionTitle: string;
-  submissionStatus: 'SUBMITTED' | 'GRADED' | 'IN_PROGRESS';
-  grade?: number;
-}
-
-interface MenteeSession {
-  id: string;
-  menteeName: string;
-  menteeAvatar: string;
-  courseContext: string;
-  topic: string;
-  scheduledTime: string;
-  duration: string;
-  tier: 'Tier 1 (HIC)' | 'Tier 2 (UMIC)' | 'Tier 3 (LMIC)';
-  rate: string;
-  status: 'UPCOMING' | 'COMPLETED' | 'REQUESTED';
-}
-
-const INITIAL_COURSES: InstructorCourse[] = [
-  {
-    id: 'course-1',
-    title: 'High-Throughput Microservices & Event-Driven Architecture',
-    category: 'Backend & Systems',
-    level: 'Advanced',
-    thumbnail: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&q=80&w=600',
-    status: 'PUBLISHED',
-    price: 89,
-    chaptersCount: 12,
-    totalHours: 18.5,
-    enrolledStudents: 642,
-    revenue: 14280,
-    rating: 4.9,
-    reviewsCount: 184,
-    lastUpdated: 'Aug 18, 2026',
-    description: 'Master asynchronous message queues, distributed idempotency, distributed caching, and failover architectures built for high-scale environments.',
-  },
-  {
-    id: 'course-2',
-    title: 'Production Kubernetes & Cloud-Native Reliability',
-    category: 'DevOps & Cloud',
-    level: 'Intermediate',
-    thumbnail: 'https://images.unsplash.com/photo-1667372393119-3d4c48d07fc9?auto=format&fit=crop&q=80&w=600',
-    status: 'PUBLISHED',
-    price: 75,
-    chaptersCount: 10,
-    totalHours: 14,
-    enrolledStudents: 480,
-    revenue: 9600,
-    rating: 4.85,
-    reviewsCount: 128,
-    lastUpdated: 'Jul 22, 2026',
-    description: 'Hands-on orchestration with multi-cluster ingress, GitOps with ArgoCD, cluster telemetry with Prometheus, and zero-downtime rolling updates.',
-  },
-  {
-    id: 'course-3',
-    title: 'Clinical AI Decision Pipelines & Vector Reasoning',
-    category: 'Health Tech & AI',
-    level: 'Advanced',
-    thumbnail: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=600',
-    status: 'PUBLISHED',
-    price: 99,
-    chaptersCount: 8,
-    totalHours: 12,
-    enrolledStudents: 218,
-    revenue: 4570,
-    rating: 4.95,
-    reviewsCount: 62,
-    lastUpdated: 'Aug 04, 2026',
-    description: 'Build HIPAA-compliant vector search and entity extraction systems querying medical guideline knowledge bases in real-time.',
-  },
-  {
-    id: 'course-4',
-    title: 'Distributed Transaction Processing in Go',
-    category: 'Backend & Systems',
-    level: 'Advanced',
-    thumbnail: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&q=80&w=600',
-    status: 'IN_REVIEW',
-    price: 65,
-    chaptersCount: 9,
-    totalHours: 11.5,
-    enrolledStudents: 0,
-    revenue: 0,
-    rating: 5.0,
-    reviewsCount: 0,
-    lastUpdated: 'Sep 12, 2026',
-    description: 'Two-phase commit, Saga patterns, and write-ahead logging patterns implemented from scratch in pure Go.',
-  },
-  {
-    id: 'course-5',
-    title: 'Senior Engineering Leadership & System Design Interviews',
-    category: 'Career & Leadership',
-    level: 'All Levels',
-    thumbnail: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&q=80&w=600',
-    status: 'DRAFT',
-    price: 49,
-    chaptersCount: 6,
-    totalHours: 8,
-    enrolledStudents: 0,
-    revenue: 0,
-    rating: 0,
-    reviewsCount: 0,
-    lastUpdated: 'Sep 18, 2026',
-    description: 'How to structure system design solutions, explain architectural trade-offs, and conduct effective technical leadership simulations.',
-  },
-];
-
-const INITIAL_SUBMISSIONS: StudentSubmission[] = [
-  {
-    id: 'sub-1',
-    studentName: 'Farhan Patel',
-    studentAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
-    courseTitle: 'High-Throughput Microservices',
-    progress: 92,
-    lastActive: '2 hours ago',
-    submissionTitle: 'Capstone: Distributed Redis Stream Worker Pool',
-    submissionStatus: 'SUBMITTED',
-  },
-  {
-    id: 'sub-2',
-    studentName: 'Elena Rostova',
-    studentAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200',
-    courseTitle: 'Production Kubernetes',
-    progress: 78,
-    lastActive: '1 day ago',
-    submissionTitle: 'ArgoCD Multi-Environment Deployment Manifests',
-    submissionStatus: 'GRADED',
-    grade: 96,
-  },
-  {
-    id: 'sub-3',
-    studentName: 'Kofi Mensah',
-    studentAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200',
-    courseTitle: 'Clinical AI Decision Pipelines',
-    progress: 65,
-    lastActive: '3 days ago',
-    submissionTitle: 'Vector Ingestion Pipeline with Qdrant',
-    submissionStatus: 'IN_PROGRESS',
-  },
-];
-
-const INITIAL_MENTEES: MenteeSession[] = [
-  {
-    id: 'mentee-1',
-    menteeName: 'Chiamaka Eze',
-    menteeAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200',
-    courseContext: 'High-Throughput Microservices',
-    topic: 'System Architecture & Concurrency Bottlenecks',
-    scheduledTime: 'Tomorrow, 3:00 PM WAT',
-    duration: '45 mins',
-    tier: 'Tier 3 (LMIC)',
-    rate: '$25 / session',
-    status: 'UPCOMING',
-  },
-  {
-    id: 'mentee-2',
-    menteeName: 'David Chen',
-    menteeAvatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=200',
-    courseContext: 'Production Kubernetes',
-    topic: 'Cloud-Native Career Transition & Mock Interview',
-    scheduledTime: 'Thursday, 5:30 PM WAT',
-    duration: '60 mins',
-    tier: 'Tier 1 (HIC)',
-    rate: '$95 / session',
-    status: 'UPCOMING',
-  },
-];
-
-interface MentorCoursesPageProps {
-  onToggleLearnerView?: () => void;
-}
-
-const MentorCoursesPage: React.FC<MentorCoursesPageProps> = ({ onToggleLearnerView }) => {
+const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+
+  // Primary API Query: GET /courses/instructor/hub
+  const { data: hubData, isLoading, error } = useInstructorHub();
+
+  const createCourseMutation = useCreateCourseMutation();
+  const publishMutation = usePublishCourseMutation();
+  const unpublishMutation = useUnpublishCourseMutation();
+  const deleteMutation = useDeleteCourseMutation();
 
   const [activeTab, setActiveTab] = useState<'my-courses' | 'students' | 'mentorship' | 'reviews'>('my-courses');
-  const [courseFilter, setCourseFilter] = useState<'ALL' | 'PUBLISHED' | 'IN_REVIEW' | 'DRAFT'>('ALL');
+  const [courseFilter, setCourseFilter] = useState<'ALL' | 'PUBLISHED' | 'UNDER_REVIEW' | 'DRAFT'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [courses, setCourses] = useState<InstructorCourse[]>(INITIAL_COURSES);
-  const [submissions, setSubmissions] = useState<StudentSubmission[]>(INITIAL_SUBMISSIONS);
-  const [mentees, setMentees] = useState<MenteeSession[]>(INITIAL_MENTEES);
-
-  // Create/Edit Course Modal
+  // Create Course Modal
   const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
   const [courseForm, setCourseForm] = useState<{
     title: string;
     category: string;
     level: string;
+    format: CourseFormat;
     price: number;
-    isFree: boolean;
     description: string;
     thumbnail: string;
-    status: 'PUBLISHED' | 'IN_REVIEW' | 'DRAFT';
   }>({
     title: '',
     category: 'Backend & Systems',
     level: 'Intermediate',
+    format: 'VIDEO_MASTERCLASS',
     price: 69,
-    isFree: false,
     description: '',
-    thumbnail: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=600',
-    status: 'PUBLISHED',
+    thumbnail: '',
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  // Grade Modal
-  const [gradingSub, setGradingSub] = useState<StudentSubmission | null>(null);
-  const [gradeInput, setGradeInput] = useState('95');
-  const [feedbackInput, setFeedbackInput] = useState('Excellent architectural implementation with clean error handling.');
-
-  // Q&A
-  const [qaReplies, setQaReplies] = useState<Record<string, string>>({});
+  const courses: InstructorCourseItem[] = hubData?.myCourses || [];
+  const roster: InstructorRosterItem[] = hubData?.roster || [];
+  const mentorship = hubData?.mentorship || [];
+  const metrics = hubData?.metrics;
+  const tabCounts = hubData?.tabCounts;
+  const filters = hubData?.filters;
 
   const filteredCourses = courses.filter((c) => {
     if (courseFilter !== 'ALL' && c.status !== courseFilter) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      return c.title.toLowerCase().includes(q) || c.category.toLowerCase().includes(q);
+      return (
+        c.title?.toLowerCase().includes(q) ||
+        c.category?.toLowerCase().includes(q) ||
+        c.subtitle?.toLowerCase().includes(q)
+      );
     }
     return true;
   });
 
-  const totalEnrolled = courses.reduce((acc, c) => acc + c.enrolledStudents, 0);
-  const totalRevenue = courses.reduce((acc, c) => acc + c.revenue, 0);
-  const publishedCount = courses.filter((c) => c.status === 'PUBLISHED').length;
+  const validateCourseForm = () => {
+    const errors: Record<string, string> = {};
+
+    const trimmedTitle = courseForm.title.trim();
+    if (!trimmedTitle) {
+      errors.title = 'Course title is required';
+    } else if (trimmedTitle.length < 3) {
+      errors.title = 'Title must be at least 3 characters long';
+    } else if (trimmedTitle.length > 120) {
+      errors.title = 'Title must not exceed 120 characters';
+    }
+
+    if (!courseForm.category) {
+      errors.category = 'Please select a course category';
+    }
+
+    if (!courseForm.level) {
+      errors.level = 'Please select a difficulty level';
+    }
+
+    if (!courseForm.format) {
+      errors.format = 'Please select a course format';
+    }
+
+    if (isNaN(courseForm.price) || courseForm.price < 0) {
+      errors.price = 'Price must be 0 (Free) or greater';
+    } else if (courseForm.price > 10000) {
+      errors.price = 'Price cannot exceed $10,000 USD';
+    }
+
+    if (courseForm.description.trim() && courseForm.description.trim().length < 10) {
+      errors.description = 'Description should be at least 10 characters long';
+    }
+
+    if (courseForm.thumbnail.trim()) {
+      const thumb = courseForm.thumbnail.trim();
+      const isUrl = /^https?:\/\//i.test(thumb);
+      const isS3Key = /^[a-zA-Z0-9_\-./]+$/i.test(thumb);
+      if (!isUrl && !isS3Key) {
+        errors.thumbnail = 'Must be a valid URL or S3 storage key path';
+      }
+    }
+
+    return errors;
+  };
 
   const handleOpenCreateModal = () => {
     setEditingCourseId(null);
+    setFormErrors({});
     setCourseForm({
       title: '',
       category: 'Backend & Systems',
       level: 'Intermediate',
+      format: 'VIDEO_MASTERCLASS',
       price: 69,
-      isFree: false,
       description: '',
-      thumbnail: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=600',
-      status: 'PUBLISHED',
+      thumbnail: '',
     });
     setIsCourseModalOpen(true);
   };
 
-  const handleOpenEditModal = (c: InstructorCourse) => {
+  const handleOpenEditModal = (c: InstructorCourseItem) => {
     setEditingCourseId(c.id);
+    setFormErrors({});
     setCourseForm({
       title: c.title,
       category: c.category,
-      level: c.level,
-      price: c.price,
-      isFree: Boolean(c.isFree),
-      description: c.description,
-      thumbnail: c.thumbnail,
-      status: c.status,
+      level: c.difficultyLevel || 'Intermediate',
+      format: c.format || 'VIDEO_MASTERCLASS',
+      price: c.price || 0,
+      description: c.description || c.subtitle || '',
+      thumbnail: c.thumbnailS3Key || '',
     });
     setIsCourseModalOpen(true);
   };
 
-  const handleSaveCourse = (e: React.FormEvent) => {
+  const handleSaveCourse = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!courseForm.title.trim()) {
-      toast.error('Please enter a course title');
+    const errors = validateCourseForm();
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      const firstError = Object.values(errors)[0];
+      toast.error(firstError);
+      return;
+    }
+    setFormErrors({});
+
+    try {
+      await createCourseMutation.mutateAsync({
+        title: courseForm.title,
+        category: courseForm.category,
+        difficultyLevel: courseForm.level,
+        format: courseForm.format,
+        tier1Price: Number(courseForm.price),
+        description: courseForm.description,
+        thumbnailS3Key: courseForm.thumbnail.trim() || null,
+      });
+
+      toast.success(editingCourseId ? 'Course updated successfully!' : 'Course draft created successfully!');
+      setIsCourseModalOpen(false);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to save course. Please try again.');
+    }
+  };
+
+  const handleTogglePublish = async (course: InstructorCourseItem) => {
+    try {
+      if (course.status === 'PUBLISHED') {
+        if (!course.actions?.unpublish?.enabled) {
+          toast.error(course.actions?.unpublish?.reason || 'Cannot unpublish this course at this time');
+          return;
+        }
+        await unpublishMutation.mutateAsync(course.id);
+        toast.success(`"${course.title}" unpublished`);
+      } else {
+        if (!course.actions?.publish?.enabled) {
+          toast.error(course.actions?.publish?.reason || 'Course needs at least one module before publishing');
+          return;
+        }
+        await publishMutation.mutateAsync(course.id);
+        toast.success(`"${course.title}" published successfully!`);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update course publish status');
+    }
+  };
+
+  const handleDeleteCourse = async (course: InstructorCourseItem) => {
+    if (!course.actions?.delete?.enabled) {
+      toast.error(course.actions?.delete?.reason || 'Cannot delete this course');
       return;
     }
 
-    if (editingCourseId) {
-      setCourses((prev) =>
-        prev.map((c) =>
-          c.id === editingCourseId
-            ? {
-                ...c,
-                title: courseForm.title,
-                category: courseForm.category,
-                level: courseForm.level,
-                price: courseForm.isFree ? 0 : Number(courseForm.price),
-                isFree: courseForm.isFree,
-                description: courseForm.description,
-                thumbnail: courseForm.thumbnail,
-                status: courseForm.status,
-                lastUpdated: 'Just now',
-              }
-            : c
-        )
-      );
-      toast.success('Course updated successfully!');
-    } else {
-      const newCourse: InstructorCourse = {
-        id: `course-${Date.now()}`,
-        title: courseForm.title,
-        category: courseForm.category,
-        level: courseForm.level,
-        price: courseForm.isFree ? 0 : Number(courseForm.price),
-        isFree: courseForm.isFree,
-        thumbnail: courseForm.thumbnail,
-        status: courseForm.status,
-        chaptersCount: 8,
-        totalHours: 10,
-        enrolledStudents: 0,
-        revenue: 0,
-        rating: 5.0,
-        reviewsCount: 0,
-        lastUpdated: 'Just now',
-        description: courseForm.description,
-      };
-      setCourses((prev) => [newCourse, ...prev]);
-      toast.success('Course created and added to your portfolio!');
+    if (window.confirm(`Are you sure you want to archive "${course.title}"?`)) {
+      try {
+        await deleteMutation.mutateAsync(course.id);
+        toast.success('Course archived');
+      } catch (err: any) {
+        toast.error(err?.message || 'Failed to delete course');
+      }
     }
-    setIsCourseModalOpen(false);
-  };
-
-  const handleTogglePublish = (courseId: string) => {
-    setCourses((prev) =>
-      prev.map((c) => {
-        if (c.id === courseId) {
-          const nextStatus = c.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED';
-          toast.success(`Course status changed to ${nextStatus}`);
-          return { ...c, status: nextStatus };
-        }
-        return c;
-      })
-    );
-  };
-
-  const handleDeleteCourse = (courseId: string) => {
-    if (window.confirm('Are you sure you want to remove this course?')) {
-      setCourses((prev) => prev.filter((c) => c.id !== courseId));
-      toast.success('Course removed');
-    }
-  };
-
-  const handleGradeSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!gradingSub) return;
-    setSubmissions((prev) =>
-      prev.map((s) =>
-        s.id === gradingSub.id
-          ? { ...s, submissionStatus: 'GRADED', grade: Number(gradeInput) }
-          : s
-      )
-    );
-    toast.success(`Grade (${gradeInput}%) recorded and mentee notified!`);
-    setGradingSub(null);
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24">
+    <div className="space-y-5 sm:space-y-6 max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
-              Course Management & Mentorship Hub
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
+              Course Management &amp; Mentorship Hub
             </h1>
-            <span className="bg-purple-50 text-purple-700 border border-purple-200 px-2.5 py-0.5 rounded-full text-xs font-bold">
+            <span className="bg-purple-50 text-purple-700 border border-purple-200 px-2.5 py-0.5 rounded-full text-xs font-bold shrink-0">
               Instructor Portal
             </span>
           </div>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">
             Author, publish, and track your instructional courses, cohorts, and student progress.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {onToggleLearnerView ? (
-            <Button
-              variant="outline"
-              size="sm"
-              pill={false}
-              onClick={onToggleLearnerView}
-              className="text-xs font-semibold gap-1.5"
-            >
-              <EyeIcon size={14} />
-              Preview Learner View
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              pill={false}
-              onClick={() => navigate('/courses?view=catalog')}
-              className="text-xs font-semibold gap-1.5"
-            >
-              <EyeIcon size={14} />
-              Learner Catalog
-            </Button>
-          )}
-
+        <div className="flex items-center gap-3 w-full sm:w-auto">
           <Button
             variant="primary"
             size="sm"
             pill={false}
             onClick={handleOpenCreateModal}
-            className="text-xs font-semibold gap-1.5 shadow-xs"
+            className="text-xs font-semibold gap-1.5 shadow-xs w-full sm:w-auto justify-center"
           >
             <PlusIcon size={14} />
-            Create Course
+            {hubData?.cta?.createCourse?.label || 'Create Course'}
           </Button>
         </div>
       </div>
 
       {/* KPI Instructor Metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-xs">
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Total Enrolled</p>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold text-gray-900">{totalEnrolled.toLocaleString()}</span>
-            <span className="text-xs font-semibold text-emerald-600">+14% mo</span>
-          </div>
+      {isLoading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="bg-white border border-gray-100 rounded-2xl p-4 animate-pulse space-y-2">
+              <div className="h-3 bg-gray-200 rounded w-1/2" />
+              <div className="h-6 bg-gray-200 rounded w-3/4" />
+            </div>
+          ))}
         </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
+          {/* Total Enrolled */}
+          <div className="bg-white border border-gray-100 rounded-2xl p-3 sm:p-5 shadow-2xs">
+            <p className="text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Total Enrolled</p>
+            <div className="flex flex-wrap items-baseline gap-1.5 mt-1">
+              <span className="text-xl sm:text-2xl font-bold text-gray-900">
+                {(metrics?.totalEnrolled ?? 0).toLocaleString()}
+              </span>
+              {metrics?.enrolledMoMLabel && (
+                <span className="text-[10px] sm:text-xs font-semibold text-emerald-600">
+                  {metrics.enrolledMoMLabel}
+                </span>
+              )}
+            </div>
+          </div>
 
-        <div className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-xs">
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Active Courses</p>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold text-gray-900">{publishedCount}</span>
-            <span className="text-xs text-gray-400">of {courses.length} total</span>
+          {/* Active Courses */}
+          <div className="bg-white border border-gray-100 rounded-2xl p-3 sm:p-5 shadow-2xs">
+            <p className="text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Active Courses</p>
+            <div className="flex flex-wrap items-baseline gap-1.5 mt-1">
+              <span className="text-xl sm:text-2xl font-bold text-gray-900">
+                {metrics?.activeCourses ?? courses.filter(c => c.status === 'PUBLISHED').length}
+              </span>
+              <span className="text-[10px] sm:text-xs text-gray-400">
+                {metrics?.activeCoursesLabel || `of ${metrics?.totalCourses ?? courses.length} total`}
+              </span>
+            </div>
           </div>
-        </div>
 
-        <div className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-xs">
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Average Rating</p>
-          <div className="flex items-center gap-1.5 mt-1">
-            <span className="text-2xl font-bold text-gray-900">4.9</span>
-            <StarIcon size={16} className="text-amber-500 fill-amber-500" />
-            <span className="text-xs text-gray-400 ml-1">(382)</span>
+          {/* Average Rating (Hidden while averageRating === null per handoff spec) */}
+          <div className="bg-white border border-gray-100 rounded-2xl p-3 sm:p-5 shadow-2xs">
+            <p className="text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Average Rating</p>
+            <div className="flex items-center gap-1 mt-1">
+              {metrics?.averageRating !== null && metrics?.averageRating != null ? (
+                <>
+                  <span className="text-xl sm:text-2xl font-bold text-gray-900">{metrics.averageRating}</span>
+                  <StarIcon size={14} className="text-amber-500 fill-amber-500" />
+                  {metrics?.ratingsCount ? (
+                    <span className="text-[10px] sm:text-xs text-gray-400 ml-0.5">({metrics.ratingsCount})</span>
+                  ) : null}
+                </>
+              ) : (
+                <span className="text-sm font-medium text-gray-400">Not rated yet</span>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-xs">
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Total Revenue</p>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold text-[#0047CC]">${totalRevenue.toLocaleString()}</span>
-            <span className="text-[10px] font-medium text-gray-400">USD</span>
+          {/* Total Revenue */}
+          <div className="bg-white border border-gray-100 rounded-2xl p-3 sm:p-5 shadow-2xs">
+            <p className="text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Total Revenue</p>
+            <div className="flex flex-wrap items-baseline gap-1 mt-1">
+              <span className="text-xl sm:text-2xl font-bold text-[#0047CC]">
+                {metrics?.formattedRevenue || `$${(metrics?.totalRevenue ?? 0).toLocaleString()} USD`}
+              </span>
+            </div>
           </div>
-        </div>
 
-        <div className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-xs col-span-2 lg:col-span-1">
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Completion Rate</p>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold text-gray-900">78%</span>
-            <span className="text-xs font-semibold text-emerald-600">High engagement</span>
+          {/* Completion Rate */}
+          <div className="bg-white border border-gray-100 rounded-2xl p-3 sm:p-5 shadow-2xs col-span-2 sm:col-span-1">
+            <p className="text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Completion Rate</p>
+            <div className="flex flex-wrap items-baseline gap-1.5 mt-1">
+              <span className="text-xl sm:text-2xl font-bold text-gray-900">
+                {metrics?.completionRatePercent != null ? `${metrics.completionRatePercent}%` : '—'}
+              </span>
+              {metrics?.completionLabel && (
+                <span className="text-[10px] sm:text-xs font-semibold text-emerald-600">
+                  {metrics.completionLabel}
+                </span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 flex items-center gap-6 overflow-x-auto no-scrollbar whitespace-nowrap">
+      <div className="border-b border-gray-200 flex items-center gap-3 sm:gap-6 overflow-x-auto no-scrollbar whitespace-nowrap pb-px -mx-3.5 px-3.5 sm:mx-0 sm:px-0">
         <button
           type="button"
           onClick={() => setActiveTab('my-courses')}
-          className={`pb-3 text-sm font-semibold transition-colors relative cursor-pointer ${
+          className={`pb-3 text-xs sm:text-sm font-semibold transition-colors relative cursor-pointer shrink-0 ${
             activeTab === 'my-courses'
               ? 'text-[#0047CC] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2.5px] after:bg-[#0047CC]'
               : 'text-gray-500 hover:text-gray-900'
           }`}
         >
-          My Courses ({courses.length})
+          My Courses ({tabCounts?.myCourses ?? courses.length})
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('students')}
-          className={`pb-3 text-sm font-semibold transition-colors relative cursor-pointer ${
+          className={`pb-3 text-xs sm:text-sm font-semibold transition-colors relative cursor-pointer shrink-0 ${
             activeTab === 'students'
               ? 'text-[#0047CC] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2.5px] after:bg-[#0047CC]'
               : 'text-gray-500 hover:text-gray-900'
           }`}
         >
-          Student Roster & Submissions ({submissions.length})
+          Student Roster &amp; Submissions ({tabCounts?.roster ?? roster.length})
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('mentorship')}
-          className={`pb-3 text-sm font-semibold transition-colors relative cursor-pointer ${
+          className={`pb-3 text-xs sm:text-sm font-semibold transition-colors relative cursor-pointer shrink-0 ${
             activeTab === 'mentorship'
               ? 'text-[#0047CC] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2.5px] after:bg-[#0047CC]'
               : 'text-gray-500 hover:text-gray-900'
           }`}
         >
-          Course Mentorship & Cohorts ({mentees.length})
+          Course Mentorship &amp; Cohorts ({tabCounts?.mentorship ?? mentorship.length})
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('reviews')}
-          className={`pb-3 text-sm font-semibold transition-colors relative cursor-pointer ${
+          className={`pb-3 text-xs sm:text-sm font-semibold transition-colors relative cursor-pointer shrink-0 ${
             activeTab === 'reviews'
               ? 'text-[#0047CC] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2.5px] after:bg-[#0047CC]'
               : 'text-gray-500 hover:text-gray-900'
           }`}
         >
-          Reviews & Q&A
+          Reviews &amp; Q&amp;A
         </button>
       </div>
 
-      {/* Tab: My Courses */}
+      {/* ══════════════════ TAB 1: MY COURSES ══════════════════ */}
       {activeTab === 'my-courses' && (
         <div className="space-y-6">
           {/* Filters & Search */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             {/* Filter pills */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-              {(['ALL', 'PUBLISHED', 'IN_REVIEW', 'DRAFT'] as const).map((filterKey) => (
-                <button
-                  key={filterKey}
-                  type="button"
-                  onClick={() => setCourseFilter(filterKey)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                    courseFilter === filterKey
-                      ? 'bg-[#0047CC] text-white'
-                      : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  {filterKey === 'ALL'
-                    ? `All (${courses.length})`
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-3.5 px-3.5 sm:mx-0 sm:px-0 py-0.5">
+              {(['ALL', 'PUBLISHED', 'UNDER_REVIEW', 'DRAFT'] as const).map((filterKey) => {
+                const count =
+                  filterKey === 'ALL'
+                    ? filters?.all ?? courses.length
                     : filterKey === 'PUBLISHED'
-                    ? `Published (${courses.filter((c) => c.status === 'PUBLISHED').length})`
-                    : filterKey === 'IN_REVIEW'
-                    ? `In Review (${courses.filter((c) => c.status === 'IN_REVIEW').length})`
-                    : `Drafts (${courses.filter((c) => c.status === 'DRAFT').length})`}
-                </button>
-              ))}
+                    ? filters?.published ?? courses.filter((c) => c.status === 'PUBLISHED').length
+                    : filterKey === 'UNDER_REVIEW'
+                    ? filters?.underReview ?? courses.filter((c) => c.status === 'UNDER_REVIEW').length
+                    : filters?.drafts ?? courses.filter((c) => c.status === 'DRAFT').length;
+
+                return (
+                  <button
+                    key={filterKey}
+                    type="button"
+                    onClick={() => setCourseFilter(filterKey)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
+                      courseFilter === filterKey
+                        ? 'bg-[#0047CC] text-white'
+                        : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {filterKey === 'ALL'
+                      ? `All (${count})`
+                      : filterKey === 'PUBLISHED'
+                      ? `Published (${count})`
+                      : filterKey === 'UNDER_REVIEW'
+                      ? `In Review (${count})`
+                      : `Drafts (${count})`}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Search */}
@@ -590,227 +453,301 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = ({ onToggleLearnerVi
           </div>
 
           {/* Courses Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredCourses.map((course) => (
-              <div
-                key={course.id}
-                className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between group"
-              >
-                <div>
-                  {/* Thumbnail Banner */}
-                  <div className="relative h-44 w-full overflow-hidden bg-gray-100">
-                    <img
-                      src={course.thumbnail}
-                      alt={course.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-
-                    {/* Status Badge */}
-                    <div className="absolute top-3 right-3">
-                      {course.status === 'PUBLISHED' ? (
-                        <span className="bg-emerald-500/90 text-white backdrop-blur-xs px-2.5 py-0.5 rounded-full text-[11px] font-bold">
-                          PUBLISHED
-                        </span>
-                      ) : course.status === 'IN_REVIEW' ? (
-                        <span className="bg-amber-500/90 text-white backdrop-blur-xs px-2.5 py-0.5 rounded-full text-[11px] font-bold">
-                          UNDER REVIEW
-                        </span>
-                      ) : (
-                        <span className="bg-gray-700/90 text-white backdrop-blur-xs px-2.5 py-0.5 rounded-full text-[11px] font-bold">
-                          DRAFT
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Price & Level */}
-                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-xs">
-                      <span className="font-bold bg-black/40 backdrop-blur-xs px-2 py-0.5 rounded">
-                        {course.isFree ? 'Free' : `$${course.price} USD`}
-                      </span>
-                      <span className="bg-black/40 backdrop-blur-xs px-2 py-0.5 rounded text-[11px]">
-                        {course.level}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Body Info */}
-                  <div className="p-5 space-y-3">
-                    <p className="text-[11px] font-bold text-[#0047CC] uppercase tracking-wider">
-                      {course.category}
-                    </p>
-
-                    <h3 className="text-base font-bold text-gray-900 line-clamp-2 leading-snug">
-                      {course.title}
-                    </h3>
-
-                    <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
-                      {course.description}
-                    </p>
-
-                    {/* Meta numbers */}
-                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-50 text-center text-xs">
-                      <div>
-                        <p className="text-gray-400 text-[10px]">Students</p>
-                        <p className="font-bold text-gray-800">{course.enrolledStudents}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-400 text-[10px]">Revenue</p>
-                        <p className="font-bold text-emerald-600">
-                          ${course.revenue.toLocaleString()}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-gray-400 text-[10px]">Rating</p>
-                        <p className="font-bold text-gray-800 flex items-center justify-center gap-0.5">
-                          {course.rating} <StarIcon size={11} className="text-amber-500 fill-amber-500" />
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 animate-pulse space-y-3">
+                  <div className="h-40 bg-gray-200 rounded-xl" />
+                  <div className="h-4 bg-gray-200 rounded w-1/3" />
+                  <div className="h-5 bg-gray-200 rounded w-3/4" />
                 </div>
-
-                {/* Card Footer Actions */}
-                <div className="p-4 bg-gray-50/70 border-t border-gray-100 flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleTogglePublish(course.id)}
-                    className="text-xs font-semibold text-gray-600 hover:text-gray-900 cursor-pointer"
-                  >
-                    {course.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
-                  </button>
-
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      pill={false}
-                      onClick={() => handleOpenEditModal(course)}
-                      className="text-xs gap-1 py-1"
-                    >
-                      <PencilIcon size={12} />
-                      Edit
-                    </Button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteCourse(course.id)}
-                      className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-white transition-colors"
-                      title="Delete course"
-                    >
-                      <TrashIcon size={14} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tab: Student Roster & Submissions */}
-      {activeTab === 'students' && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-bold text-gray-900">Enrolled Talents & Project Submissions</h2>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Review capstone submissions, provide mentor feedback, and track student completion.
-                </p>
-              </div>
+              ))}
             </div>
+          ) : filteredCourses.length === 0 ? (
+            <div className="bg-white border border-gray-100 rounded-2xl p-10 sm:p-14 text-center space-y-3 shadow-2xs">
+              <p className="text-sm font-semibold text-gray-700">No courses found</p>
+              <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                {searchQuery
+                  ? 'No courses match your current search query.'
+                  : 'You have not created any courses yet. Author your first course to begin mentoring.'}
+              </p>
+              <Button
+                variant="primary"
+                size="sm"
+                pill={false}
+                onClick={handleOpenCreateModal}
+                className="text-xs font-semibold mt-2"
+              >
+                Create Your First Course
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {filteredCourses.map((course) => {
+                const banner = getMediaUrl(course.thumbnailS3Key, DEFAULT_COURSE_BANNER);
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-gray-100 text-gray-400 text-[11px] uppercase tracking-wider">
-                    <th className="pb-3 font-semibold">Student</th>
-                    <th className="pb-3 font-semibold">Course</th>
-                    <th className="pb-3 font-semibold">Progress</th>
-                    <th className="pb-3 font-semibold">Submission Item</th>
-                    <th className="pb-3 font-semibold">Status</th>
-                    <th className="pb-3 font-semibold text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {submissions.map((sub) => (
-                    <tr key={sub.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="py-3.5 pr-4">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={sub.studentAvatar}
-                            alt={sub.studentName}
-                            className="w-8 h-8 rounded-full object-cover border border-gray-200"
-                          />
-                          <div>
-                            <p className="font-bold text-gray-900">{sub.studentName}</p>
-                            <p className="text-[10px] text-gray-400">Active {sub.lastActive}</p>
+                return (
+                  <div
+                    key={course.id}
+                    className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between group"
+                  >
+                    <div>
+                      {/* Thumbnail Banner */}
+                      <div className="relative h-40 sm:h-44 w-full overflow-hidden bg-gray-100">
+                        <img
+                          src={banner}
+                          alt={course.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+
+                        {/* Status Badge */}
+                        <div className="absolute top-3 right-3">
+                          {course.status === 'PUBLISHED' ? (
+                            <span className="bg-emerald-500/90 text-white backdrop-blur-xs px-2.5 py-0.5 rounded-full text-[11px] font-bold">
+                              {course.statusLabel || 'PUBLISHED'}
+                            </span>
+                          ) : course.status === 'UNDER_REVIEW' ? (
+                            <span className="bg-amber-500/90 text-white backdrop-blur-xs px-2.5 py-0.5 rounded-full text-[11px] font-bold">
+                              {course.statusLabel || 'UNDER REVIEW'}
+                            </span>
+                          ) : (
+                            <span className="bg-gray-700/90 text-white backdrop-blur-xs px-2.5 py-0.5 rounded-full text-[11px] font-bold">
+                              {course.statusLabel || 'DRAFT'}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Price & Level */}
+                        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-xs">
+                          <span className="font-bold bg-black/40 backdrop-blur-xs px-2 py-0.5 rounded">
+                            {course.formattedPrice || (course.price ? `$${course.price} ${course.currency || 'USD'}` : 'Free')}
+                          </span>
+                          <span className="bg-black/40 backdrop-blur-xs px-2 py-0.5 rounded text-[11px]">
+                            {course.difficultyLevel}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Body Info */}
+                      <div className="p-4 sm:p-5 space-y-2.5 sm:space-y-3">
+                        <p className="text-[10px] sm:text-[11px] font-bold text-[#0047CC] uppercase tracking-wider">
+                          {course.category}
+                        </p>
+
+                        <h3 className="text-sm sm:text-base font-bold text-gray-900 line-clamp-2 leading-snug">
+                          {course.title}
+                        </h3>
+
+                        <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
+                          {course.description || course.subtitle}
+                        </p>
+
+                        {/* Meta numbers */}
+                        <div className="grid grid-cols-2 gap-1.5 pt-2 border-t border-gray-50 text-center text-xs">
+                          <div className="bg-gray-50/50 rounded-lg py-1 px-0.5">
+                            <p className="text-gray-400 text-[10px]">Students</p>
+                            <p className="font-bold text-gray-800 text-[11px] sm:text-xs">{course.students ?? 0}</p>
+                          </div>
+                          <div className="bg-gray-50/50 rounded-lg py-1 px-0.5">
+                            <p className="text-gray-400 text-[10px]">Revenue</p>
+                            <p className="font-bold text-emerald-600 text-[11px] sm:text-xs">
+                              {course.formattedRevenue || `$${(course.revenue ?? 0).toLocaleString()}`}
+                            </p>
                           </div>
                         </div>
-                      </td>
-                      <td className="py-3.5 pr-4 font-medium text-gray-700">{sub.courseTitle}</td>
-                      <td className="py-3.5 pr-4">
-                        <div className="w-24 bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-[#0047CC] h-full rounded-full" style={{ width: `${sub.progress}%` }} />
-                        </div>
-                        <span className="text-[10px] text-gray-500 font-semibold">{sub.progress}%</span>
-                      </td>
-                      <td className="py-3.5 pr-4 font-semibold text-gray-800">{sub.submissionTitle}</td>
-                      <td className="py-3.5 pr-4">
-                        {sub.submissionStatus === 'GRADED' ? (
-                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-bold text-[10px]">
-                            Graded: {sub.grade}%
-                          </span>
-                        ) : sub.submissionStatus === 'SUBMITTED' ? (
-                          <span className="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-bold text-[10px]">
-                            Needs Review
-                          </span>
-                        ) : (
-                          <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium text-[10px]">
-                            In Progress
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3.5 text-right">
-                        {sub.submissionStatus === 'SUBMITTED' ? (
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            pill={false}
-                            onClick={() => {
-                              setGradingSub(sub);
-                              setGradeInput('95');
-                            }}
-                            className="text-xs py-1 px-3"
-                          >
-                            Review & Grade
-                          </Button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => toast.success(`Chat opened with ${sub.studentName}`)}
-                            className="text-xs text-[#0047CC] hover:underline font-semibold"
-                          >
-                            Message
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    </div>
+
+                    {/* Card Footer Actions */}
+                    <div className="p-3 sm:p-4 bg-gray-50/70 border-t border-gray-100 flex items-center justify-between gap-2">
+                      {course.status === 'PUBLISHED' ? (
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePublish(course)}
+                          disabled={unpublishMutation.isPending || !course.actions?.unpublish?.enabled}
+                          className="text-xs font-semibold text-gray-600 hover:text-gray-900 disabled:opacity-40 cursor-pointer min-h-[32px] flex items-center"
+                        >
+                          Unpublish
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePublish(course)}
+                          disabled={publishMutation.isPending || !course.actions?.publish?.enabled}
+                          className="text-xs font-semibold text-[#0047CC] hover:text-blue-800 disabled:opacity-40 cursor-pointer min-h-[32px] flex items-center"
+                        >
+                          Publish
+                        </button>
+                      )}
+
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          pill={false}
+                          onClick={() => handleOpenEditModal(course)}
+                          className="text-xs gap-1 py-1"
+                        >
+                          <PencilIcon size={12} />
+                          Edit
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCourse(course)}
+                          disabled={deleteMutation.isPending || !course.actions?.delete?.enabled}
+                          className="p-1.5 text-gray-400 hover:text-red-500 disabled:opacity-40 rounded-lg hover:bg-white transition-colors cursor-pointer min-h-[32px] min-w-[32px] flex items-center justify-center"
+                          title="Archive course"
+                        >
+                          <TrashIcon size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════ TAB 2: STUDENT ROSTER & SUBMISSIONS ══════════════════ */}
+      {activeTab === 'students' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-xs space-y-4">
+            <div>
+              <h2 className="text-sm sm:text-base font-bold text-gray-900">Enrolled Talents &amp; Project Submissions</h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Track enrolled student progress and capstone deliverables.
+              </p>
+            </div>
+
+            {isLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-16 bg-gray-50 rounded-xl animate-pulse" />
+                ))}
+              </div>
+            ) : roster.length === 0 ? (
+              <div className="py-12 text-center space-y-2">
+                <p className="text-sm font-semibold text-gray-700">No students enrolled yet</p>
+                <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                  Enrolled students and their course completion progress will appear here.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Mobile Cards View */}
+                <div className="space-y-3 sm:hidden">
+                  {roster.map((item) => (
+                    <div key={item.enrollmentId} className="p-3.5 rounded-xl border border-gray-200/80 bg-gray-50/30 space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <img
+                            src={DEFAULT_MENTOR_AVATAR}
+                            alt={item.student?.displayName || 'Student'}
+                            className="w-8 h-8 rounded-full object-cover border border-gray-200 shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <p className="font-bold text-xs text-gray-900 truncate">{item.student?.displayName || 'Talent'}</p>
+                            <p className="text-[10px] text-gray-400">{item.student?.professionalTitle || 'Learner'}</p>
+                          </div>
+                        </div>
+                        <span className="bg-blue-50 text-[#0047CC] border border-blue-200 px-2 py-0.5 rounded-full font-bold text-[10px] shrink-0">
+                          {item.statusLabel || item.status}
+                        </span>
+                      </div>
+
+                      <div className="text-xs bg-white p-2.5 rounded-lg border border-gray-100">
+                        <p className="text-[11px] text-gray-500">Course</p>
+                        <p className="font-semibold text-gray-800 leading-tight">{item.course?.title}</p>
+                        {item.submissionTitle && (
+                          <p className="text-[11px] text-gray-600 mt-1">Submission: {item.submissionTitle}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+                          <span>Progress</span>
+                          <span className="font-bold text-[#0047CC]">{item.progressLabel || `${item.progressPercent}%`}</span>
+                        </div>
+                        <div className="w-full bg-gray-200/70 h-1.5 rounded-full overflow-hidden">
+                          <div className="bg-[#0047CC] h-full rounded-full" style={{ width: `${item.progressPercent}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop / Tablet Table View */}
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="w-full text-left text-xs min-w-[640px]">
+                    <thead>
+                      <tr className="border-b border-gray-100 text-gray-400 text-[11px] uppercase tracking-wider">
+                        <th className="pb-3 font-semibold">Student</th>
+                        <th className="pb-3 font-semibold">Course</th>
+                        <th className="pb-3 font-semibold">Progress</th>
+                        <th className="pb-3 font-semibold">Status</th>
+                        <th className="pb-3 font-semibold text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {roster.map((item) => (
+                        <tr key={item.enrollmentId} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="py-3.5 pr-4">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={DEFAULT_MENTOR_AVATAR}
+                                alt={item.student?.displayName || 'Student'}
+                                className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                              />
+                              <div>
+                                <p className="font-bold text-gray-900">{item.student?.displayName || 'Talent'}</p>
+                                <p className="text-[10px] text-gray-400">{item.student?.professionalTitle || 'Learner'}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3.5 pr-4 font-medium text-gray-700">{item.course?.title}</td>
+                          <td className="py-3.5 pr-4">
+                            <div className="w-24 bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                              <div className="bg-[#0047CC] h-full rounded-full" style={{ width: `${item.progressPercent}%` }} />
+                            </div>
+                            <span className="text-[10px] text-gray-500 font-semibold">
+                              {item.progressLabel || `${item.progressPercent}%`}
+                            </span>
+                          </td>
+                          <td className="py-3.5 pr-4">
+                            <span className="bg-blue-50 text-[#0047CC] border border-blue-200 px-2 py-0.5 rounded-full font-bold text-[10px]">
+                              {item.statusLabel || item.status}
+                            </span>
+                          </td>
+                          <td className="py-3.5 text-right text-gray-400">
+                            {item.actions?.reviewGrade?.enabled ? (
+                              <Button variant="primary" size="sm" pill={false} className="text-xs py-1 px-3">
+                                {item.actions.reviewGrade.label || 'Review'}
+                              </Button>
+                            ) : (
+                              <span className="text-[11px] text-gray-400">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {/* Tab: Course Mentorship & Cohorts */}
+      {/* ══════════════════ TAB 3: COURSE MENTORSHIP & COHORTS ══════════════════ */}
       {activeTab === 'mentorship' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 sm:p-8 shadow-xs space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 lg:p-8 shadow-xs space-y-5 sm:space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
               <div>
-                <h2 className="text-base font-bold text-gray-900">1:1 Mentorship Attached to Courses</h2>
+                <h2 className="text-sm sm:text-base font-bold text-gray-900">1:1 Mentorship Attached to Courses</h2>
                 <p className="text-xs text-gray-500 mt-0.5">
                   Talents enrolled in your courses can book targeted 1:1 office hours and project reviews.
                 </p>
@@ -819,150 +756,132 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = ({ onToggleLearnerVi
                 variant="outline"
                 size="sm"
                 pill={false}
-                onClick={() => navigate('/settings')}
-                className="text-xs gap-1"
+                onClick={() => navigate(hubData?.cta?.configureAvailability?.hrefHint || '/settings')}
+                className="text-xs gap-1 w-full sm:w-auto justify-center"
               >
-                Configure Availability & PPP Rates
+                {hubData?.cta?.configureAvailability?.label || 'Configure Availability & PPP Rates'}
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {mentees.map((m) => (
-                <div key={m.id} className="border border-gray-200 rounded-2xl p-5 bg-gray-50/40 space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={m.menteeAvatar}
-                        alt={m.menteeName}
-                        className="w-10 h-10 rounded-xl object-cover border border-gray-200"
-                      />
-                      <div>
-                        <p className="text-sm font-bold text-gray-900">{m.menteeName}</p>
-                        <p className="text-xs text-[#0047CC] font-medium">{m.courseContext}</p>
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[1, 2].map((i) => (
+                  <div key={i} className="h-44 bg-gray-50 rounded-2xl animate-pulse" />
+                ))}
+              </div>
+            ) : mentorship.length === 0 ? (
+              <div className="py-12 text-center space-y-2">
+                <p className="text-sm font-semibold text-gray-700">No mentorship sessions scheduled</p>
+                <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                  Upcoming 1:1 booking requests and office hours with enrolled talents will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {mentorship.map((m) => (
+                  <div key={m.bookingId} className="border border-gray-200 rounded-2xl p-3.5 sm:p-5 bg-gray-50/40 space-y-3">
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                        <img
+                          src={DEFAULT_MENTOR_AVATAR}
+                          alt={m.mentee?.displayName || 'Mentee'}
+                          className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl object-cover border border-gray-200 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs sm:text-sm font-bold text-gray-900 truncate">{m.mentee?.displayName}</p>
+                          <p className="text-[11px] sm:text-xs text-[#0047CC] font-medium truncate">
+                            {m.course?.title || 'General Mentorship'}
+                          </p>
+                        </div>
                       </div>
+                      <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full shrink-0">
+                        {m.tierLabel || m.pppTier}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                      {m.tier}
-                    </span>
-                  </div>
 
-                  <div className="bg-white p-3 rounded-xl border border-gray-100 space-y-1 text-xs">
-                    <p className="text-gray-500 font-medium">Session Focus:</p>
-                    <p className="font-semibold text-gray-800">{m.topic}</p>
-                  </div>
+                    <div className="bg-white p-3 rounded-xl border border-gray-100 space-y-1 text-xs">
+                      <p className="text-gray-500 font-medium">Session Focus:</p>
+                      <p className="font-semibold text-gray-800 leading-snug">
+                        {m.sessionFocus || 'Mentorship & Project Review'}
+                      </p>
+                    </div>
 
-                  <div className="flex items-center justify-between text-xs pt-1 text-gray-600">
-                    <span className="flex items-center gap-1 font-medium">
-                      <CalendarIcon size={12} className="text-gray-400" />
-                      {m.scheduledTime}
-                    </span>
-                    <span className="font-bold text-emerald-700">{m.rate}</span>
-                  </div>
+                    <div className="flex flex-wrap items-center justify-between gap-1 text-xs pt-1 text-gray-600">
+                      <span className="flex items-center gap-1 font-medium">
+                        <CalendarIcon size={12} className="text-gray-400" />
+                        {new Date(m.scheduledAt).toLocaleString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })} • {m.durationMinutes} mins
+                      </span>
+                      <span className="font-bold text-emerald-700">{m.formattedRate || `$${m.rate}`}</span>
+                    </div>
 
-                  <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      pill={false}
-                      onClick={() => toast.success(`Meeting room link launched for ${m.menteeName}`)}
-                      className="text-xs flex-1 py-1"
-                    >
-                      Start Call
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      pill={false}
-                      onClick={() => toast.success(`Direct message opened with ${m.menteeName}`)}
-                      className="text-xs flex-1 py-1"
-                    >
-                      Message
-                    </Button>
+                    <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                      {m.actions?.startCall?.enabled && (m.actions.startCall.href || m.meetingLink) ? (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          pill={false}
+                          onClick={() => {
+                            const url = m.actions.startCall.href || m.meetingLink;
+                            if (url) window.open(url, '_blank');
+                          }}
+                          className="text-xs flex-1 py-1.5 justify-center"
+                        >
+                          {m.actions.startCall.label || 'Start Call'}
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          pill={false}
+                          disabled
+                          className="text-xs flex-1 py-1.5 justify-center opacity-50"
+                        >
+                          Call Pending Link
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Tab: Reviews & Q&A */}
+      {/* ══════════════════ TAB 4: REVIEWS & Q&A ══════════════════ */}
       {activeTab === 'reviews' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-xs space-y-6">
-            <div>
-              <h2 className="text-base font-bold text-gray-900">Student Reviews & Community Q&A</h2>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Respond to student questions and engage with feedback across your published catalog.
-              </p>
+          <div className="bg-white rounded-2xl border border-gray-100 p-8 sm:p-12 text-center space-y-3 shadow-xs">
+            <div className="w-12 h-12 rounded-full bg-blue-50 text-[#0047CC] flex items-center justify-center mx-auto text-xl">
+              💬
             </div>
-
-            {/* Q&A Item */}
-            <div className="border border-gray-100 rounded-2xl p-5 bg-gray-50/50 space-y-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-gray-900">Farhan Patel · High-Throughput Microservices (Chapter 4)</span>
-                <span className="text-gray-400">3 hours ago</span>
-              </div>
-              <p className="text-xs text-gray-700 leading-relaxed">
-                "In Lesson 4.2 on Redis Streams consumer groups, how do we prevent idle worker starvation if one batch takes longer to acknowledge?"
-              </p>
-
-              <div className="pt-2">
-                <input
-                  type="text"
-                  placeholder="Write an instructor response..."
-                  value={qaReplies['qa-1'] || ''}
-                  onChange={(e) => setQaReplies({ ...qaReplies, 'qa-1': e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-[#0047CC]"
-                />
-                <div className="flex justify-end pt-2">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    pill={false}
-                    onClick={() => {
-                      toast.success('Instructor response posted!');
-                      setQaReplies({ ...qaReplies, 'qa-1': '' });
-                    }}
-                    className="text-xs px-3 py-1"
-                  >
-                    Reply to Student
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Review Item */}
-            <div className="border border-gray-100 rounded-2xl p-5 bg-gray-50/50 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <StarIcon key={s} size={14} className="text-amber-500 fill-amber-500" />
-                  ))}
-                </div>
-                <span className="text-xs text-gray-400">Elena Rostova · 4 days ago</span>
-              </div>
-              <p className="text-xs font-semibold text-gray-800">
-                "One of the best production Kubernetes deep dives on the platform. The failure simulation scenarios were exceptionally realistic."
-              </p>
-            </div>
+            <h3 className="text-base font-bold text-gray-900">Student Reviews &amp; Community Q&amp;A Coming Soon</h3>
+            <p className="text-xs text-gray-500 max-w-md mx-auto leading-relaxed">
+              Student feedback, ratings, and course questions will be available in an upcoming release as talents complete modules across your published catalog.
+            </p>
           </div>
         </div>
       )}
 
-      {/* Create / Edit Course Modal */}
+      {/* ══════════════════ CREATE COURSE MODAL ══════════════════ */}
       {isCourseModalOpen && (
         <ModalDialog
           isOpen={isCourseModalOpen}
           onClose={() => setIsCourseModalOpen(false)}
           title={editingCourseId ? 'Edit Course Details' : 'Create New Course'}
           actions={
-            <div className="flex items-center justify-end gap-3 w-full">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 w-full">
               <Button
                 variant="outline"
                 size="sm"
                 pill={false}
                 onClick={() => setIsCourseModalOpen(false)}
+                className="w-full sm:w-auto justify-center"
               >
                 Cancel
               </Button>
@@ -971,26 +890,38 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = ({ onToggleLearnerVi
                 size="sm"
                 pill={false}
                 onClick={handleSaveCourse}
+                disabled={createCourseMutation.isPending}
+                className="w-full sm:w-auto justify-center"
               >
-                {editingCourseId ? 'Update Course' : 'Publish Course'}
+                {createCourseMutation.isPending ? 'Saving...' : editingCourseId ? 'Update Course' : 'Create Draft'}
               </Button>
             </div>
           }
         >
-          <form onSubmit={handleSaveCourse} className="space-y-4 text-left max-h-[70vh] overflow-y-auto pr-1">
+          <form onSubmit={handleSaveCourse} className="space-y-4 text-left">
             <Input
               label="Course Title"
               value={courseForm.title}
-              onChange={(e) => setCourseForm({ ...courseForm, title: e.target.value })}
+              onChange={(e) => {
+                setCourseForm({ ...courseForm, title: e.target.value });
+                if (formErrors.title) setFormErrors({ ...formErrors, title: '' });
+              }}
+              error={Boolean(formErrors.title)}
+              helperText={formErrors.title}
               placeholder="e.g. Asynchronous Distributed Architecture"
               required
             />
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Select
                 label="Category"
                 value={courseForm.category}
-                onChange={(e) => setCourseForm({ ...courseForm, category: e.target.value })}
+                onChange={(e) => {
+                  setCourseForm({ ...courseForm, category: e.target.value });
+                  if (formErrors.category) setFormErrors({ ...formErrors, category: '' });
+                }}
+                error={Boolean(formErrors.category)}
+                helperText={formErrors.category}
                 options={[
                   { label: 'Backend & Systems', value: 'Backend & Systems' },
                   { label: 'DevOps & Cloud', value: 'DevOps & Cloud' },
@@ -1001,7 +932,12 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = ({ onToggleLearnerVi
               <Select
                 label="Difficulty Level"
                 value={courseForm.level}
-                onChange={(e) => setCourseForm({ ...courseForm, level: e.target.value })}
+                onChange={(e) => {
+                  setCourseForm({ ...courseForm, level: e.target.value });
+                  if (formErrors.level) setFormErrors({ ...formErrors, level: '' });
+                }}
+                error={Boolean(formErrors.level)}
+                helperText={formErrors.level}
                 options={[
                   { label: 'Beginner', value: 'Beginner' },
                   { label: 'Intermediate', value: 'Intermediate' },
@@ -1011,94 +947,63 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = ({ onToggleLearnerVi
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Select
+                label="Course Format"
+                value={courseForm.format}
+                onChange={(e) => {
+                  setCourseForm({ ...courseForm, format: e.target.value as CourseFormat });
+                  if (formErrors.format) setFormErrors({ ...formErrors, format: '' });
+                }}
+                error={Boolean(formErrors.format)}
+                helperText={formErrors.format}
+                options={[
+                  { label: 'Video Masterclass', value: 'VIDEO_MASTERCLASS' },
+                  { label: 'Hybrid', value: 'HYBRID' },
+                  { label: 'Cohort-Based', value: 'COHORT_BASED' },
+                  { label: 'Case Study Series', value: 'CASE_STUDY_SERIES' },
+                  { label: 'Workshop Sprint', value: 'WORKSHOP_SPRINT' },
+                  { label: 'Written Text', value: 'WRITTEN_TEXT' },
+                ]}
+              />
               <Input
                 label="Price (USD)"
                 type="number"
-                value={String(courseForm.price)}
-                onChange={(e) => setCourseForm({ ...courseForm, price: Number(e.target.value) })}
-                disabled={courseForm.isFree}
-              />
-              <Select
-                label="Publish Status"
-                value={courseForm.status}
-                onChange={(e) => setCourseForm({ ...courseForm, status: e.target.value as any })}
-                options={[
-                  { label: 'Published (Live)', value: 'PUBLISHED' },
-                  { label: 'In Review', value: 'IN_REVIEW' },
-                  { label: 'Draft', value: 'DRAFT' },
-                ]}
+                value={courseForm.price.toString()}
+                onChange={(e) => {
+                  setCourseForm({ ...courseForm, price: Number(e.target.value) });
+                  if (formErrors.price) setFormErrors({ ...formErrors, price: '' });
+                }}
+                error={Boolean(formErrors.price)}
+                helperText={formErrors.price}
+                min="0"
+                step="1"
               />
             </div>
 
             <Textarea
               label="Course Description & Overview"
               value={courseForm.description}
-              onChange={(e) => setCourseForm({ ...courseForm, description: e.target.value })}
-              rows={3}
+              onChange={(e) => {
+                setCourseForm({ ...courseForm, description: e.target.value });
+                if (formErrors.description) setFormErrors({ ...formErrors, description: '' });
+              }}
+              error={Boolean(formErrors.description)}
+              helperText={formErrors.description}
               placeholder="Describe what talents will master, prerequisites, and target learning outcomes..."
-            />
-
-            <Input
-              label="Cover Thumbnail URL"
-              value={courseForm.thumbnail}
-              onChange={(e) => setCourseForm({ ...courseForm, thumbnail: e.target.value })}
-              placeholder="https://images.unsplash.com/..."
-            />
-          </form>
-        </ModalDialog>
-      )}
-
-      {/* Review Submission Modal */}
-      {gradingSub && (
-        <ModalDialog
-          isOpen={Boolean(gradingSub)}
-          onClose={() => setGradingSub(null)}
-          title={`Grade Submission: ${gradingSub.studentName}`}
-          actions={
-            <div className="flex items-center justify-end gap-3 w-full">
-              <Button
-                variant="outline"
-                size="sm"
-                pill={false}
-                onClick={() => setGradingSub(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                pill={false}
-                onClick={handleGradeSubmit}
-              >
-                Submit Grade & Feedback
-              </Button>
-            </div>
-          }
-        >
-          <form onSubmit={handleGradeSubmit} className="space-y-4 text-left">
-            <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-100 text-xs space-y-1">
-              <p className="font-bold text-gray-900">{gradingSub.submissionTitle}</p>
-              <p className="text-gray-500">Student: {gradingSub.studentName} · {gradingSub.courseTitle}</p>
-            </div>
-
-            <Input
-              label="Grade Percentage (%)"
-              type="number"
-              value={gradeInput}
-              onChange={(e) => setGradeInput(e.target.value)}
-              min="0"
-              max="100"
-              required
-            />
-
-            <Textarea
-              label="Mentor Feedback"
-              value={feedbackInput}
-              onChange={(e) => setFeedbackInput(e.target.value)}
               rows={3}
-              placeholder="Provide constructive feedback and pointers on their architecture implementation..."
-              required
+            />
+
+            <Input
+              label="Cover Thumbnail S3 Key / URL (Optional)"
+              value={courseForm.thumbnail}
+              onChange={(e) => {
+                setCourseForm({ ...courseForm, thumbnail: e.target.value });
+                if (formErrors.thumbnail) setFormErrors({ ...formErrors, thumbnail: '' });
+              }}
+              error={Boolean(formErrors.thumbnail)}
+              helperText={formErrors.thumbnail}
+              placeholder="e.g. courses/thumbnails/intro.jpg"
             />
           </form>
         </ModalDialog>

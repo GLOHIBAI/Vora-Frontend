@@ -235,28 +235,28 @@ const TalentMentorshipPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24">
+    <div className="space-y-5 sm:space-y-6 max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24">
       {/* Header */}
       <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
             VORA Verified Mentorship
           </h1>
-          <span className="bg-[#EBF6FF] text-[#0047CC] border border-[#BFDBFE] px-2.5 py-0.5 rounded-full text-xs font-bold">
+          <span className="bg-[#EBF6FF] text-[#0047CC] border border-[#BFDBFE] px-2.5 py-0.5 rounded-full text-xs font-bold shrink-0">
             1:1 Office Hours
           </span>
         </div>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-xs sm:text-sm text-gray-500 mt-1">
           Connect 1-on-1 with Staff/Principal engineers and leaders from Google, Stripe, WHO, and NHS to elevate your technical reasoning and career trajectory.
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 flex items-center gap-6 overflow-x-auto no-scrollbar whitespace-nowrap">
+      <div className="border-b border-gray-200 flex items-center gap-4 sm:gap-6 overflow-x-auto no-scrollbar whitespace-nowrap -mx-3.5 px-3.5 sm:mx-0 sm:px-0 pb-px">
         <button
           type="button"
           onClick={() => setActiveTab('find')}
-          className={`pb-3 text-sm font-semibold transition-colors relative cursor-pointer ${
+          className={`pb-3 text-xs sm:text-sm font-semibold transition-colors relative cursor-pointer shrink-0 ${
             activeTab === 'find'
               ? 'text-[#0047CC] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2.5px] after:bg-[#0047CC]'
               : 'text-gray-500 hover:text-gray-900'
@@ -293,13 +293,13 @@ const TalentMentorshipPage: React.FC = () => {
               />
             </div>
 
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-3.5 px-3.5 sm:mx-0 sm:px-0 py-0.5">
               {DOMAINS.map((domain) => (
                 <button
                   key={domain}
                   type="button"
                   onClick={() => setSelectedDomain(domain)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
                     selectedDomain === domain
                       ? 'bg-[#0047CC] text-white'
                       : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
@@ -312,11 +312,11 @@ const TalentMentorshipPage: React.FC = () => {
           </div>
 
           {/* Mentors Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredMentors.map((mentor) => (
               <div
                 key={mentor.id}
-                className="bg-white rounded-2xl border border-gray-100 p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 group"
+                className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 group"
               >
                 <div className="space-y-3">
                   {/* Top info */}
@@ -483,13 +483,14 @@ const TalentMentorshipPage: React.FC = () => {
           onClose={() => setBookingMentor(null)}
           title={`Book 1:1 Session with ${bookingMentor.name}`}
           actions={
-            <div className="flex items-center justify-end gap-3 w-full">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 w-full">
               <Button
                 variant="outline"
                 size="sm"
                 pill={false}
                 onClick={() => setBookingMentor(null)}
                 disabled={isProcessingBooking}
+                className="w-full sm:w-auto justify-center"
               >
                 Cancel
               </Button>
@@ -499,6 +500,7 @@ const TalentMentorshipPage: React.FC = () => {
                 pill={false}
                 onClick={handleConfirmBooking}
                 disabled={isProcessingBooking}
+                className="w-full sm:w-auto justify-center"
               >
                 {isProcessingBooking ? 'Booking...' : 'Confirm Session'}
               </Button>
