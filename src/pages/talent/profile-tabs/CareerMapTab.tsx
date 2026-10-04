@@ -1286,28 +1286,6 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
                       </div>
                     )}
                   </div>
-
-                  {/* Action CTAs */}
-                  <div className="pt-2 flex flex-col gap-2">
-                    <button
-                      type="button"
-                      onClick={() => toast.success('Dossier evidence file opened for inspection.')}
-                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-gray-50 text-gray-800 border border-gray-200 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
-                    >
-                      <FileIcon size={14} className="text-[#0047CC]" />
-                      <span>View Evidence Document</span>
-                    </button>
-                    {selectedMilestone.status === 'PENDING_REVIEW' && (
-                      <button
-                        type="button"
-                        onClick={() => toast.success('Priority review requested from clinical mentor board.')}
-                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#0047CC] hover:bg-[#003bb5] text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer"
-                      >
-                        <CheckCircleIcon size={14} />
-                        <span>Expedite Verification</span>
-                      </button>
-                    )}
-                  </div>
                 </>
               ) : (
                 <div className="py-12 text-center text-xs text-gray-400">

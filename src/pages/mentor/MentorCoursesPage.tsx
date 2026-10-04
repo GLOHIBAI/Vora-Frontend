@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   PlusIcon,
@@ -7,7 +7,10 @@ import {
   StarIcon,
   CalendarIcon,
   SearchIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from '../../components/common/Icons';
+import Spinner from '../../components/common/Spinner';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
@@ -48,6 +51,41 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
   const [activeTab, setActiveTab] = useState<'my-courses' | 'students' | 'mentorship' | 'reviews'>('my-courses');
   const [courseFilter, setCourseFilter] = useState<'ALL' | 'PUBLISHED' | 'UNDER_REVIEW' | 'DRAFT'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Horizontal tabs scroll & chevron state
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollTabsLeft, setCanScrollTabsLeft] = useState(false);
+  const [canScrollTabsRight, setCanScrollTabsRight] = useState(false);
+  const [hasTabsOverflow, setHasTabsOverflow] = useState(false);
+
+  const checkTabsScroll = useCallback(() => {
+    if (!tabsContainerRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = tabsContainerRef.current;
+    const overflow = scrollWidth > clientWidth + 2;
+    setHasTabsOverflow(overflow);
+    setCanScrollTabsLeft(scrollLeft > 2);
+    setCanScrollTabsRight(scrollLeft + clientWidth < scrollWidth - 2);
+  }, []);
+
+  useEffect(() => {
+    checkTabsScroll();
+    const timer = setTimeout(checkTabsScroll, 100);
+    window.addEventListener('resize', checkTabsScroll);
+    return () => {
+      window.removeEventListener('resize', checkTabsScroll);
+      clearTimeout(timer);
+    };
+  }, [checkTabsScroll, activeTab]);
+
+  const scrollTabs = (direction: 'left' | 'right') => {
+    if (!tabsContainerRef.current) return;
+    const scrollAmount = Math.max(tabsContainerRef.current.clientWidth * 0.5, 200);
+    tabsContainerRef.current.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
+    setTimeout(checkTabsScroll, 350);
+  };
 
   // Create Course Modal
   const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
@@ -234,6 +272,30 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
+        <Spinner size={36} className="text-[#0047CC]" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3 text-center px-4">
+        <p className="text-sm font-semibold text-gray-800">Failed to load courses</p>
+        <p className="text-xs text-gray-500">{(error as any)?.message || 'An error occurred while loading your courses hub.'}</p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="mt-2 px-4 py-2 bg-[#0047CC] text-white text-xs font-semibold rounded-lg hover:bg-[#003d99] transition-colors cursor-pointer"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5 sm:space-y-6 max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24">
       {/* Top Header */}
@@ -267,136 +329,164 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
       </div>
 
       {/* KPI Instructor Metrics */}
-      {isLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="bg-white border border-gray-100 rounded-2xl p-4 animate-pulse space-y-2">
-              <div className="h-3 bg-gray-200 rounded w-1/2" />
-              <div className="h-6 bg-gray-200 rounded w-3/4" />
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
-          {/* Total Enrolled */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-3 sm:p-5 shadow-2xs">
-            <p className="text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Total Enrolled</p>
-            <div className="flex flex-wrap items-baseline gap-1.5 mt-1">
-              <span className="text-xl sm:text-2xl font-bold text-gray-900">
-                {(metrics?.totalEnrolled ?? 0).toLocaleString()}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
+        {/* Total Enrolled */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-3 sm:p-5 shadow-2xs">
+          <p className="text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Total Enrolled</p>
+          <div className="flex flex-wrap items-baseline gap-1.5 mt-1">
+            <span className="text-xl sm:text-2xl font-bold text-gray-900">
+              {(metrics?.totalEnrolled ?? 0).toLocaleString()}
+            </span>
+            {metrics?.enrolledMoMLabel && (
+              <span className="text-[10px] sm:text-xs font-semibold text-emerald-600">
+                {metrics.enrolledMoMLabel}
               </span>
-              {metrics?.enrolledMoMLabel && (
-                <span className="text-[10px] sm:text-xs font-semibold text-emerald-600">
-                  {metrics.enrolledMoMLabel}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Active Courses */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-3 sm:p-5 shadow-2xs">
-            <p className="text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Active Courses</p>
-            <div className="flex flex-wrap items-baseline gap-1.5 mt-1">
-              <span className="text-xl sm:text-2xl font-bold text-gray-900">
-                {metrics?.activeCourses ?? courses.filter(c => c.status === 'PUBLISHED').length}
-              </span>
-              <span className="text-[10px] sm:text-xs text-gray-400">
-                {metrics?.activeCoursesLabel || `of ${metrics?.totalCourses ?? courses.length} total`}
-              </span>
-            </div>
-          </div>
-
-          {/* Average Rating (Hidden while averageRating === null per handoff spec) */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-3 sm:p-5 shadow-2xs">
-            <p className="text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Average Rating</p>
-            <div className="flex items-center gap-1 mt-1">
-              {metrics?.averageRating !== null && metrics?.averageRating != null ? (
-                <>
-                  <span className="text-xl sm:text-2xl font-bold text-gray-900">{metrics.averageRating}</span>
-                  <StarIcon size={14} className="text-amber-500 fill-amber-500" />
-                  {metrics?.ratingsCount ? (
-                    <span className="text-[10px] sm:text-xs text-gray-400 ml-0.5">({metrics.ratingsCount})</span>
-                  ) : null}
-                </>
-              ) : (
-                <span className="text-sm font-medium text-gray-400">Not rated yet</span>
-              )}
-            </div>
-          </div>
-
-          {/* Total Revenue */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-3 sm:p-5 shadow-2xs">
-            <p className="text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Total Revenue</p>
-            <div className="flex flex-wrap items-baseline gap-1 mt-1">
-              <span className="text-xl sm:text-2xl font-bold text-[#0047CC]">
-                {metrics?.formattedRevenue || `$${(metrics?.totalRevenue ?? 0).toLocaleString()} USD`}
-              </span>
-            </div>
-          </div>
-
-          {/* Completion Rate */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-3 sm:p-5 shadow-2xs col-span-2 sm:col-span-1">
-            <p className="text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Completion Rate</p>
-            <div className="flex flex-wrap items-baseline gap-1.5 mt-1">
-              <span className="text-xl sm:text-2xl font-bold text-gray-900">
-                {metrics?.completionRatePercent != null ? `${metrics.completionRatePercent}%` : '—'}
-              </span>
-              {metrics?.completionLabel && (
-                <span className="text-[10px] sm:text-xs font-semibold text-emerald-600">
-                  {metrics.completionLabel}
-                </span>
-              )}
-            </div>
+            )}
           </div>
         </div>
-      )}
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200 flex items-center gap-3 sm:gap-6 overflow-x-auto no-scrollbar whitespace-nowrap pb-px -mx-3.5 px-3.5 sm:mx-0 sm:px-0">
-        <button
-          type="button"
-          onClick={() => setActiveTab('my-courses')}
-          className={`pb-3 text-xs sm:text-sm font-semibold transition-colors relative cursor-pointer shrink-0 ${
-            activeTab === 'my-courses'
-              ? 'text-[#0047CC] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2.5px] after:bg-[#0047CC]'
-              : 'text-gray-500 hover:text-gray-900'
-          }`}
+        {/* Active Courses */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-3 sm:p-5 shadow-2xs">
+          <p className="text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Active Courses</p>
+          <div className="flex flex-wrap items-baseline gap-1.5 mt-1">
+            <span className="text-xl sm:text-2xl font-bold text-gray-900">
+              {metrics?.activeCourses ?? courses.filter(c => c.status === 'PUBLISHED').length}
+            </span>
+            <span className="text-[10px] sm:text-xs text-gray-400">
+              {metrics?.activeCoursesLabel || `of ${metrics?.totalCourses ?? courses.length} total`}
+            </span>
+          </div>
+        </div>
+
+        {/* Average Rating (Hidden while averageRating === null per handoff spec) */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-3 sm:p-5 shadow-2xs">
+          <p className="text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Average Rating</p>
+          <div className="flex items-center gap-1 mt-1">
+            {metrics?.averageRating !== null && metrics?.averageRating != null ? (
+              <>
+                <span className="text-xl sm:text-2xl font-bold text-gray-900">{metrics.averageRating}</span>
+                <StarIcon size={14} className="text-amber-500 fill-amber-500" />
+                {metrics?.ratingsCount ? (
+                  <span className="text-[10px] sm:text-xs text-gray-400 ml-0.5">({metrics.ratingsCount})</span>
+                ) : null}
+              </>
+            ) : (
+              <span className="text-sm font-medium text-gray-400">Not rated yet</span>
+            )}
+          </div>
+        </div>
+
+        {/* Total Revenue */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-3 sm:p-5 shadow-2xs">
+          <p className="text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Total Revenue</p>
+          <div className="flex flex-wrap items-baseline gap-1 mt-1">
+            <span className="text-xl sm:text-2xl font-bold text-[#0047CC]">
+              {metrics?.formattedRevenue || `$${(metrics?.totalRevenue ?? 0).toLocaleString()} USD`}
+            </span>
+          </div>
+        </div>
+
+        {/* Completion Rate */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-3 sm:p-5 shadow-2xs col-span-2 sm:col-span-1">
+          <p className="text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Completion Rate</p>
+          <div className="flex flex-wrap items-baseline gap-1.5 mt-1">
+            <span className="text-xl sm:text-2xl font-bold text-gray-900">
+              {metrics?.completionRatePercent != null ? `${metrics.completionRatePercent}%` : '—'}
+            </span>
+            {metrics?.completionLabel && (
+              <span className="text-[10px] sm:text-xs font-semibold text-emerald-600">
+                {metrics.completionLabel}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs with Left/Right Chevrons instead of Slider */}
+      <div className="relative border-b border-gray-200 flex items-center">
+        {hasTabsOverflow && (
+          <button
+            type="button"
+            disabled={!canScrollTabsLeft}
+            onClick={() => scrollTabs('left')}
+            className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all mr-1.5 mb-2.5 ${
+              canScrollTabsLeft
+                ? 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 cursor-pointer active:scale-95'
+                : 'text-gray-300 opacity-25 cursor-not-allowed pointer-events-none'
+            }`}
+            aria-label="Scroll tabs left"
+          >
+            <ChevronLeftIcon size={16} strokeWidth={2.5} />
+          </button>
+        )}
+
+        <div
+          ref={tabsContainerRef}
+          onScroll={checkTabsScroll}
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          className="flex-1 flex items-center gap-3 sm:gap-6 overflow-x-auto no-scrollbar scrollbar-hide whitespace-nowrap pb-px scroll-smooth"
         >
-          My Courses ({tabCounts?.myCourses ?? courses.length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('students')}
-          className={`pb-3 text-xs sm:text-sm font-semibold transition-colors relative cursor-pointer shrink-0 ${
-            activeTab === 'students'
-              ? 'text-[#0047CC] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2.5px] after:bg-[#0047CC]'
-              : 'text-gray-500 hover:text-gray-900'
-          }`}
-        >
-          Student Roster &amp; Submissions ({tabCounts?.roster ?? roster.length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('mentorship')}
-          className={`pb-3 text-xs sm:text-sm font-semibold transition-colors relative cursor-pointer shrink-0 ${
-            activeTab === 'mentorship'
-              ? 'text-[#0047CC] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2.5px] after:bg-[#0047CC]'
-              : 'text-gray-500 hover:text-gray-900'
-          }`}
-        >
-          Course Mentorship &amp; Cohorts ({tabCounts?.mentorship ?? mentorship.length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('reviews')}
-          className={`pb-3 text-xs sm:text-sm font-semibold transition-colors relative cursor-pointer shrink-0 ${
-            activeTab === 'reviews'
-              ? 'text-[#0047CC] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2.5px] after:bg-[#0047CC]'
-              : 'text-gray-500 hover:text-gray-900'
-          }`}
-        >
-          Reviews &amp; Q&amp;A
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('my-courses')}
+            className={`pb-3 text-xs sm:text-sm font-semibold transition-colors relative cursor-pointer shrink-0 ${
+              activeTab === 'my-courses'
+                ? 'text-[#0047CC] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2.5px] after:bg-[#0047CC]'
+                : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            My Courses ({tabCounts?.myCourses ?? courses.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('students')}
+            className={`pb-3 text-xs sm:text-sm font-semibold transition-colors relative cursor-pointer shrink-0 ${
+              activeTab === 'students'
+                ? 'text-[#0047CC] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2.5px] after:bg-[#0047CC]'
+                : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            Student Roster &amp; Submissions ({tabCounts?.roster ?? roster.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('mentorship')}
+            className={`pb-3 text-xs sm:text-sm font-semibold transition-colors relative cursor-pointer shrink-0 ${
+              activeTab === 'mentorship'
+                ? 'text-[#0047CC] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2.5px] after:bg-[#0047CC]'
+                : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            Course Mentorship &amp; Cohorts ({tabCounts?.mentorship ?? mentorship.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('reviews')}
+            className={`pb-3 text-xs sm:text-sm font-semibold transition-colors relative cursor-pointer shrink-0 ${
+              activeTab === 'reviews'
+                ? 'text-[#0047CC] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2.5px] after:bg-[#0047CC]'
+                : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            Reviews &amp; Q&amp;A
+          </button>
+        </div>
+
+        {hasTabsOverflow && (
+          <button
+            type="button"
+            disabled={!canScrollTabsRight}
+            onClick={() => scrollTabs('right')}
+            className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all ml-1.5 mb-2.5 ${
+              canScrollTabsRight
+                ? 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 cursor-pointer active:scale-95'
+                : 'text-gray-300 opacity-25 cursor-not-allowed pointer-events-none'
+            }`}
+            aria-label="Scroll tabs right"
+          >
+            <ChevronRightIcon size={16} strokeWidth={2.5} />
+          </button>
+        )}
       </div>
 
       {/* ══════════════════ TAB 1: MY COURSES ══════════════════ */}
@@ -405,7 +495,10 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
           {/* Filters & Search */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             {/* Filter pills */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-3.5 px-3.5 sm:mx-0 sm:px-0 py-0.5">
+            <div
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              className="flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-hide -mx-3.5 px-3.5 sm:mx-0 sm:px-0 py-0.5"
+            >
               {(['ALL', 'PUBLISHED', 'UNDER_REVIEW', 'DRAFT'] as const).map((filterKey) => {
                 const count =
                   filterKey === 'ALL'
