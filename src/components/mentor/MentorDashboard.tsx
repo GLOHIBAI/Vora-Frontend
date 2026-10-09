@@ -98,11 +98,14 @@ const resolveMentorHref = (hrefHint?: string): string => {
   if (lower.includes('course')) {
     return '/mentor/courses';
   }
+  if (lower.includes('mentee')) {
+    return '/mentees';
+  }
   if (lower.includes('setting') || lower.includes('profile')) {
     return '/settings';
   }
   if (lower.includes('session') || lower.includes('schedule')) {
-    return '/dashboard';
+    return '/sessions';
   }
   if (lower.includes('notification') || lower.includes('activity')) {
     return '/settings';
@@ -448,7 +451,7 @@ const MentorDashboard: React.FC = () => {
               title="Upcoming Sessions"
               icon={CalendarIcon}
               linkText="View all"
-              onLinkClick={() => handleCtaClick(dashboardData?.links?.upcomingSessions || '/dashboard')}
+              onLinkClick={() => handleCtaClick(dashboardData?.links?.upcomingSessions || '/sessions')}
             />
 
             {upcomingSessions.length === 0 ? (

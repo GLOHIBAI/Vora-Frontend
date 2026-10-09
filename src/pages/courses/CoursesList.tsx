@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   PlayIcon, 
   CloseIcon, 
-  CheckCircleIcon
+  CheckCircleIcon,
+  ChevronDownIcon,
+  CheckIcon,
+  GridIcon,
+  ListIcon,
 } from '../../components/common/Icons';
 import { toast } from 'react-hot-toast';
 import {
@@ -22,6 +26,15 @@ import {
 } from '../../utils/media';
 
 type TabType = 'ongoing' | 'completed' | 'recommended';
+type CoursePillFilter = 'ALL' | 'PUBLISHED' | 'DRAFT' | 'LIVE';
+type SortOption = 'recent' | 'popular' | 'rating' | 'title';
+
+const SORT_OPTIONS_MAP: Record<SortOption, string> = {
+  recent: 'Most Recent',
+  popular: 'Most Popular',
+  rating: 'Highest Rated',
+  title: 'Alphabetical (A-Z)',
+};
 
 const CoursesList: React.FC = () => {
   const navigate = useNavigate();
@@ -55,8 +68,72 @@ const CoursesList: React.FC = () => {
   const completedCourses: EnrollmentItem[] = enrollmentsData?.completed || [];
   const recommendedItems: CourseBrowseItem[] = recommendedData?.items || [];
 
-  const masterclassCourses = recommendedItems.filter(c => c.isMasterclass);
-  const catalogCourses = recommendedItems.filter(c => !c.isMasterclass);
+  // Filter & View states (Feature toolbar: All Courses | Published | Drafts | Live)
+  const [statusFilter, setStatusFilter] = useState<CoursePillFilter>('PUBLISHED');
+  const [sortBy, setSortBy] = useState<SortOption>('recent');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
+        setIsSortOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
+  const displayCourses = useMemo(() => {
+    let list = [...recommendedItems];
+
+    if (statusFilter === 'PUBLISHED') {
+      list = list.filter((c: any) => (c.status ? c.status === 'PUBLISHED' : true));
+    } else if (statusFilter === 'DRAFT') {
+      list = list.filter((c: any) => c.status === 'DRAFT');
+    } else if (statusFilter === 'LIVE') {
+      list = list.filter(
+        (c) =>
+          c.format === 'COHORT_BASED' ||
+          c.format === 'WORKSHOP_SPRINT' ||
+          c.isMasterclass ||
+          (c.tags && c.tags.some((t) => t.toLowerCase().includes('live')))
+      );
+    }
+
+    list.sort((a, b) => {
+      if (sortBy === 'recent') {
+        const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+        const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+        return dateB - dateA;
+      }
+      if (sortBy === 'popular') {
+        return (b.stats?.studentCount ?? 0) - (a.stats?.studentCount ?? 0);
+      }
+      if (sortBy === 'rating') {
+        return (b.stats?.ratings ?? 0) - (a.stats?.ratings ?? 0);
+      }
+      if (sortBy === 'title') {
+        return a.title.localeCompare(b.title);
+      }
+      return 0;
+    });
+
+    return list;
+  }, [recommendedItems, statusFilter, sortBy]);
+
+  const displayMasterclasses = useMemo(
+    () => displayCourses.filter((c) => c.isMasterclass),
+    [displayCourses]
+  );
+  const displayCatalog = useMemo(
+    () => displayCourses.filter((c) => !c.isMasterclass),
+    [displayCourses]
+  );
+
+  const masterclassCourses = displayMasterclasses;
+  const catalogCourses = displayCatalog;
 
   const handleOpenCourse = (courseId: string, href?: string) => {
     if (href && href.startsWith('/courses/')) {
@@ -456,8 +533,260 @@ const CoursesList: React.FC = () => {
             </div>
           )}
 
-          {/* Section 1: Masterclasses (filtered from API items) */}
-          {!isLoadingRecommended && masterclassCourses.length > 0 && (
+          {/* ── COURSE BROWSER FEATURE TOOLBAR (All Courses | Published | Drafts | Live ... X courses | Most Recent | Grid/List) ── */}
+          {!isLoadingRecommended && !recommendedError && (
+            <div className="bg-white border border-gray-200/90 rounded-2xl p-3 sm:p-4 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+              {/* Left: Filter Pills */}
+              <div
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto no-scrollbar scrollbar-hide -mx-1 px-1 py-0.5"
+              >
+                {(['ALL', 'PUBLISHED', 'DRAFT', 'LIVE'] as const).map((filterKey) => {
+                  const label =
+                    filterKey === 'ALL'
+                      ? 'All Courses'
+                      : filterKey === 'PUBLISHED'
+                      ? 'Published'
+                      : filterKey === 'DRAFT'
+                      ? 'Drafts'
+                      : 'Live';
+                  const isActive = statusFilter === filterKey;
+
+                  return (
+                    <button
+                      key={filterKey}
+                      type="button"
+                      onClick={() => setStatusFilter(filterKey)}
+                      className={`px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-medium transition-all cursor-pointer shrink-0 ${
+                        isActive
+                          ? 'bg-[#0047CC] text-white shadow-xs font-semibold'
+                          : 'bg-white border border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Right: Counter + Sort Dropdown + Grid/List View Toggle */}
+              <div className="flex items-center justify-between md:justify-end gap-3 sm:gap-4 shrink-0">
+                <span className="text-xs sm:text-sm text-gray-500 font-medium whitespace-nowrap">
+                  {displayCourses.length} {displayCourses.length === 1 ? 'course' : 'courses'}
+                </span>
+
+                {/* Sort Selector Dropdown */}
+                <div className="relative" ref={sortRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsSortOpen(!isSortOpen)}
+                    className="px-3.5 sm:px-4 py-2 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 rounded-full text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    <span>{SORT_OPTIONS_MAP[sortBy]}</span>
+                    <ChevronDownIcon
+                      size={14}
+                      className={`text-gray-500 transition-transform duration-200 ${isSortOpen ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+
+                  {isSortOpen && (
+                    <div className="absolute right-0 top-full mt-1.5 z-40 w-44 bg-white border border-gray-200 rounded-2xl shadow-xl p-1.5 animate-in fade-in zoom-in-95">
+                      {(Object.keys(SORT_OPTIONS_MAP) as SortOption[]).map((key) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => {
+                            setSortBy(key);
+                            setIsSortOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer flex items-center justify-between ${
+                            sortBy === key
+                              ? 'bg-[#EBF6FF] text-[#0047CC] font-bold'
+                              : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          <span>{SORT_OPTIONS_MAP[key]}</span>
+                          {sortBy === key && <CheckIcon size={13} className="text-[#0047CC]" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Grid / List Toggle */}
+                <div className="bg-white border border-gray-200 rounded-xl p-1 flex items-center gap-0.5 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('grid')}
+                    title="Grid View"
+                    className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                      viewMode === 'grid'
+                        ? 'bg-[#EBF6FF] text-[#0047CC]'
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <GridIcon size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('list')}
+                    title="List View"
+                    className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                      viewMode === 'list'
+                        ? 'bg-[#EBF6FF] text-[#0047CC]'
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <ListIcon size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Empty State when filtered */}
+          {!isLoadingRecommended && !recommendedError && displayCourses.length === 0 && (
+            <div className="text-center py-16 bg-[#FAFAFA] rounded-[24px] border border-gray-100 p-8 space-y-3">
+              <p className="text-gray-700 text-sm font-bold">No {statusFilter === 'ALL' ? '' : statusFilter.toLowerCase()} courses found.</p>
+              <p className="text-gray-500 text-xs">There are no courses matching this filter right now.</p>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('PUBLISHED')}
+                className="px-5 py-2 bg-[#0047CC] text-white rounded-full text-xs font-semibold hover:bg-[#0037a3] transition-colors cursor-pointer shadow-xs"
+              >
+                View Published Courses
+              </button>
+            </div>
+          )}
+
+          {/* ── LIST VIEW MODE ── */}
+          {!isLoadingRecommended && !recommendedError && viewMode === 'list' && displayCourses.length > 0 && (
+            <div className="space-y-4">
+              {displayCourses.map((course) => {
+                const banner = getMediaUrl(course.thumbnailS3Key || course.thumbnailUrl, DEFAULT_COURSE_BANNER);
+                const mentorName = course.mentor?.displayName || course.mentor?.name || 'Instructor';
+                const mentorPhoto = getMediaUrl(course.mentor?.photoS3Key || course.mentor?.avatarUrl, DEFAULT_MENTOR_AVATAR);
+
+                return (
+                  <div
+                    key={course.id}
+                    className="bg-white border border-gray-100 rounded-[22px] p-4 sm:p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-5 hover:border-blue-100 hover:shadow-md transition-all group"
+                  >
+                    {/* Thumbnail with Play button */}
+                    <div
+                      onClick={() => setPreviewCourse(course)}
+                      className="w-full md:w-60 h-36 rounded-[16px] overflow-hidden shrink-0 relative group cursor-pointer bg-gray-900"
+                    >
+                      <img
+                        src={banner}
+                        alt={course.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-90"
+                      />
+                      <div className="absolute inset-0 bg-black/25 flex items-center justify-center transition-colors group-hover:bg-black/35">
+                        <div className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-xs flex items-center justify-center border-2 border-white/80 text-white shadow-md group-hover:scale-110 transition-transform">
+                          <PlayIcon size={18} className="ml-0.5 fill-white" />
+                        </div>
+                      </div>
+                      {course.isMasterclass && (
+                        <span className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#0047CC] text-white uppercase tracking-wider shadow-sm">
+                          Masterclass
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Course Info */}
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-[#0047CC]">
+                          {course.category}
+                        </span>
+                        {course.formatLabel && (
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-600">
+                            {course.formatLabel}
+                          </span>
+                        )}
+                        {course.difficultyLevel && (
+                          <span className="text-[11px] text-gray-400 font-medium">
+                            • {course.difficultyLevel}
+                          </span>
+                        )}
+                      </div>
+
+                      <h4
+                        onClick={() => setPreviewCourse(course)}
+                        className="text-base sm:text-lg font-bold text-gray-900 group-hover:text-[#0047CC] transition-colors cursor-pointer leading-snug line-clamp-1"
+                      >
+                        {course.title}
+                      </h4>
+
+                      <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
+                        {course.subtitle || course.description}
+                      </p>
+
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 pt-1">
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-full overflow-hidden bg-gray-100 shrink-0">
+                            <img src={mentorPhoto} alt={mentorName} className="w-full h-full object-cover" />
+                          </div>
+                          <span className="font-semibold text-gray-800">{mentorName}</span>
+                        </div>
+
+                        {course.stats?.videoHoursLabel && (
+                          <span>• {course.stats.videoHoursLabel}</span>
+                        )}
+
+                        {course.stats?.ratings !== null && course.stats?.ratings != null && (
+                          <span className="flex items-center gap-1 text-amber-500 font-semibold">
+                            ★ {course.stats.ratings}
+                            {course.stats.ratingsCount ? (
+                              <span className="text-gray-400 font-normal">({course.stats.ratingsCount})</span>
+                            ) : null}
+                          </span>
+                        )}
+
+                        {course.stats?.studentCount ? (
+                          <span className="text-gray-400">
+                            • {course.stats.studentCount.toLocaleString()} enrolled
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="shrink-0 flex md:flex-col items-center md:items-end justify-between gap-2.5 pt-3 md:pt-0 border-t md:border-t-0 border-gray-100">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewCourse(course)}
+                        className="px-4 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-full transition-all cursor-pointer whitespace-nowrap"
+                      >
+                        Preview
+                      </button>
+                      {course.enrolled ? (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCourse(course.id, course.cta?.hrefHint)}
+                          className="px-5 py-2 text-xs font-bold text-white bg-[#0047CC] hover:bg-[#0037a3] rounded-full transition-all cursor-pointer shadow-xs whitespace-nowrap"
+                        >
+                          Go to course →
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setPreviewCourse(course)}
+                          className="px-5 py-2 text-xs font-bold text-white bg-[#0047CC] hover:bg-[#0037a3] rounded-full transition-all cursor-pointer shadow-xs whitespace-nowrap"
+                        >
+                          {course.cta?.label || 'Take this course →'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Section 1: Masterclasses (filtered from API items in Grid Mode) */}
+          {!isLoadingRecommended && viewMode === 'grid' && masterclassCourses.length > 0 && (
             <div className="space-y-5">
               <div className="space-y-1">
                 <h3 className="text-[20px] font-bold text-gray-900 tracking-tight">
@@ -507,19 +836,14 @@ const CoursesList: React.FC = () => {
             </div>
           )}
 
-          {/* Section 2: Catalog / Curated Courses from API */}
-          {!isLoadingRecommended && (
+          {/* Section 2: Catalog / Curated Courses from API (in Grid Mode) */}
+          {!isLoadingRecommended && viewMode === 'grid' && displayCourses.length > 0 && (
             <div className="space-y-5">
               <h3 className="text-[18px] font-bold text-gray-900 tracking-tight">
-                Recommended for you
+                {masterclassCourses.length > 0 ? 'Recommended for you' : 'Available Courses'}
               </h3>
 
-              {catalogCourses.length === 0 && masterclassCourses.length === 0 ? (
-                <div className="text-center py-16 bg-[#FAFAFA] rounded-[24px] border border-gray-100">
-                  <p className="text-gray-500 text-[14px]">No recommended courses currently available.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {(catalogCourses.length > 0 ? catalogCourses : masterclassCourses).map(course => {
                     const banner = getMediaUrl(course.thumbnailS3Key || course.thumbnailUrl, DEFAULT_COURSE_BANNER);
                     const mentorName = course.mentor?.displayName || course.mentor?.name || 'Instructor';
@@ -616,7 +940,6 @@ const CoursesList: React.FC = () => {
                     );
                   })}
                 </div>
-              )}
             </div>
           )}
 

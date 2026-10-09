@@ -23,6 +23,7 @@ export const MENTOR_NAV_ITEMS = [
   { name: 'Dashboard', icon: GridIcon, path: '/dashboard' },
   { name: 'Courses', icon: CoursesIcon, path: '/courses' },
   { name: 'Sessions', icon: CalendarIcon, path: '/sessions' },
+  { name: 'Mentees', icon: UsersIcon, path: '/mentees' },
   { name: 'Finances', icon: WalletIcon, path: '/finances' },
   { name: 'Settings', icon: GearIcon, path: '/settings' },
 ];

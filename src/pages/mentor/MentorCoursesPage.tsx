@@ -319,7 +319,7 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
             variant="primary"
             size="sm"
             pill={false}
-            onClick={handleOpenCreateModal}
+            onClick={() => navigate('/courses/create')}
             className="text-xs font-semibold gap-1.5 shadow-xs w-full sm:w-auto justify-center"
           >
             <PlusIcon size={14} />
@@ -568,7 +568,7 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
                 variant="primary"
                 size="sm"
                 pill={false}
-                onClick={handleOpenCreateModal}
+                onClick={() => navigate('/courses/create')}
                 className="text-xs font-semibold mt-2"
               >
                 Create Your First Course

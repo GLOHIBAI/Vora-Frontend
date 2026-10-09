@@ -11,7 +11,6 @@ import {
   CheckIcon,
   CloseIcon,
 } from '../../components/common/Icons';
-import ApplicantDetailsModal from '../../components/employer/ApplicantDetailsModal';
 import PostHireTrackingView from '../../components/talent/PostHireTrackingView';
 import PaginationControls from '../../components/common/PaginationControls';
 import Tag from '../../components/common/Tag';
@@ -33,8 +32,6 @@ const Talents: React.FC = () => {
   const [page, setPage] = useState(1);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(null);
-  const [selectedApplicant, setSelectedApplicant] = useState<any>(null);
-  const [isApplicantModalOpen, setIsApplicantModalOpen] = useState(false);
   const filterDropdownRef = useRef<HTMLDivElement>(null);
   const actionMenuRef = useRef<HTMLDivElement>(null);
 
@@ -223,8 +220,7 @@ const Talents: React.FC = () => {
     }
 
     if (key === 'HIRE_APPLICANT' || label.includes('hire')) {
-      setSelectedApplicant(talent);
-      setIsApplicantModalOpen(true);
+      openTalentProfile(talent);
       return;
     }
 
@@ -248,12 +244,7 @@ const Talents: React.FC = () => {
     }
 
     // Default fallback
-    if (action.method === 'GET') {
-      openTalentProfile(talent);
-    } else {
-      setSelectedApplicant(talent);
-      setIsApplicantModalOpen(true);
-    }
+    openTalentProfile(talent);
   };
 
   const isFilterActive =
@@ -731,36 +722,6 @@ const Talents: React.FC = () => {
         </div>
       )}
 
-      {/* Applicant Details Modal */}
-      <ApplicantDetailsModal
-        isOpen={isApplicantModalOpen}
-        onClose={() => setIsApplicantModalOpen(false)}
-        applicant={selectedApplicant}
-        onReject={() => {
-          setIsApplicantModalOpen(false);
-          if (!selectedApplicant) return;
-          const eligibility = isCandidateEligibleForRejection(selectedApplicant);
-          if (!eligibility.eligible) {
-            toast.error(eligibility.message || 'Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-assessment exits stay Failed.');
-            return;
-          }
-          const jobId = selectedApplicant?.rolePostingId || '1';
-          const applicantId = selectedApplicant?.applicantCode || selectedApplicant?.id || 'candidate';
-          const assessmentId = resolveAssessmentId(selectedApplicant, jobId);
-          const rejectAction = selectedApplicant?.actions?.find((a: any) => (a.key || '').toUpperCase() === 'REJECT_APPLICANT');
-          navigate(`/jobs/${jobId}/reject/${encodeURIComponent(applicantId)}${assessmentId ? `?assessmentId=${encodeURIComponent(assessmentId)}` : ''}`, {
-            state: {
-              assessmentId,
-              rolePostingId: jobId,
-              applicant: selectedApplicant,
-              actionPath: rejectAction?.path,
-            },
-          });
-        }}
-        onHire={() => {
-          setIsApplicantModalOpen(false);
-        }}
-      />
     </div>
   );
 };

@@ -8,7 +8,6 @@ import {
 } from '../../components/common/Icons';
 import { useAuth } from '../../context/AuthContext';
 import JobEditModal from '../../components/employer/JobEditModal';
-import ApplicantDetailsModal from '../../components/employer/ApplicantDetailsModal';
 import ApplicantsTabView from '../../components/employer/ApplicantsTabView';
 import HiredTabView from '../../components/employer/HiredTabView';
 import TabSlider from '../../components/common/TabSlider';
@@ -217,8 +216,17 @@ const JobDetails: React.FC = () => {
   const isEmployer = user?.role?.toLowerCase() === 'employer';
   const [activeTab, setActiveTab] = useState('Details');
   const [editSection, setEditSection] = useState<'details' | 'responsibilities' | 'experience' | 'compensation' | 'collaboration' | null>(null);
-  const [selectedApplicant, setSelectedApplicant] = useState<any>(null);
-  const [isApplicantModalOpen, setIsApplicantModalOpen] = useState(false);
+
+  const handleOpenCandidateDetails = (applicant: any) => {
+    const rolePostingId = applicant?.rolePostingId || id || '';
+    const assessmentId = resolveAssessmentId(applicant, rolePostingId) || applicant?.assessmentId || applicant?.id || '';
+    const code = applicant?.applicantCode || applicant?.code || applicant?.id || assessmentId || 'candidate';
+    const qs = new URLSearchParams();
+    if (assessmentId) qs.set('assessmentId', assessmentId);
+    if (rolePostingId) qs.set('rolePostingId', rolePostingId);
+    const queryStr = qs.toString() ? `?${qs.toString()}` : '';
+    navigate(`/talents/${encodeURIComponent(code)}${queryStr}`);
+  };
 
   const tabs = isEmployer ? JOB_DETAILS_TABS : ['Details'];
 
@@ -313,10 +321,7 @@ const JobDetails: React.FC = () => {
           data={applicantsData}
           isLoading={applicantsLoading}
           jobId={id}
-          onHire={(a: any) => {
-            setSelectedApplicant(a);
-            setIsApplicantModalOpen(true);
-          }}
+          onHire={handleOpenCandidateDetails}
           onReject={(a: any) => {
             const eligibility = isCandidateEligibleForRejection(a);
             if (!eligibility.eligible) {
@@ -335,10 +340,7 @@ const JobDetails: React.FC = () => {
               },
             });
           }}
-          onViewDetails={(a: any) => {
-            setSelectedApplicant(a);
-            setIsApplicantModalOpen(true);
-          }}
+          onViewDetails={handleOpenCandidateDetails}
         />
       ) : isEmployer && activeTab === 'Hired' ? (
         <HiredTabView 
@@ -410,35 +412,6 @@ const JobDetails: React.FC = () => {
         />
       )}
 
-      {/* Applicant Details Modal */}
-      <ApplicantDetailsModal 
-        isOpen={isApplicantModalOpen}
-        onClose={() => setIsApplicantModalOpen(false)}
-        applicant={selectedApplicant ? { ...selectedApplicant, rolePostingId: selectedApplicant.rolePostingId || id } : null}
-        onReject={() => {
-          setIsApplicantModalOpen(false);
-          if (!selectedApplicant) return;
-          const eligibility = isCandidateEligibleForRejection(selectedApplicant);
-          if (!eligibility.eligible) {
-            toast.error(eligibility.message || 'Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-assessment exits stay Failed, not this form.');
-            return;
-          }
-          const assessmentId = resolveAssessmentId(selectedApplicant, id);
-          const applicantCode = selectedApplicant.applicantCode || selectedApplicant.id || selectedApplicant.talentId || 'candidate';
-          const rejectAction = selectedApplicant.actions?.find((act: any) => (act.key || '').toUpperCase() === 'REJECT_APPLICANT');
-          navigate(`/jobs/${id}/reject/${encodeURIComponent(applicantCode)}${assessmentId ? `?assessmentId=${encodeURIComponent(assessmentId)}` : ''}`, {
-            state: {
-              assessmentId,
-              rolePostingId: id,
-              applicant: selectedApplicant,
-              actionPath: rejectAction?.path,
-            },
-          });
-        }}
-        onHire={() => {
-          setIsApplicantModalOpen(false);
-        }}
-      />
     </div>
   );
 };

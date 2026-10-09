@@ -294,7 +294,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   const navItems = getNavItems();
 
+  const isCourseCreatePage =
+    location.pathname === '/courses/create' ||
+    location.pathname === '/courses/new' ||
+    location.pathname === '/mentor/courses/create';
+
   const useFullWidthContent =
+    isCourseCreatePage ||
     location.pathname.startsWith('/payments') ||
     location.pathname.includes('/jobs/vault/');
 
@@ -456,7 +462,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto custom-scrollbar px-4 lg:px-8 pb-8 pt-6">
+        <main className={`flex-1 overflow-y-auto custom-scrollbar ${isCourseCreatePage ? 'p-0' : 'px-4 lg:px-8 pb-8 pt-6'}`}>
           <div className={useFullWidthContent ? 'w-full max-w-none' : 'max-w-7xl mx-auto'}>
             {children}
           </div>
