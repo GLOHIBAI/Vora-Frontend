@@ -228,6 +228,7 @@ const App = () => {
           <Route path="/courses/new" element={<ProtectedDashboardLayout><CreateCoursePage /></ProtectedDashboardLayout>} />
           <Route path="/courses/:id/edit" element={<ProtectedDashboardLayout><CreateCoursePage /></ProtectedDashboardLayout>} />
           <Route path="/mentor/courses/create" element={<ProtectedDashboardLayout><CreateCoursePage /></ProtectedDashboardLayout>} />
+          <Route path="/mentor/courses/:id/edit" element={<ProtectedDashboardLayout><CreateCoursePage /></ProtectedDashboardLayout>} />
           <Route path="/courses/:id" element={<ProtectedDashboardLayout><CourseDetails /></ProtectedDashboardLayout>} />
           <Route path="/mentor/courses" element={<ProtectedDashboardLayout><MentorCoursesPage /></ProtectedDashboardLayout>} />
           <Route path="/sessions" element={<ProtectedDashboardLayout><MentorSessionsPage /></ProtectedDashboardLayout>} />

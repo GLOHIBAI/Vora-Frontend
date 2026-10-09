@@ -297,7 +297,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const isCourseCreatePage =
     location.pathname === '/courses/create' ||
     location.pathname === '/courses/new' ||
-    location.pathname === '/mentor/courses/create';
+    location.pathname === '/mentor/courses/create' ||
+    Boolean(location.pathname.match(/^\/courses\/[^/]+\/edit/)) ||
+    Boolean(location.pathname.match(/^\/mentor\/courses\/[^/]+\/edit/)) ||
+    Boolean(location.pathname.match(/^\/courses\/builder/));
 
   const useFullWidthContent =
     isCourseCreatePage ||

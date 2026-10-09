@@ -334,6 +334,7 @@ export const CreateCoursePage: React.FC = () => {
   const [discussionForum, setDiscussionForum] = useState('Enabled');
   const [peerReview, setPeerReview] = useState('Required for certificate');
   const [seoSlugPreview, setSeoSlugPreview] = useState('');
+  const [completedSteps, setCompletedSteps] = useState<Set<StepId>>(new Set());
 
   // Status & Validation
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -390,6 +391,30 @@ export const CreateCoursePage: React.FC = () => {
       if (builderData.cpdBody) setCpdBody(builderData.cpdBody);
       if (builderData.seoSlugPreview) setSeoSlugPreview(builderData.seoSlugPreview);
       if (builderData.modules) setModules(builderData.modules);
+
+      // Pre-populate completed steps for existing courses
+      const initialDone = new Set<StepId>();
+      if (builderData.title && builderData.description && builderData.description.trim().length >= 20 && builderData.category && builderData.difficulty) {
+        initialDone.add(1);
+      }
+      if (builderData.format && (builderData.coverImageS3Key || builderData.promotionalVideoS3Key)) {
+        initialDone.add(2);
+      }
+      if (builderData.modules && builderData.modules.length > 0 && builderData.modules.some((m) => (m.lessons || []).length > 0)) {
+        initialDone.add(3);
+      }
+      if ((builderData as any).tier1Price != null || builderData.priceAmount != null) {
+        initialDone.add(4);
+      }
+      if (builderData.certificateTemplate && builderData.certificateTemplate !== 'NONE') {
+        initialDone.add(5);
+      }
+      if (builderData.status === 'PUBLISHED') {
+        initialDone.add(6);
+      }
+      if (initialDone.size > 0) {
+        setCompletedSteps(initialDone);
+      }
     } else if (builderData?.modules) {
       setModules(builderData.modules);
     }
@@ -462,6 +487,17 @@ export const CreateCoursePage: React.FC = () => {
   };
 
   const changeStep = async (step: StepId) => {
+    if (currentStep === 1 && title.trim().length >= 3 && description.trim().length >= 20 && Boolean(category)) {
+      setCompletedSteps((prev) => new Set(prev).add(1));
+    } else if (currentStep === 2 && Boolean(format)) {
+      setCompletedSteps((prev) => new Set(prev).add(2));
+    } else if (currentStep === 3 && modules.length > 0 && modules.some((m) => (m.lessons || []).length > 0)) {
+      setCompletedSteps((prev) => new Set(prev).add(3));
+    } else if (currentStep === 4 && basePrice !== '') {
+      setCompletedSteps((prev) => new Set(prev).add(4));
+    } else if (currentStep === 5 && Boolean(certificateTemplate)) {
+      setCompletedSteps((prev) => new Set(prev).add(5));
+    }
     if (courseId) {
       await flushSave();
     }
@@ -848,6 +884,8 @@ export const CreateCoursePage: React.FC = () => {
       await flushSave();
     }
 
+    setCompletedSteps((prev) => new Set(prev).add(currentStep));
+
     if (currentStep < 6) {
       changeStep((currentStep + 1) as StepId);
     }
@@ -872,22 +910,69 @@ export const CreateCoursePage: React.FC = () => {
       modules.length > 0 &&
       parsedPrice >= 0;
 
-  // Step Completion Indicators for Left Nav
-  const isStepDone = (stepId: StepId): boolean => {
-    if (backendChecklist?.items) {
-      const stepItems = backendChecklist.items.filter((item) => item.stepNumber === stepId);
-      if (stepItems.length > 0) {
-        return stepItems.every((item) => item.passed);
+  // Determines if the form content for a given step meets required completion criteria
+  const isStepContentValid = useCallback(
+    (stepId: StepId): boolean => {
+      if (stepId === 1) {
+        return (
+          title.trim().length >= 3 &&
+          description.trim().length >= 20 &&
+          Boolean(category) &&
+          Boolean(difficultyLevel)
+        );
       }
-    }
-    if (stepId === 1) return title.trim().length >= 3 && description.trim().length >= 20 && Boolean(category) && Boolean(difficultyLevel);
-    if (stepId === 2) return Boolean(format);
-    if (stepId === 3) return modules.length > 0 && modules.some((m) => (m.lessons || []).length > 0);
-    if (stepId === 4) return parsedPrice >= 0;
-    if (stepId === 5) return Boolean(calculatedCEU);
-    if (stepId === 6) return isPublishReady;
-    return false;
-  };
+      if (stepId === 2) {
+        return Boolean(format) && Boolean(thumbnailPreview || thumbnailS3Key || builderData?.coverImageS3Key);
+      }
+      if (stepId === 3) {
+        return modules.length > 0 && modules.some((m) => (m.lessons || []).length > 0);
+      }
+      if (stepId === 4) {
+        return basePrice !== '' && !isNaN(Number(basePrice)) && Number(basePrice) >= 0;
+      }
+      if (stepId === 5) {
+        return Boolean(certificateTemplate);
+      }
+      if (stepId === 6) {
+        return isPublishReady;
+      }
+      return false;
+    },
+    [
+      title,
+      description,
+      category,
+      difficultyLevel,
+      format,
+      thumbnailPreview,
+      thumbnailS3Key,
+      builderData?.coverImageS3Key,
+      modules,
+      basePrice,
+      certificateTemplate,
+      isPublishReady,
+    ]
+  );
+
+  // Step Completion Indicators for Left Nav and Horizontal Stepper
+  // Requirements:
+  // 1. Tick should ONLY show when the user is done filling that step AND is in another form (never while actively on that step)
+  // 2. Upcoming/unvisited steps must NOT show ticks
+  const isStepDone = useCallback(
+    (stepId: StepId): boolean => {
+      // Current step being worked on must never show a checkmark (shows its step number in active state)
+      if (currentStep === stepId) return false;
+
+      // Has been explicitly completed during this editing flow
+      if (completedSteps.has(stepId)) return true;
+
+      // Or if previous steps were already completed and validated
+      if (stepId < currentStep && isStepContentValid(stepId)) return true;
+
+      return false;
+    },
+    [currentStep, completedSteps, isStepContentValid]
+  );
 
   // Save Draft Action
   const handleSaveDraft = async () => {
@@ -976,7 +1061,7 @@ export const CreateCoursePage: React.FC = () => {
       className="min-h-full bg-[#F8FAFC] text-[#1E293B] font-['Raleway',sans-serif] flex flex-col"
     >
       {/* ── TOP HEADER (CLEAN VORA BRANDING) ── */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#E2E8F0] px-4 sm:px-8 lg:px-10 h-16 flex items-center justify-between gap-4 shadow-xs">
+      <header className="sticky top-0 z-50 bg-white border-b border-[#E2E8F0] px-4 sm:px-8 lg:px-10 h-16 flex items-center justify-between gap-4 shadow-xs">
         <div className="flex items-center gap-2.5 sm:gap-3 text-xs sm:text-sm text-[#64748B] min-w-0">
           <Link
             to="/courses"
@@ -991,11 +1076,6 @@ export const CreateCoursePage: React.FC = () => {
           <span className="font-bold text-[#0F172A] truncate max-w-[200px] sm:max-w-md">
             {title.trim() || 'New Course'}
           </span>
-          {courseId && (
-            <span className="hidden md:inline text-[11px] font-mono text-[#64748B] bg-[#F1F5F9] px-2 py-0.5 rounded-md border border-[#E2E8F0]">
-              ID: {courseId.slice(0, 8)}
-            </span>
-          )}
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -1098,7 +1178,7 @@ export const CreateCoursePage: React.FC = () => {
                       isDone
                         ? 'bg-[#0047CC] text-white shadow-2xs'
                         : isCurrent
-                        ? 'border-2 border-[#0047CC] text-[#0047CC] bg-white font-extrabold'
+                        ? 'border-2 border-[#0047CC] text-[#0047CC] bg-white font-extrabold ring-4 ring-blue-50'
                         : 'border border-[#CBD5E1] text-[#94A3B8] bg-[#F8FAFC]'
                     }`}
                   >
@@ -1181,7 +1261,7 @@ export const CreateCoursePage: React.FC = () => {
                         isDone
                           ? 'bg-[#0047CC] text-white'
                           : isCurrent
-                          ? 'border-2 border-[#0047CC] text-[#0047CC] bg-white'
+                          ? 'border-2 border-[#0047CC] text-[#0047CC] bg-white ring-2 ring-blue-100'
                           : 'border border-[#CBD5E1] text-[#94A3B8]'
                       }`}
                     >
