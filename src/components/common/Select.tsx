@@ -44,11 +44,26 @@ const Select: React.FC<SelectProps> = ({
     return String(v).toLowerCase().replace(/[\s_/\\-]+/g, '');
   };
 
+  const LANG_CODE_MAP: Record<string, string> = {
+    en: 'english',
+    fr: 'french',
+    es: 'spanish',
+    pt: 'portuguese',
+    ar: 'arabic',
+    sw: 'swahili',
+  };
+
   const isOptionMatch = (option: Option, val: string | undefined): boolean => {
     if (!val) return false;
     if (option.value === val || option.label === val) return true;
     const normVal = normalizeKey(val);
-    return normalizeKey(option.value) === normVal || normalizeKey(option.label) === normVal;
+    const normOptVal = normalizeKey(option.value);
+    const normOptLabel = normalizeKey(option.label);
+    if (normOptVal === normVal || normOptLabel === normVal) return true;
+    if (LANG_CODE_MAP[normVal] && (normOptVal === LANG_CODE_MAP[normVal] || normOptLabel === LANG_CODE_MAP[normVal])) {
+      return true;
+    }
+    return false;
   };
 
   // Find selected option from flat options or groups

@@ -60,6 +60,7 @@ export interface CourseBuilderData {
   category?: string | null;
   topic?: string | null;
   difficulty?: string | null;
+  difficultyLevel?: string | null;
   language?: string | null;
   format?: CourseFormat | null;
   coverImageS3Key?: string | null;
@@ -122,7 +123,7 @@ export interface PatchCourseDto {
   description?: string;
   category?: string;
   topic?: string;
-  difficulty?: string;
+  difficultyLevel?: string;
   language?: string;
   format?: CourseFormat;
   coverImageS3Key?: string | null;

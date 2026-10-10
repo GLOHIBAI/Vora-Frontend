@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../../api';
+import { apiClient, BASE_URL } from '../../api';
 import type { CourseApiEnvelope } from '../../../types/courses';
 import type {
   CourseBuilderData,
@@ -49,7 +49,8 @@ export const useCourseBuilder = (courseId: string | undefined) => {
       return res.data;
     },
     enabled: Boolean(courseId),
-    staleTime: 1000 * 30, // 30s cache
+    staleTime: 1000 * 60 * 3, // 3 min cache
+    refetchOnWindowFocus: false,
     retry: 1,
   });
 };
@@ -123,9 +124,8 @@ export const usePatchCourse = () => {
       return res.data;
     },
     onSuccess: (data, variables) => {
+      // Directly update React Query cache without triggering immediate background refetch
       queryClient.setQueryData(courseBuilderKeys.detail(variables.courseId), data);
-      queryClient.invalidateQueries({ queryKey: courseBuilderKeys.detail(variables.courseId) });
-      queryClient.invalidateQueries({ queryKey: ['courses', 'instructor', 'hub'] });
     },
   });
 };
@@ -133,18 +133,138 @@ export const usePatchCourse = () => {
 // ============================================================================
 // 5. POST /uploads/course-media
 // ============================================================================
+// Helper: Upload file with real upload progress tracking via XMLHttpRequest
+// ============================================================================
+function uploadFileWithProgress(
+  endpointUrl: string,
+  formData: FormData,
+  onProgress?: (percent: number) => void
+): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const fullUrl = endpointUrl.startsWith('http') ? endpointUrl : `${BASE_URL}${endpointUrl}`;
+    xhr.open('POST', fullUrl, true);
+
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+
+    if (xhr.upload && onProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && e.total > 0) {
+          const percent = Math.min(Math.round((e.loaded / e.total) * 100), 99);
+          onProgress(percent);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      let data: any = null;
+      try {
+        data = JSON.parse(xhr.responseText);
+      } catch {
+        data = xhr.responseText;
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        if (onProgress) onProgress(100);
+        resolve(data);
+      } else {
+        const errorMsg =
+          data?.message ||
+          data?.error ||
+          `Upload failed with status ${xhr.status}`;
+        const err = new Error(Array.isArray(errorMsg) ? errorMsg.join(', ') : errorMsg);
+        (err as any).status = xhr.status;
+        (err as any).data = data;
+        reject(err);
+      }
+    };
+
+    xhr.onerror = () => {
+      reject(new Error('Network error during upload'));
+    };
+
+    xhr.send(formData);
+  });
+}
+
 export const useUploadCourseMedia = () => {
   return useMutation({
-    mutationFn: async (file: File): Promise<UploadMediaResponseData> => {
-      const formData = new FormData();
-      formData.append('file', file);
+    mutationFn: async (
+      args: File | { file: File; courseId?: string; onProgress?: (percent: number) => void }
+    ): Promise<UploadMediaResponseData> => {
+      const file = args instanceof File ? args : args.file;
+      const courseId = args instanceof File ? undefined : args.courseId;
+      const onProgress = args instanceof File ? undefined : args.onProgress;
+      const query = courseId ? `?courseId=${encodeURIComponent(courseId)}` : '';
 
-      const res = await apiClient.post<CourseApiEnvelope<UploadMediaResponseData>>({
-        url: '/uploads/course-media',
-        body: formData,
-        auth: true,
-      });
-      return res.data;
+      // Determine candidate field names based on file type.
+      // Multer's FileInterceptor expects exactly ONE file field matching its declared name.
+      // Sending multiple files or unrecognized field names causes NestJS Multer to throw "Unexpected field".
+      const candidateFieldNames = file.type.startsWith('video/')
+        ? ['file', 'video', 'promoVideo', 'media']
+        : ['file', 'image', 'thumbnail', 'coverImage', 'media'];
+
+      let lastError: any = null;
+
+      for (let i = 0; i < candidateFieldNames.length; i++) {
+        const fieldName = candidateFieldNames[i];
+        const isLastCandidate = i === candidateFieldNames.length - 1;
+
+        const formData = new FormData();
+        // courseId must be present in body for backend ValidationPipe
+        if (courseId) {
+          formData.append('courseId', courseId);
+        }
+        formData.append(fieldName, file);
+
+        try {
+          const res = await uploadFileWithProgress(
+            `/uploads/course-media${query}`,
+            formData,
+            onProgress
+          );
+
+          // Normalize envelope from backend (could be res.data.data, res.data, or res)
+          const payload = res?.data?.data ?? res?.data ?? res;
+
+          const s3Key =
+            payload?.s3Key ||
+            payload?.key ||
+            payload?.publicId ||
+            payload?.public_id ||
+            payload?.url ||
+            payload?.secure_url ||
+            payload?.location ||
+            payload?.path ||
+            '';
+
+          const url =
+            payload?.url ||
+            payload?.secure_url ||
+            payload?.thumbnailUrl ||
+            payload?.videoUrl ||
+            payload?.location ||
+            (s3Key && typeof s3Key === 'string' && s3Key.startsWith('http') ? s3Key : undefined);
+
+          return {
+            s3Key,
+            url,
+            ...payload,
+          };
+        } catch (err: any) {
+          lastError = err;
+          const msg = (err?.message || '').toLowerCase();
+          if (msg.includes('unexpected field') && !isLastCandidate) {
+            continue;
+          }
+          throw err;
+        }
+      }
+
+      throw lastError || new Error('Upload failed');
     },
   });
 };
@@ -163,12 +283,13 @@ export const useCreateModule = () => {
       courseId: string;
       payload: CreateModuleDto;
     }): Promise<BuilderModule> => {
-      const res = await apiClient.post<CourseApiEnvelope<BuilderModule>>({
+      const res = await apiClient.post<any>({
         url: `/courses/${courseId}/modules`,
         body: payload,
         auth: true,
       });
-      return res.data;
+      const data = res?.data?.data ?? res?.data ?? res;
+      return data as BuilderModule;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: courseBuilderKeys.detail(variables.courseId) });
@@ -188,12 +309,16 @@ export const usePatchModule = () => {
       moduleId: string;
       payload: PatchModuleDto;
     }): Promise<BuilderModule> => {
-      const res = await apiClient.patch<CourseApiEnvelope<BuilderModule>>({
+      if (!moduleId || moduleId.startsWith('temp-')) {
+        return {} as BuilderModule;
+      }
+      const res = await apiClient.patch<any>({
         url: `/courses/${courseId}/modules/${moduleId}`,
         body: payload,
         auth: true,
       });
-      return res.data;
+      const data = res?.data?.data ?? res?.data ?? res;
+      return data as BuilderModule;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: courseBuilderKeys.detail(variables.courseId) });
@@ -211,7 +336,8 @@ export const useDeleteModule = () => {
       courseId: string;
       moduleId: string;
     }): Promise<void> => {
-      await apiClient.delete<CourseApiEnvelope<any>>({
+      if (!moduleId || moduleId.startsWith('temp-')) return;
+      await apiClient.delete<any>({
         url: `/courses/${courseId}/modules/${moduleId}`,
         auth: true,
       });
@@ -232,7 +358,7 @@ export const useReorderModules = () => {
       courseId: string;
       payload: ReorderModulesDto;
     }): Promise<void> => {
-      await apiClient.put<CourseApiEnvelope<any>>({
+      await apiClient.put<any>({
         url: `/courses/${courseId}/modules/reorder`,
         body: payload,
         auth: true,
@@ -260,12 +386,16 @@ export const useCreateLesson = () => {
       moduleId: string;
       payload: CreateLessonDto;
     }): Promise<BuilderLesson> => {
-      const res = await apiClient.post<CourseApiEnvelope<BuilderLesson>>({
+      if (!moduleId || moduleId.startsWith('temp-')) {
+        throw new Error('Module must be saved before adding lessons');
+      }
+      const res = await apiClient.post<any>({
         url: `/courses/${courseId}/modules/${moduleId}/lessons`,
         body: payload,
         auth: true,
       });
-      return res.data;
+      const data = res?.data?.data ?? res?.data ?? res;
+      return data as BuilderLesson;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: courseBuilderKeys.detail(variables.courseId) });
@@ -287,12 +417,16 @@ export const usePatchLesson = () => {
       lessonId: string;
       payload: PatchLessonDto;
     }): Promise<BuilderLesson> => {
-      const res = await apiClient.patch<CourseApiEnvelope<BuilderLesson>>({
+      if (!moduleId || moduleId.startsWith('temp-') || !lessonId || lessonId.startsWith('temp-')) {
+        return {} as BuilderLesson;
+      }
+      const res = await apiClient.patch<any>({
         url: `/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`,
         body: payload,
         auth: true,
       });
-      return res.data;
+      const data = res?.data?.data ?? res?.data ?? res;
+      return data as BuilderLesson;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: courseBuilderKeys.detail(variables.courseId) });
@@ -312,7 +446,10 @@ export const useDeleteLesson = () => {
       moduleId: string;
       lessonId: string;
     }): Promise<void> => {
-      await apiClient.delete<CourseApiEnvelope<any>>({
+      if (!moduleId || moduleId.startsWith('temp-') || !lessonId || lessonId.startsWith('temp-')) {
+        return;
+      }
+      await apiClient.delete<any>({
         url: `/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`,
         auth: true,
       });

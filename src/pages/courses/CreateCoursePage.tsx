@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
+import Button from '../../components/common/Button';
 import Select from '../../components/common/Select';
 import Tag from '../../components/common/Tag';
+import Spinner from '../../components/common/Spinner';
 import type { CourseFormat } from '../../types/courses';
+import { useCourseDetail } from '../../services/queries/courses';
 import {
   type BuilderLessonContentType,
   type CertificateTemplate,
@@ -28,6 +31,7 @@ import {
   useUnpublishCourseBuilder,
 } from '../../services/queries/courses/builder';
 import { useCourseBuilderAutosave } from '../../hooks/useCourseBuilderAutosave';
+import { getMediaUrl } from '../../utils/media';
 
 type StepId = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -86,10 +90,29 @@ const CATEGORIES = [
   'Digital Health & Innovation',
   'Community Health & Equity',
   'Health Workforce Development',
+  'Others',
 ];
 
 const DIFFICULTY_LEVELS = ['Intermediate', 'Advanced', 'Expert / Masterclass'];
 const LANGUAGES = ['English', 'French', 'Portuguese', 'Spanish', 'Arabic', 'Swahili'];
+
+const LANGUAGE_CODE_MAP: Record<string, string> = {
+  en: 'English',
+  fr: 'French',
+  es: 'Spanish',
+  pt: 'Portuguese',
+  ar: 'Arabic',
+  sw: 'Swahili',
+};
+
+export const normalizeLanguage = (lang?: string): string => {
+  if (!lang) return 'English';
+  const clean = lang.trim();
+  const lower = clean.toLowerCase();
+  if (LANGUAGE_CODE_MAP[lower]) return LANGUAGE_CODE_MAP[lower];
+  const matched = LANGUAGES.find((l) => l.toLowerCase() === lower);
+  return matched || clean;
+};
 
 const CATEGORY_OPTIONS = CATEGORIES.map((c) => ({ label: c, value: c }));
 const DIFFICULTY_OPTIONS = DIFFICULTY_LEVELS.map((l) => ({ label: l, value: l }));
@@ -195,18 +218,25 @@ const FORMATS: Array<{
 
 export const CreateCoursePage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id: routeCourseId } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
 
+  const navStateCourse = (location.state as any)?.course;
+
   // Active Course ID
-  const [courseId, setCourseId] = useState<string | null>(routeCourseId || null);
+  const [courseId, setCourseId] = useState<string | null>(routeCourseId || navStateCourse?.id || null);
 
   // Queries & Mutations
   const {
     data: builderData,
+    isLoading: isBuilderLoading,
     refetch: refetchBuilder,
   } = useCourseBuilder(courseId || undefined);
+
+  const { data: courseDetailData } = useCourseDetail(courseId && !builderData ? courseId : undefined);
+  const courseDetails = (courseDetailData as any)?.course || courseDetailData;
 
   const createDraftMutation = useCreateDraftCourse();
   const patchCourseMutation = usePatchCourse();
@@ -235,23 +265,25 @@ export const CreateCoursePage: React.FC = () => {
   const [subtitle, setSubtitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
+  const [customCategory, setCustomCategory] = useState('');
   const [difficultyLevel, setDifficultyLevel] = useState('');
   const [language, setLanguage] = useState('English');
   const [prerequisites, setPrerequisites] = useState('');
-  const [tags, setTags] = useState<string[]>(['Global Health', 'WHO', 'Health Policy']);
+  const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
-  const [outcomes, setOutcomes] = useState<string[]>([
-    'Design context-appropriate health financing strategies for resource-limited settings',
-  ]);
+  const [outcomes, setOutcomes] = useState<string[]>(['']);
 
   const [format, setFormat] = useState<CourseFormat>('VIDEO_MASTERCLASS');
   const [thumbnailPreview, setThumbnailPreview] = useState<string>('');
   const [thumbnailFileName, setThumbnailFileName] = useState<string>('');
   const [thumbnailS3Key, setThumbnailS3Key] = useState<string | null>(null);
+  const [promoVideoPreview, setPromoVideoPreview] = useState<string>('');
   const [promoVideoFileName, setPromoVideoFileName] = useState<string>('');
   const [promoVideoS3Key, setPromoVideoS3Key] = useState<string | null>(null);
 
   const [modules, setModules] = useState<BuilderModule[]>([]);
+  const [isAddingModule, setIsAddingModule] = useState(false);
+  const [addingLessonModuleId, setAddingLessonModuleId] = useState<string | null>(null);
 
   // Pricing
   const [basePrice, setBasePrice] = useState<string>('40');
@@ -326,7 +358,7 @@ export const CreateCoursePage: React.FC = () => {
   const [certificateTemplate, setCertificateTemplate] = useState<CertificateTemplate>('BLOCKCHAIN');
   const [isCpdAccredited, setIsCpdAccredited] = useState<boolean>(true);
   const [contactHours, setContactHours] = useState<string>('8.3');
-  const [cpdBody, setCpdBody] = useState<string>('VORA Global Health CPD Board');
+  const [cpdBody, setCpdBody] = useState<string>('');
 
   // Step 6: Settings (Unpersisted / local with Coming Soon badge)
   const [enrollmentMode, setEnrollmentMode] = useState('Open enrollment');
@@ -335,6 +367,12 @@ export const CreateCoursePage: React.FC = () => {
   const [peerReview, setPeerReview] = useState('Required for certificate');
   const [seoSlugPreview, setSeoSlugPreview] = useState('');
   const [completedSteps, setCompletedSteps] = useState<Set<StepId>>(new Set());
+  const [isNavigatingNext, setIsNavigatingNext] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isUploadingThumbnail, setIsUploadingThumbnail] = useState(false);
+  const [thumbnailUploadProgress, setThumbnailUploadProgress] = useState(0);
+  const [isUploadingPromoVideo, setIsUploadingPromoVideo] = useState(false);
+  const [promoVideoUploadProgress, setPromoVideoUploadProgress] = useState(0);
 
   // Status & Validation
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -356,60 +394,123 @@ export const CreateCoursePage: React.FC = () => {
   const topContainerRef = useRef<HTMLDivElement>(null);
   const hasLoadedInitialBuilderData = useRef(false);
 
-  // Hydrate from builderData
+  // Hydrate from builderData, courseDetails, or navStateCourse
   useEffect(() => {
-    if (builderData && !hasLoadedInitialBuilderData.current) {
-      hasLoadedInitialBuilderData.current = true;
-      if (builderData.title) setTitle(builderData.title);
-      if (builderData.subtitle) setSubtitle(builderData.subtitle);
-      if (builderData.description) setDescription(builderData.description);
-      if (builderData.category) setCategory(builderData.category);
-      if (builderData.difficulty) setDifficultyLevel(builderData.difficulty);
-      if (builderData.language) setLanguage(builderData.language);
-      if (builderData.format) setFormat(builderData.format);
-      if (builderData.coverImageS3Key) {
-        setThumbnailS3Key(builderData.coverImageS3Key);
-        setThumbnailPreview(
-          builderData.coverImageS3Key.startsWith('http')
-            ? builderData.coverImageS3Key
-            : `https://vora-media-bucket.s3.amazonaws.com/${builderData.coverImageS3Key}`
-        );
+    const source = builderData || courseDetails || navStateCourse;
+    if (source && !hasLoadedInitialBuilderData.current) {
+      if (builderData) {
+        hasLoadedInitialBuilderData.current = true;
       }
-      if (builderData.promotionalVideoS3Key) {
-        setPromoVideoS3Key(builderData.promotionalVideoS3Key);
+      if (source.title) setTitle(source.title);
+      if (source.subtitle) setSubtitle(source.subtitle);
+      if (source.description) setDescription(source.description);
+      if (source.category) {
+        const standardCategories = CATEGORIES.filter((c) => c !== 'Others');
+        if (standardCategories.includes(source.category)) {
+          setCategory(source.category);
+          setCustomCategory('');
+        } else {
+          setCategory('Others');
+          setCustomCategory(source.category);
+        }
+      }
+      const initialDifficulty = source.difficultyLevel || (source as any).difficulty;
+      if (initialDifficulty) setDifficultyLevel(initialDifficulty);
+      if (source.language) setLanguage(normalizeLanguage(source.language));
+      if (source.format) setFormat(source.format);
+      const initialCoverKey =
+        source.coverImageS3Key ||
+        source.thumbnailS3Key ||
+        (source as any).coverImageUrl ||
+        (source as any).thumbnailUrl ||
+        (source as any).thumbnail;
+      if (initialCoverKey) {
+        setThumbnailS3Key(initialCoverKey);
+        setThumbnailPreview(getMediaUrl(initialCoverKey));
+      }
+      const initialVideoKey =
+        source.promotionalVideoS3Key ||
+        source.promoVideoS3Key ||
+        (source as any).promotionalVideoUrl ||
+        (source as any).promoVideoUrl ||
+        (source as any).promoVideo ||
+        (source as any).promotionalVideo;
+      if (initialVideoKey) {
+        setPromoVideoS3Key(initialVideoKey);
+        setPromoVideoPreview(getMediaUrl(initialVideoKey));
         setPromoVideoFileName('Uploaded Promotional Video');
       }
-      if ((builderData as any).tier1Price != null) {
-        setBasePrice(String((builderData as any).tier1Price));
-      } else if (builderData.priceAmount != null) {
-        setBasePrice(String(builderData.priceAmount));
+      if ((source as any).tier1Price != null) {
+        setBasePrice(String((source as any).tier1Price));
+      } else if ((source as any).price != null) {
+        setBasePrice(String((source as any).price));
+      } else if (source.priceAmount != null) {
+        setBasePrice(String(source.priceAmount));
       }
-      if (builderData.enablePppPricing != null) setEnablePppPricing(builderData.enablePppPricing);
-      if (builderData.certificateTemplate) setCertificateTemplate(builderData.certificateTemplate);
-      if (builderData.isCpdAccredited != null) setIsCpdAccredited(builderData.isCpdAccredited);
-      if (builderData.cpdCredits != null) setContactHours(String(builderData.cpdCredits));
-      if (builderData.cpdBody) setCpdBody(builderData.cpdBody);
-      if (builderData.seoSlugPreview) setSeoSlugPreview(builderData.seoSlugPreview);
-      if (builderData.modules) setModules(builderData.modules);
+      if (source.enablePppPricing != null) setEnablePppPricing(source.enablePppPricing);
+      if (source.certificateTemplate) setCertificateTemplate(source.certificateTemplate);
+      if (source.isCpdAccredited != null) setIsCpdAccredited(source.isCpdAccredited);
+      if (source.cpdCredits != null) setContactHours(String(source.cpdCredits));
+      if (source.cpdBody) setCpdBody(source.cpdBody);
+      if (source.seoSlugPreview) setSeoSlugPreview(source.seoSlugPreview);
+      if (source.modules) setModules(source.modules);
 
-      // Pre-populate completed steps for existing courses
+      // Hydrate tags/skills from backend (without mock fallbacks)
+      const rawTags = source.tags || (source as any).skills;
+      if (Array.isArray(rawTags)) {
+        setTags(rawTags);
+      }
+      if (source.prerequisites) {
+        if (Array.isArray(source.prerequisites) && source.prerequisites.length > 0) {
+          setPrerequisites(source.prerequisites.join(', '));
+        } else if (typeof source.prerequisites === 'string') {
+          setPrerequisites(source.prerequisites);
+        }
+      }
+      if (source.learningOutcomes && Array.isArray(source.learningOutcomes) && source.learningOutcomes.length > 0) {
+        setOutcomes(source.learningOutcomes);
+      }
+
+      // Pre-populate completed steps for existing courses sequentially
       const initialDone = new Set<StepId>();
-      if (builderData.title && builderData.description && builderData.description.trim().length >= 20 && builderData.category && builderData.difficulty) {
+      const step1Done = Boolean(
+        source.title &&
+        source.description &&
+        source.description.trim().length >= 10 &&
+        source.category
+      );
+      if (step1Done) initialDone.add(1);
+
+      const step2Done =
+        step1Done &&
+        Boolean(source.format && (initialCoverKey || source.promotionalVideoS3Key));
+      if (step2Done) initialDone.add(2);
+
+      const step3Done =
+        step2Done &&
+        Boolean(
+          source.modules &&
+          source.modules.length > 0 &&
+          source.modules.some((m: any) => (m.lessons || []).length > 0)
+        );
+      if (step3Done) initialDone.add(3);
+
+      const step4Done =
+        step3Done &&
+        Boolean((source as any).tier1Price != null || (source as any).price != null || source.priceAmount != null);
+      if (step4Done) initialDone.add(4);
+
+      const step5Done =
+        step4Done &&
+        Boolean(source.certificateTemplate && source.certificateTemplate !== 'NONE');
+      if (step5Done) initialDone.add(5);
+
+      if (source.status === 'PUBLISHED') {
         initialDone.add(1);
-      }
-      if (builderData.format && (builderData.coverImageS3Key || builderData.promotionalVideoS3Key)) {
         initialDone.add(2);
-      }
-      if (builderData.modules && builderData.modules.length > 0 && builderData.modules.some((m) => (m.lessons || []).length > 0)) {
         initialDone.add(3);
-      }
-      if ((builderData as any).tier1Price != null || builderData.priceAmount != null) {
         initialDone.add(4);
-      }
-      if (builderData.certificateTemplate && builderData.certificateTemplate !== 'NONE') {
         initialDone.add(5);
-      }
-      if (builderData.status === 'PUBLISHED') {
         initialDone.add(6);
       }
       if (initialDone.size > 0) {
@@ -418,7 +519,7 @@ export const CreateCoursePage: React.FC = () => {
     } else if (builderData?.modules) {
       setModules(builderData.modules);
     }
-  }, [builderData]);
+  }, [builderData, courseDetails, navStateCourse]);
 
   // Load from Gap parameter
   useEffect(() => {
@@ -432,39 +533,55 @@ export const CreateCoursePage: React.FC = () => {
       setDescription(gap.desc);
       setTags(gap.tags);
       setCategory('Global Health Policy');
+      setCustomCategory('');
       setDifficultyLevel('Advanced');
     }
   }, [searchParams]);
 
   // Current PATCH Payload for debounced autosave
   const currentPatchPayload = useMemo(() => {
+    const effectiveCategory = category === 'Others' ? (customCategory.trim() || 'Others') : category;
     return {
       title: title.trim() || undefined,
       subtitle: subtitle.trim() || undefined,
       description: description.trim() || undefined,
-      category: category || undefined,
-      difficulty: difficultyLevel || undefined,
+      category: effectiveCategory || undefined,
+      difficultyLevel: difficultyLevel || undefined,
       language: language || undefined,
       format,
+      coverImageS3Key: thumbnailS3Key || undefined,
+      thumbnailS3Key: thumbnailS3Key || undefined,
+      promotionalVideoS3Key: promoVideoS3Key || undefined,
+      promoVideoS3Key: promoVideoS3Key || undefined,
       tier1Price: parsedPrice,
       certificateTemplate,
       isCpdAccredited,
       cpdCredits: parseFloat(contactHours) || 0,
       cpdBody,
+      tags,
+      skills: tags,
+      learningOutcomes: outcomes.filter((o) => Boolean(o && o.trim())),
+      prerequisites: prerequisites.trim() ? prerequisites.split(',').map((p) => p.trim()).filter(Boolean) : [],
     };
   }, [
     title,
     subtitle,
     description,
     category,
+    customCategory,
     difficultyLevel,
     language,
     format,
+    thumbnailS3Key,
+    promoVideoS3Key,
     parsedPrice,
     certificateTemplate,
     isCpdAccredited,
     contactHours,
     cpdBody,
+    tags,
+    outcomes,
+    prerequisites,
   ]);
 
   // Debounced Autosave Hook
@@ -487,13 +604,27 @@ export const CreateCoursePage: React.FC = () => {
   };
 
   const changeStep = async (step: StepId) => {
-    if (currentStep === 1 && title.trim().length >= 3 && description.trim().length >= 20 && Boolean(category)) {
+    if (step === currentStep) return;
+
+    // Moving forward strictly requires validating the current step and all steps up to target step
+    if (step > currentStep) {
+      if (!validateStep(currentStep)) return;
+      for (let s = 1; s < step; s++) {
+        if (!isStepContentValid(s as StepId)) {
+          toast.error(`Please complete all required fields in Step ${s} before proceeding.`);
+          setCurrentStep(s as StepId);
+          return;
+        }
+      }
+    }
+
+    if (currentStep === 1 && title.trim().length >= 3 && description.trim().length >= 20 && Boolean(category && (category !== 'Others' || customCategory.trim())) && Boolean(difficultyLevel) && outcomes.some((o) => o.trim().length > 0)) {
       setCompletedSteps((prev) => new Set(prev).add(1));
-    } else if (currentStep === 2 && Boolean(format)) {
+    } else if (currentStep === 2 && Boolean(format) && Boolean(thumbnailPreview || thumbnailS3Key || builderData?.coverImageS3Key)) {
       setCompletedSteps((prev) => new Set(prev).add(2));
     } else if (currentStep === 3 && modules.length > 0 && modules.some((m) => (m.lessons || []).length > 0)) {
       setCompletedSteps((prev) => new Set(prev).add(3));
-    } else if (currentStep === 4 && basePrice !== '') {
+    } else if (currentStep === 4 && basePrice !== '' && !isNaN(Number(basePrice)) && Number(basePrice) >= 0) {
       setCompletedSteps((prev) => new Set(prev).add(4));
     } else if (currentStep === 5 && Boolean(certificateTemplate)) {
       setCompletedSteps((prev) => new Set(prev).add(5));
@@ -604,24 +735,63 @@ export const CreateCoursePage: React.FC = () => {
     const objectUrl = URL.createObjectURL(file);
     setThumbnailPreview(objectUrl);
 
+    let uploadToast: string | undefined;
+    setThumbnailUploadProgress(0);
+    setIsUploadingThumbnail(true);
     try {
       const activeId = await ensureDraftCourse();
       if (!activeId) return;
 
-      const uploadToast = toast.loading('Uploading course thumbnail…');
-      const uploaded = await uploadMediaMutation.mutateAsync(file);
+      uploadToast = toast.loading('Uploading course thumbnail…');
+      const uploaded: any = await uploadMediaMutation.mutateAsync({
+        file,
+        courseId: activeId,
+        onProgress: (pct) => setThumbnailUploadProgress(pct),
+      });
 
-      if (uploaded?.s3Key) {
-        setThumbnailS3Key(uploaded.s3Key);
+      const payload = uploaded?.data ?? uploaded;
+      const resolvedKey =
+        payload?.s3Key ||
+        payload?.key ||
+        payload?.publicId ||
+        payload?.public_id ||
+        payload?.url ||
+        payload?.secure_url ||
+        payload?.location ||
+        payload?.path;
+
+      const resolvedUrl =
+        payload?.url ||
+        payload?.secure_url ||
+        payload?.thumbnailUrl ||
+        payload?.location ||
+        (resolvedKey && String(resolvedKey).startsWith('http') ? resolvedKey : null);
+
+      if (resolvedKey) {
+        setThumbnailS3Key(resolvedKey);
+        if (resolvedUrl) {
+          setThumbnailPreview(resolvedUrl);
+        }
         await patchCourseMutation.mutateAsync({
           courseId: activeId,
-          payload: { coverImageS3Key: uploaded.s3Key },
+          payload: {
+            coverImageS3Key: resolvedKey,
+            thumbnailS3Key: resolvedKey,
+          } as any,
         });
-        toast.dismiss(uploadToast);
+        setFormErrors((prev) => {
+          const next = { ...prev };
+          delete next.thumbnail;
+          return next;
+        });
+        if (uploadToast) toast.dismiss(uploadToast);
         toast.success('Course thumbnail saved.', { icon: '🖼️' });
       }
     } catch (err: any) {
       toast.error(err?.message || 'Failed to upload thumbnail.');
+    } finally {
+      if (uploadToast) toast.dismiss(uploadToast);
+      setIsUploadingThumbnail(false);
     }
   };
 
@@ -640,33 +810,71 @@ export const CreateCoursePage: React.FC = () => {
     }
 
     setPromoVideoFileName(file.name);
+    const objectUrl = URL.createObjectURL(file);
+    setPromoVideoPreview(objectUrl);
 
+    let uploadToast: string | undefined;
+    setPromoVideoUploadProgress(0);
+    setIsUploadingPromoVideo(true);
     try {
       const activeId = await ensureDraftCourse();
       if (!activeId) return;
 
-      const uploadToast = toast.loading('Uploading promo video…');
-      const uploaded = await uploadMediaMutation.mutateAsync(file);
+      uploadToast = toast.loading('Uploading promo video…');
+      const uploaded: any = await uploadMediaMutation.mutateAsync({
+        file,
+        courseId: activeId,
+        onProgress: (pct) => setPromoVideoUploadProgress(pct),
+      });
 
-      if (uploaded?.s3Key) {
-        setPromoVideoS3Key(uploaded.s3Key);
+      const payload = uploaded?.data ?? uploaded;
+      const resolvedKey =
+        payload?.s3Key ||
+        payload?.key ||
+        payload?.publicId ||
+        payload?.public_id ||
+        payload?.url ||
+        payload?.secure_url ||
+        payload?.location ||
+        payload?.path;
+
+      const resolvedUrl =
+        payload?.url ||
+        payload?.secure_url ||
+        payload?.videoUrl ||
+        payload?.location ||
+        (resolvedKey && String(resolvedKey).startsWith('http') ? resolvedKey : null);
+
+      if (resolvedKey) {
+        setPromoVideoS3Key(resolvedKey);
+        if (resolvedUrl) {
+          setPromoVideoPreview(resolvedUrl);
+        }
         await patchCourseMutation.mutateAsync({
           courseId: activeId,
-          payload: { promotionalVideoS3Key: uploaded.s3Key },
+          payload: {
+            promotionalVideoS3Key: resolvedKey,
+            promoVideoS3Key: resolvedKey,
+          } as any,
         });
-        toast.dismiss(uploadToast);
+        if (uploadToast) toast.dismiss(uploadToast);
         toast.success('Promo video saved.', { icon: '🎬' });
       }
     } catch (err: any) {
       toast.error(err?.message || 'Failed to upload promo video.');
+    } finally {
+      if (uploadToast) toast.dismiss(uploadToast);
+      setIsUploadingPromoVideo(false);
     }
   };
 
   // Curriculum Modules & Lessons
   const handleAddModule = async () => {
+    if (isAddingModule) return;
     const activeId = await ensureDraftCourse();
     if (!activeId) return;
 
+    setIsAddingModule(true);
     const nextOrder = modules.length;
     const moduleTitle = `Module ${nextOrder + 1}: `;
 
@@ -675,32 +883,57 @@ export const CreateCoursePage: React.FC = () => {
         courseId: activeId,
         payload: {
           title: moduleTitle,
-          orderIndex: nextOrder,
         },
       });
 
       if (createdMod?.id) {
-        await createLessonMutation.mutateAsync({
-          courseId: activeId,
-          moduleId: createdMod.id,
-          payload: {
-            title: 'Welcome & Foundations',
-            contentType: 'VIDEO',
-            durationMinutes: 15,
-            orderIndex: 0,
-          },
-        });
-      }
+        let initialLessons: BuilderLesson[] = [];
+        try {
+          const createdLesson = await createLessonMutation.mutateAsync({
+            courseId: activeId,
+            moduleId: createdMod.id,
+            payload: {
+              title: 'Welcome & Foundations',
+              contentType: 'VIDEO',
+              durationMinutes: 15,
+            },
+          });
+          if (createdLesson?.id) {
+            initialLessons = [
+              {
+                id: createdLesson.id,
+                moduleId: createdMod.id,
+                title: createdLesson.title || 'Welcome & Foundations',
+                contentType: createdLesson.contentType || 'VIDEO',
+                durationMinutes: createdLesson.durationMinutes ?? 15,
+                orderIndex: 0,
+              },
+            ];
+          }
+        } catch (lessonErr) {
+          console.warn('Initial lesson creation failed, module created successfully:', lessonErr);
+        }
 
-      toast.success('New module added.');
-      refetchBuilder();
+        const newModule: BuilderModule = {
+          id: createdMod.id,
+          courseId: activeId,
+          title: createdMod.title || moduleTitle,
+          orderIndex: nextOrder + 1,
+          lessons: initialLessons,
+        };
+
+        setModules((prev) => [...prev, newModule]);
+        toast.success('New module added.');
+      }
     } catch (err: any) {
       toast.error(err?.message || 'Failed to add module.');
+    } finally {
+      setIsAddingModule(false);
     }
   };
 
   const handleModuleTitleBlur = async (moduleId: string, newTitle: string) => {
-    if (!courseId) return;
+    if (!courseId || !moduleId || moduleId.startsWith('temp-')) return;
     try {
       await patchModuleMutation.mutateAsync({
         courseId,
@@ -717,13 +950,19 @@ export const CreateCoursePage: React.FC = () => {
       toast.error('Your course must include at least one curriculum module.');
       return;
     }
-    if (!courseId) return;
+    if (!courseId || !moduleId) return;
+
+    if (moduleId.startsWith('temp-')) {
+      setModules((prev) => prev.filter((m) => m.id !== moduleId));
+      return;
+    }
 
     try {
       await deleteModuleMutation.mutateAsync({
         courseId,
         moduleId,
       });
+      setModules((prev) => prev.filter((m) => m.id !== moduleId));
       toast.success('Module removed.');
       refetchBuilder();
     } catch (err: any) {
@@ -732,25 +971,45 @@ export const CreateCoursePage: React.FC = () => {
   };
 
   const handleAddLesson = async (moduleId: string) => {
-    if (!courseId) return;
+    if (!courseId || !moduleId || moduleId.startsWith('temp-') || addingLessonModuleId === moduleId) return;
     const targetModule = modules.find((m) => m.id === moduleId);
     const nextOrder = targetModule?.lessons?.length || 0;
 
+    setAddingLessonModuleId(moduleId);
     try {
-      await createLessonMutation.mutateAsync({
+      const created = await createLessonMutation.mutateAsync({
         courseId,
         moduleId,
         payload: {
           title: 'New Lesson',
           contentType: 'VIDEO',
           durationMinutes: 15,
-          orderIndex: nextOrder,
         },
       });
-      toast.success('Lesson added.');
-      refetchBuilder();
+
+      if (created?.id) {
+        const newLesson: BuilderLesson = {
+          id: created.id,
+          moduleId,
+          title: created.title || 'New Lesson',
+          contentType: created.contentType || 'VIDEO',
+          durationMinutes: created.durationMinutes ?? 15,
+          orderIndex: nextOrder,
+        };
+
+        setModules((prev) =>
+          prev.map((m) =>
+            m.id === moduleId
+              ? { ...m, lessons: [...(m.lessons || []), newLesson] }
+              : m
+          )
+        );
+        toast.success('Lesson added.');
+      }
     } catch (err: any) {
       toast.error(err?.message || 'Failed to add lesson.');
+    } finally {
+      setAddingLessonModuleId(null);
     }
   };
 
@@ -771,7 +1030,10 @@ export const CreateCoursePage: React.FC = () => {
       })
     );
 
-    if (!courseId) return;
+    if (!courseId || !moduleId || !lessonId || moduleId.startsWith('temp-') || lessonId.startsWith('temp-')) {
+      return;
+    }
+
     try {
       await patchLessonMutation.mutateAsync({
         courseId,
@@ -785,13 +1047,32 @@ export const CreateCoursePage: React.FC = () => {
   };
 
   const handleDeleteLesson = async (moduleId: string, lessonId: string) => {
-    if (!courseId) return;
+    if (!courseId || !moduleId || !lessonId) return;
+
+    if (moduleId.startsWith('temp-') || lessonId.startsWith('temp-')) {
+      setModules((prev) =>
+        prev.map((mod) =>
+          mod.id === moduleId
+            ? { ...mod, lessons: mod.lessons.filter((les) => les.id !== lessonId) }
+            : mod
+        )
+      );
+      return;
+    }
+
     try {
       await deleteLessonMutation.mutateAsync({
         courseId,
         moduleId,
         lessonId,
       });
+      setModules((prev) =>
+        prev.map((mod) =>
+          mod.id === moduleId
+            ? { ...mod, lessons: mod.lessons.filter((les) => les.id !== lessonId) }
+            : mod
+        )
+      );
       toast.success('Lesson deleted.');
       refetchBuilder();
     } catch (err: any) {
@@ -820,9 +1101,14 @@ export const CreateCoursePage: React.FC = () => {
 
       if (!category) {
         errors.category = 'Please select a course category';
+      } else if (category === 'Others' && !customCategory.trim()) {
+        errors.customCategory = 'Please enter your customized category name';
       }
       if (!difficultyLevel) {
         errors.difficultyLevel = 'Please select a difficulty level';
+      }
+      if (!language || !language.trim()) {
+        errors.language = 'Please select an instruction language';
       }
 
       const validOutcomes = outcomes.filter((o) => o.trim().length > 0);
@@ -832,6 +1118,9 @@ export const CreateCoursePage: React.FC = () => {
     } else if (step === 2) {
       if (!format) {
         errors.format = 'Please select a course format';
+      }
+      if (!thumbnailPreview && !thumbnailS3Key && !builderData?.coverImageS3Key) {
+        errors.thumbnail = 'Please upload a course thumbnail image';
       }
     } else if (step === 3) {
       if (modules.length === 0) {
@@ -861,6 +1150,13 @@ export const CreateCoursePage: React.FC = () => {
       if (basePrice === '' || isNaN(Number(basePrice)) || Number(basePrice) < 0) {
         errors.basePrice = 'Please enter a valid base price (0 or greater)';
       }
+    } else if (step === 5) {
+      if (!certificateTemplate) {
+        errors.certificateTemplate = 'Please select a certificate standard';
+      }
+      if (isCpdAccredited && (contactHours === '' || isNaN(Number(contactHours)) || Number(contactHours) <= 0)) {
+        errors.contactHours = 'Please provide valid CPD contact hours (greater than 0)';
+      }
     }
 
     setFormErrors(errors);
@@ -875,40 +1171,72 @@ export const CreateCoursePage: React.FC = () => {
   };
 
   const handleNextStep = async () => {
+    if (isNavigatingNext || isSavingDraft) return;
     if (!validateStep(currentStep)) return;
 
-    if (currentStep === 1 && !courseId) {
-      const activeId = await ensureDraftCourse();
-      if (!activeId) return;
-    } else if (courseId) {
-      await flushSave();
-    }
+    setIsNavigatingNext(true);
+    try {
+      if (currentStep === 1 && !courseId) {
+        const activeId = await ensureDraftCourse();
+        if (!activeId) return;
+      } else if (courseId) {
+        await flushSave();
+      }
 
-    setCompletedSteps((prev) => new Set(prev).add(currentStep));
+      setCompletedSteps((prev) => new Set(prev).add(currentStep));
 
-    if (currentStep < 6) {
-      changeStep((currentStep + 1) as StepId);
+      if (currentStep < 6) {
+        await changeStep((currentStep + 1) as StepId);
+      }
+    } catch (err: any) {
+      console.error('Error proceeding to next step:', err);
+      toast.error(err?.message || 'Failed to proceed to next step.');
+    } finally {
+      setIsNavigatingNext(false);
     }
   };
 
   const handlePrevStep = async () => {
+    if (isNavigatingNext || isSavingDraft) return;
     if (courseId) {
       await flushSave();
     }
     if (currentStep > 1) {
-      changeStep((currentStep - 1) as StepId);
+      await changeStep((currentStep - 1) as StepId);
     }
   };
 
-  // Pre-publish checklist driven by backend
-  const backendChecklist = builderData?.publishChecklist;
-  const isPublishReady = backendChecklist
-    ? backendChecklist.ready
-    : title.trim().length >= 3 &&
-      description.trim().length >= 20 &&
-      Boolean(format) &&
+  // Pre-publish checklist driven by live validated form state
+  const isPublishReady = useMemo(() => {
+    const titleOk = title.trim().length >= 3;
+    const descOk = description.trim().length >= 20;
+    const formatOk = Boolean(format);
+    const thumbnailOk = Boolean(thumbnailPreview || thumbnailS3Key || builderData?.coverImageS3Key);
+    const categoryOk = Boolean(category && (category !== 'Others' || customCategory.trim()));
+    const difficultyOk = Boolean(difficultyLevel);
+    const modulesOk =
       modules.length > 0 &&
-      parsedPrice >= 0;
+      modules.every((m) => m.title.trim().length > 0) &&
+      modules.some((m) => (m.lessons || []).length > 0) &&
+      modules.every((m) => (m.lessons || []).every((l) => l.title.trim().length > 0));
+    const pricingOk = basePrice !== '' && !isNaN(Number(basePrice)) && Number(basePrice) >= 0;
+    const certOk = Boolean(certificateTemplate);
+
+    return titleOk && descOk && formatOk && thumbnailOk && categoryOk && difficultyOk && modulesOk && pricingOk && certOk;
+  }, [
+    title,
+    description,
+    format,
+    thumbnailPreview,
+    thumbnailS3Key,
+    builderData?.coverImageS3Key,
+    category,
+    customCategory,
+    difficultyLevel,
+    modules,
+    basePrice,
+    certificateTemplate,
+  ]);
 
   // Determines if the form content for a given step meets required completion criteria
   const isStepContentValid = useCallback(
@@ -917,21 +1245,31 @@ export const CreateCoursePage: React.FC = () => {
         return (
           title.trim().length >= 3 &&
           description.trim().length >= 20 &&
-          Boolean(category) &&
-          Boolean(difficultyLevel)
+          Boolean(category && (category !== 'Others' || customCategory.trim())) &&
+          Boolean(difficultyLevel) &&
+          Boolean(language && language.trim()) &&
+          outcomes.some((o) => o.trim().length > 0)
         );
       }
       if (stepId === 2) {
         return Boolean(format) && Boolean(thumbnailPreview || thumbnailS3Key || builderData?.coverImageS3Key);
       }
       if (stepId === 3) {
-        return modules.length > 0 && modules.some((m) => (m.lessons || []).length > 0);
+        return (
+          modules.length > 0 &&
+          modules.every((m) => m.title.trim().length > 0) &&
+          modules.some((m) => (m.lessons || []).length > 0) &&
+          modules.every((m) => (m.lessons || []).every((l) => l.title.trim().length > 0))
+        );
       }
       if (stepId === 4) {
         return basePrice !== '' && !isNaN(Number(basePrice)) && Number(basePrice) >= 0;
       }
       if (stepId === 5) {
-        return Boolean(certificateTemplate);
+        return (
+          Boolean(certificateTemplate) &&
+          (!isCpdAccredited || (contactHours !== '' && !isNaN(Number(contactHours)) && Number(contactHours) > 0))
+        );
       }
       if (stepId === 6) {
         return isPublishReady;
@@ -942,7 +1280,10 @@ export const CreateCoursePage: React.FC = () => {
       title,
       description,
       category,
+      customCategory,
       difficultyLevel,
+      language,
+      outcomes,
       format,
       thumbnailPreview,
       thumbnailS3Key,
@@ -950,6 +1291,8 @@ export const CreateCoursePage: React.FC = () => {
       modules,
       basePrice,
       certificateTemplate,
+      isCpdAccredited,
+      contactHours,
       isPublishReady,
     ]
   );
@@ -958,32 +1301,40 @@ export const CreateCoursePage: React.FC = () => {
   // Requirements:
   // 1. Tick should ONLY show when the user is done filling that step AND is in another form (never while actively on that step)
   // 2. Upcoming/unvisited steps must NOT show ticks
+  // 3. All prior steps must also be fully valid before showing a tick
   const isStepDone = useCallback(
     (stepId: StepId): boolean => {
       // Current step being worked on must never show a checkmark (shows its step number in active state)
       if (currentStep === stepId) return false;
 
-      // Has been explicitly completed during this editing flow
-      if (completedSteps.has(stepId)) return true;
+      // The step content itself must be valid
+      if (!isStepContentValid(stepId)) return false;
 
-      // Or if previous steps were already completed and validated
-      if (stepId < currentStep && isStepContentValid(stepId)) return true;
+      // Strict prerequisite: ALL previous steps up to this step must also be fully valid!
+      for (let s = 1; s < stepId; s++) {
+        if (!isStepContentValid(s as StepId)) return false;
+      }
 
-      return false;
+      // Has been explicitly completed during this editing flow or prior to current step
+      return completedSteps.has(stepId) || stepId < currentStep;
     },
     [currentStep, completedSteps, isStepContentValid]
   );
 
   // Save Draft Action
   const handleSaveDraft = async () => {
-    const activeId = await ensureDraftCourse();
-    if (!activeId) return;
-
+    if (isNavigatingNext || isSavingDraft) return;
+    setIsSavingDraft(true);
     try {
+      const activeId = await ensureDraftCourse();
+      if (!activeId) return;
+
       await flushSave();
       toast.success('Course draft saved.', { icon: '💾' });
     } catch (err: any) {
       toast.error(err?.message || 'Failed to save draft.');
+    } finally {
+      setIsSavingDraft(false);
     }
   };
 
@@ -999,11 +1350,11 @@ export const CreateCoursePage: React.FC = () => {
   // Final Publish Handler
   const handlePublishCourse = async () => {
     if (!courseId) return;
-    setIsPublishModalOpen(false);
 
     try {
       await flushSave();
       await publishMutation.mutateAsync(courseId);
+      setIsPublishModalOpen(false);
       toast.success('Course published successfully! Your curriculum is now live.', {
         duration: 4000,
         icon: '🎉',
@@ -1054,6 +1405,16 @@ export const CreateCoursePage: React.FC = () => {
     }
     return 'bg-slate-50 text-slate-500 border-slate-200 font-medium';
   }, [builderData?.status, autosaveStatus, courseId]);
+
+  if (routeCourseId && isBuilderLoading && !builderData) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-200">
+        <Spinner size={40} className="mb-4" />
+        <h3 className="text-base font-bold text-[#0F172A] mb-1">Loading Course Workspace…</h3>
+        <p className="text-xs text-[#64748B]">Retrieving your course curriculum and media assets.</p>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -1109,14 +1470,24 @@ export const CreateCoursePage: React.FC = () => {
           <button
             type="button"
             onClick={handleSaveDraft}
-            className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 text-xs font-bold bg-white text-[#334155] border border-[#CBD5E1] hover:border-[#0047CC] hover:text-[#0047CC] hover:bg-[#F8FAFC] rounded-full transition-all cursor-pointer shadow-2xs"
+            disabled={isSavingDraft || isNavigatingNext}
+            className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 text-xs font-bold bg-white text-[#334155] border border-[#CBD5E1] hover:border-[#0047CC] hover:text-[#0047CC] hover:bg-[#F8FAFC] disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-all cursor-pointer shadow-2xs"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-              <polyline points="17 21 17 13 7 13 7 21" />
-              <polyline points="7 3 7 8 15 8" />
-            </svg>
-            Save Draft
+            {isSavingDraft ? (
+              <>
+                <Spinner size={14} className="text-[#0047CC]" />
+                Saving…
+              </>
+            ) : (
+              <>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                  <polyline points="17 21 17 13 7 13 7 21" />
+                  <polyline points="7 3 7 8 15 8" />
+                </svg>
+                Save Draft
+              </>
+            )}
           </button>
 
           {/* Publish Action (VORA Brand Blue) */}
@@ -1127,20 +1498,29 @@ export const CreateCoursePage: React.FC = () => {
               disabled={unpublishMutation.isPending}
               className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-1.5 text-xs font-bold bg-slate-700 hover:bg-slate-800 text-white rounded-full transition-all cursor-pointer shadow-xs"
             >
-              Unpublish
+              {unpublishMutation.isPending ? 'Unpublishing…' : 'Unpublish'}
             </button>
           ) : (
             <button
               type="button"
               onClick={handleOpenPublish}
-              disabled={!isPublishReady}
+              disabled={!isPublishReady || publishMutation.isPending}
               className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-1.5 text-xs font-bold bg-[#0047CC] hover:bg-[#0037a3] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-full transition-all cursor-pointer shadow-xs active:scale-[0.98]"
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M22 2L11 13" />
-                <path d="M22 2L15 22 11 13 2 9l20-7z" />
-              </svg>
-              Publish Course
+              {publishMutation.isPending ? (
+                <>
+                  <Spinner size={14} className="text-white border-white/20 border-t-white" />
+                  <span>Publishing…</span>
+                </>
+              ) : (
+                <>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 2L11 13" />
+                    <path d="M22 2L15 22 11 13 2 9l20-7z" />
+                  </svg>
+                  Publish Course
+                </>
+              )}
             </button>
           )}
         </div>
@@ -1415,16 +1795,53 @@ export const CreateCoursePage: React.FC = () => {
                         helperText={formErrors.category}
                         className="!py-2.5 !rounded-xl !border-[#CBD5E1] text-sm text-[#0F172A]"
                         onChange={(e) => {
-                          setCategory(e.target.value);
-                          if (formErrors.category) {
+                          const val = e.target.value;
+                          setCategory(val);
+                          if (val !== 'Others') {
+                            setCustomCategory('');
+                          }
+                          if (formErrors.category || formErrors.customCategory) {
                             setFormErrors((prev) => {
                               const copy = { ...prev };
                               delete copy.category;
+                              delete copy.customCategory;
                               return copy;
                             });
                           }
                         }}
                       />
+                      {category === 'Others' && (
+                        <div className="mt-2.5 animate-in fade-in duration-200">
+                          <label className="block text-xs font-semibold text-[#475569] mb-1">
+                            Customized Category <span className="text-[#0047CC]">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Enter your customized category name…"
+                            value={customCategory}
+                            onChange={(e) => {
+                              setCustomCategory(e.target.value);
+                              if (formErrors.customCategory) {
+                                setFormErrors((prev) => {
+                                  const copy = { ...prev };
+                                  delete copy.customCategory;
+                                  return copy;
+                                });
+                              }
+                            }}
+                            className={`w-full px-3.5 py-2.5 text-sm rounded-xl border ${
+                              formErrors.customCategory
+                                ? 'border-rose-500 focus:ring-rose-200'
+                                : 'border-[#CBD5E1] focus:border-[#0047CC] focus:ring-[#0047CC]/15'
+                            } bg-white text-[#0F172A] outline-none transition-all placeholder:text-[#94A3B8]`}
+                          />
+                          {formErrors.customCategory && (
+                            <p className="text-xs text-rose-600 font-semibold mt-1">
+                              {formErrors.customCategory}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div>
@@ -1648,10 +2065,10 @@ export const CreateCoursePage: React.FC = () => {
                 </div>
 
                 {/* Media Uploads */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 items-stretch">
                   {/* Thumbnail */}
-                  <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-xs">
-                    <label className="block text-xs font-bold text-[#1E293B] mb-2">
+                  <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-xs flex flex-col h-full">
+                    <label className="block text-xs font-bold text-[#1E293B] mb-2 shrink-0">
                       Course Cover Thumbnail <span className="text-[#0047CC]">*</span>
                     </label>
                     <input
@@ -1662,17 +2079,48 @@ export const CreateCoursePage: React.FC = () => {
                       onChange={handleThumbnailSelect}
                     />
                     <div
-                      onClick={() => thumbnailInputRef.current?.click()}
-                      className="border-2 border-dashed border-[#CBD5E1] hover:border-[#0047CC] hover:bg-[#F0F6FF] rounded-xl p-6 text-center cursor-pointer transition-all bg-[#F8FAFC]"
+                      onClick={() => !isUploadingThumbnail && thumbnailInputRef.current?.click()}
+                      className={`flex-1 min-h-[220px] border-2 border-dashed rounded-xl p-5 text-center transition-all bg-[#F8FAFC] flex flex-col items-center justify-center ${
+                        isUploadingThumbnail
+                          ? 'border-[#0047CC]/50 bg-[#F0F6FF]/60 cursor-wait'
+                          : 'border-[#CBD5E1] hover:border-[#0047CC] hover:bg-[#F0F6FF] cursor-pointer'
+                      }`}
                     >
-                      {thumbnailPreview ? (
-                        <div>
+                      {isUploadingThumbnail ? (
+                        <div className="w-full py-2 flex flex-col items-center justify-center animate-in fade-in duration-200">
+                          <div className="w-12 h-12 bg-[#EBF6FF] text-[#0047CC] rounded-xl flex items-center justify-center mx-auto mb-2.5 shadow-2xs">
+                            <Spinner size={24} className="text-[#0047CC]" />
+                          </div>
+                          <div className="text-xs font-bold text-[#0F172A] truncate max-w-[240px] mb-1">
+                            {thumbnailFileName || 'Uploading banner…'}
+                          </div>
+                          <div className="text-[11px] font-semibold text-[#0047CC]">
+                            <span>
+                              {thumbnailUploadProgress >= 100
+                                ? 'Processing image on server…'
+                                : `Uploading banner… ${thumbnailUploadProgress}%`}
+                            </span>
+                          </div>
+                          <div className="w-full max-w-[240px] bg-[#E2E8F0] h-2 rounded-full mt-3 overflow-hidden">
+                            <div
+                              className="bg-[#0047CC] h-full rounded-full transition-all duration-200 ease-out"
+                              style={{ width: `${Math.max(thumbnailUploadProgress, 5)}%` }}
+                            />
+                          </div>
+                        </div>
+                      ) : thumbnailPreview ? (
+                        <div className="w-full flex flex-col items-center justify-center">
                           <img
                             src={thumbnailPreview}
                             alt="Course thumbnail"
-                            className="w-full h-32 object-cover rounded-lg mb-2 shadow-2xs"
+                            className="w-full max-h-32 object-cover rounded-lg mb-2 shadow-2xs"
+                            onError={(e) => {
+                              if (thumbnailS3Key && !thumbnailPreview.includes('blob:')) {
+                                (e.currentTarget as HTMLImageElement).src = getMediaUrl(thumbnailS3Key);
+                              }
+                            }}
                           />
-                          <div className="text-xs font-semibold text-[#0F172A] truncate">
+                          <div className="text-xs font-semibold text-[#0F172A] truncate max-w-[240px]">
                             {thumbnailFileName || 'Cover image attached'}
                           </div>
                           <span className="text-[11px] text-[#0047CC] font-bold underline mt-1 inline-block">
@@ -1680,7 +2128,7 @@ export const CreateCoursePage: React.FC = () => {
                           </span>
                         </div>
                       ) : (
-                        <div>
+                        <div className="w-full flex flex-col items-center justify-center">
                           <div className="w-12 h-12 bg-[#EBF6FF] text-[#0047CC] rounded-xl flex items-center justify-center mx-auto mb-2.5">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -1696,8 +2144,8 @@ export const CreateCoursePage: React.FC = () => {
                   </div>
 
                   {/* Promo Video */}
-                  <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-xs">
-                    <label className="block text-xs font-bold text-[#1E293B] mb-2">
+                  <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-xs flex flex-col h-full">
+                    <label className="block text-xs font-bold text-[#1E293B] mb-2 shrink-0">
                       Promotional Teaser Video
                     </label>
                     <input
@@ -1708,23 +2156,58 @@ export const CreateCoursePage: React.FC = () => {
                       onChange={handlePromoVideoSelect}
                     />
                     <div
-                      onClick={() => promoVideoInputRef.current?.click()}
-                      className="border-2 border-dashed border-[#CBD5E1] hover:border-[#0047CC] hover:bg-[#F0F6FF] rounded-xl p-6 text-center cursor-pointer transition-all bg-[#F8FAFC]"
+                      onClick={() => !isUploadingPromoVideo && promoVideoInputRef.current?.click()}
+                      className={`flex-1 min-h-[220px] border-2 border-dashed rounded-xl p-5 text-center transition-all bg-[#F8FAFC] flex flex-col items-center justify-center ${
+                        isUploadingPromoVideo
+                          ? 'border-[#0047CC]/50 bg-[#F0F6FF]/60 cursor-wait'
+                          : 'border-[#CBD5E1] hover:border-[#0047CC] hover:bg-[#F0F6FF] cursor-pointer'
+                      }`}
                     >
-                      {promoVideoFileName || promoVideoS3Key ? (
-                        <div>
-                          <div className="w-12 h-12 bg-[#EBF6FF] text-[#0047CC] rounded-xl flex items-center justify-center mx-auto mb-2.5 font-bold">
-                            🎬
+                      {isUploadingPromoVideo ? (
+                        <div className="w-full py-2 flex flex-col items-center justify-center animate-in fade-in duration-200">
+                          <div className="w-12 h-12 bg-[#EBF6FF] text-[#0047CC] rounded-xl flex items-center justify-center mx-auto mb-2.5 shadow-2xs">
+                            <Spinner size={24} className="text-[#0047CC]" />
                           </div>
-                          <div className="text-xs font-bold text-[#0F172A] truncate mb-1">
-                            {promoVideoFileName || 'Video attached'}
+                          <div className="text-xs font-bold text-[#0F172A] truncate max-w-[240px] mb-1">
+                            {promoVideoFileName || 'Uploading promo video…'}
                           </div>
-                          <span className="text-[11px] text-[#0047CC] font-bold underline inline-block">
+                          <div className="text-[11px] font-semibold text-[#0047CC]">
+                            <span>
+                              {promoVideoUploadProgress >= 100
+                                ? 'Processing video on server…'
+                                : `Uploading video… ${promoVideoUploadProgress}%`}
+                            </span>
+                          </div>
+                          <div className="w-full max-w-[240px] bg-[#E2E8F0] h-2 rounded-full mt-3 overflow-hidden">
+                            <div
+                              className="bg-[#0047CC] h-full rounded-full transition-all duration-200 ease-out"
+                              style={{ width: `${Math.max(promoVideoUploadProgress, 5)}%` }}
+                            />
+                          </div>
+                        </div>
+                      ) : promoVideoPreview || promoVideoS3Key ? (
+                        <div className="w-full flex flex-col items-center justify-center">
+                          <div
+                            className="w-full max-h-32 rounded-lg overflow-hidden mb-2 bg-slate-900 shadow-2xs flex items-center justify-center relative"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <video
+                              src={promoVideoPreview || (promoVideoS3Key ? getMediaUrl(promoVideoS3Key) : '')}
+                              controls
+                              playsInline
+                              preload="metadata"
+                              className="w-full max-h-32 object-contain rounded-lg"
+                            />
+                          </div>
+                          <div className="text-xs font-semibold text-[#0F172A] truncate max-w-[240px]">
+                            {promoVideoFileName || 'Promotional teaser attached'}
+                          </div>
+                          <span className="text-[11px] text-[#0047CC] font-bold underline mt-1 inline-block">
                             Change video
                           </span>
                         </div>
                       ) : (
-                        <div>
+                        <div className="w-full flex flex-col items-center justify-center">
                           <div className="w-12 h-12 bg-[#EBF6FF] text-[#0047CC] rounded-xl flex items-center justify-center mx-auto mb-2.5">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <polygon points="23 7 16 12 23 17 23 7" />
@@ -1763,10 +2246,10 @@ export const CreateCoursePage: React.FC = () => {
                   {modules.map((mod, modIdx) => (
                     <div
                       key={mod.id}
-                      className="bg-white border border-[#CBD5E1] rounded-2xl overflow-hidden shadow-xs"
+                      className="bg-white border border-[#CBD5E1] rounded-2xl shadow-xs"
                     >
                       {/* Module Header */}
-                      <div className="flex items-center gap-3 px-5 py-4 bg-[#F8FAFC] border-b border-[#E2E8F0]">
+                      <div className="flex items-center gap-3 px-5 py-4 bg-[#F8FAFC] border-b border-[#E2E8F0] rounded-t-2xl">
                         <span className="text-xs font-mono font-bold text-[#0047CC] bg-[#EBF6FF] px-2 py-0.5 rounded-md">
                           0{modIdx + 1}
                         </span>
@@ -1910,13 +2393,23 @@ export const CreateCoursePage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleAddLesson(mod.id)}
-                          className="w-full mt-2 flex items-center justify-center gap-1.5 py-2.5 px-3 border border-dashed border-[#CBD5E1] hover:border-[#0047CC] hover:bg-[#F0F6FF] text-[#64748B] hover:text-[#0047CC] rounded-xl text-xs font-bold transition-all cursor-pointer"
+                          disabled={addingLessonModuleId === mod.id}
+                          className="w-full mt-2 flex items-center justify-center gap-1.5 py-2.5 px-3 border border-dashed border-[#CBD5E1] hover:border-[#0047CC] hover:bg-[#F0F6FF] disabled:opacity-60 text-[#64748B] hover:text-[#0047CC] rounded-xl text-xs font-bold transition-all cursor-pointer"
                         >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <line x1="12" y1="5" x2="12" y2="19" />
-                            <line x1="5" y1="12" x2="19" y2="12" />
-                          </svg>
-                          Add Lesson
+                          {addingLessonModuleId === mod.id ? (
+                            <>
+                              <Spinner size={14} className="text-[#0047CC]" />
+                              <span>Adding Lesson…</span>
+                            </>
+                          ) : (
+                            <>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                              </svg>
+                              <span>Add Lesson</span>
+                            </>
+                          )}
                         </button>
                       </div>
                     </div>
@@ -1930,13 +2423,23 @@ export const CreateCoursePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleAddModule}
-                  className="w-full py-3.5 px-4 border-2 border-dashed border-[#CBD5E1] hover:border-[#0047CC] hover:bg-[#F0F6FF] text-[#475569] hover:text-[#0047CC] rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  disabled={isAddingModule}
+                  className="w-full py-3.5 px-4 border-2 border-dashed border-[#CBD5E1] hover:border-[#0047CC] hover:bg-[#F0F6FF] disabled:opacity-60 disabled:cursor-not-allowed text-[#475569] hover:text-[#0047CC] rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                  Add New Curriculum Module
+                  {isAddingModule ? (
+                    <>
+                      <Spinner size={16} className="text-[#0047CC]" />
+                      <span>Adding Curriculum Module…</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      <span>Add New Curriculum Module</span>
+                    </>
+                  )}
                 </button>
               </div>
             )}
@@ -2316,7 +2819,7 @@ export const CreateCoursePage: React.FC = () => {
                     </div>
 
                     <div className="space-y-2 text-xs">
-                      {(backendChecklist?.items || [
+                      {(builderData?.publishChecklist?.items || [
                         {
                           key: 'title',
                           label: 'Course title configured (min 3 characters)',
@@ -2347,38 +2850,55 @@ export const CreateCoursePage: React.FC = () => {
                           passed: parsedPrice >= 0,
                           stepNumber: 4,
                         },
-                      ]).map((item, i) => (
-                        <div
-                          key={item.key || i}
-                          className="flex items-center justify-between py-2 border-b border-[#F1F5F9] last:border-b-0"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <span
-                              className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                                item.passed
-                                  ? 'bg-[#0047CC] text-white'
-                                  : 'border border-[#CBD5E1] text-transparent'
-                              }`}
-                            >
-                              {item.passed ? '✓' : ''}
-                            </span>
-                            <span
-                              className={item.passed ? 'text-[#0F172A] font-semibold' : 'text-[#64748B]'}
-                            >
-                              {item.label}
-                            </span>
+                      ]).map((item: any, i: number) => {
+                        const labelLower = (item.label || '').toLowerCase();
+                        const isPassed = Boolean(
+                          item.passed ||
+                          (item as any).isPassed ||
+                          (item as any).completed ||
+                          (item as any).status === 'PASSED' ||
+                          (labelLower.includes('title') && title.trim().length >= 3) ||
+                          (labelLower.includes('description') && description.trim().length >= 20) ||
+                          (labelLower.includes('format') && Boolean(format)) ||
+                          (labelLower.includes('category') && Boolean(category)) ||
+                          (labelLower.includes('difficulty') && Boolean(difficultyLevel)) ||
+                          (labelLower.includes('module') && modules.length > 0 && modules.some((m) => (m.lessons || []).length > 0)) ||
+                          (labelLower.includes('pricing') && basePrice !== '' && !isNaN(Number(basePrice)) && Number(basePrice) >= 0) ||
+                          (labelLower.includes('thumbnail') && Boolean(thumbnailPreview || thumbnailS3Key || builderData?.coverImageS3Key))
+                        );
+
+                        const stepNum = item.stepNumber || (
+                          labelLower.includes('title') || labelLower.includes('description') || labelLower.includes('category') || labelLower.includes('difficulty') ? 1 :
+                          labelLower.includes('format') || labelLower.includes('thumbnail') ? 2 :
+                          labelLower.includes('module') || labelLower.includes('lesson') ? 3 :
+                          labelLower.includes('pricing') ? 4 :
+                          labelLower.includes('certificate') ? 5 : 1
+                        );
+
+                        return (
+                          <div
+                            key={item.key || i}
+                            className="flex items-center justify-between py-2.5 border-b border-[#F1F5F9] last:border-b-0"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <span
+                                className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                  isPassed
+                                    ? 'bg-[#0047CC] text-white shadow-2xs'
+                                    : 'border border-[#CBD5E1] text-transparent'
+                                }`}
+                              >
+                                {isPassed ? '✓' : ''}
+                              </span>
+                              <span
+                                className={isPassed ? 'text-[#0F172A] font-semibold' : 'text-[#64748B]'}
+                              >
+                                {item.label}
+                              </span>
+                            </div>
                           </div>
-                          {!item.passed && item.stepNumber && (
-                            <button
-                              type="button"
-                              onClick={() => changeStep(item.stepNumber as StepId)}
-                              className="text-[11px] font-bold text-[#0047CC] hover:underline"
-                            >
-                              Jump to Step {item.stepNumber} →
-                            </button>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -2411,35 +2931,50 @@ export const CreateCoursePage: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2.5">
-              <button
-                type="button"
+              <Button
+                variant="outline"
+                fullWidth={false}
+                pill={true}
                 onClick={handleSaveDraft}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-white text-[#334155] border border-[#CBD5E1] hover:border-[#0047CC] hover:text-[#0047CC] rounded-full transition-all cursor-pointer shadow-2xs"
+                isLoading={isSavingDraft}
+                loadingLabel="Saving Draft…"
+                disabled={isSavingDraft || isNavigatingNext}
+                className="px-4 min-h-[38px] text-xs font-bold border-[#CBD5E1] text-[#334155] hover:border-[#0047CC] hover:text-[#0047CC] bg-white cursor-pointer shadow-2xs"
               >
                 Save Draft
-              </button>
+              </Button>
 
               {currentStep < 6 ? (
-                <button
-                  type="button"
+                <Button
                   onClick={handleNextStep}
-                  className="inline-flex items-center gap-1.5 px-6 py-2.5 text-xs font-bold bg-[#0047CC] hover:bg-[#0037a3] text-white rounded-full transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+                  isLoading={isNavigatingNext}
+                  loadingLabel="Proceeding…"
+                  disabled={isNavigatingNext || isSavingDraft}
+                  fullWidth={false}
+                  pill={true}
+                  className="px-6 min-h-[38px] bg-[#0047CC] hover:bg-[#0037a3] text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98]"
                 >
                   <span>Continue</span>
-                </button>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </Button>
               ) : (
-                <button
-                  type="button"
+                <Button
                   onClick={handleOpenPublish}
-                  disabled={!isPublishReady}
-                  className="inline-flex items-center gap-1.5 px-6 py-2.5 text-xs font-bold bg-[#0047CC] hover:bg-[#0037a3] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-full transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+                  isLoading={publishMutation.isPending}
+                  loadingLabel="Publishing…"
+                  disabled={!isPublishReady || isNavigatingNext || isSavingDraft || publishMutation.isPending}
+                  fullWidth={false}
+                  pill={true}
+                  className="px-6 min-h-[38px] bg-[#0047CC] hover:bg-[#0037a3] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98]"
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M22 2L11 13" />
                     <path d="M22 2L15 22 11 13 2 9l20-7z" />
                   </svg>
-                  Publish Course
-                </button>
+                  <span>Publish Course</span>
+                </Button>
               )}
             </div>
           </div>
@@ -2646,9 +3181,16 @@ export const CreateCoursePage: React.FC = () => {
                 type="button"
                 disabled={!isPublishReady || publishMutation.isPending}
                 onClick={handlePublishCourse}
-                className="px-5 py-2 text-xs font-bold bg-[#0047CC] hover:bg-[#0037a3] disabled:opacity-50 text-white rounded-full transition-all cursor-pointer shadow-xs"
+                className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold bg-[#0047CC] hover:bg-[#0037a3] disabled:opacity-50 text-white rounded-full transition-all cursor-pointer shadow-xs"
               >
-                {publishMutation.isPending ? 'Publishing…' : 'Confirm & Publish'}
+                {publishMutation.isPending ? (
+                  <>
+                    <Spinner size={14} className="text-white border-white/20 border-t-white" />
+                    <span>Publishing…</span>
+                  </>
+                ) : (
+                  'Confirm & Publish'
+                )}
               </button>
             </div>
           </div>
@@ -2680,13 +3222,23 @@ export const CreateCoursePage: React.FC = () => {
               </button>
             </div>
 
-            {thumbnailPreview && (
+            {promoVideoPreview || promoVideoS3Key ? (
+              <div className="w-full h-48 rounded-2xl mb-4 overflow-hidden bg-slate-900 shadow-xs flex items-center justify-center">
+                <video
+                  src={promoVideoPreview || (promoVideoS3Key ? getMediaUrl(promoVideoS3Key) : '')}
+                  poster={thumbnailPreview || (thumbnailS3Key ? getMediaUrl(thumbnailS3Key) : undefined)}
+                  controls
+                  playsInline
+                  className="w-full h-48 object-cover"
+                />
+              </div>
+            ) : thumbnailPreview || thumbnailS3Key ? (
               <img
-                src={thumbnailPreview}
+                src={thumbnailPreview || (thumbnailS3Key ? getMediaUrl(thumbnailS3Key) : '')}
                 alt="Course preview"
                 className="w-full h-48 object-cover rounded-2xl mb-4 shadow-xs"
               />
-            )}
+            ) : null}
 
             <div className="space-y-4">
               <div>

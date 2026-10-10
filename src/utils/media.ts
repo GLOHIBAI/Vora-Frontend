@@ -9,8 +9,7 @@ const MEDIA_BASE_URL = (
   ''
 ).replace(/\/+$/, '');
 
-export const DEFAULT_COURSE_BANNER =
-  'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=1200&auto=format&fit=crop';
+export const DEFAULT_COURSE_BANNER = '';
 
 export const DEFAULT_MENTOR_AVATAR =
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop';
@@ -34,6 +33,19 @@ export function getMediaUrl(s3Key?: string | null, fallback?: string): string {
   const cleanKey = trimmed.replace(/^\/+/, '');
   if (MEDIA_BASE_URL) {
     return `${MEDIA_BASE_URL}/${cleanKey}`;
+  }
+
+  // Cloudinary relative key or version detection
+  if (cleanKey.startsWith('image/upload/') || cleanKey.startsWith('video/upload/')) {
+    return `https://res.cloudinary.com/mllr6ffc/${cleanKey}`;
+  }
+  if (/^v\d{6,}\//.test(cleanKey)) {
+    return `https://res.cloudinary.com/mllr6ffc/upload/${cleanKey}`;
+  }
+
+  // Local backend uploads folder path
+  if (cleanKey.startsWith('uploads/')) {
+    return `/${cleanKey}`;
   }
 
   // Fallback to S3 bucket pattern

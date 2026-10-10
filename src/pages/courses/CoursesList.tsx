@@ -24,6 +24,7 @@ import {
   DEFAULT_COURSE_BANNER,
   DEFAULT_MENTOR_AVATAR,
 } from '../../utils/media';
+import Select from '../../components/common/Select';
 
 type TabType = 'ongoing' | 'completed' | 'recommended';
 type CoursePillFilter = 'ALL' | 'PUBLISHED' | 'DRAFT' | 'LIVE';
@@ -35,6 +36,19 @@ const SORT_OPTIONS_MAP: Record<SortOption, string> = {
   rating: 'Highest Rated',
   title: 'Alphabetical (A-Z)',
 };
+
+const ENROLL_COUNTRY_OPTIONS = [
+  { value: 'US', label: 'United States (US)' },
+  { value: 'GB', label: 'United Kingdom (GB)' },
+  { value: 'CA', label: 'Canada (CA)' },
+  { value: 'NG', label: 'Nigeria (NG)' },
+  { value: 'GH', label: 'Ghana (GH)' },
+  { value: 'KE', label: 'Kenya (KE)' },
+  { value: 'ZA', label: 'South Africa (ZA)' },
+  { value: 'IN', label: 'India (IN)' },
+  { value: 'DE', label: 'Germany (DE)' },
+  { value: 'FR', label: 'France (FR)' },
+];
 
 const CoursesList: React.FC = () => {
   const navigate = useNavigate();
@@ -261,7 +275,7 @@ const CoursesList: React.FC = () => {
               const courseId = enrollment.course?.id || enrollment.courseId || '';
               const mentorName = enrollment.mentor?.displayName || enrollment.mentor?.name || 'Course Instructor';
               const mentorPhoto = getMediaUrl(enrollment.mentor?.photoS3Key || enrollment.mentor?.avatarUrl, DEFAULT_MENTOR_AVATAR);
-              const courseBanner = getMediaUrl(enrollment.course?.thumbnailS3Key || enrollment.thumbnailUrl, DEFAULT_COURSE_BANNER);
+              const courseBanner = getMediaUrl(enrollment.course?.thumbnailS3Key || (enrollment.course as any)?.coverImageS3Key || enrollment.thumbnailUrl);
               const continueHref = enrollment.cta?.continueLearning?.hrefHint || enrollment.cta?.resumeLesson?.href || `/courses/${courseId}`;
 
               return (
@@ -383,7 +397,7 @@ const CoursesList: React.FC = () => {
               const courseTitle = enrollment.course?.title || enrollment.title || 'Completed Course';
               const courseId = enrollment.course?.id || enrollment.courseId || '';
               const mentorName = enrollment.mentor?.displayName || enrollment.mentor?.name || 'Instructor';
-              const courseBanner = getMediaUrl(enrollment.course?.thumbnailS3Key || enrollment.thumbnailUrl, DEFAULT_COURSE_BANNER);
+              const courseBanner = getMediaUrl(enrollment.course?.thumbnailS3Key || (enrollment.course as any)?.coverImageS3Key || enrollment.thumbnailUrl);
 
               return (
                 <div
@@ -663,7 +677,7 @@ const CoursesList: React.FC = () => {
           {!isLoadingRecommended && !recommendedError && viewMode === 'list' && displayCourses.length > 0 && (
             <div className="space-y-4">
               {displayCourses.map((course) => {
-                const banner = getMediaUrl(course.thumbnailS3Key || course.thumbnailUrl, DEFAULT_COURSE_BANNER);
+                const banner = getMediaUrl(course.thumbnailS3Key || (course as any).coverImageS3Key || course.thumbnailUrl);
                 const mentorName = course.mentor?.displayName || course.mentor?.name || 'Instructor';
                 const mentorPhoto = getMediaUrl(course.mentor?.photoS3Key || course.mentor?.avatarUrl, DEFAULT_MENTOR_AVATAR);
 
@@ -799,7 +813,7 @@ const CoursesList: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {masterclassCourses.map(course => {
-                  const banner = getMediaUrl(course.thumbnailS3Key || course.thumbnailUrl, DEFAULT_COURSE_BANNER);
+                  const banner = getMediaUrl(course.thumbnailS3Key || (course as any).coverImageS3Key || course.thumbnailUrl);
                   const mentorName = course.mentor?.displayName || course.mentor?.name || 'Domain Expert';
 
                   return (
@@ -845,7 +859,7 @@ const CoursesList: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {(catalogCourses.length > 0 ? catalogCourses : masterclassCourses).map(course => {
-                    const banner = getMediaUrl(course.thumbnailS3Key || course.thumbnailUrl, DEFAULT_COURSE_BANNER);
+                    const banner = getMediaUrl(course.thumbnailS3Key || (course as any).coverImageS3Key || course.thumbnailUrl);
                     const mentorName = course.mentor?.displayName || course.mentor?.name || 'Instructor';
 
                     return (
@@ -961,7 +975,7 @@ const CoursesList: React.FC = () => {
             {/* Video Banner */}
             <div className="relative h-44 sm:h-52 w-full bg-gray-900 shrink-0 overflow-hidden">
               <img
-                src={getMediaUrl(previewCourse.thumbnailS3Key || previewCourse.thumbnailUrl, DEFAULT_COURSE_BANNER)}
+                src={getMediaUrl(previewCourse.thumbnailS3Key || (previewCourse as any).coverImageS3Key || previewCourse.thumbnailUrl)}
                 alt={previewCourse.title}
                 className="w-full h-full object-cover opacity-90"
               />
@@ -1096,31 +1110,19 @@ const CoursesList: React.FC = () => {
               <div className="space-y-2">
                 <label className="text-[13px] font-bold text-gray-900">Country of Residence</label>
                 <p className="text-[11px] text-gray-400">Used to localize your learning path and certificate</p>
-                <select
+                <Select
+                  hideLabel
+                  placeholder="Select country..."
                   value={selectedCountry}
-                  onChange={e => {
+                  onChange={(e) => {
                     setSelectedCountry(e.target.value);
                     if (countryError) setCountryError('');
                   }}
-                  className={`w-full px-4 py-2.5 rounded-[12px] border text-[13px] focus:outline-none bg-white cursor-pointer transition-colors ${
-                    countryError ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#0052CC]'
-                  }`}
-                >
-                  <option value="">Select country...</option>
-                  <option value="US">United States (US)</option>
-                  <option value="GB">United Kingdom (GB)</option>
-                  <option value="CA">Canada (CA)</option>
-                  <option value="NG">Nigeria (NG)</option>
-                  <option value="GH">Ghana (GH)</option>
-                  <option value="KE">Kenya (KE)</option>
-                  <option value="ZA">South Africa (ZA)</option>
-                  <option value="IN">India (IN)</option>
-                  <option value="DE">Germany (DE)</option>
-                  <option value="FR">France (FR)</option>
-                </select>
-                {countryError && (
-                  <p className="text-[11px] text-red-500 font-medium">{countryError}</p>
-                )}
+                  options={ENROLL_COUNTRY_OPTIONS}
+                  error={Boolean(countryError)}
+                  helperText={countryError}
+                  className="!py-2.5 !rounded-[12px] text-[13px] bg-white cursor-pointer"
+                />
               </div>
 
               {/* Submit Button */}

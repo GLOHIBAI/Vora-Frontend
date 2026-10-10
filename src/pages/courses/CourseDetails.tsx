@@ -20,13 +20,29 @@ import {
   useProgressMutation 
 } from '../../services/queries/courses';
 import type { 
-  CourseLesson 
+  CourseLesson,
+  CourseDetail,
+  MyEnrollmentInfo,
 } from '../../types/courses';
 import {
   getMediaUrl,
   DEFAULT_COURSE_BANNER,
   DEFAULT_MENTOR_AVATAR,
 } from '../../utils/media';
+import Select from '../../components/common/Select';
+
+const ENROLL_COUNTRY_OPTIONS = [
+  { value: 'US', label: 'United States (US)' },
+  { value: 'GB', label: 'United Kingdom (GB)' },
+  { value: 'CA', label: 'Canada (CA)' },
+  { value: 'NG', label: 'Nigeria (NG)' },
+  { value: 'GH', label: 'Ghana (GH)' },
+  { value: 'KE', label: 'Kenya (KE)' },
+  { value: 'ZA', label: 'South Africa (ZA)' },
+  { value: 'IN', label: 'India (IN)' },
+  { value: 'DE', label: 'Germany (DE)' },
+  { value: 'FR', label: 'France (FR)' },
+];
 
 type TabType = 'overview' | 'instructor' | 'qa' | 'chapters';
 
@@ -42,8 +58,8 @@ const CourseDetails: React.FC = () => {
   const enrollMutation = useEnrollMutation();
   const progressMutation = useProgressMutation();
 
-  const course = detailData?.course;
-  const myEnrollment = detailData?.myEnrollment;
+  const course: CourseDetail | undefined = ((detailData as any)?.course || detailData) as CourseDetail | undefined;
+  const myEnrollment: MyEnrollmentInfo | null | undefined = (detailData?.myEnrollment || (detailData as any)?.course?.myEnrollment) as MyEnrollmentInfo | null | undefined;
 
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
@@ -167,7 +183,7 @@ const CourseDetails: React.FC = () => {
   const instagramLink = mentorSocial?.instagram;
   const hasSocialLinks = Boolean(xLink || linkedinLink || instagramLink);
 
-  const bannerUrl = getMediaUrl(course?.thumbnailS3Key || course?.thumbnailUrl, DEFAULT_COURSE_BANNER);
+  const bannerUrl = getMediaUrl((course as any)?.coverImageS3Key || course?.thumbnailS3Key || course?.thumbnailUrl);
   const mentorAvatar = getMediaUrl(course?.mentor?.photoS3Key || course?.mentor?.avatarUrl, DEFAULT_MENTOR_AVATAR);
   const mentorDisplayName = course?.mentor?.displayName || course?.mentor?.name || 'Mentor & Domain Expert';
   const mentorLabel = course?.mentor?.instructorLabel || course?.mentor?.headline;
@@ -820,31 +836,19 @@ const CourseDetails: React.FC = () => {
               <div className="space-y-2">
                 <label className="text-[13px] font-bold text-gray-900">Country of Residence</label>
                 <p className="text-[11px] text-gray-400">Used to localize your learning path and certificate</p>
-                <select
+                <Select
+                  hideLabel
+                  placeholder="Select country..."
                   value={selectedCountry}
-                  onChange={e => {
+                  onChange={(e) => {
                     setSelectedCountry(e.target.value);
                     if (countryError) setCountryError('');
                   }}
-                  className={`w-full px-4 py-2.5 rounded-[12px] border text-[13px] focus:outline-none bg-white cursor-pointer transition-colors ${
-                    countryError ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#0052CC]'
-                  }`}
-                >
-                  <option value="">Select country...</option>
-                  <option value="US">United States (US)</option>
-                  <option value="GB">United Kingdom (GB)</option>
-                  <option value="CA">Canada (CA)</option>
-                  <option value="NG">Nigeria (NG)</option>
-                  <option value="GH">Ghana (GH)</option>
-                  <option value="KE">Kenya (KE)</option>
-                  <option value="ZA">South Africa (ZA)</option>
-                  <option value="IN">India (IN)</option>
-                  <option value="DE">Germany (DE)</option>
-                  <option value="FR">France (FR)</option>
-                </select>
-                {countryError && (
-                  <p className="text-[11px] text-red-500 font-medium">{countryError}</p>
-                )}
+                  options={ENROLL_COUNTRY_OPTIONS}
+                  error={Boolean(countryError)}
+                  helperText={countryError}
+                  className="!py-2.5 !rounded-[12px] text-[13px] bg-white cursor-pointer"
+                />
               </div>
 
               {/* Submit Button */}

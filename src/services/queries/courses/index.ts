@@ -47,6 +47,8 @@ export const useRecommendedCourses = (params: {
 
       return res?.data;
     },
+    staleTime: 1000 * 60 * 3, // 3 min cache
+    refetchOnWindowFocus: false,
   });
 };
 
@@ -70,6 +72,8 @@ export const useEnrollments = () => {
 
       return res?.data;
     },
+    staleTime: 1000 * 60 * 2, // 2 min cache
+    refetchOnWindowFocus: false,
   });
 };
 
@@ -93,11 +97,26 @@ export const useCourseDetail = (id?: string) => {
         console.warn(`[useCourseDetail] Unexpected schemaVersion: ${res.data.schemaVersion}`);
       }
 
+      const payload = res?.data as any;
+      if (payload) {
+        const course = payload.course || payload;
+        const myEnrollment = payload.myEnrollment || payload.course?.myEnrollment || null;
+        return {
+          ...payload,
+          course,
+          myEnrollment,
+        } as CourseDetailData;
+      }
+
       return res?.data;
     },
     enabled: Boolean(id),
+    staleTime: 1000 * 60 * 5, // 5 min cache
+    refetchOnWindowFocus: false,
   });
 };
+
+export const useCourseDetails = useCourseDetail;
 
 /**
  * Mutation to enroll talent into a course.
@@ -187,6 +206,8 @@ export const useInstructorHub = () => {
 
       return res?.data;
     },
+    staleTime: 1000 * 60 * 2, // 2 min cache
+    refetchOnWindowFocus: false,
   });
 };
 

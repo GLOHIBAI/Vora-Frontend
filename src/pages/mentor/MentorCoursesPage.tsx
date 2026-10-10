@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   PlusIcon,
@@ -9,17 +9,18 @@ import {
   SearchIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ChevronDownIcon,
+  CheckIcon,
+  GridIcon,
+  ListIcon,
+  CloseIcon,
 } from '../../components/common/Icons';
 import Spinner from '../../components/common/Spinner';
 import Button from '../../components/common/Button';
-import Input from '../../components/common/Input';
-import Select from '../../components/common/Select';
-import Textarea from '../../components/common/Textarea';
-import ModalDialog from '../../components/common/ModalDialog';
+import Tag from '../../components/common/Tag';
 import { toast } from 'react-hot-toast';
 import {
   useInstructorHub,
-  useCreateCourseMutation,
   usePublishCourseMutation,
   useUnpublishCourseMutation,
   useDeleteCourseMutation,
@@ -37,20 +38,44 @@ import {
 
 interface MentorCoursesPageProps {}
 
+type CoursePillFilter = 'ALL' | 'PUBLISHED' | 'UNDER_REVIEW' | 'DRAFT' | 'LIVE';
+type SortOption = 'recent' | 'popular' | 'rating' | 'title';
+
+const SORT_OPTIONS_MAP: Record<SortOption, string> = {
+  recent: 'Most Recent',
+  popular: 'Most Popular',
+  rating: 'Highest Rated',
+  title: 'Alphabetical (A-Z)',
+};
+
 const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
   const navigate = useNavigate();
 
   // Primary API Query: GET /courses/instructor/hub
   const { data: hubData, isLoading, error } = useInstructorHub();
 
-  const createCourseMutation = useCreateCourseMutation();
   const publishMutation = usePublishCourseMutation();
   const unpublishMutation = useUnpublishCourseMutation();
   const deleteMutation = useDeleteCourseMutation();
 
   const [activeTab, setActiveTab] = useState<'my-courses' | 'students' | 'mentorship' | 'reviews'>('my-courses');
-  const [courseFilter, setCourseFilter] = useState<'ALL' | 'PUBLISHED' | 'UNDER_REVIEW' | 'DRAFT'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<CoursePillFilter>('PUBLISHED');
+  const [sortBy, setSortBy] = useState<SortOption>('recent');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const sortRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
+        setIsSortOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
 
   // Horizontal tabs scroll & chevron state
   const tabsContainerRef = useRef<HTMLDivElement>(null);
@@ -87,28 +112,6 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
     setTimeout(checkTabsScroll, 350);
   };
 
-  // Create Course Modal
-  const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
-  const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
-  const [courseForm, setCourseForm] = useState<{
-    title: string;
-    category: string;
-    level: string;
-    format: CourseFormat;
-    price: number;
-    description: string;
-    thumbnail: string;
-  }>({
-    title: '',
-    category: 'Backend & Systems',
-    level: 'Intermediate',
-    format: 'VIDEO_MASTERCLASS',
-    price: 69,
-    description: '',
-    thumbnail: '',
-  });
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-
   const courses: InstructorCourseItem[] = hubData?.myCourses || [];
   const roster: InstructorRosterItem[] = hubData?.roster || [];
   const mentorship = hubData?.mentorship || [];
@@ -116,122 +119,90 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
   const tabCounts = hubData?.tabCounts;
   const filters = hubData?.filters;
 
-  const filteredCourses = courses.filter((c) => {
-    if (courseFilter !== 'ALL' && c.status !== courseFilter) return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return (
-        c.title?.toLowerCase().includes(q) ||
-        c.category?.toLowerCase().includes(q) ||
-        c.subtitle?.toLowerCase().includes(q)
+  const filteredCourses = useMemo(() => {
+    let list = [...courses];
+
+    if (statusFilter === 'PUBLISHED') {
+      list = list.filter((c) => c.status === 'PUBLISHED');
+    } else if (statusFilter === 'DRAFT') {
+      list = list.filter((c) => c.status === 'DRAFT');
+    } else if (statusFilter === 'UNDER_REVIEW') {
+      list = list.filter((c) => c.status === 'UNDER_REVIEW');
+    } else if (statusFilter === 'LIVE') {
+      list = list.filter(
+        (c) =>
+          c.status === 'PUBLISHED' &&
+          (c.format === 'COHORT_BASED' ||
+            c.format === 'WORKSHOP_SPRINT' ||
+            (c as any).isMasterclass ||
+            (c as any).tags?.some?.((t: string) => t.toLowerCase().includes('live')))
       );
     }
-    return true;
-  });
 
-  const validateCourseForm = () => {
-    const errors: Record<string, string> = {};
-
-    const trimmedTitle = courseForm.title.trim();
-    if (!trimmedTitle) {
-      errors.title = 'Course title is required';
-    } else if (trimmedTitle.length < 3) {
-      errors.title = 'Title must be at least 3 characters long';
-    } else if (trimmedTitle.length > 120) {
-      errors.title = 'Title must not exceed 120 characters';
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(
+        (c) =>
+          c.title?.toLowerCase().includes(q) ||
+          c.category?.toLowerCase().includes(q) ||
+          c.subtitle?.toLowerCase().includes(q)
+      );
     }
 
-    if (!courseForm.category) {
-      errors.category = 'Please select a course category';
-    }
-
-    if (!courseForm.level) {
-      errors.level = 'Please select a difficulty level';
-    }
-
-    if (!courseForm.format) {
-      errors.format = 'Please select a course format';
-    }
-
-    if (isNaN(courseForm.price) || courseForm.price < 0) {
-      errors.price = 'Price must be 0 (Free) or greater';
-    } else if (courseForm.price > 10000) {
-      errors.price = 'Price cannot exceed $10,000 USD';
-    }
-
-    if (courseForm.description.trim() && courseForm.description.trim().length < 10) {
-      errors.description = 'Description should be at least 10 characters long';
-    }
-
-    if (courseForm.thumbnail.trim()) {
-      const thumb = courseForm.thumbnail.trim();
-      const isUrl = /^https?:\/\//i.test(thumb);
-      const isS3Key = /^[a-zA-Z0-9_\-./]+$/i.test(thumb);
-      if (!isUrl && !isS3Key) {
-        errors.thumbnail = 'Must be a valid URL or S3 storage key path';
+    list.sort((a, b) => {
+      if (sortBy === 'recent') {
+        const dateA = (a as any).updatedAt
+          ? new Date((a as any).updatedAt).getTime()
+          : (a as any).createdAt
+          ? new Date((a as any).createdAt).getTime()
+          : 0;
+        const dateB = (b as any).updatedAt
+          ? new Date((b as any).updatedAt).getTime()
+          : (b as any).createdAt
+          ? new Date((b as any).createdAt).getTime()
+          : 0;
+        return dateB - dateA;
       }
-    }
-
-    return errors;
-  };
-
-  const handleOpenCreateModal = () => {
-    setEditingCourseId(null);
-    setFormErrors({});
-    setCourseForm({
-      title: '',
-      category: 'Backend & Systems',
-      level: 'Intermediate',
-      format: 'VIDEO_MASTERCLASS',
-      price: 69,
-      description: '',
-      thumbnail: '',
+      if (sortBy === 'popular') {
+        return (b.students ?? 0) - (a.students ?? 0);
+      }
+      if (sortBy === 'rating') {
+        const rateA = (a as any).averageRating ?? (a as any).rating ?? 0;
+        const rateB = (b as any).averageRating ?? (b as any).rating ?? 0;
+        return rateB - rateA;
+      }
+      if (sortBy === 'title') {
+        return (a.title || '').localeCompare(b.title || '');
+      }
+      return 0;
     });
-    setIsCourseModalOpen(true);
+
+    return list;
+  }, [courses, statusFilter, searchQuery, sortBy]);
+
+  const pillFilters: CoursePillFilter[] = useMemo(() => {
+    return courses.some((c) => c.status === 'UNDER_REVIEW')
+      ? ['ALL', 'PUBLISHED', 'UNDER_REVIEW', 'DRAFT', 'LIVE']
+      : ['ALL', 'PUBLISHED', 'DRAFT', 'LIVE'];
+  }, [courses]);
+
+  const getFilterLabel = (key: CoursePillFilter) => {
+    switch (key) {
+      case 'ALL':
+        return 'All Courses';
+      case 'PUBLISHED':
+        return 'Published';
+      case 'UNDER_REVIEW':
+        return 'In Review';
+      case 'DRAFT':
+        return 'Drafts';
+      case 'LIVE':
+        return 'Live';
+    }
   };
 
-  const handleOpenEditModal = (c: InstructorCourseItem) => {
-    setEditingCourseId(c.id);
-    setFormErrors({});
-    setCourseForm({
-      title: c.title,
-      category: c.category,
-      level: c.difficultyLevel || 'Intermediate',
-      format: c.format || 'VIDEO_MASTERCLASS',
-      price: c.price || 0,
-      description: c.description || c.subtitle || '',
-      thumbnail: c.thumbnailS3Key || '',
-    });
-    setIsCourseModalOpen(true);
-  };
-
-  const handleSaveCourse = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const errors = validateCourseForm();
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      const firstError = Object.values(errors)[0];
-      toast.error(firstError);
-      return;
-    }
-    setFormErrors({});
-
-    try {
-      await createCourseMutation.mutateAsync({
-        title: courseForm.title,
-        category: courseForm.category,
-        difficultyLevel: courseForm.level,
-        format: courseForm.format,
-        tier1Price: Number(courseForm.price),
-        description: courseForm.description,
-        thumbnailS3Key: courseForm.thumbnail.trim() || null,
-      });
-
-      toast.success(editingCourseId ? 'Course updated successfully!' : 'Course draft created successfully!');
-      setIsCourseModalOpen(false);
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to save course. Please try again.');
-    }
+  const handleEditCourse = (course: InstructorCourseItem) => {
+    navigate(`/courses/${course.id}/edit`, { state: { course } });
   };
 
   const handleTogglePublish = async (course: InstructorCourseItem) => {
@@ -305,9 +276,11 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
               Course Management &amp; Mentorship Hub
             </h1>
-            <span className="bg-purple-50 text-purple-700 border border-purple-200 px-2.5 py-0.5 rounded-full text-xs font-bold shrink-0">
-              Instructor Portal
-            </span>
+            <Tag
+              variant="purple"
+              label="Instructor Portal"
+              className="font-bold shrink-0 text-xs"
+            />
           </div>
           <p className="text-xs sm:text-sm text-gray-500 mt-1">
             Author, publish, and track your instructional courses, cohorts, and student progress.
@@ -492,60 +465,148 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
       {/* ══════════════════ TAB 1: MY COURSES ══════════════════ */}
       {activeTab === 'my-courses' && (
         <div className="space-y-6">
-          {/* Filters & Search */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            {/* Filter pills */}
+          {/* ── COURSE BROWSER FEATURE TOOLBAR (All Courses | Published | Drafts | Live ... X courses | Most Recent | Grid/List) ── */}
+          <div className="bg-white border border-gray-200/90 rounded-2xl p-3 sm:p-4 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* Left: Filter Pills */}
             <div
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              className="flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-hide -mx-3.5 px-3.5 sm:mx-0 sm:px-0 py-0.5"
+              className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto no-scrollbar scrollbar-hide -mx-1 px-1 py-0.5"
             >
-              {(['ALL', 'PUBLISHED', 'UNDER_REVIEW', 'DRAFT'] as const).map((filterKey) => {
-                const count =
-                  filterKey === 'ALL'
-                    ? filters?.all ?? courses.length
-                    : filterKey === 'PUBLISHED'
-                    ? filters?.published ?? courses.filter((c) => c.status === 'PUBLISHED').length
-                    : filterKey === 'UNDER_REVIEW'
-                    ? filters?.underReview ?? courses.filter((c) => c.status === 'UNDER_REVIEW').length
-                    : filters?.drafts ?? courses.filter((c) => c.status === 'DRAFT').length;
+              {pillFilters.map((filterKey) => {
+                const label = getFilterLabel(filterKey);
+                const isActive = statusFilter === filterKey;
 
                 return (
                   <button
                     key={filterKey}
                     type="button"
-                    onClick={() => setCourseFilter(filterKey)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
-                      courseFilter === filterKey
-                        ? 'bg-[#0047CC] text-white'
-                        : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                    onClick={() => setStatusFilter(filterKey)}
+                    className={`px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-medium transition-all cursor-pointer shrink-0 ${
+                      isActive
+                        ? 'bg-[#0047CC] text-white shadow-xs font-semibold'
+                        : 'bg-white border border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300'
                     }`}
                   >
-                    {filterKey === 'ALL'
-                      ? `All (${count})`
-                      : filterKey === 'PUBLISHED'
-                      ? `Published (${count})`
-                      : filterKey === 'UNDER_REVIEW'
-                      ? `In Review (${count})`
-                      : `Drafts (${count})`}
+                    {label}
                   </button>
                 );
               })}
             </div>
 
-            {/* Search */}
-            <div className="relative w-full sm:w-64">
-              <SearchIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search your courses..."
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 focus:outline-none focus:border-[#0047CC]"
-              />
+            {/* Right: Counter + Sort Dropdown + Search + Grid/List View Toggle */}
+            <div className="flex items-center justify-between md:justify-end gap-3 sm:gap-4 shrink-0">
+              <span className="text-xs sm:text-sm text-gray-500 font-medium whitespace-nowrap">
+                {filteredCourses.length} {filteredCourses.length === 1 ? 'course' : 'courses'}
+              </span>
+
+              {/* Sort Selector Dropdown */}
+              <div className="relative" ref={sortRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsSortOpen(!isSortOpen)}
+                  className="px-3.5 sm:px-4 py-2 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 rounded-full text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <span>{SORT_OPTIONS_MAP[sortBy]}</span>
+                  <ChevronDownIcon
+                    size={14}
+                    className={`text-gray-500 transition-transform duration-200 ${isSortOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+
+                {isSortOpen && (
+                  <div className="absolute right-0 top-full mt-1.5 z-40 w-44 bg-white border border-gray-200 rounded-2xl shadow-xl p-1.5 animate-in fade-in zoom-in-95">
+                    {(Object.keys(SORT_OPTIONS_MAP) as SortOption[]).map((key) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => {
+                          setSortBy(key);
+                          setIsSortOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer flex items-center justify-between ${
+                          sortBy === key
+                            ? 'bg-[#EBF6FF] text-[#0047CC] font-bold'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <span>{SORT_OPTIONS_MAP[key]}</span>
+                        {sortBy === key && <CheckIcon size={13} className="text-[#0047CC]" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Search Toggle / Input */}
+              <div className="relative flex items-center">
+                {isSearchOpen ? (
+                  <div className="relative flex items-center">
+                    <SearchIcon size={14} className="absolute left-3 text-gray-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      autoFocus
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search courses..."
+                      className="pl-8 pr-7 py-2 text-xs sm:text-sm rounded-full border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:border-[#0047CC] w-36 sm:w-48 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setIsSearchOpen(false);
+                      }}
+                      className="absolute right-2.5 text-gray-400 hover:text-gray-600 p-0.5 cursor-pointer"
+                      title="Close search"
+                    >
+                      <CloseIcon size={12} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsSearchOpen(true)}
+                    title="Search courses"
+                    className={`p-2 rounded-full border border-gray-200 hover:border-gray-300 text-gray-500 hover:text-gray-800 bg-white transition-all cursor-pointer shadow-2xs ${
+                      searchQuery ? 'text-[#0047CC] border-[#0047CC]/40 bg-blue-50/50' : ''
+                    }`}
+                  >
+                    <SearchIcon size={15} />
+                  </button>
+                )}
+              </div>
+
+              {/* Grid / List View Toggle */}
+              <div className="bg-white border border-gray-200 rounded-xl p-1 flex items-center gap-0.5 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('grid')}
+                  title="Grid View"
+                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                    viewMode === 'grid'
+                      ? 'bg-[#EBF6FF] text-[#0047CC]'
+                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <GridIcon size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  title="List View"
+                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                    viewMode === 'list'
+                      ? 'bg-[#EBF6FF] text-[#0047CC]'
+                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <ListIcon size={16} />
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Courses Grid */}
+          {/* Courses Content */}
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {[1, 2, 3].map((i) => (
@@ -562,22 +623,39 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
               <p className="text-xs text-gray-400 max-w-sm mx-auto">
                 {searchQuery
                   ? 'No courses match your current search query.'
-                  : 'You have not created any courses yet. Author your first course to begin mentoring.'}
+                  : `You have no ${statusFilter === 'ALL' ? '' : getFilterLabel(statusFilter).toLowerCase()} courses at the moment.`}
               </p>
-              <Button
-                variant="primary"
-                size="sm"
-                pill={false}
-                onClick={() => navigate('/courses/create')}
-                className="text-xs font-semibold mt-2"
-              >
-                Create Your First Course
-              </Button>
+              {statusFilter !== 'ALL' ? (
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('ALL')}
+                  className="px-4 py-2 bg-[#0047CC] text-white rounded-full text-xs font-semibold hover:bg-[#0037a3] transition-colors cursor-pointer shadow-xs mt-2"
+                >
+                  View All Courses
+                </button>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  pill={false}
+                  onClick={() => navigate('/courses/create')}
+                  className="text-xs font-semibold mt-2"
+                >
+                  Create Your First Course
+                </Button>
+              )}
             </div>
-          ) : (
+          ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {filteredCourses.map((course) => {
-                const banner = getMediaUrl(course.thumbnailS3Key, DEFAULT_COURSE_BANNER);
+                const rawThumbnail =
+                  (course as any).coverImageS3Key ||
+                  course.thumbnailS3Key ||
+                  (course as any).thumbnailUrl ||
+                  (course as any).coverImageUrl ||
+                  (course as any).thumbnail ||
+                  (course as any).coverImage;
+                const banner = rawThumbnail ? getMediaUrl(rawThumbnail) : '';
 
                 return (
                   <div
@@ -586,13 +664,29 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
                   >
                     <div>
                       {/* Thumbnail Banner */}
-                      <div className="relative h-40 sm:h-44 w-full overflow-hidden bg-gray-100">
-                        <img
-                          src={banner}
-                          alt={course.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                      {/* Thumbnail Banner */}
+                      <div
+                        onClick={() => handleEditCourse(course)}
+                        className="relative h-40 sm:h-44 w-full overflow-hidden bg-gradient-to-br from-[#0F1E36] via-[#1E3A8A] to-[#0047CC] flex items-center justify-center cursor-pointer"
+                      >
+                        {banner ? (
+                          <img
+                            src={banner}
+                            alt={course.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            onError={(e) => {
+                              // If image fails to load, do NOT use fallback doctor image; hide broken img and show clean branded placeholder
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="p-4 text-center">
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider bg-white/15 text-white px-2.5 py-1 rounded-full backdrop-blur-xs">
+                              {course.category || 'VORA COURSE'}
+                            </span>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
 
                         {/* Status Badge */}
                         <div className="absolute top-3 right-3">
@@ -628,7 +722,10 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
                           {course.category}
                         </p>
 
-                        <h3 className="text-sm sm:text-base font-bold text-gray-900 line-clamp-2 leading-snug">
+                        <h3
+                          onClick={() => handleEditCourse(course)}
+                          className="text-sm sm:text-base font-bold text-gray-900 group-hover:text-[#0047CC] transition-colors line-clamp-2 leading-snug cursor-pointer"
+                        >
                           {course.title}
                         </h3>
 
@@ -679,7 +776,7 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
                           variant="outline"
                           size="sm"
                           pill={false}
-                          onClick={() => handleOpenEditModal(course)}
+                          onClick={() => handleEditCourse(course)}
                           className="text-xs gap-1 py-1"
                         >
                           <PencilIcon size={12} />
@@ -690,6 +787,163 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
                           onClick={() => handleDeleteCourse(course)}
                           disabled={deleteMutation.isPending || !course.actions?.delete?.enabled}
                           className="p-1.5 text-gray-400 hover:text-red-500 disabled:opacity-40 rounded-lg hover:bg-white transition-colors cursor-pointer min-h-[32px] min-w-[32px] flex items-center justify-center"
+                          title="Archive course"
+                        >
+                          <TrashIcon size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* List View */
+            <div className="space-y-4">
+              {filteredCourses.map((course) => {
+                const rawThumbnail =
+                  (course as any).coverImageS3Key ||
+                  course.thumbnailS3Key ||
+                  (course as any).thumbnailUrl ||
+                  (course as any).coverImageUrl ||
+                  (course as any).thumbnail ||
+                  (course as any).coverImage;
+                const banner = rawThumbnail ? getMediaUrl(rawThumbnail) : '';
+
+                return (
+                  <div
+                    key={course.id}
+                    className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 shadow-xs hover:border-blue-100 hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 group"
+                  >
+                    {/* Left: Thumbnail Banner */}
+                    <div
+                      onClick={() => handleEditCourse(course)}
+                      className="w-full md:w-56 h-36 rounded-xl overflow-hidden shrink-0 relative bg-gradient-to-br from-[#0F1E36] via-[#1E3A8A] to-[#0047CC] flex items-center justify-center cursor-pointer"
+                    >
+                      {banner ? (
+                        <img
+                          src={banner}
+                          alt={course.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="p-3 text-center">
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider bg-white/15 text-white px-2 py-0.5 rounded-full backdrop-blur-xs">
+                            {course.category || 'VORA COURSE'}
+                          </span>
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+
+                      {/* Status Badge */}
+                      <div className="absolute top-2.5 right-2.5">
+                        {course.status === 'PUBLISHED' ? (
+                          <span className="bg-emerald-500/90 text-white backdrop-blur-xs px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                            {course.statusLabel || 'PUBLISHED'}
+                          </span>
+                        ) : course.status === 'UNDER_REVIEW' ? (
+                          <span className="bg-amber-500/90 text-white backdrop-blur-xs px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                            {course.statusLabel || 'UNDER REVIEW'}
+                          </span>
+                        ) : (
+                          <span className="bg-gray-700/90 text-white backdrop-blur-xs px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                            {course.statusLabel || 'DRAFT'}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Price & Level */}
+                      <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-white text-xs">
+                        <span className="font-bold bg-black/40 backdrop-blur-xs px-2 py-0.5 rounded text-[11px]">
+                          {course.formattedPrice || (course.price ? `$${course.price} ${course.currency || 'USD'}` : 'Free')}
+                        </span>
+                        <span className="bg-black/40 backdrop-blur-xs px-2 py-0.5 rounded text-[10px]">
+                          {course.difficultyLevel}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Middle: Info */}
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Tag
+                          variant="blue"
+                          label={course.category}
+                          className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider py-0.5 px-2.5"
+                        />
+                        {course.format && (
+                          <span className="text-[10px] text-gray-400 font-medium">
+                            • {course.format.replace(/_/g, ' ')}
+                          </span>
+                        )}
+                      </div>
+
+                      <h3
+                        onClick={() => handleEditCourse(course)}
+                        className="text-sm sm:text-base font-bold text-gray-900 group-hover:text-[#0047CC] transition-colors leading-snug cursor-pointer"
+                      >
+                        {course.title}
+                      </h3>
+
+                      <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
+                        {course.description || course.subtitle}
+                      </p>
+
+                      <div className="flex items-center gap-4 pt-1 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-gray-400 text-[11px]">Students:</span>
+                          <span className="font-bold text-gray-800 text-xs">{course.students ?? 0}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-gray-400 text-[11px]">Revenue:</span>
+                          <span className="font-bold text-emerald-600 text-xs">
+                            {course.formattedRevenue || `$${(course.revenue ?? 0).toLocaleString()}`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: Actions */}
+                    <div className="flex items-center md:flex-col justify-end gap-2 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-gray-100">
+                      {course.status === 'PUBLISHED' ? (
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePublish(course)}
+                          disabled={unpublishMutation.isPending || !course.actions?.unpublish?.enabled}
+                          className="text-xs font-semibold text-gray-600 hover:text-gray-900 disabled:opacity-40 cursor-pointer px-3 py-1.5 rounded-lg hover:bg-gray-50 border border-gray-200 transition-colors w-full text-center"
+                        >
+                          Unpublish
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePublish(course)}
+                          disabled={publishMutation.isPending || !course.actions?.publish?.enabled}
+                          className="text-xs font-semibold text-[#0047CC] hover:text-blue-800 disabled:opacity-40 cursor-pointer px-3 py-1.5 rounded-lg hover:bg-blue-50 border border-blue-200 transition-colors w-full text-center"
+                        >
+                          Publish
+                        </button>
+                      )}
+
+                      <div className="flex items-center gap-1.5 w-full">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          pill={false}
+                          onClick={() => handleEditCourse(course)}
+                          className="text-xs gap-1 py-1 flex-1 justify-center"
+                        >
+                          <PencilIcon size={12} />
+                          Edit
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCourse(course)}
+                          disabled={deleteMutation.isPending || !course.actions?.delete?.enabled}
+                          className="p-1.5 text-gray-400 hover:text-red-500 disabled:opacity-40 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer min-h-[32px] min-w-[32px] flex items-center justify-center shrink-0"
                           title="Archive course"
                         >
                           <TrashIcon size={14} />
@@ -961,146 +1215,6 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
         </div>
       )}
 
-      {/* ══════════════════ CREATE COURSE MODAL ══════════════════ */}
-      {isCourseModalOpen && (
-        <ModalDialog
-          isOpen={isCourseModalOpen}
-          onClose={() => setIsCourseModalOpen(false)}
-          title={editingCourseId ? 'Edit Course Details' : 'Create New Course'}
-          actions={
-            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 w-full">
-              <Button
-                variant="outline"
-                size="sm"
-                pill={false}
-                onClick={() => setIsCourseModalOpen(false)}
-                className="w-full sm:w-auto justify-center"
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                pill={false}
-                onClick={handleSaveCourse}
-                disabled={createCourseMutation.isPending}
-                className="w-full sm:w-auto justify-center"
-              >
-                {createCourseMutation.isPending ? 'Saving...' : editingCourseId ? 'Update Course' : 'Create Draft'}
-              </Button>
-            </div>
-          }
-        >
-          <form onSubmit={handleSaveCourse} className="space-y-4 text-left">
-            <Input
-              label="Course Title"
-              value={courseForm.title}
-              onChange={(e) => {
-                setCourseForm({ ...courseForm, title: e.target.value });
-                if (formErrors.title) setFormErrors({ ...formErrors, title: '' });
-              }}
-              error={Boolean(formErrors.title)}
-              helperText={formErrors.title}
-              placeholder="e.g. Asynchronous Distributed Architecture"
-              required
-            />
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Select
-                label="Category"
-                value={courseForm.category}
-                onChange={(e) => {
-                  setCourseForm({ ...courseForm, category: e.target.value });
-                  if (formErrors.category) setFormErrors({ ...formErrors, category: '' });
-                }}
-                error={Boolean(formErrors.category)}
-                helperText={formErrors.category}
-                options={[
-                  { label: 'Backend & Systems', value: 'Backend & Systems' },
-                  { label: 'DevOps & Cloud', value: 'DevOps & Cloud' },
-                  { label: 'Health Tech & AI', value: 'Health Tech & AI' },
-                  { label: 'Career & Leadership', value: 'Career & Leadership' },
-                ]}
-              />
-              <Select
-                label="Difficulty Level"
-                value={courseForm.level}
-                onChange={(e) => {
-                  setCourseForm({ ...courseForm, level: e.target.value });
-                  if (formErrors.level) setFormErrors({ ...formErrors, level: '' });
-                }}
-                error={Boolean(formErrors.level)}
-                helperText={formErrors.level}
-                options={[
-                  { label: 'Beginner', value: 'Beginner' },
-                  { label: 'Intermediate', value: 'Intermediate' },
-                  { label: 'Advanced', value: 'Advanced' },
-                  { label: 'All Levels', value: 'All Levels' },
-                ]}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Select
-                label="Course Format"
-                value={courseForm.format}
-                onChange={(e) => {
-                  setCourseForm({ ...courseForm, format: e.target.value as CourseFormat });
-                  if (formErrors.format) setFormErrors({ ...formErrors, format: '' });
-                }}
-                error={Boolean(formErrors.format)}
-                helperText={formErrors.format}
-                options={[
-                  { label: 'Video Masterclass', value: 'VIDEO_MASTERCLASS' },
-                  { label: 'Hybrid', value: 'HYBRID' },
-                  { label: 'Cohort-Based', value: 'COHORT_BASED' },
-                  { label: 'Case Study Series', value: 'CASE_STUDY_SERIES' },
-                  { label: 'Workshop Sprint', value: 'WORKSHOP_SPRINT' },
-                  { label: 'Written Text', value: 'WRITTEN_TEXT' },
-                ]}
-              />
-              <Input
-                label="Price (USD)"
-                type="number"
-                value={courseForm.price.toString()}
-                onChange={(e) => {
-                  setCourseForm({ ...courseForm, price: Number(e.target.value) });
-                  if (formErrors.price) setFormErrors({ ...formErrors, price: '' });
-                }}
-                error={Boolean(formErrors.price)}
-                helperText={formErrors.price}
-                min="0"
-                step="1"
-              />
-            </div>
-
-            <Textarea
-              label="Course Description & Overview"
-              value={courseForm.description}
-              onChange={(e) => {
-                setCourseForm({ ...courseForm, description: e.target.value });
-                if (formErrors.description) setFormErrors({ ...formErrors, description: '' });
-              }}
-              error={Boolean(formErrors.description)}
-              helperText={formErrors.description}
-              placeholder="Describe what talents will master, prerequisites, and target learning outcomes..."
-              rows={3}
-            />
-
-            <Input
-              label="Cover Thumbnail S3 Key / URL (Optional)"
-              value={courseForm.thumbnail}
-              onChange={(e) => {
-                setCourseForm({ ...courseForm, thumbnail: e.target.value });
-                if (formErrors.thumbnail) setFormErrors({ ...formErrors, thumbnail: '' });
-              }}
-              error={Boolean(formErrors.thumbnail)}
-              helperText={formErrors.thumbnail}
-              placeholder="e.g. courses/thumbnails/intro.jpg"
-            />
-          </form>
-        </ModalDialog>
-      )}
     </div>
   );
 };
