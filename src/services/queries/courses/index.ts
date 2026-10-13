@@ -82,7 +82,10 @@ export const useEnrollments = () => {
  * Endpoint: GET /courses/:id
  * Envelope: { statusCode, message, data: { schemaVersion: 1, course: {...}, myEnrollment: {...} | null } }
  */
-export const useCourseDetail = (id?: string) => {
+export const useCourseDetail = (
+  id?: string | null,
+  options?: { enabled?: boolean; staleTime?: number }
+) => {
   return useQuery({
     queryKey: ['courses', 'detail', id],
     queryFn: async () => {
@@ -110,8 +113,8 @@ export const useCourseDetail = (id?: string) => {
 
       return res?.data;
     },
-    enabled: Boolean(id),
-    staleTime: 1000 * 60 * 5, // 5 min cache
+    enabled: Boolean(id) && (options?.enabled ?? true),
+    staleTime: options?.staleTime ?? 1000 * 60 * 2, // 2 min cache
     refetchOnWindowFocus: false,
   });
 };

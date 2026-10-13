@@ -690,7 +690,7 @@ END:VCALENDAR`;
                 onClick={() => handleLaunchVideo(featuredLiveSession)}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#0047CC] hover:bg-[#387DFF] text-white text-sm font-extrabold transition-all shadow-lg hover:shadow-xl cursor-pointer active:scale-98 border border-blue-400/30"
               >
-                <VideoIcon size={16} /> Join VORA Video
+                <VideoIcon size={16} /> Join Video
               </button>
 
               <div className="flex items-center gap-2">

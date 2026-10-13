@@ -27,6 +27,7 @@ export interface CourseMentorBrief {
   professionalTitle?: string | null;
   organisation?: string | null;
   photoS3Key: string | null;
+  photoUrl?: string | null;
   // Compatibility aliases
   name?: string;
   avatarUrl?: string | null;
@@ -63,6 +64,7 @@ export interface CourseBrowseItem {
   language: string;
   thumbnailS3Key: string | null;
   promoVideoS3Key: string | null;
+  promoVideoUrl?: string | null;
   publishedAt: string;
   skills: string[];
   tags: string[];
@@ -107,6 +109,7 @@ export interface CourseChapterLesson {
   durationLabel?: string;
   contentType?: LessonContentType;
   contentS3Key?: string | null;
+  contentUrl?: string | null;
   isCompleted?: boolean;
 }
 
@@ -198,6 +201,7 @@ export interface CourseMentorDetail {
   organisation?: string | null;
   bio: string | null;
   photoS3Key: string | null;
+  photoUrl?: string | null;
   expertiseTags: string[];
   social: CourseSocialLinks;
   // Compatibility aliases
@@ -225,6 +229,7 @@ export interface CourseLesson {
   title: string;
   contentType: LessonContentType;
   contentS3Key: string | null;
+  contentUrl?: string | null;
   durationMinutes: number;
   orderIndex: number;
   durationLabel: string; // e.g. "Video (2 minutes)"
@@ -289,6 +294,7 @@ export interface CourseDetail {
   learningOutcomes: string[];
   thumbnailS3Key: string | null;
   promoVideoS3Key: string | null;
+  promoVideoUrl?: string | null;
   status: CourseStatus;
   isCpdAccredited?: boolean;
   publishedAt: string;
@@ -409,6 +415,9 @@ export interface InstructorCourseItem {
   format: CourseFormat;
   difficultyLevel: string;
   thumbnailS3Key: string | null;
+  thumbnailUrl?: string | null;
+  promoVideoS3Key?: string | null;
+  promoVideoUrl?: string | null;
   status: CourseStatus;
   statusLabel: string;
   price: number;
@@ -433,6 +442,8 @@ export interface InstructorRosterStudent {
   talentId: string;
   displayName: string;
   professionalTitle?: string | null;
+  photoS3Key?: string | null;
+  photoUrl?: string | null;
   lastActiveAt?: string | null;
 }
 

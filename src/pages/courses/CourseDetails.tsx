@@ -25,7 +25,11 @@ import type {
   MyEnrollmentInfo,
 } from '../../types/courses';
 import {
+  mediaSrc,
+  displayMedia,
   getMediaUrl,
+  getYouTubeEmbedUrl,
+  isYouTubeUrl,
   DEFAULT_COURSE_BANNER,
   DEFAULT_MENTOR_AVATAR,
 } from '../../utils/media';
@@ -183,8 +187,8 @@ const CourseDetails: React.FC = () => {
   const instagramLink = mentorSocial?.instagram;
   const hasSocialLinks = Boolean(xLink || linkedinLink || instagramLink);
 
-  const bannerUrl = getMediaUrl((course as any)?.coverImageS3Key || course?.thumbnailS3Key || course?.thumbnailUrl);
-  const mentorAvatar = getMediaUrl(course?.mentor?.photoS3Key || course?.mentor?.avatarUrl, DEFAULT_MENTOR_AVATAR);
+  const bannerUrl = displayMedia(course?.thumbnailUrl || (course as any)?.coverImageUrl, course?.thumbnailS3Key || (course as any)?.coverImageS3Key);
+  const mentorAvatar = displayMedia(course?.mentor?.photoUrl, course?.mentor?.photoS3Key) || DEFAULT_MENTOR_AVATAR;
   const mentorDisplayName = course?.mentor?.displayName || course?.mentor?.name || 'Mentor & Domain Expert';
   const mentorLabel = course?.mentor?.instructorLabel || course?.mentor?.headline;
 
@@ -319,7 +323,7 @@ const CourseDetails: React.FC = () => {
                             >
                               <div className="pt-0.5 shrink-0">
                                 {isCompleted ? (
-                                  <CheckCircleIcon size={14} className="text-emerald-500" />
+                                  <CheckCircleIcon size={14} className="text-[#0052CC]" />
                                 ) : (
                                   <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
                                     isSelected ? 'border-[#0052CC] bg-white' : 'border-gray-300'
@@ -341,7 +345,7 @@ const CourseDetails: React.FC = () => {
                                   <VideoIcon size={12} className="text-gray-400" />
                                   <span>{lesson.durationLabel || (lesson.durationMinutes ? `${lesson.durationMinutes} mins` : 'Video')}</span>
                                   {isCompleted && (
-                                    <span className="text-emerald-600 font-medium ml-1">Completed</span>
+                                    <span className="text-[#0052CC] font-medium ml-1">Completed</span>
                                   )}
                                 </div>
                               </div>
@@ -364,26 +368,78 @@ const CourseDetails: React.FC = () => {
         {/* Right Main Area: Video Player & Tabs (order-1 on mobile) */}
         <div className="order-1 lg:order-2 lg:col-span-8 space-y-6 w-full">
           {/* Video Player Box */}
-          <div className="aspect-video bg-[#E5E7EB] rounded-[24px] relative overflow-hidden shadow-xs flex items-center justify-center group cursor-pointer border border-gray-100">
-            <img 
-              src={bannerUrl} 
-              alt="Course Video"
-              className="w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-102"
-            />
-            <div 
-              onClick={() => setIsPlayingVideo(!isPlayingVideo)}
-              className="absolute inset-0 bg-black/25 group-hover:bg-black/30 transition-colors flex flex-col items-center justify-center gap-2"
-            >
-              <div className="w-16 h-16 rounded-full bg-black/40 backdrop-blur-xs flex items-center justify-center border-2 border-white/80 text-white shadow-lg group-hover:scale-110 transition-all duration-300">
-                <PlayIcon size={26} className="ml-1 fill-white" />
+          {(() => {
+            const lessonMedia = displayMedia(
+              currentLesson?.contentUrl || (currentLesson as any)?.videoUrl || course?.promoVideoUrl,
+              currentLesson?.contentS3Key || (currentLesson as any)?.videoS3Key || course?.promoVideoS3Key
+            );
+            if (isPlayingVideo && lessonMedia) {
+              if (isYouTubeUrl(lessonMedia)) {
+                return (
+                  <div className="aspect-video bg-black rounded-[24px] overflow-hidden shadow-xs border border-gray-100">
+                    <iframe
+                      src={getYouTubeEmbedUrl(lessonMedia, true) || ''}
+                      title={currentLesson?.title || course.title}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                );
+              }
+              return (
+                <div className="aspect-video bg-black rounded-[24px] overflow-hidden shadow-xs border border-gray-100">
+                  <video
+                    src={lessonMedia}
+                    poster={bannerUrl || undefined}
+                    controls
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              );
+            }
+
+            return (
+              <div
+                onClick={() => setIsPlayingVideo(true)}
+                className="aspect-video bg-gradient-to-br from-[#0F1E36] via-[#1E3A8A] to-[#0047CC] rounded-[24px] relative overflow-hidden shadow-xs flex items-center justify-center group cursor-pointer border border-gray-100"
+              >
+                {bannerUrl ? (
+                  <img 
+                    src={bannerUrl} 
+                    alt={course.title}
+                    className="w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-102"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="p-6 text-center text-white">
+                    <span className="text-xs font-extrabold uppercase tracking-widest text-blue-200 bg-white/10 px-3 py-1 rounded-full border border-white/20">
+                      {course.category || 'VORA MASTERCLASS'}
+                    </span>
+                    <h3 className="text-lg font-bold mt-2 max-w-md line-clamp-2">
+                      {course.title}
+                    </h3>
+                  </div>
+                )}
+                <div 
+                  className="absolute inset-0 bg-black/25 group-hover:bg-black/30 transition-colors flex flex-col items-center justify-center gap-2"
+                >
+                  <div className="w-16 h-16 rounded-full bg-black/40 backdrop-blur-xs flex items-center justify-center border-2 border-white/80 text-white shadow-lg group-hover:scale-110 transition-all duration-300">
+                    <PlayIcon size={26} className="ml-1 fill-white" />
+                  </div>
+                  {currentLesson && (
+                    <span className="text-white text-[13px] font-semibold drop-shadow-md">
+                      {currentLesson.title}
+                    </span>
+                  )}
+                </div>
               </div>
-              {currentLesson && (
-                <span className="text-white text-[13px] font-semibold drop-shadow-md">
-                  {currentLesson.title}
-                </span>
-              )}
-            </div>
-          </div>
+            );
+          })()}
 
           {/* Lesson Controls strip (when enrolled) */}
           {myEnrollment && currentLesson && (
@@ -399,14 +455,14 @@ const CourseDetails: React.FC = () => {
                 disabled={progressMutation.isPending || isCurrentLessonCompleted}
                 className={`px-5 py-2 rounded-full text-[12px] font-bold transition-all cursor-pointer whitespace-nowrap ${
                   isCurrentLessonCompleted
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-default'
+                    ? 'bg-blue-50 text-[#0052CC] border border-blue-200 cursor-default'
                     : 'bg-[#0052CC] hover:bg-[#0047CC] text-white shadow-xs'
                 }`}
               >
                 {progressMutation.isPending 
                   ? 'Saving...' 
                   : isCurrentLessonCompleted 
-                  ? '✓ Lesson Completed' 
+                  ? 'Lesson Completed' 
                   : 'Mark as Completed'}
               </button>
             </div>
@@ -720,11 +776,20 @@ const CourseDetails: React.FC = () => {
                     >
                       <div className="flex items-center gap-4 sm:gap-5 min-w-0 flex-1">
                         <div className="relative w-24 h-16 sm:w-28 sm:h-20 rounded-[14px] overflow-hidden shrink-0 bg-gray-900 border border-gray-100 group">
-                          <img 
-                            src={bannerUrl} 
-                            alt={module.title} 
-                            className="w-full h-full object-cover opacity-80 transition-transform duration-500 group-hover:scale-105" 
-                          />
+                          {bannerUrl ? (
+                            <img 
+                              src={bannerUrl} 
+                              alt={module.title} 
+                              className="w-full h-full object-cover opacity-80 transition-transform duration-500 group-hover:scale-105" 
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-[#0F1E36] via-[#1E3A8A] to-[#0047CC] flex items-center justify-center text-[10px] text-white/80 font-bold">
+                              Module {moduleNumber}
+                            </div>
+                          )}
                           <div className="absolute inset-0 bg-black/25 flex items-center justify-center">
                             <div className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-xs flex items-center justify-center border border-white/80 text-white">
                               {isUpcoming ? (
@@ -749,7 +814,7 @@ const CourseDetails: React.FC = () => {
                             </span>
 
                             {isCompleted && (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-[#0052CC] border border-blue-100">
                                 Completed
                               </span>
                             )}
@@ -811,7 +876,7 @@ const CourseDetails: React.FC = () => {
                   <p className="font-bold text-gray-900">{course.title}</p>
                   <p className="text-gray-500 text-[12px]">Instructor: {mentorDisplayName}</p>
                 </div>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-[#0052CC]">
                   Included
                 </span>
               </div>

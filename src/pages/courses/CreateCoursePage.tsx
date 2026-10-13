@@ -31,7 +31,7 @@ import {
   useUnpublishCourseBuilder,
 } from '../../services/queries/courses/builder';
 import { useCourseBuilderAutosave } from '../../hooks/useCourseBuilderAutosave';
-import { getMediaUrl } from '../../utils/media';
+import { getMediaUrl, mediaSrc, displayMedia, getYouTubeEmbedUrl, isYouTubeUrl } from '../../utils/media';
 
 type StepId = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -228,14 +228,31 @@ export const CreateCoursePage: React.FC = () => {
   // Active Course ID
   const [courseId, setCourseId] = useState<string | null>(routeCourseId || navStateCourse?.id || null);
 
-  // Queries & Mutations
+  // Queries & Mutations: Query deduplication & 2-min cache
   const {
     data: builderData,
     isLoading: isBuilderLoading,
+    isError: isBuilderError,
     refetch: refetchBuilder,
-  } = useCourseBuilder(courseId || undefined);
+  } = useCourseBuilder(courseId || undefined, {
+    staleTime: 1000 * 60 * 2, // 2 min cache
+  });
 
-  const { data: courseDetailData } = useCourseDetail(courseId && !builderData ? courseId : undefined);
+  // Ensure useCourseDetail NEVER fetches concurrently with useCourseBuilder.
+  // It only acts as an emergency fallback if useCourseBuilder finishes without data or fails.
+  const shouldFetchDetailFallback = Boolean(
+    courseId &&
+    !isBuilderLoading &&
+    (isBuilderError || (!builderData && !isBuilderLoading))
+  );
+
+  const { data: courseDetailData } = useCourseDetail(
+    shouldFetchDetailFallback ? courseId || undefined : undefined,
+    {
+      enabled: shouldFetchDetailFallback,
+      staleTime: 1000 * 60 * 2, // 2 min cache
+    }
+  );
   const courseDetails = (courseDetailData as any)?.course || courseDetailData;
 
   const createDraftMutation = useCreateDraftCourse();
@@ -374,6 +391,18 @@ export const CreateCoursePage: React.FC = () => {
   const [isUploadingPromoVideo, setIsUploadingPromoVideo] = useState(false);
   const [promoVideoUploadProgress, setPromoVideoUploadProgress] = useState(0);
 
+  const isAnyLoadingOrUploading = Boolean(
+    isUploadingThumbnail ||
+    isUploadingPromoVideo ||
+    uploadMediaMutation.isPending ||
+    isSavingDraft ||
+    isNavigatingNext ||
+    createDraftMutation.isPending ||
+    patchCourseMutation.isPending ||
+    publishMutation.isPending ||
+    unpublishMutation.isPending
+  );
+
   // Status & Validation
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
@@ -419,25 +448,33 @@ export const CreateCoursePage: React.FC = () => {
       if (source.language) setLanguage(normalizeLanguage(source.language));
       if (source.format) setFormat(source.format);
       const initialCoverKey =
-        source.coverImageS3Key ||
         source.thumbnailS3Key ||
-        (source as any).coverImageUrl ||
-        (source as any).thumbnailUrl ||
+        source.coverImageS3Key ||
         (source as any).thumbnail;
+      const initialCoverUrl =
+        (source as any).thumbnailUrl ||
+        (source as any).coverImageUrl;
+      const resolvedCover = displayMedia(initialCoverUrl, initialCoverKey);
       if (initialCoverKey) {
         setThumbnailS3Key(initialCoverKey);
-        setThumbnailPreview(getMediaUrl(initialCoverKey));
+      }
+      if (resolvedCover) {
+        setThumbnailPreview(resolvedCover);
       }
       const initialVideoKey =
-        source.promotionalVideoS3Key ||
         source.promoVideoS3Key ||
-        (source as any).promotionalVideoUrl ||
-        (source as any).promoVideoUrl ||
+        source.promotionalVideoS3Key ||
         (source as any).promoVideo ||
         (source as any).promotionalVideo;
+      const initialVideoUrl =
+        (source as any).promoVideoUrl ||
+        (source as any).promotionalVideoUrl;
+      const resolvedVideo = displayMedia(initialVideoUrl, initialVideoKey);
       if (initialVideoKey) {
         setPromoVideoS3Key(initialVideoKey);
-        setPromoVideoPreview(getMediaUrl(initialVideoKey));
+      }
+      if (resolvedVideo) {
+        setPromoVideoPreview(resolvedVideo);
         setPromoVideoFileName('Uploaded Promotional Video');
       }
       if ((source as any).tier1Price != null) {
@@ -549,9 +586,7 @@ export const CreateCoursePage: React.FC = () => {
       difficultyLevel: difficultyLevel || undefined,
       language: language || undefined,
       format,
-      coverImageS3Key: thumbnailS3Key || undefined,
       thumbnailS3Key: thumbnailS3Key || undefined,
-      promotionalVideoS3Key: promoVideoS3Key || undefined,
       promoVideoS3Key: promoVideoS3Key || undefined,
       tier1Price: parsedPrice,
       certificateTemplate,
@@ -604,6 +639,7 @@ export const CreateCoursePage: React.FC = () => {
   };
 
   const changeStep = async (step: StepId) => {
+    if (isAnyLoadingOrUploading) return;
     if (step === currentStep) return;
 
     // Moving forward strictly requires validating the current step and all steps up to target step
@@ -620,7 +656,7 @@ export const CreateCoursePage: React.FC = () => {
 
     if (currentStep === 1 && title.trim().length >= 3 && description.trim().length >= 20 && Boolean(category && (category !== 'Others' || customCategory.trim())) && Boolean(difficultyLevel) && outcomes.some((o) => o.trim().length > 0)) {
       setCompletedSteps((prev) => new Set(prev).add(1));
-    } else if (currentStep === 2 && Boolean(format) && Boolean(thumbnailPreview || thumbnailS3Key || builderData?.coverImageS3Key)) {
+    } else if (currentStep === 2 && Boolean(format) && Boolean(thumbnailPreview || thumbnailS3Key || builderData?.thumbnailS3Key || builderData?.coverImageS3Key)) {
       setCompletedSteps((prev) => new Set(prev).add(2));
     } else if (currentStep === 3 && modules.length > 0 && modules.some((m) => (m.lessons || []).length > 0)) {
       setCompletedSteps((prev) => new Set(prev).add(3));
@@ -723,11 +759,11 @@ export const CreateCoursePage: React.FC = () => {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      toast.error('Please upload a valid image file (JPG or PNG).');
+      toast.error('Please upload a valid image file (JPG, PNG, or WebP).');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size must be less than 5 MB.');
+    if (file.size > 3 * 1024 * 1024) {
+      toast.error('Image size must be less than 3 MB.');
       return;
     }
 
@@ -751,6 +787,7 @@ export const CreateCoursePage: React.FC = () => {
 
       const payload = uploaded?.data ?? uploaded;
       const resolvedKey =
+        payload?.storageKey ||
         payload?.s3Key ||
         payload?.key ||
         payload?.publicId ||
@@ -761,11 +798,12 @@ export const CreateCoursePage: React.FC = () => {
         payload?.path;
 
       const resolvedUrl =
+        payload?.signedUrl ||
         payload?.url ||
         payload?.secure_url ||
         payload?.thumbnailUrl ||
         payload?.location ||
-        (resolvedKey && String(resolvedKey).startsWith('http') ? resolvedKey : null);
+        (resolvedKey && String(resolvedKey).startsWith('http') ? resolvedKey : mediaSrc(resolvedKey));
 
       if (resolvedKey) {
         setThumbnailS3Key(resolvedKey);
@@ -775,9 +813,8 @@ export const CreateCoursePage: React.FC = () => {
         await patchCourseMutation.mutateAsync({
           courseId: activeId,
           payload: {
-            coverImageS3Key: resolvedKey,
             thumbnailS3Key: resolvedKey,
-          } as any,
+          },
         });
         setFormErrors((prev) => {
           const next = { ...prev };
@@ -801,13 +838,40 @@ export const CreateCoursePage: React.FC = () => {
     if (!file) return;
 
     if (!file.type.startsWith('video/')) {
-      toast.error('Please upload a valid video file (MP4).');
+      toast.error('Please upload a valid video file (MP4 or WebM).');
       return;
     }
-    if (file.size > 500 * 1024 * 1024) {
-      toast.error('Video size must be less than 500 MB.');
+    // Strict file size constraint: 50 MB max
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('Teaser video size must be less than 50 MB.');
       return;
     }
+
+    // Video duration validation: max 3 minutes (180 seconds + 5s buffer)
+    const checkDuration = (): Promise<boolean> => {
+      return new Promise((resolve) => {
+        const video = document.createElement('video');
+        video.preload = 'metadata';
+        const url = URL.createObjectURL(file);
+        video.onloadedmetadata = () => {
+          URL.revokeObjectURL(url);
+          if (video.duration > 185) {
+            toast.error('Promotional teaser video cannot exceed 3 minutes.');
+            resolve(false);
+          } else {
+            resolve(true);
+          }
+        };
+        video.onerror = () => {
+          URL.revokeObjectURL(url);
+          resolve(true);
+        };
+        video.src = url;
+      });
+    };
+
+    const isDurationValid = await checkDuration();
+    if (!isDurationValid) return;
 
     setPromoVideoFileName(file.name);
     const objectUrl = URL.createObjectURL(file);
@@ -829,6 +893,7 @@ export const CreateCoursePage: React.FC = () => {
 
       const payload = uploaded?.data ?? uploaded;
       const resolvedKey =
+        payload?.storageKey ||
         payload?.s3Key ||
         payload?.key ||
         payload?.publicId ||
@@ -839,11 +904,12 @@ export const CreateCoursePage: React.FC = () => {
         payload?.path;
 
       const resolvedUrl =
+        payload?.signedUrl ||
         payload?.url ||
         payload?.secure_url ||
         payload?.videoUrl ||
         payload?.location ||
-        (resolvedKey && String(resolvedKey).startsWith('http') ? resolvedKey : null);
+        (resolvedKey && String(resolvedKey).startsWith('http') ? resolvedKey : mediaSrc(resolvedKey));
 
       if (resolvedKey) {
         setPromoVideoS3Key(resolvedKey);
@@ -853,9 +919,8 @@ export const CreateCoursePage: React.FC = () => {
         await patchCourseMutation.mutateAsync({
           courseId: activeId,
           payload: {
-            promotionalVideoS3Key: resolvedKey,
             promoVideoS3Key: resolvedKey,
-          } as any,
+          },
         });
         if (uploadToast) toast.dismiss(uploadToast);
         toast.success('Promo video saved.', { icon: '🎬' });
@@ -1039,7 +1104,11 @@ export const CreateCoursePage: React.FC = () => {
         courseId,
         moduleId,
         lessonId,
-        payload: updates,
+        payload: {
+          ...updates,
+          contentS3Key: updates.contentS3Key || (updates as any).videoS3Key,
+          videoS3Key: updates.contentS3Key || (updates as any).videoS3Key,
+        },
       });
     } catch (err: any) {
       console.error('Failed to update lesson:', err);
@@ -1119,7 +1188,7 @@ export const CreateCoursePage: React.FC = () => {
       if (!format) {
         errors.format = 'Please select a course format';
       }
-      if (!thumbnailPreview && !thumbnailS3Key && !builderData?.coverImageS3Key) {
+      if (!thumbnailPreview && !thumbnailS3Key && !builderData?.thumbnailS3Key && !builderData?.coverImageS3Key) {
         errors.thumbnail = 'Please upload a course thumbnail image';
       }
     } else if (step === 3) {
@@ -1171,7 +1240,7 @@ export const CreateCoursePage: React.FC = () => {
   };
 
   const handleNextStep = async () => {
-    if (isNavigatingNext || isSavingDraft) return;
+    if (isAnyLoadingOrUploading) return;
     if (!validateStep(currentStep)) return;
 
     setIsNavigatingNext(true);
@@ -1197,7 +1266,7 @@ export const CreateCoursePage: React.FC = () => {
   };
 
   const handlePrevStep = async () => {
-    if (isNavigatingNext || isSavingDraft) return;
+    if (isAnyLoadingOrUploading) return;
     if (courseId) {
       await flushSave();
     }
@@ -1206,12 +1275,15 @@ export const CreateCoursePage: React.FC = () => {
     }
   };
 
-  // Pre-publish checklist driven by live validated form state
+  // Pre-publish checklist driven by server checklist.ready or validated state
   const isPublishReady = useMemo(() => {
+    if (builderData?.publishChecklist) {
+      return Boolean(builderData.publishChecklist.ready);
+    }
+
     const titleOk = title.trim().length >= 3;
     const descOk = description.trim().length >= 20;
     const formatOk = Boolean(format);
-    const thumbnailOk = Boolean(thumbnailPreview || thumbnailS3Key || builderData?.coverImageS3Key);
     const categoryOk = Boolean(category && (category !== 'Others' || customCategory.trim()));
     const difficultyOk = Boolean(difficultyLevel);
     const modulesOk =
@@ -1222,14 +1294,13 @@ export const CreateCoursePage: React.FC = () => {
     const pricingOk = basePrice !== '' && !isNaN(Number(basePrice)) && Number(basePrice) >= 0;
     const certOk = Boolean(certificateTemplate);
 
-    return titleOk && descOk && formatOk && thumbnailOk && categoryOk && difficultyOk && modulesOk && pricingOk && certOk;
+    // Thumbnail is recommended only — does NOT block ready
+    return titleOk && descOk && formatOk && categoryOk && difficultyOk && modulesOk && pricingOk && certOk;
   }, [
+    builderData?.publishChecklist,
     title,
     description,
     format,
-    thumbnailPreview,
-    thumbnailS3Key,
-    builderData?.coverImageS3Key,
     category,
     customCategory,
     difficultyLevel,
@@ -1252,7 +1323,7 @@ export const CreateCoursePage: React.FC = () => {
         );
       }
       if (stepId === 2) {
-        return Boolean(format) && Boolean(thumbnailPreview || thumbnailS3Key || builderData?.coverImageS3Key);
+        return Boolean(format) && Boolean(thumbnailPreview || thumbnailS3Key || builderData?.thumbnailS3Key || builderData?.coverImageS3Key);
       }
       if (stepId === 3) {
         return (
@@ -1287,6 +1358,7 @@ export const CreateCoursePage: React.FC = () => {
       format,
       thumbnailPreview,
       thumbnailS3Key,
+      builderData?.thumbnailS3Key,
       builderData?.coverImageS3Key,
       modules,
       basePrice,
@@ -1323,7 +1395,7 @@ export const CreateCoursePage: React.FC = () => {
 
   // Save Draft Action
   const handleSaveDraft = async () => {
-    if (isNavigatingNext || isSavingDraft) return;
+    if (isAnyLoadingOrUploading) return;
     setIsSavingDraft(true);
     try {
       const activeId = await ensureDraftCourse();
@@ -1470,7 +1542,7 @@ export const CreateCoursePage: React.FC = () => {
           <button
             type="button"
             onClick={handleSaveDraft}
-            disabled={isSavingDraft || isNavigatingNext}
+            disabled={isAnyLoadingOrUploading}
             className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 text-xs font-bold bg-white text-[#334155] border border-[#CBD5E1] hover:border-[#0047CC] hover:text-[#0047CC] hover:bg-[#F8FAFC] disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-all cursor-pointer shadow-2xs"
           >
             {isSavingDraft ? (
@@ -1495,8 +1567,8 @@ export const CreateCoursePage: React.FC = () => {
             <button
               type="button"
               onClick={handleUnpublishCourse}
-              disabled={unpublishMutation.isPending}
-              className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-1.5 text-xs font-bold bg-slate-700 hover:bg-slate-800 text-white rounded-full transition-all cursor-pointer shadow-xs"
+              disabled={isAnyLoadingOrUploading}
+              className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-1.5 text-xs font-bold bg-slate-700 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-full transition-all cursor-pointer shadow-xs"
             >
               {unpublishMutation.isPending ? 'Unpublishing…' : 'Unpublish'}
             </button>
@@ -1504,7 +1576,7 @@ export const CreateCoursePage: React.FC = () => {
             <button
               type="button"
               onClick={handleOpenPublish}
-              disabled={!isPublishReady || publishMutation.isPending}
+              disabled={!isPublishReady || isAnyLoadingOrUploading}
               className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-1.5 text-xs font-bold bg-[#0047CC] hover:bg-[#0037a3] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-full transition-all cursor-pointer shadow-xs active:scale-[0.98]"
             >
               {publishMutation.isPending ? (
@@ -1547,7 +1619,10 @@ export const CreateCoursePage: React.FC = () => {
                   key={step.id}
                   type="button"
                   onClick={() => changeStep(step.id)}
-                  className={`w-full flex items-start gap-3.5 px-3.5 py-3 rounded-xl text-left transition-all cursor-pointer group ${
+                  disabled={isAnyLoadingOrUploading}
+                  className={`w-full flex items-start gap-3.5 px-3.5 py-3 rounded-xl text-left transition-all group ${
+                    isAnyLoadingOrUploading ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'
+                  } ${
                     isCurrent
                       ? 'bg-[#EBF6FF] text-[#0047CC] shadow-xs'
                       : 'hover:bg-[#F8FAFC] text-[#475569]'
@@ -1632,7 +1707,10 @@ export const CreateCoursePage: React.FC = () => {
                     key={st.id}
                     type="button"
                     onClick={() => changeStep(st.id)}
-                    className={`flex flex-col items-center gap-1 min-w-[70px] px-2 py-1.5 rounded-xl text-xs shrink-0 cursor-pointer ${
+                    disabled={isAnyLoadingOrUploading}
+                    className={`flex flex-col items-center gap-1 min-w-[70px] px-2 py-1.5 rounded-xl text-xs shrink-0 ${
+                      isAnyLoadingOrUploading ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'
+                    } ${
                       isCurrent ? 'bg-[#EBF6FF] text-[#0047CC]' : 'text-[#64748B]'
                     }`}
                   >
@@ -2137,7 +2215,7 @@ export const CreateCoursePage: React.FC = () => {
                             </svg>
                           </div>
                           <div className="text-sm font-bold text-[#1E293B] mb-0.5">Upload Course Banner</div>
-                          <div className="text-[11px] text-[#64748B]">JPG, PNG or WebP · Up to 5 MB</div>
+                          <div className="text-[11px] text-[#64748B]">JPG, PNG or WebP · Up to 3 MB</div>
                         </div>
                       )}
                     </div>
@@ -2215,7 +2293,7 @@ export const CreateCoursePage: React.FC = () => {
                             </svg>
                           </div>
                           <div className="text-sm font-bold text-[#1E293B] mb-0.5">Upload 3-Minute Teaser</div>
-                          <div className="text-[11px] text-[#64748B]">MP4 or WebM · Up to 500 MB</div>
+                          <div className="text-[11px] text-[#64748B]">MP4 or WebM · Up to 50 MB · Max 3 mins</div>
                         </div>
                       )}
                     </div>
@@ -2864,7 +2942,7 @@ export const CreateCoursePage: React.FC = () => {
                           (labelLower.includes('difficulty') && Boolean(difficultyLevel)) ||
                           (labelLower.includes('module') && modules.length > 0 && modules.some((m) => (m.lessons || []).length > 0)) ||
                           (labelLower.includes('pricing') && basePrice !== '' && !isNaN(Number(basePrice)) && Number(basePrice) >= 0) ||
-                          (labelLower.includes('thumbnail') && Boolean(thumbnailPreview || thumbnailS3Key || builderData?.coverImageS3Key))
+                          (labelLower.includes('thumbnail') && Boolean(thumbnailPreview || thumbnailS3Key || builderData?.thumbnailS3Key || builderData?.coverImageS3Key))
                         );
 
                         const stepNum = item.stepNumber || (
@@ -2913,7 +2991,8 @@ export const CreateCoursePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handlePrevStep}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#475569] bg-white border border-[#CBD5E1] hover:bg-[#F8FAFC] rounded-xl transition-all cursor-pointer shadow-2xs"
+                  disabled={isAnyLoadingOrUploading}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#475569] bg-white border border-[#CBD5E1] hover:bg-[#F8FAFC] disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-all cursor-pointer shadow-2xs"
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <polyline points="15 18 9 12 15 6" />
@@ -2923,7 +3002,12 @@ export const CreateCoursePage: React.FC = () => {
               ) : (
                 <Link
                   to="/courses"
-                  className="px-4 py-2.5 text-xs font-semibold text-[#64748B] hover:text-[#0F172A] rounded-xl transition-colors inline-block"
+                  onClick={(e) => {
+                    if (isAnyLoadingOrUploading) e.preventDefault();
+                  }}
+                  className={`px-4 py-2.5 text-xs font-semibold text-[#64748B] hover:text-[#0F172A] rounded-xl transition-colors inline-block ${
+                    isAnyLoadingOrUploading ? 'opacity-40 pointer-events-none cursor-not-allowed' : ''
+                  }`}
                 >
                   Exit to Courses
                 </Link>
@@ -2938,8 +3022,8 @@ export const CreateCoursePage: React.FC = () => {
                 onClick={handleSaveDraft}
                 isLoading={isSavingDraft}
                 loadingLabel="Saving Draft…"
-                disabled={isSavingDraft || isNavigatingNext}
-                className="px-4 min-h-[38px] text-xs font-bold border-[#CBD5E1] text-[#334155] hover:border-[#0047CC] hover:text-[#0047CC] bg-white cursor-pointer shadow-2xs"
+                disabled={isAnyLoadingOrUploading}
+                className="px-4 min-h-[38px] text-xs font-bold border-[#CBD5E1] text-[#334155] hover:border-[#0047CC] hover:text-[#0047CC] disabled:opacity-40 disabled:cursor-not-allowed bg-white cursor-pointer shadow-2xs"
               >
                 Save Draft
               </Button>
@@ -2949,10 +3033,10 @@ export const CreateCoursePage: React.FC = () => {
                   onClick={handleNextStep}
                   isLoading={isNavigatingNext}
                   loadingLabel="Proceeding…"
-                  disabled={isNavigatingNext || isSavingDraft}
+                  disabled={isAnyLoadingOrUploading}
                   fullWidth={false}
                   pill={true}
-                  className="px-6 min-h-[38px] bg-[#0047CC] hover:bg-[#0037a3] text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+                  className="px-6 min-h-[38px] bg-[#0047CC] hover:bg-[#0037a3] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98]"
                 >
                   <span>Continue</span>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -2964,7 +3048,7 @@ export const CreateCoursePage: React.FC = () => {
                   onClick={handleOpenPublish}
                   isLoading={publishMutation.isPending}
                   loadingLabel="Publishing…"
-                  disabled={!isPublishReady || isNavigatingNext || isSavingDraft || publishMutation.isPending}
+                  disabled={!isPublishReady || isAnyLoadingOrUploading}
                   fullWidth={false}
                   pill={true}
                   className="px-6 min-h-[38px] bg-[#0047CC] hover:bg-[#0037a3] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98]"
@@ -3036,6 +3120,113 @@ export const CreateCoursePage: React.FC = () => {
                   }
                 />
               </div>
+
+              {editingLesson.lesson.contentType === 'VIDEO' && (
+                <div className="space-y-2">
+                  <label className="block font-bold text-[#1E293B]">
+                    Lesson Video / Media Asset
+                  </label>
+                  {(editingLesson.lesson.contentS3Key || editingLesson.lesson.videoS3Key) ? (
+                    <div className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-[#0047CC] truncate max-w-[280px]">
+                          Key: {editingLesson.lesson.contentS3Key || editingLesson.lesson.videoS3Key}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingLesson({
+                              ...editingLesson,
+                              lesson: {
+                                ...editingLesson.lesson,
+                                contentS3Key: null,
+                                videoS3Key: null,
+                              },
+                            });
+                          }}
+                          className="text-[11px] text-rose-600 hover:underline cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      {isYouTubeUrl(editingLesson.lesson.contentS3Key || editingLesson.lesson.videoS3Key) ? (
+                        <div className="aspect-video w-full rounded-lg overflow-hidden bg-black">
+                          <iframe
+                            src={getYouTubeEmbedUrl(editingLesson.lesson.contentS3Key || editingLesson.lesson.videoS3Key) || ''}
+                            title="Lesson Preview"
+                            className="w-full h-full"
+                            allowFullScreen
+                          />
+                        </div>
+                      ) : mediaSrc(editingLesson.lesson.contentS3Key || editingLesson.lesson.videoS3Key) ? (
+                        <video
+                          src={mediaSrc(editingLesson.lesson.contentS3Key || editingLesson.lesson.videoS3Key) || ''}
+                          controls
+                          className="aspect-video w-full rounded-lg bg-black object-cover"
+                        />
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-col gap-2">
+                    <label className="flex items-center justify-center gap-2 border border-dashed border-[#CBD5E1] hover:border-[#0047CC] rounded-xl p-3 text-center cursor-pointer transition-colors bg-[#F8FAFC]">
+                      <input
+                        type="file"
+                        accept="video/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file || !courseId) return;
+                          const toastId = toast.loading('Uploading lesson video…');
+                          try {
+                            const res: any = await uploadMediaMutation.mutateAsync({
+                              file,
+                              courseId,
+                            });
+                            const storageKey = res?.storageKey || res?.s3Key;
+                            if (storageKey) {
+                              setEditingLesson({
+                                ...editingLesson,
+                                lesson: {
+                                  ...editingLesson.lesson,
+                                  contentS3Key: storageKey,
+                                  videoS3Key: storageKey,
+                                },
+                              });
+                              toast.success('Video uploaded. Remember to save changes.', { id: toastId });
+                            }
+                          } catch (err: any) {
+                            toast.error(err?.message || 'Failed to upload video.', { id: toastId });
+                          }
+                        }}
+                      />
+                      <span className="text-xs font-semibold text-[#0047CC]">
+                        📁 Upload Video File (MP4)
+                      </span>
+                    </label>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-gray-400">or YouTube / Video URL:</span>
+                      <input
+                        type="text"
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        value={editingLesson.lesson.contentS3Key || editingLesson.lesson.videoS3Key || ''}
+                        onChange={(e) => {
+                          setEditingLesson({
+                            ...editingLesson,
+                            lesson: {
+                              ...editingLesson.lesson,
+                              contentS3Key: e.target.value.trim() || null,
+                              videoS3Key: e.target.value.trim() || null,
+                            },
+                          });
+                        }}
+                        className="flex-1 bg-white border border-[#CBD5E1] rounded-lg px-2.5 py-1 text-xs text-[#0F172A] outline-none focus:border-[#0047CC]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {editingLesson.lesson.contentType === 'READING' && (
                 <div>
@@ -3224,17 +3415,27 @@ export const CreateCoursePage: React.FC = () => {
 
             {promoVideoPreview || promoVideoS3Key ? (
               <div className="w-full h-48 rounded-2xl mb-4 overflow-hidden bg-slate-900 shadow-xs flex items-center justify-center">
-                <video
-                  src={promoVideoPreview || (promoVideoS3Key ? getMediaUrl(promoVideoS3Key) : '')}
-                  poster={thumbnailPreview || (thumbnailS3Key ? getMediaUrl(thumbnailS3Key) : undefined)}
-                  controls
-                  playsInline
-                  className="w-full h-48 object-cover"
-                />
+                {isYouTubeUrl(promoVideoPreview || promoVideoS3Key) ? (
+                  <iframe
+                    src={getYouTubeEmbedUrl(promoVideoPreview || promoVideoS3Key) || ''}
+                    title="Course promo preview"
+                    className="w-full h-48"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <video
+                    src={promoVideoPreview || mediaSrc(promoVideoS3Key) || ''}
+                    poster={thumbnailPreview || mediaSrc(thumbnailS3Key) || undefined}
+                    controls
+                    playsInline
+                    className="w-full h-48 object-cover"
+                  />
+                )}
               </div>
             ) : thumbnailPreview || thumbnailS3Key ? (
               <img
-                src={thumbnailPreview || (thumbnailS3Key ? getMediaUrl(thumbnailS3Key) : '')}
+                src={thumbnailPreview || mediaSrc(thumbnailS3Key) || ''}
                 alt="Course preview"
                 className="w-full h-48 object-cover rounded-2xl mb-4 shadow-xs"
               />

@@ -40,6 +40,7 @@ interface DashboardLayoutProps {
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
   const [isNavCollapsed, setIsNavCollapsed] = useState(() => {
     try {
       const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
@@ -394,10 +395,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               <Link
                 key={item.name}
                 to={item.path}
-                title={isNavCollapsed ? item.name : undefined}
                 onClick={() => setIsSidebarOpen(false)}
                 className={`
-                  flex items-center gap-3 px-5 py-3 text-sm font-semibold transition-all duration-150 cursor-pointer border-r-[3px]
+                  group/navitem relative flex items-center gap-3 px-5 py-3 text-sm font-semibold transition-all duration-150 cursor-pointer border-r-[3px]
                   group-data-[nav-collapsed=true]/sidebar:lg:justify-center group-data-[nav-collapsed=true]/sidebar:lg:px-0 group-data-[nav-collapsed=true]/sidebar:lg:gap-0
                   ${isActive(item.path) 
                     ? 'border-r-[#0047CC] bg-[#EBF6FF] text-[#0047CC]' 
@@ -406,6 +406,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               >
                 <item.icon size={18} strokeWidth={2.5} className="shrink-0" />
                 <span className="group-data-[nav-collapsed=true]/sidebar:lg:hidden">{item.name}</span>
+
+                {/* Floating Hover Tooltip for Collapsed Sidebar */}
+                <span className="hidden group-data-[nav-collapsed=true]/sidebar:lg:group-hover/navitem:flex fixed left-[78px] px-2.5 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg shadow-xl whitespace-nowrap z-50 pointer-events-none items-center animate-in fade-in zoom-in-95 duration-150">
+                  {item.name}
+                </span>
               </Link>
             ))}
           </nav>
@@ -415,17 +420,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             <div className="flex items-center justify-between gap-3 group-data-[nav-collapsed=true]/sidebar:lg:flex-col group-data-[nav-collapsed=true]/sidebar:lg:gap-2">
               <Link
                 to="/settings"
-                className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity cursor-pointer group-data-[nav-collapsed=true]/sidebar:lg:justify-center group-data-[nav-collapsed=true]/sidebar:lg:gap-0"
-                title={isNavCollapsed ? `${displayName} (Settings)` : 'Manage settings'}
+                className="group/user relative flex items-center gap-3 min-w-0 flex-1 hover:opacity-85 transition-opacity cursor-pointer group-data-[nav-collapsed=true]/sidebar:lg:justify-center group-data-[nav-collapsed=true]/sidebar:lg:gap-0"
               >
-                {avatarUrl ? (
+                {avatarUrl && !avatarError ? (
                   <img
                     src={avatarUrl}
                     alt={displayName}
+                    onError={() => setAvatarError(true)}
                     className="w-9 h-9 rounded-full object-cover shrink-0 shadow-xs border border-gray-200"
                   />
                 ) : (
-                  <div className="w-9 h-9 rounded-full bg-[#0047CC] flex items-center justify-center text-white font-bold text-[13px] shrink-0 uppercase tracking-tight shadow-xs">
+                  <div className="w-9 h-9 rounded-full bg-[#0047CC] flex items-center justify-center text-white font-bold text-[13px] shrink-0 uppercase tracking-tight shadow-xs ring-2 ring-blue-100">
                     {initials}
                   </div>
                 )}
@@ -433,6 +438,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                   <p className="text-[13px] font-bold text-[#1A1A1A] truncate leading-tight" title={displayName}>{displayName}</p>
                   <p className="text-[11px] text-[#808080] font-medium truncate" title={roleLabel}>{roleLabel}</p>
                 </div>
+
+                {/* Floating Tooltip for User Profile in Collapsed Sidebar */}
+                <span className="hidden group-data-[nav-collapsed=true]/sidebar:lg:group-hover/user:flex fixed left-[78px] px-2.5 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg shadow-xl whitespace-nowrap z-50 pointer-events-none items-center animate-in fade-in zoom-in-95 duration-150">
+                  {displayName} • {roleLabel}
+                </span>
               </Link>
 
               <button

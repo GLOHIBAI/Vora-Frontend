@@ -30,7 +30,10 @@ export const courseBuilderKeys = {
 // ============================================================================
 // 1. GET /courses/:id/builder
 // ============================================================================
-export const useCourseBuilder = (courseId: string | undefined) => {
+export const useCourseBuilder = (
+  courseId: string | undefined,
+  options?: { enabled?: boolean; staleTime?: number }
+) => {
   return useQuery({
     queryKey: courseId ? courseBuilderKeys.detail(courseId) : ['courses', 'builder', 'none'],
     queryFn: async (): Promise<CourseBuilderData> => {
@@ -48,8 +51,8 @@ export const useCourseBuilder = (courseId: string | undefined) => {
 
       return res.data;
     },
-    enabled: Boolean(courseId),
-    staleTime: 1000 * 60 * 3, // 3 min cache
+    enabled: Boolean(courseId) && (options?.enabled ?? true),
+    staleTime: options?.staleTime ?? 1000 * 60 * 2, // 2 min cache
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -230,7 +233,8 @@ export const useUploadCourseMedia = () => {
           // Normalize envelope from backend (could be res.data.data, res.data, or res)
           const payload = res?.data?.data ?? res?.data ?? res;
 
-          const s3Key =
+          const storageKey =
+            payload?.storageKey ||
             payload?.s3Key ||
             payload?.key ||
             payload?.publicId ||
@@ -241,17 +245,22 @@ export const useUploadCourseMedia = () => {
             payload?.path ||
             '';
 
-          const url =
+          const signedUrl =
+            payload?.signedUrl ||
             payload?.url ||
             payload?.secure_url ||
             payload?.thumbnailUrl ||
             payload?.videoUrl ||
             payload?.location ||
-            (s3Key && typeof s3Key === 'string' && s3Key.startsWith('http') ? s3Key : undefined);
+            (storageKey && typeof storageKey === 'string' && storageKey.startsWith('http') ? storageKey : undefined);
 
           return {
-            s3Key,
-            url,
+            storageKey,
+            s3Key: storageKey,
+            signedUrl,
+            url: signedUrl,
+            provider: payload?.provider || 'cloudinary',
+            mediaType: payload?.mediaType,
             ...payload,
           };
         } catch (err: any) {

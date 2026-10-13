@@ -21,6 +21,7 @@ export interface BuilderLesson {
   contentType: BuilderLessonContentType;
   orderIndex: number;
   durationMinutes: number;
+  contentS3Key?: string | null;
   videoS3Key?: string | null;
   articleBody?: string | null;
   fieldCaseBrief?: string | null;
@@ -63,6 +64,8 @@ export interface CourseBuilderData {
   difficultyLevel?: string | null;
   language?: string | null;
   format?: CourseFormat | null;
+  thumbnailS3Key?: string | null;
+  promoVideoS3Key?: string | null;
   coverImageS3Key?: string | null;
   promotionalVideoS3Key?: string | null;
   priceAmount?: number | null;
@@ -105,8 +108,13 @@ export interface PricingPreviewData {
 }
 
 export interface UploadMediaResponseData {
-  s3Key: string;
+  storageKey: string;
+  signedUrl?: string;
+  provider?: string;
+  mediaType?: string;
+  s3Key?: string;
   url?: string;
+  [key: string]: any;
 }
 
 // Request DTOs
@@ -126,8 +134,8 @@ export interface PatchCourseDto {
   difficultyLevel?: string;
   language?: string;
   format?: CourseFormat;
-  coverImageS3Key?: string | null;
-  promotionalVideoS3Key?: string | null;
+  thumbnailS3Key?: string | null;
+  promoVideoS3Key?: string | null;
   tier1Price?: number;
   priceAmount?: number;
   enablePppPricing?: boolean;
@@ -135,6 +143,10 @@ export interface PatchCourseDto {
   isCpdAccredited?: boolean;
   cpdCredits?: number;
   cpdBody?: string;
+  tags?: string[];
+  skills?: string[];
+  learningOutcomes?: string[];
+  prerequisites?: string[];
 }
 
 export interface CreateModuleDto {
@@ -153,6 +165,7 @@ export interface CreateLessonDto {
   title: string;
   contentType: BuilderLessonContentType;
   durationMinutes?: number;
+  contentS3Key?: string | null;
   videoS3Key?: string | null;
   articleBody?: string | null;
   fieldCaseBrief?: string | null;
@@ -166,6 +179,7 @@ export interface PatchLessonDto {
   title?: string;
   contentType?: BuilderLessonContentType;
   durationMinutes?: number;
+  contentS3Key?: string | null;
   videoS3Key?: string | null;
   articleBody?: string | null;
   fieldCaseBrief?: string | null;

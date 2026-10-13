@@ -24,6 +24,7 @@ export function useCourseBuilderAutosave({
   const lastSavedJsonRef = useRef<string>('');
   const latestPayloadRef = useRef<PatchCourseDto>(payload);
   const isFirstMountRef = useRef<boolean>(true);
+  const prevCourseIdRef = useRef<string | null | undefined>(courseId);
 
   latestPayloadRef.current = payload;
 
@@ -46,6 +47,8 @@ export function useCourseBuilderAutosave({
         setAutosaveStatus('saved');
       } catch (err) {
         console.error('[Autosave] Failed to autosave course:', err);
+        // Prevent infinite loops on validation/server errors for this exact payload
+        lastSavedJsonRef.current = serialized;
         setAutosaveStatus('error');
       }
     },
@@ -55,6 +58,13 @@ export function useCourseBuilderAutosave({
   // Debounced autosave effect
   useEffect(() => {
     if (!enabled || !courseId) return;
+
+    // Track courseId transitions: when a new courseId is assigned, sync baseline payload to prevent duplicate immediate PATCH
+    if (prevCourseIdRef.current !== courseId) {
+      prevCourseIdRef.current = courseId;
+      lastSavedJsonRef.current = JSON.stringify(payload);
+      return;
+    }
 
     // Skip initial mount so we don't trigger PATCH immediately upon loading
     if (isFirstMountRef.current) {
