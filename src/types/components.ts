@@ -5,6 +5,8 @@ export interface Option {
   label: string;
   value: string;
   italic?: boolean;
+  icon?: React.ReactNode;
+  disabled?: boolean;
 }
 
 export interface OptionGroup {

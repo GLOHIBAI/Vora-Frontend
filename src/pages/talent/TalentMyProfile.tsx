@@ -91,7 +91,9 @@ const TalentMyProfile: React.FC = () => {
   const {
     data: careerMapResponse,
     isLoading: isCareerMapLoading,
-  } = useTalentCareerMapQuery();
+  } = useTalentCareerMapQuery({
+    enabled: activeTab === 'careermap' || activeTab === 'overview',
+  });
   const careerMapData = careerMapResponse?.data;
 
   const {
@@ -422,6 +424,12 @@ const TalentMyProfile: React.FC = () => {
         <MyDataTab
           data={myData}
           isLoading={isMyDataLoading}
+          isJourneyLocked={
+            dashboard?.unlocks?.uploadCv?.locked === true ||
+            myData?.assessmentResults?.some(
+              (a) => a.status?.toLowerCase() === 'locked' || a.status?.toLowerCase() === 'failed'
+            )
+          }
           onOpenUploadModal={() => setIsUploadModalOpen(true)}
           onOpenDeleteModal={() => setIsDeleteModalOpen(true)}
         />

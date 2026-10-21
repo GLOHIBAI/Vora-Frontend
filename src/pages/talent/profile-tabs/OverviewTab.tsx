@@ -1,22 +1,34 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import Spinner from '../../../components/common/Spinner';
 import Tag from '../../../components/common/Tag';
+import DefaultAvatar from '../../../components/common/DefaultAvatar';
 import {
   MapPinIcon,
   ClockIcon,
   CheckCircleIcon,
   ArrowRightIcon,
+  CloseIcon,
 } from '../../../components/common/Icons';
 import type {
   TalentDashboardData,
   TalentDashboardPendingAction,
   TalentDashboardRole,
   TalentCareerMapData,
+  PatchTalentProfilePayload,
 } from '../../../services/queries/talent';
+import { usePatchTalentProfileMutation } from '../../../services/queries/talent';
 import { capitalizeName } from '../../../utils/userName';
 import { formatCurrencyString } from '../../../utils/currency';
 import { formatMemberSince } from '../../../utils/date';
+
+const EditIcon: React.FC<{ size?: number; className?: string }> = ({ size = 14, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+  </svg>
+);
 
 export const GRADE_CONTINUUM = [
   { grade: 'F', label: 'Entry' },
@@ -43,6 +55,17 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   onNavigateTab,
 }) => {
   const navigate = useNavigate();
+  const patchProfileMutation = usePatchTalentProfileMutation();
+
+  // Profile Edit Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editHeadline, setEditHeadline] = useState('');
+  const [editLocation, setEditLocation] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editNationality, setEditNationality] = useState('');
+  const [editRtwStatus, setEditRtwStatus] = useState<'verified' | 'pending' | 'not_set'>('not_set');
+  const [editWorkAuth, setEditWorkAuth] = useState('');
+  const [editDocumentUrl, setEditDocumentUrl] = useState('');
 
   const profile = dashboard?.profile;
   const metrics = dashboard?.metrics;
@@ -61,13 +84,89 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
     : 'Talent Profile';
   const initials = profile?.initials || (profile?.firstName ? profile.firstName[0].toUpperCase() : 'V');
 
-  const rawRtwLabel = profile?.rightToWork?.label?.trim();
-  const cleanRtwLabel = rawRtwLabel
-    ? rawRtwLabel.replace(/^Right to Work:\s*/i, '')
-    : (profile?.rightToWork?.status === 'verified' ? 'Verified' : 'Not set');
-  const isRtwVerified =
-    profile?.rightToWork?.status === 'verified' ||
-    cleanRtwLabel.toLowerCase() === 'verified';
+  // RTW binding from GET /talent/dashboard -> data.profile.rightToWork.profileStatus
+  const rtwProfileStatus = profile?.rightToWork?.profileStatus;
+  let rtwLabel = 'Right to Work not set';
+  let rtwVariant: 'green' | 'yellow' | 'gray' = 'gray';
+
+  if (rtwProfileStatus === 'verified') {
+    rtwLabel = 'Right to Work verified';
+    rtwVariant = 'green';
+  } else if (rtwProfileStatus === 'pending') {
+    rtwLabel = 'Right to Work pending';
+    rtwVariant = 'yellow';
+  } else if (rtwProfileStatus === 'not_set') {
+    rtwLabel = 'Right to Work not set';
+    rtwVariant = 'gray';
+  } else if (profile?.rightToWork?.label) {
+    rtwLabel = profile.rightToWork.label;
+    rtwVariant = profile?.rightToWork?.status === 'verified' ? 'green' : 'yellow';
+  }
+
+  const handleOpenEdit = () => {
+    setEditHeadline(profile?.headline || '');
+    setEditLocation(profile?.location || '');
+    setEditPhone(profile?.phone || '');
+    setEditNationality(profile?.nationality || '');
+    setEditRtwStatus(profile?.rightToWork?.profileStatus || 'not_set');
+    setEditWorkAuth(profile?.rightToWork?.workAuthorisation?.join(', ') || '');
+    setEditDocumentUrl(profile?.rightToWork?.documentUrl || '');
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload: PatchTalentProfilePayload = {};
+
+    if (editHeadline.trim() !== (profile?.headline || '')) {
+      payload.headline = editHeadline.trim();
+    }
+    if (editLocation.trim() !== (profile?.location || '')) {
+      payload.location = editLocation.trim();
+    }
+    if (editPhone.trim() !== (profile?.phone || '')) {
+      payload.phone = editPhone.trim();
+    }
+    if (editNationality.trim() !== (profile?.nationality || '')) {
+      payload.nationality = editNationality.trim();
+    }
+
+    const currentAuthStr = profile?.rightToWork?.workAuthorisation?.join(', ') || '';
+    const currentRtwStatus = profile?.rightToWork?.profileStatus || 'not_set';
+    const currentDoc = profile?.rightToWork?.documentUrl || '';
+
+    const authChanged = editWorkAuth.trim() !== currentAuthStr;
+    const statusChanged = editRtwStatus !== currentRtwStatus;
+    const docChanged = editDocumentUrl.trim() !== currentDoc;
+
+    if (authChanged || statusChanged || docChanged) {
+      payload.rightToWork = {
+        status: editRtwStatus,
+      };
+      if (authChanged) {
+        payload.rightToWork.workAuthorisation = editWorkAuth
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+      if (docChanged && editDocumentUrl.trim()) {
+        payload.rightToWork.documentUrl = editDocumentUrl.trim();
+      }
+    }
+
+    if (Object.keys(payload).length === 0) {
+      toast.error('Provide at least one profile field to update.');
+      return;
+    }
+
+    try {
+      const res = await patchProfileMutation.mutateAsync(payload);
+      toast.success(res?.message || 'Profile updated successfully.');
+      setIsEditModalOpen(false);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update profile.');
+    }
+  };
 
   const pendingActions: TalentDashboardPendingAction[] = dashboard?.pendingActions || [];
   const activitySnapshot = dashboard?.activitySnapshot;
@@ -104,18 +203,29 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
           {/* Left Column: Avatar & Meta */}
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left flex-1 min-w-0">
-            <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-full bg-[#112650] border-2 border-blue-400/40 flex items-center justify-center text-white font-semibold text-2xl sm:text-3xl shrink-0 shadow-sm">
-              {initials}
-            </div>
+            <DefaultAvatar
+              alt={fullName}
+              className="w-20 h-20 sm:w-22 sm:h-22 rounded-full border-2 border-blue-400/40 shrink-0 shadow-sm"
+            />
 
             <div className="space-y-2.5 min-w-0 flex-1">
-              <div>
-                <h2 className="text-[28px] font-semibold text-white tracking-tight leading-tight">
-                  {fullName}
-                </h2>
-                <p className="text-sm text-slate-300 font-normal mt-0.5">
-                  {profile?.headline || 'Healthcare Professional · Data & Analytics'}
-                </p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h2 className="text-[28px] font-semibold text-white tracking-tight leading-tight">
+                    {fullName}
+                  </h2>
+                  <p className="text-sm text-slate-300 font-normal mt-0.5">
+                    {profile?.headline || 'Healthcare Professional · Data & Analytics'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleOpenEdit}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-xs font-medium text-slate-200 transition-colors cursor-pointer self-start sm:self-auto shadow-2xs"
+                >
+                  <EditIcon size={13} className="text-blue-300" />
+                  <span>Edit Profile</span>
+                </button>
               </div>
 
               {/* Meta items */}
@@ -139,8 +249,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                   </>
                 )}
                 <Tag
-                  variant={isRtwVerified ? 'green' : 'yellow'}
-                  label={`Right to Work: ${cleanRtwLabel}`}
+                  variant={rtwVariant}
+                  label={rtwLabel}
                 />
               </div>
 
@@ -265,7 +375,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div className="flex flex-wrap items-center gap-2.5">
             <h3 className="text-base font-semibold text-slate-900">Career Map &amp; Progression Journey</h3>
-            <Tag variant="blue" label="Stage 3 Gate 1 Verified" />
+            {careerMap?.summary?.currentLevel && (
+              <Tag variant="blue" label={`Level ${careerMap.summary.currentLevel} Verified`} />
+            )}
           </div>
 
           <button
@@ -273,55 +385,68 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
             onClick={() => onNavigateTab('careermap')}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0047CC] hover:text-[#003bb5] hover:underline cursor-pointer self-start sm:self-auto"
           >
-            <span>Explore Full 58-Milestone Career Map</span>
+            <span>Explore Full Career Map</span>
             <ArrowRightIcon size={14} />
           </button>
         </div>
 
-        {/* L1 - L6 Continuum Roadmap (Done = blue check, Current = blue ring, Target = blue dashed, Future = gray) */}
+        {/* L1 - L6 Continuum Roadmap (Done = blue check, Current = blue ring, Target = blue dashed, Future = gray, Unranked = all locked) */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs">
             <span className="font-medium text-slate-600">Technical Readiness Level</span>
             <span className="font-semibold text-[#0047CC]">
-              {careerMap?.summary ? `${careerMap.summary.currentLevel} ${careerMap.summary.currentLevelTitle}` : 'L4 Staff / Lead'} · Stage 3 Gate 1
+              {careerMap?.summary?.currentLevel
+                ? `${careerMap.summary.currentLevel} ${careerMap.summary.currentLevelTitle || ''}`.trim()
+                : 'Unranked (Locked)'}
             </span>
           </div>
 
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-            {(careerMap?.readinessLevels || [
-              { level: 'L1', title: 'Associate', status: 'COMPLETED' },
-              { level: 'L2', title: 'Engineer', status: 'COMPLETED' },
-              { level: 'L3', title: 'Senior', status: 'COMPLETED' },
-              { level: 'L4', title: 'Staff / Lead', status: 'CURRENT' },
-              { level: 'L5', title: 'Principal', status: 'TARGET' },
-              { level: 'L6', title: 'Director', status: 'LOCKED' },
-            ]).map((step) => {
-              const isCurrent = step.status === 'CURRENT';
-              const isDone = step.status === 'COMPLETED';
-              const isTarget = step.status === 'TARGET';
+            {(() => {
+              const hasLevel = Boolean(careerMap?.summary?.currentLevel);
+              const baseLevels = (careerMap?.readinessLevels && careerMap.readinessLevels.length > 0)
+                ? careerMap.readinessLevels
+                : [
+                    { level: 'L1', title: 'Associate', status: 'LOCKED' as const },
+                    { level: 'L2', title: 'Engineer', status: 'LOCKED' as const },
+                    { level: 'L3', title: 'Senior', status: 'LOCKED' as const },
+                    { level: 'L4', title: 'Staff / Lead', status: 'LOCKED' as const },
+                    { level: 'L5', title: 'Principal', status: 'LOCKED' as const },
+                    { level: 'L6', title: 'Director', status: 'LOCKED' as const },
+                  ];
 
-              let stepStyle = 'bg-slate-50 border-slate-200 text-slate-400';
-              if (isCurrent) {
-                stepStyle = 'border-2 border-[#0047CC] text-[#0047CC] bg-blue-50/30';
-              } else if (isDone) {
-                stepStyle = 'bg-blue-50 border-blue-200 text-[#0047CC]';
-              } else if (isTarget) {
-                stepStyle = 'border-2 border-dashed border-[#0047CC] text-[#0047CC] bg-blue-50/20';
-              }
+              const resolvedLevels = !hasLevel
+                ? baseLevels.map((lvl) => ({ ...lvl, status: 'LOCKED' as const }))
+                : baseLevels;
 
-              return (
-                <div
-                  key={step.level}
-                  className={`p-2.5 rounded-lg border text-center transition-all ${stepStyle}`}
-                >
-                  <div className="flex items-center justify-center gap-1">
-                    <span className="font-semibold text-xs">{step.level}</span>
-                    {isDone && <CheckCircleIcon size={13} className="text-[#0047CC]" />}
+              return resolvedLevels.map((step) => {
+                const isCurrent = step.status === 'CURRENT';
+                const isDone = step.status === 'COMPLETED';
+                const isTarget = step.status === 'TARGET';
+
+                let stepStyle = 'bg-slate-50 border-slate-200 text-slate-400';
+                if (isCurrent) {
+                  stepStyle = 'border-2 border-[#0047CC] text-[#0047CC] bg-blue-50/30';
+                } else if (isDone) {
+                  stepStyle = 'bg-blue-50 border-blue-200 text-[#0047CC]';
+                } else if (isTarget) {
+                  stepStyle = 'border-2 border-dashed border-[#0047CC] text-[#0047CC] bg-blue-50/20';
+                }
+
+                return (
+                  <div
+                    key={step.level}
+                    className={`p-2.5 rounded-lg border text-center transition-all ${stepStyle}`}
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      <span className="font-semibold text-xs">{step.level}</span>
+                      {isDone && <CheckCircleIcon size={13} className="text-[#0047CC]" />}
+                    </div>
+                    <div className="text-xs font-medium truncate mt-0.5">{step.title}</div>
                   </div>
-                  <div className="text-xs font-medium truncate mt-0.5">{step.title}</div>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
         </div>
 
@@ -330,35 +455,37 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
           <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Milestones</p>
             <p className="text-base sm:text-lg font-semibold text-[#0047CC] mt-0.5">
-              {careerMap?.summary?.totalMilestones || 58} Total
+              {careerMap?.summary?.totalMilestones ?? 0} Total
             </p>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
-              {careerMap?.summary?.verifiedMilestones || 41} verified
+              {careerMap?.summary?.verifiedMilestones ?? 0} verified
             </p>
           </div>
 
           <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Target Focus</p>
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">In Progress</p>
             <p className="text-base sm:text-lg font-semibold text-[#0047CC] mt-0.5">
-              {careerMap?.pathLadder?.length || careerMap?.summary?.inProgressCount || 9} Milestones
+              {careerMap?.summary?.inProgressCount ?? 0} Active
             </p>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">L4 → L5 ladder</p>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              Active milestones
+            </p>
           </div>
 
           <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Career Eras</p>
             <p className="text-base sm:text-lg font-semibold text-[#0047CC] mt-0.5">
-              {careerMap?.eras?.length || 5} Eras
+              {careerMap?.eras?.length ?? 0} Eras
             </p>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">2018 — 2026</p>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">Roadmap segments</p>
           </div>
 
           <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Next Target</p>
-            <p className="text-xs font-semibold text-slate-900 mt-0.5 truncate" title="Multi-Region Active-Active Sharding">
-              Sharding &amp; Telemetry
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">In Review</p>
+            <p className="text-base sm:text-lg font-semibold text-[#0047CC] mt-0.5">
+              {careerMap?.summary?.pendingReviewCount ?? 0} Pending
             </p>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">Q4 2026 Target</p>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">Audit verification</p>
           </div>
         </div>
       </div>
@@ -703,6 +830,148 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
           )}
         </div>
       </div>
+
+      {/* EDIT PROFILE MODAL (PATCH /api/v1/talent/profile) */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 space-y-5 shadow-lg border border-slate-200 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-semibold text-slate-900">Edit Talent Profile</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Update your professional headline, location, contact, and right to work status.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+              >
+                <CloseIcon size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfile} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Professional Headline
+                </label>
+                <input
+                  type="text"
+                  value={editHeadline}
+                  onChange={(e) => setEditHeadline(e.target.value)}
+                  placeholder="e.g. Staff Data Lead"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-[#0047CC]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Location (City, Country)
+                  </label>
+                  <input
+                    type="text"
+                    value={editLocation}
+                    onChange={(e) => setEditLocation(e.target.value)}
+                    placeholder="e.g. Lagos, Nigeria"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-[#0047CC]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Nationality
+                  </label>
+                  <input
+                    type="text"
+                    value={editNationality}
+                    onChange={(e) => setEditNationality(e.target.value)}
+                    placeholder="e.g. Nigerian"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-[#0047CC]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="e.g. +2348000000000"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-[#0047CC]"
+                />
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 space-y-3">
+                <div className="text-xs font-semibold text-slate-900">Right to Work Authorization</div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Right to Work Status
+                  </label>
+                  <select
+                    value={editRtwStatus}
+                    onChange={(e) => setEditRtwStatus(e.target.value as 'verified' | 'pending' | 'not_set')}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-[#0047CC] bg-white"
+                  >
+                    <option value="verified">Verified (Confirmed Right to Work)</option>
+                    <option value="pending">Pending (Under Review / Needs Proof)</option>
+                    <option value="not_set">Not Set (Unconfirmed)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Work Authorisation Countries (comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={editWorkAuth}
+                    onChange={(e) => setEditWorkAuth(e.target.value)}
+                    placeholder="e.g. Nigeria, ECOWAS, United Kingdom"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-[#0047CC]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Verification Document URL (Optional)
+                  </label>
+                  <input
+                    type="url"
+                    value={editDocumentUrl}
+                    onChange={(e) => setEditDocumentUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-[#0047CC]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  disabled={patchProfileMutation.isPending}
+                  className="px-3.5 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={patchProfileMutation.isPending}
+                  className="px-4 py-2 rounded-lg bg-[#0047CC] hover:bg-[#003bb5] text-white text-xs font-semibold shadow-xs cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
+                >
+                  {patchProfileMutation.isPending && <Spinner size={12} />}
+                  <span>Save Changes</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -32,11 +32,13 @@ import {
   DEFAULT_MENTOR_AVATAR,
 } from '../../utils/media';
 import Select from '../../components/common/Select';
+import { MentorAvatar } from '../../components/mentors/MentorAvatar';
 
 type TabType = 'ongoing' | 'completed' | 'recommended';
-type SortOption = 'recent' | 'popular' | 'rating' | 'title';
+type SortOption = 'recommended' | 'recent' | 'popular' | 'rating' | 'title';
 
 const SORT_OPTIONS_MAP: Record<SortOption, string> = {
+  recommended: 'Recommended (Gap Priority)',
   recent: 'Most Recent',
   popular: 'Most Popular',
   rating: 'Highest Rated',
@@ -63,6 +65,39 @@ const getInitials = (name?: string): string => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
+const formatDisplayName = (name?: string): string => {
+  if (!name) return 'Course Instructor';
+  return name
+    .trim()
+    .split(/\s+/)
+    .map(word => {
+      if (word.startsWith('(') && word.length > 1) {
+        return '(' + word[1].toUpperCase() + word.slice(2);
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(' ');
+};
+
+const getMentorRoleOrg = (mentor?: any): string => {
+  if (!mentor) return '';
+  if (mentor.professionalTitle || mentor.organisation) {
+    return [mentor.professionalTitle, mentor.organisation].filter(Boolean).join(' · ');
+  }
+  if (mentor.instructorLabel) {
+    const match = mentor.instructorLabel.match(/\((.*?)\)/);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+    const name = mentor.displayName || mentor.name || '';
+    if (name && mentor.instructorLabel.startsWith(name)) {
+      return mentor.instructorLabel.slice(name.length).replace(/^[\s·\-,]+/, '').trim();
+    }
+    return mentor.instructorLabel;
+  }
+  return '';
+};
+
 interface CourseCardItemProps {
   course: CourseBrowseItem;
   isMasterclassBadge?: boolean;
@@ -78,13 +113,13 @@ const CourseCardItem: React.FC<CourseCardItemProps> = ({
   onEnroll,
   onOpen,
 }) => {
-  const banner = displayMedia(
+  const banner = course.thumbnailUrl || displayMedia(
     course.thumbnailUrl || (course as any).coverImageUrl,
     course.thumbnailS3Key || (course as any).coverImageS3Key
   );
   const mentorName = course.mentor?.displayName || course.mentor?.name || 'Instructor';
   const mentorOrg = course.mentor?.organisation || course.mentor?.professionalTitle || null;
-  const mentorPhoto = displayMedia(course.mentor?.photoUrl, course.mentor?.photoS3Key) || DEFAULT_MENTOR_AVATAR;
+  const mentorPhoto = course.mentor?.photoUrl || displayMedia(course.mentor?.photoUrl, course.mentor?.photoS3Key) || DEFAULT_MENTOR_AVATAR;
 
   return (
     <div className="bg-white border border-gray-200/90 hover:border-blue-200 rounded-[22px] overflow-hidden shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between group focus-within:ring-2 focus-within:ring-[#0052CC]/20">
@@ -120,7 +155,7 @@ const CourseCardItem: React.FC<CourseCardItemProps> = ({
           </div>
 
           {/* Neutral translucent tag on top-left of thumbnail */}
-          <div className="absolute top-3 left-3 pointer-events-none">
+          <div className="absolute top-3 left-3 pointer-events-none flex items-center gap-1.5 flex-wrap max-w-[85%]">
             {isMasterclassBadge || course.isMasterclass ? (
               <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-black/60 backdrop-blur-sm text-white tracking-wide border border-white/10 uppercase">
                 Masterclass
@@ -135,6 +170,25 @@ const CourseCardItem: React.FC<CourseCardItemProps> = ({
 
         {/* Course Info */}
         <div className="p-5 sm:p-6 space-y-3">
+          {/* Recommendation Gap Badge if prescribed or gap-linked */}
+          {course.recommendation && (
+            <div>
+              <span
+                title={course.recommendation.reason}
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-[#0052CC] border border-blue-200/80 shadow-2xs"
+              >
+                <span>🎯</span>
+                <span>
+                  {course.recommendation.source === 'prescription'
+                    ? 'Prescribed for Gaps'
+                    : course.recommendation.source === 'gap_link' || course.recommendation.source === 'target_gap'
+                    ? 'For Your Growth Gaps'
+                    : 'Recommended'}
+                </span>
+              </span>
+            </div>
+          )}
+
           {/* Title */}
           <h4
             onClick={() => onPreview(course)}
@@ -290,7 +344,7 @@ const CoursesList: React.FC = () => {
 
   // Learner Filter & View states (All Courses | Masterclasses | Categories)
   const [selectedFilter, setSelectedFilter] = useState<string>('ALL');
-  const [sortBy, setSortBy] = useState<SortOption>('recent');
+  const [sortBy, setSortBy] = useState<SortOption>('recommended');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isSortOpen, setIsSortOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
@@ -314,35 +368,30 @@ const CoursesList: React.FC = () => {
       list = list.filter((c) => c.category?.toLowerCase() === selectedFilter.toLowerCase());
     }
 
-    list.sort((a, b) => {
-      if (sortBy === 'recent') {
-        const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
-        const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
-        return dateB - dateA;
-      }
-      if (sortBy === 'popular') {
-        return (b.stats?.studentCount ?? 0) - (a.stats?.studentCount ?? 0);
-      }
-      if (sortBy === 'rating') {
-        return (b.stats?.ratings ?? 0) - (a.stats?.ratings ?? 0);
-      }
-      if (sortBy === 'title') {
-        return a.title.localeCompare(b.title);
-      }
-      return 0;
-    });
+    // Preserve BE ranking (DevelopmentPrescription -> GapSignals -> targetGaps -> moduleGaps -> fallback)
+    // Only re-sort if user explicitly selected a non-recommended sort option
+    if (sortBy !== 'recommended') {
+      list.sort((a, b) => {
+        if (sortBy === 'recent') {
+          const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+          const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+          return dateB - dateA;
+        }
+        if (sortBy === 'popular') {
+          return (b.stats?.studentCount ?? 0) - (a.stats?.studentCount ?? 0);
+        }
+        if (sortBy === 'rating') {
+          return (b.stats?.ratings ?? 0) - (a.stats?.ratings ?? 0);
+        }
+        if (sortBy === 'title') {
+          return a.title.localeCompare(b.title);
+        }
+        return 0;
+      });
+    }
 
     return list;
   }, [recommendedItems, selectedFilter, sortBy]);
-
-  const masterclassCourses = useMemo(
-    () => displayCourses.filter((c) => c.isMasterclass || c.format === 'VIDEO_MASTERCLASS'),
-    [displayCourses]
-  );
-  const catalogCourses = useMemo(
-    () => displayCourses.filter((c) => !c.isMasterclass && c.format !== 'VIDEO_MASTERCLASS'),
-    [displayCourses]
-  );
 
   const handleOpenCourse = (courseId: string, href?: string) => {
     if (href && href.startsWith('/courses/')) {
@@ -430,13 +479,12 @@ const CoursesList: React.FC = () => {
         </div>
       </div>
 
-      {/* ── UNIFIED TABS & CONTROLS TOOLBAR (Replaces old pill strip, removed from top) ── */}
-      <div className="border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        {/* Left: Underline Tabs (Ongoing courses | Completed courses | Recommended courses) */}
+      {/* ── TABS NAVIGATION (Full width, unclipped, zero horizontal scroll needed) ── */}
+      <div className="border-b border-gray-200">
         <div className="flex items-center gap-6 sm:gap-8 overflow-x-auto no-scrollbar whitespace-nowrap">
           <button
             onClick={() => setActiveTab('ongoing')}
-            className={`pb-3.5 text-[14px] sm:text-[15px] transition-colors relative cursor-pointer font-medium ${
+            className={`pb-3.5 text-[14px] sm:text-[15px] transition-colors relative cursor-pointer font-medium shrink-0 ${
               activeTab === 'ongoing'
                 ? 'text-[#0052CC] font-semibold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2.5px] after:bg-[#0052CC]'
                 : 'text-gray-500 hover:text-gray-900'
@@ -451,7 +499,7 @@ const CoursesList: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('completed')}
-            className={`pb-3.5 text-[14px] sm:text-[15px] transition-colors relative cursor-pointer font-medium ${
+            className={`pb-3.5 text-[14px] sm:text-[15px] transition-colors relative cursor-pointer font-medium shrink-0 ${
               activeTab === 'completed'
                 ? 'text-[#0052CC] font-semibold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2.5px] after:bg-[#0052CC]'
                 : 'text-gray-500 hover:text-gray-900'
@@ -466,7 +514,7 @@ const CoursesList: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('recommended')}
-            className={`pb-3.5 text-[14px] sm:text-[15px] transition-colors relative cursor-pointer font-medium ${
+            className={`pb-3.5 text-[14px] sm:text-[15px] transition-colors relative cursor-pointer font-medium shrink-0 ${
               activeTab === 'recommended'
                 ? 'text-[#0052CC] font-semibold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2.5px] after:bg-[#0052CC]'
                 : 'text-gray-500 hover:text-gray-900'
@@ -475,109 +523,36 @@ const CoursesList: React.FC = () => {
             Recommended courses
           </button>
         </div>
-
-        {/* Right: Counter + Sort Dropdown + Grid/List Toggle (visible in Recommended tab) */}
-        {activeTab === 'recommended' && !isLoadingRecommended && !recommendedError && (
-          <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 shrink-0 pb-2">
-            <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">
-              {displayCourses.length} {displayCourses.length === 1 ? 'course' : 'courses'}
-            </span>
-
-            {/* Sort Selector Dropdown - 40px height */}
-            <div className="relative" ref={sortRef}>
-              <button
-                type="button"
-                onClick={() => setIsSortOpen(!isSortOpen)}
-                className="h-10 px-4 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 rounded-xl text-xs sm:text-sm font-medium transition-all flex items-center gap-2 cursor-pointer shadow-2xs"
-              >
-                <span>{SORT_OPTIONS_MAP[sortBy]}</span>
-                <ChevronDownIcon
-                  size={15}
-                  className={`text-gray-500 transition-transform duration-200 ${isSortOpen ? 'rotate-180' : ''}`}
-                />
-              </button>
-
-              {isSortOpen && (
-                <div className="absolute right-0 top-full mt-1.5 z-40 w-44 bg-white border border-gray-200 rounded-2xl shadow-xl p-1.5 animate-in fade-in zoom-in-95">
-                  {(Object.keys(SORT_OPTIONS_MAP) as SortOption[]).map((key) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => {
-                        setSortBy(key);
-                        setIsSortOpen(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer flex items-center justify-between ${
-                        sortBy === key
-                          ? 'bg-blue-50 text-[#0052CC] font-bold'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      <span>{SORT_OPTIONS_MAP[key]}</span>
-                      {sortBy === key && <CheckIcon size={13} className="text-[#0052CC]" />}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Grid / List Toggle - 40px container, 18px icons, active blue-50 */}
-            <div className="h-10 bg-white border border-gray-200 rounded-xl p-1 flex items-center gap-1 shadow-2xs">
-              <button
-                type="button"
-                onClick={() => setViewMode('grid')}
-                title="Grid View"
-                className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
-                  viewMode === 'grid'
-                    ? 'bg-blue-50 text-[#0052CC] border border-blue-200'
-                    : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50 border border-transparent'
-                }`}
-              >
-                <GridIcon size={18} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('list')}
-                title="List View"
-                className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
-                  viewMode === 'list'
-                    ? 'bg-blue-50 text-[#0052CC] border border-blue-200'
-                    : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50 border border-transparent'
-                }`}
-              >
-                <ListIcon size={18} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Right count for ongoing & completed tabs */}
-        {activeTab === 'ongoing' && !isLoadingEnrollments && (
-          <div className="flex items-center sm:justify-end pb-3">
-            <span className="text-xs sm:text-sm text-gray-500 font-medium whitespace-nowrap">
-              {ongoingCourses.length} {ongoingCourses.length === 1 ? 'course' : 'courses'}
-            </span>
-          </div>
-        )}
-        {activeTab === 'completed' && !isLoadingEnrollments && (
-          <div className="flex items-center sm:justify-end pb-3">
-            <span className="text-xs sm:text-sm text-gray-500 font-medium whitespace-nowrap">
-              {completedCourses.length} {completedCourses.length === 1 ? 'course' : 'courses'}
-            </span>
-          </div>
-        )}
       </div>
 
       {/* ══════════════════ TAB 1: ONGOING COURSES ══════════════════ */}
       {activeTab === 'ongoing' && (
-        <div className="space-y-8 animate-in fade-in duration-300">
+        <div className="space-y-6 animate-in fade-in duration-300">
           {isLoadingEnrollments ? (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {[1, 2].map(i => (
-                <div key={i} className="bg-white border border-gray-100 rounded-[24px] p-6 animate-pulse space-y-4">
-                  <div className="h-6 bg-gray-200 rounded w-1/3" />
-                  <div className="h-4 bg-gray-100 rounded w-1/2" />
-                  <div className="h-32 bg-gray-100 rounded-xl" />
+                <div key={i} className="bg-white border border-gray-200/80 rounded-[24px] p-5 sm:p-7 animate-pulse space-y-5">
+                  {/* Skeleton Header: Title + Instructor Line + CTA Button */}
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div className="space-y-3 flex-1">
+                      <div className="h-6 bg-slate-200 rounded-md w-3/4 sm:w-1/2" />
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-slate-200 shrink-0" />
+                        <div className="h-4 bg-slate-200 rounded w-1/3" />
+                      </div>
+                    </div>
+                    <div className="h-10 bg-slate-200 rounded-full w-full sm:w-36 shrink-0" />
+                  </div>
+                  {/* Skeleton Progress Strip */}
+                  <div className="space-y-2 pt-1">
+                    <div className="flex justify-between">
+                      <div className="h-5 bg-slate-200 rounded-full w-24" />
+                      <div className="h-4 bg-slate-200 rounded w-16" />
+                    </div>
+                    <div className="h-2 bg-slate-200 rounded-full w-full" />
+                  </div>
+                  {/* Skeleton Media Preview */}
+                  <div className="w-full aspect-16/9 sm:aspect-[21/9] max-h-[260px] sm:max-h-[280px] bg-slate-200 rounded-[20px]" />
                 </div>
               ))}
             </div>
@@ -605,105 +580,180 @@ const CoursesList: React.FC = () => {
               const courseTitle = enrollment.course?.title || enrollment.title || 'Course';
               const courseId = enrollment.course?.id || enrollment.courseId || '';
               const mentorName = enrollment.mentor?.displayName || enrollment.mentor?.name || 'Course Instructor';
-              const mentorPhoto = displayMedia(enrollment.mentor?.photoUrl, enrollment.mentor?.photoS3Key) || DEFAULT_MENTOR_AVATAR;
+              const roleAndOrg = getMentorRoleOrg(enrollment.mentor);
               const courseBanner = displayMedia(
                 enrollment.course?.thumbnailUrl || (enrollment.course as any)?.coverImageUrl,
                 enrollment.course?.thumbnailS3Key || (enrollment.course as any)?.coverImageS3Key
               );
               const continueHref = enrollment.cta?.continueLearning?.hrefHint || enrollment.cta?.resumeLesson?.href || `/courses/${courseId}`;
 
+              const progress = Math.min(100, Math.max(0, enrollment.progressPercent ?? 0));
+              const isCompleted = progress >= 100 || enrollment.status === 'COMPLETED';
+              const isNotStarted = progress === 0 && enrollment.status !== 'COMPLETED';
+              const isInProgress = !isCompleted && !isNotStarted;
+
+              let statusLabel = 'In progress';
+              let statusChipClasses = 'bg-blue-50 text-[#0052CC] border border-blue-200/80';
+              let dotColor = 'bg-[#0052CC]';
+
+              if (isCompleted) {
+                statusLabel = 'Completed';
+                statusChipClasses = 'bg-emerald-50 text-emerald-700 border border-emerald-200/80';
+                dotColor = 'bg-emerald-500';
+              } else if (isNotStarted) {
+                statusLabel = 'Not started';
+                statusChipClasses = 'bg-slate-100 text-slate-600 border border-slate-200/80';
+                dotColor = 'bg-slate-400';
+              }
+
+              const primaryCtaLabel = isCompleted
+                ? 'Review course'
+                : progress > 0
+                ? 'Resume course'
+                : 'Start course';
+
+              const overlayCtaLabel = isCompleted
+                ? 'Review lesson'
+                : progress > 0
+                ? 'Resume lesson'
+                : 'Start lesson';
+
               return (
                 <div
                   key={enrollment.enrollmentId}
-                  className="bg-white border border-gray-100 rounded-[24px] p-5 sm:p-8 flex flex-col gap-5 sm:gap-6 shadow-xs hover:border-blue-100 transition-all"
+                  className="bg-white border border-gray-200/80 rounded-[24px] p-5 sm:p-7 flex flex-col gap-5 sm:gap-6 shadow-xs hover:shadow-md hover:border-blue-200 transition-all duration-300 focus-within:ring-2 focus-within:ring-[#0052CC]/20"
                 >
-                  {/* Header Row: Instructor Avatar + Info + Resume Button */}
-                  <div className="order-2 sm:order-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3.5 sm:gap-4">
-                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden shrink-0 border-2 border-gray-100 bg-gray-100">
-                        <img
-                          src={mentorPhoto}
-                          alt={mentorName}
-                          className="w-full h-full object-cover"
+                  {/* Header Row: Course Title Heading + Instructor Line (Avatar + Name once + Role/Org) + Primary Action Button */}
+                  <div className="order-2 sm:order-1 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div className="space-y-2 min-w-0 flex-1">
+                      {/* Course Title (Prominent Heading: semibold, 18-20px) */}
+                      <h3
+                        onClick={() => handleOpenCourse(courseId, continueHref)}
+                        className="text-[18px] sm:text-[20px] font-semibold text-gray-900 leading-snug hover:text-[#0052CC] transition-colors cursor-pointer line-clamp-2"
+                        title={courseTitle}
+                      >
+                        {courseTitle}
+                      </h3>
+
+                      {/* Instructor Line (Crisp 32px Avatar + Name once + Role & Org in muted truncate) */}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <MentorAvatar
+                          photoUrl={enrollment.mentor?.photoUrl}
+                          photoS3Key={enrollment.mentor?.photoS3Key}
+                          name={mentorName}
+                          className="w-8 h-8 rounded-full object-cover shrink-0 border border-gray-200/90 shadow-2xs"
                         />
+                        <div className="flex items-center gap-1.5 text-xs sm:text-[13px] text-slate-600 min-w-0">
+                          <span className="font-semibold text-gray-900 shrink-0">
+                            {formatDisplayName(mentorName)}
+                          </span>
+                          {roleAndOrg && (
+                            <>
+                              <span className="text-slate-300 shrink-0">•</span>
+                              <span className="text-slate-500 truncate font-medium" title={roleAndOrg}>
+                                {roleAndOrg}
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
-                      <div className="space-y-0.5 min-w-0">
-                        <h3 className="text-[15px] sm:text-[16px] font-bold text-gray-900 leading-tight">
-                          {mentorName}
-                        </h3>
-                        <h4 className="text-[13px] sm:text-[14px] font-semibold text-gray-700">
-                          {courseTitle}
-                        </h4>
-                        {enrollment.mentor?.instructorLabel && (
-                          <p className="text-[11px] text-gray-400 font-medium">
-                            {enrollment.mentor.instructorLabel}
-                          </p>
-                        )}
-                        {enrollment.cta?.resumeLesson?.lessonTitle && (
-                          <p className="text-[12px] text-[#0052CC] font-semibold pt-0.5">
-                            Current Lesson • {enrollment.cta.resumeLesson.lessonTitle}
-                          </p>
-                        )}
-                      </div>
+
+                      {/* Current lesson context indicator if in-progress */}
+                      {enrollment.cta?.resumeLesson?.lessonTitle && (
+                        <p className="text-xs text-[#0052CC] font-medium pt-0.5 flex items-center gap-1.5 truncate">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#0052CC] shrink-0" />
+                          <span>Current Lesson: {enrollment.cta.resumeLesson.lessonTitle}</span>
+                        </p>
+                      )}
                     </div>
 
-                    {/* Resume Course Button */}
-                    <div className="shrink-0 w-full sm:w-auto">
+                    {/* Primary CTA Button (Consistent min-width, same blue & radius, full-width on mobile) */}
+                    <div className="shrink-0 w-full sm:w-auto self-stretch sm:self-start">
                       <button
                         type="button"
                         onClick={() => handleOpenCourse(courseId, continueHref)}
-                        className="w-full sm:w-auto px-7 py-3 bg-[#0052CC] hover:bg-[#0047CC] text-white rounded-full font-semibold text-[14px] shadow-xs cursor-pointer transition-all active:scale-[0.98]"
+                        className="w-full sm:min-w-[150px] px-6 py-2.5 bg-[#0052CC] hover:bg-[#0047CC] text-white rounded-full font-semibold text-[14px] shadow-xs cursor-pointer transition-all active:scale-[0.98] text-center"
                       >
-                        {enrollment.progressPercent > 0 ? 'Resume course' : 'Start course'}
+                        {primaryCtaLabel}
                       </button>
                     </div>
                   </div>
 
-                  {/* Progress Strip */}
-                  <div className="order-3 sm:order-2 space-y-1.5 pt-1">
-                    <div className="flex items-center justify-between text-[12px]">
-                      <span className="text-gray-600 font-medium">
-                        {enrollment.progressLabel || `${enrollment.progressPercent}% completed`}
+                  {/* Progress Strip: Status chip + percentage label + visible darker track */}
+                  <div className="order-3 sm:order-2 space-y-2 pt-0.5">
+                    <div className="flex items-center justify-between text-xs sm:text-sm">
+                      {/* Status Chip following status map: Not started = gray, In progress = blue-50, Completed = green */}
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusChipClasses}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                        {statusLabel}
                       </span>
-                      <span className="text-gray-400 text-[11px]">
-                        {enrollment.statusLabel || (enrollment.status === 'ACTIVE' ? 'In Progress' : enrollment.status)}
+
+                      {/* Percentage in dark slate */}
+                      <span className="font-bold text-slate-800">
+                        {progress}% completed
                       </span>
                     </div>
-                    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+
+                    {/* Progress Bar with visible darker track */}
+                    <div className="w-full h-2 bg-slate-200/80 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-[#0052CC] rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min(100, Math.max(0, enrollment.progressPercent))}%` }}
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          isCompleted ? 'bg-emerald-500' : 'bg-[#0052CC]'
+                        }`}
+                        style={{ width: `${progress}%` }}
                       />
                     </div>
                   </div>
 
-                  {/* Wide Video Banner with "Watch lesson" overlay */}
+                  {/* Video Thumbnail Preview: Capped height, object-cover, blurred backdrop for odd ratios, legible play overlay */}
                   <div
                     onClick={() => handleOpenCourse(courseId, continueHref)}
-                    className="order-1 sm:order-3 relative aspect-16/9 sm:aspect-21/9 md:aspect-24/9 rounded-[20px] overflow-hidden group cursor-pointer shadow-xs border border-gray-100 bg-gradient-to-br from-[#0F1E36] via-[#1E3A8A] to-[#0047CC]"
+                    className="order-1 sm:order-3 relative w-full aspect-16/9 sm:aspect-[21/9] max-h-[260px] sm:max-h-[280px] rounded-[18px] sm:rounded-[20px] overflow-hidden group cursor-pointer shadow-xs border border-gray-200/80 bg-slate-950 focus:outline-none focus:ring-2 focus:ring-[#0052CC]"
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Open ${courseTitle}`}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleOpenCourse(courseId, continueHref);
+                      }
+                    }}
                   >
                     {courseBanner ? (
-                      <img
-                        src={courseBanner}
-                        alt={courseTitle}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-102"
-                        onError={(e) => {
-                          (e.target as HTMLElement).style.display = 'none';
-                        }}
-                      />
+                      <>
+                        {/* Blurred backdrop to fill odd ratios and avoid black letterbox bars */}
+                        <div
+                          className="absolute inset-0 bg-cover bg-center blur-xl scale-125 opacity-35 pointer-events-none"
+                          style={{ backgroundImage: `url(${courseBanner})` }}
+                        />
+                        <img
+                          src={courseBanner}
+                          alt={courseTitle}
+                          className="relative z-10 w-full h-full object-cover transition-transform duration-700 group-hover:scale-103"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      </>
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-200 bg-white/10 px-2.5 py-1 rounded-full border border-white/20">
+                      /* No thumbnail state: Elegant gradient with category badge & watermark */
+                      <div className="relative z-10 w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-[#0F1E36] via-[#1E3A8A] to-[#0047CC]">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-blue-200 bg-white/10 px-3 py-1 rounded-full border border-white/20 mb-2">
                           {enrollment.course?.category || 'VORA COURSE'}
                         </span>
+                        <h4 className="text-white/90 text-sm sm:text-base font-semibold line-clamp-1 max-w-md">
+                          {courseTitle}
+                        </h4>
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-black/25 group-hover:bg-black/35 transition-colors flex flex-col items-center justify-center gap-2">
-                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-black/40 backdrop-blur-xs flex items-center justify-center border-2 border-white/80 text-white shadow-lg group-hover:scale-110 transition-transform duration-300">
-                        <PlayIcon size={22} className="ml-0.5 fill-white" />
+
+                    {/* Dark scrim + legible, high-contrast Play overlay */}
+                    <div className="absolute inset-0 z-20 bg-black/35 group-hover:bg-black/45 transition-colors flex flex-col items-center justify-center gap-2.5">
+                      <div className="w-13 h-13 sm:w-15 sm:h-15 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center border-2 border-white/90 text-white shadow-xl group-hover:scale-110 group-hover:bg-[#0052CC] group-hover:border-[#0052CC] transition-all duration-300">
+                        <PlayIcon size={24} className="ml-1 fill-white" />
                       </div>
-                      <span className="text-white text-[12px] sm:text-[13px] font-semibold drop-shadow-sm">
-                        {enrollment.progressPercent > 0 ? 'Continue learning' : 'Start lesson'}
+                      <span className="px-3.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white text-[13px] sm:text-[14px] font-semibold shadow-md flex items-center gap-1.5">
+                        {overlayCtaLabel}
                       </span>
                     </div>
                   </div>
@@ -791,19 +841,28 @@ const CoursesList: React.FC = () => {
                       >
                         {courseTitle}
                       </h3>
-                      <p className="text-[12px] text-gray-500 truncate">
-                        {mentorName}
-                      </p>
-                      
-                      {/* Progress Bar */}
-                      <div className="pt-1.5">
-                        <span className="text-[11px] text-gray-500 font-medium">
-                          {enrollment.progressLabel || '100% completed'}
+                      <div className="flex items-center gap-2 pt-0.5 min-w-0">
+                        <MentorAvatar
+                          photoUrl={enrollment.mentor?.photoUrl}
+                          photoS3Key={enrollment.mentor?.photoS3Key}
+                          name={mentorName}
+                          className="w-5 h-5 rounded-full object-cover shrink-0 border border-gray-200"
+                        />
+                        <span className="text-[12px] text-gray-600 truncate font-medium">
+                          {formatDisplayName(mentorName)}
                         </span>
-                        <div className="w-full max-w-[260px] h-1.5 bg-gray-100 rounded-full overflow-hidden mt-1">
+                      </div>
+                      
+                      {/* Progress Bar with Green Completed Chip */}
+                      <div className="pt-2 flex items-center gap-3">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/70">
+                          <CheckCircleIcon size={12} className="text-emerald-500" />
+                          100% completed
+                        </span>
+                        <div className="w-full max-w-[160px] h-1.5 bg-slate-200/80 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-[#0052CC] rounded-full"
-                            style={{ width: `${Math.min(100, Math.max(0, enrollment.progressPercent || 100))}%` }}
+                            className="h-full bg-emerald-500 rounded-full"
+                            style={{ width: '100%' }}
                           />
                         </div>
                       </div>
@@ -847,8 +906,85 @@ const CoursesList: React.FC = () => {
 
       {/* ══════════════════ TAB 3: RECOMMENDED COURSES ══════════════════ */}
       {activeTab === 'recommended' && (
-        <div className="space-y-12 animate-in fade-in duration-300">
+        <div className="space-y-6 animate-in fade-in duration-300">
           
+          {/* Controls Toolbar: Course counter, Sort dropdown, Grid/List view toggle */}
+          {!isLoadingRecommended && !recommendedError && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+              <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">
+                {displayCourses.length} {displayCourses.length === 1 ? 'course' : 'courses'}
+              </span>
+
+              <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+                {/* Sort Selector Dropdown - 40px height */}
+                <div className="relative" ref={sortRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsSortOpen(!isSortOpen)}
+                    className="h-10 px-4 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 rounded-xl text-xs sm:text-sm font-medium transition-all flex items-center gap-2 cursor-pointer shadow-2xs"
+                  >
+                    <span>{SORT_OPTIONS_MAP[sortBy]}</span>
+                    <ChevronDownIcon
+                      size={15}
+                      className={`text-gray-500 transition-transform duration-200 ${isSortOpen ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+
+                  {isSortOpen && (
+                    <div className="absolute right-0 top-full mt-1.5 z-40 w-56 bg-white border border-gray-200 rounded-2xl shadow-xl p-1.5 animate-in fade-in zoom-in-95">
+                      {(Object.keys(SORT_OPTIONS_MAP) as SortOption[]).map((key) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => {
+                            setSortBy(key);
+                            setIsSortOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer flex items-center justify-between ${
+                            sortBy === key
+                              ? 'bg-blue-50 text-[#0052CC] font-bold'
+                              : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          <span>{SORT_OPTIONS_MAP[key]}</span>
+                          {sortBy === key && <CheckIcon size={13} className="text-[#0052CC]" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Grid / List Toggle - 40px container, 18px icons, active blue-50 */}
+                <div className="h-10 bg-white border border-gray-200 rounded-xl p-1 flex items-center gap-1 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('grid')}
+                    title="Grid View"
+                    className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+                      viewMode === 'grid'
+                        ? 'bg-blue-50 text-[#0052CC] border border-blue-200'
+                        : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50 border border-transparent'
+                    }`}
+                  >
+                    <GridIcon size={18} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('list')}
+                    title="List View"
+                    className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+                      viewMode === 'list'
+                        ? 'bg-blue-50 text-[#0052CC] border border-blue-200'
+                        : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50 border border-transparent'
+                    }`}
+                  >
+                    <ListIcon size={18} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Loading Skeleton */}
           {isLoadingRecommended && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -870,34 +1006,87 @@ const CoursesList: React.FC = () => {
             </div>
           )}
 
-          {/* Empty State when filtered */}
-          {!isLoadingRecommended && !recommendedError && displayCourses.length === 0 && (
-            <div className="text-center py-16 bg-[#FAFAFA] rounded-[24px] border border-gray-100 p-8 space-y-3">
-              <p className="text-gray-700 text-sm font-bold">
-                {selectedFilter === 'MASTERCLASS'
-                  ? 'No masterclasses found.'
-                  : selectedFilter !== 'ALL'
-                  ? `No courses found under "${selectedFilter}".`
-                  : 'No courses found.'}
-              </p>
-              <p className="text-gray-500 text-xs">There are no courses matching this category right now.</p>
-              <button
-                type="button"
-                onClick={() => setSelectedFilter('ALL')}
-                className="px-5 py-2 bg-[#0047CC] text-white rounded-full text-xs font-semibold hover:bg-[#0037a3] transition-colors cursor-pointer shadow-xs"
-              >
-                View All Courses
-              </button>
+          {/* Coaching copy / growth gap prescription banner */}
+          {(recommendedData?.message || (recommendedData?.focusAreas && recommendedData.focusAreas.length > 0)) && (
+            <div className="p-4 sm:p-5 rounded-2xl bg-blue-50/70 border border-blue-200/80 text-blue-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
+              <div className="space-y-1.5 flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#0052CC] flex items-center gap-1.5">
+                    <span>🎯</span>
+                    <span>Curated For Your Assessment & Match Gaps</span>
+                  </span>
+                  {recommendedData?.source === 'prescriptions' && (
+                    <span className="px-2 py-0.5 rounded-full bg-blue-100 text-[#0052CC] text-[10px] font-bold">
+                      Prescription Match
+                    </span>
+                  )}
+                  {recommendedData?.source === 'gap_signals' && (
+                    <span className="px-2 py-0.5 rounded-full bg-blue-100 text-[#0052CC] text-[10px] font-bold">
+                      Linked Gap Signals
+                    </span>
+                  )}
+                </div>
+
+                {recommendedData?.message && (
+                  <p className="text-sm font-medium text-slate-800 leading-relaxed">
+                    {recommendedData.message}
+                  </p>
+                )}
+
+                {recommendedData?.focusAreas && recommendedData.focusAreas.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                    <span className="text-xs font-semibold text-slate-600">Prescribed Focus Areas:</span>
+                    {recommendedData.focusAreas.map((area, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2.5 py-0.5 rounded-full bg-white border border-blue-200 text-xs font-medium text-[#0052CC]"
+                      >
+                        {area}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          {/* ── LIST VIEW MODE ── */}
+          {/* Empty State when no recommended courses or filter yields no results */}
+          {!isLoadingRecommended && !recommendedError && displayCourses.length === 0 && (
+            <div className="bg-white border border-gray-100 rounded-[24px] shadow-xs">
+              <EmptyState
+                icon={GraduationCapIcon}
+                title={
+                  selectedFilter !== 'ALL'
+                    ? `No courses found under "${selectedFilter}"`
+                    : recommendedData?.emptyState?.title || 'No recommended courses yet'
+                }
+                description={
+                  selectedFilter !== 'ALL'
+                    ? 'Try switching to all courses to view all available recommendations.'
+                    : recommendedData?.emptyState?.body ||
+                      'When your assessment or match gaps are linked to published mentor courses, they appear here. Nothing is invented.'
+                }
+                variant="dashed"
+                className="m-4 sm:m-6"
+                action={
+                  selectedFilter !== 'ALL'
+                    ? {
+                        label: 'View All Recommended',
+                        onClick: () => setSelectedFilter('ALL'),
+                      }
+                    : undefined
+                }
+              />
+            </div>
+          )}
+
+          {/* ── LIST VIEW MODE (Honest BE Ranking) ── */}
           {!isLoadingRecommended && !recommendedError && viewMode === 'list' && displayCourses.length > 0 && (
             <div className="space-y-4">
               {displayCourses.map((course) => {
-                const banner = displayMedia(course.thumbnailUrl || (course as any).coverImageUrl, course.thumbnailS3Key || (course as any).coverImageS3Key);
+                const banner = course.thumbnailUrl || displayMedia(course.thumbnailUrl || (course as any).coverImageUrl, course.thumbnailS3Key || (course as any).coverImageS3Key);
                 const mentorName = course.mentor?.displayName || course.mentor?.name || 'Instructor';
-                const mentorPhoto = displayMedia(course.mentor?.photoUrl, course.mentor?.photoS3Key) || DEFAULT_MENTOR_AVATAR;
+                const mentorPhoto = course.mentor?.photoUrl || displayMedia(course.mentor?.photoUrl, course.mentor?.photoS3Key) || DEFAULT_MENTOR_AVATAR;
 
                 return (
                   <div
@@ -941,10 +1130,24 @@ const CoursesList: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Course Info — capped width to eliminate dead gap on wide displays */}
+                    {/* Course Info */}
                     <div className="flex-1 min-w-0 max-w-3xl space-y-2">
-                      {/* Category & Level pills */}
                       <div className="flex flex-wrap items-center gap-2">
+                        {course.recommendation && (
+                          <span
+                            title={course.recommendation.reason}
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-[#0052CC] border border-blue-200/80 shadow-2xs"
+                          >
+                            <span>🎯</span>
+                            <span>
+                              {course.recommendation.source === 'prescription'
+                                ? 'Prescribed for Gaps'
+                                : course.recommendation.source === 'gap_link' || course.recommendation.source === 'target_gap'
+                                ? 'For Your Growth Gaps'
+                                : 'Recommended'}
+                            </span>
+                          </span>
+                        )}
                         <span className="px-3 py-1 rounded-full text-[12px] font-semibold bg-blue-50 text-[#0052CC] border border-blue-100/60 capitalize">
                           {course.category}
                         </span>
@@ -963,7 +1166,6 @@ const CoursesList: React.FC = () => {
                         )}
                       </div>
 
-                      {/* Semibold 18px Title with 2-line clamp */}
                       <h4
                         onClick={() => setPreviewCourse(course)}
                         className="text-[18px] font-semibold text-slate-900 group-hover:text-[#0052CC] transition-colors cursor-pointer leading-snug line-clamp-2"
@@ -971,12 +1173,10 @@ const CoursesList: React.FC = () => {
                         {course.title}
                       </h4>
 
-                      {/* Description: 14px slate-600 */}
                       <p className="text-[14px] text-slate-600 line-clamp-2 leading-relaxed">
                         {course.subtitle || course.description}
                       </p>
 
-                      {/* Instructor & Meta row */}
                       <div className="flex flex-wrap items-center gap-2.5 text-[13px] sm:text-[14px] text-slate-500 pt-1">
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 rounded-full overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center">
@@ -1026,7 +1226,6 @@ const CoursesList: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Action buttons — matching width (w-36 / w-40) and height (42px) */}
                     <div className="shrink-0 flex flex-col sm:flex-row md:flex-col items-center justify-center gap-2.5 pt-3 md:pt-0 border-t md:border-t-0 border-gray-100 w-full md:w-auto">
                       <button
                         type="button"
@@ -1062,60 +1261,20 @@ const CoursesList: React.FC = () => {
             </div>
           )}
 
-          {/* Section 1: Masterclasses (Grid Mode) */}
-          {!isLoadingRecommended && viewMode === 'grid' && masterclassCourses.length > 0 && (
-            <div className="space-y-6 pt-4">
-              <div className="space-y-1">
-                <h3 className="text-[20px] sm:text-[22px] font-bold text-gray-900 tracking-tight">
-                  Masterclasses
-                </h3>
-                <p className="text-[14px] text-gray-600">
-                  Comprehensive masterclasses led by domain leaders shaping their fields worldwide.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {masterclassCourses.map((course) => (
-                  <CourseCardItem
-                    key={course.id}
-                    course={course}
-                    isMasterclassBadge
-                    onPreview={setPreviewCourse}
-                    onEnroll={setEnrollCourse}
-                    onOpen={handleOpenCourse}
-                  />
-                ))}
-              </div>
+          {/* ── GRID VIEW MODE (Preserving Backend Ranked Order) ── */}
+          {!isLoadingRecommended && !recommendedError && viewMode === 'grid' && displayCourses.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
+              {displayCourses.map((course) => (
+                <CourseCardItem
+                  key={course.id}
+                  course={course}
+                  isMasterclassBadge={course.isMasterclass}
+                  onPreview={setPreviewCourse}
+                  onEnroll={setEnrollCourse}
+                  onOpen={handleOpenCourse}
+                />
+              ))}
             </div>
-          )}
-
-          {/* Section 2: Recommended / Available Courses (Grid Mode) */}
-          {!isLoadingRecommended && viewMode === 'grid' && (
-            (masterclassCourses.length > 0 ? catalogCourses : displayCourses).length > 0 && (
-              <div className={`space-y-6 ${masterclassCourses.length > 0 ? 'pt-8 border-t border-gray-100' : 'pt-4'}`}>
-                <div className="space-y-1">
-                  <h3 className="text-[20px] sm:text-[22px] font-bold text-gray-900 tracking-tight">
-                    {masterclassCourses.length > 0 ? 'Recommended for you' : 'Available Courses'}
-                  </h3>
-                  <p className="text-[14px] text-gray-600">
-                    Curated courses tailored to accelerate your professional growth.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {(masterclassCourses.length > 0 ? catalogCourses : displayCourses).map((course) => (
-                    <CourseCardItem
-                      key={course.id}
-                      course={course}
-                      isMasterclassBadge={false}
-                      onPreview={setPreviewCourse}
-                      onEnroll={setEnrollCourse}
-                      onOpen={handleOpenCourse}
-                    />
-                  ))}
-                </div>
-              </div>
-            )
           )}
 
         </div>
@@ -1197,13 +1356,12 @@ const CoursesList: React.FC = () => {
             <div className="p-5 sm:p-6 overflow-y-auto space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-12 h-12 rounded-[14px] overflow-hidden shrink-0 border border-gray-200 bg-gray-100">
-                    <img
-                      src={displayMedia(previewCourse.mentor?.photoUrl, previewCourse.mentor?.photoS3Key) || DEFAULT_MENTOR_AVATAR}
-                      alt={previewCourse.mentor?.displayName || previewCourse.mentor?.name || 'Instructor'}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+                  <MentorAvatar
+                    photoUrl={previewCourse.mentor?.photoUrl}
+                    photoS3Key={previewCourse.mentor?.photoS3Key}
+                    name={previewCourse.mentor?.displayName || previewCourse.mentor?.name}
+                    className="w-12 h-12 rounded-[14px] object-cover shrink-0 border border-gray-200"
+                  />
                   <div className="min-w-0">
                     <h4 className="text-[15px] font-bold text-gray-900 leading-snug truncate">
                       {previewCourse.mentor?.displayName || previewCourse.mentor?.name}

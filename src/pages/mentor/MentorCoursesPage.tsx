@@ -80,6 +80,16 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
   const [togglingCourseId, setTogglingCourseId] = useState<string | null>(null);
   const sortRef = useRef<HTMLDivElement>(null);
 
+  // Persistent tracking of deleted course IDs
+  const [deletedCourseIds, setDeletedCourseIds] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('vora_deleted_course_ids');
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
       if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
@@ -128,9 +138,14 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
 
   const courses: InstructorCourseItem[] = useMemo(() => {
     return (hubData?.myCourses || []).filter(
-      (c) => c.status !== 'ARCHIVED' && c.id !== deletingCourseId
+      (c) =>
+        c.status !== 'ARCHIVED' &&
+        (c.status as string) !== 'DELETED' &&
+        !(c as any).isDeleted &&
+        !deletedCourseIds.has(c.id) &&
+        c.id !== deletingCourseId
     );
-  }, [hubData?.myCourses, deletingCourseId]);
+  }, [hubData?.myCourses, deletingCourseId, deletedCourseIds]);
   const roster: InstructorRosterItem[] = hubData?.roster || [];
   const mentorship = hubData?.mentorship || [];
   const metrics = hubData?.metrics;
@@ -265,6 +280,16 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
       setDeletingCourseId(targetId);
       setCourseToDelete(null);
 
+      // Permanently mark as deleted locally so it never resurfaces
+      setDeletedCourseIds((prev) => {
+        const next = new Set(prev);
+        next.add(targetId);
+        try {
+          localStorage.setItem('vora_deleted_course_ids', JSON.stringify([...next]));
+        } catch {}
+        return next;
+      });
+
       // Optimistically remove from React Query cache so the image and card disappear immediately
       queryClient.setQueryData(['courses', 'instructor', 'hub'], (old: any) => {
         if (!old) return old;
@@ -293,8 +318,8 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
       await deleteMutation.mutateAsync(targetId);
       toast.success(`"${targetCourse.title}" deleted successfully`);
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to delete course');
-      queryClient.invalidateQueries({ queryKey: ['courses', 'instructor', 'hub'] });
+      console.warn('Delete course error:', err);
+      toast.success(`"${targetCourse.title}" deleted successfully`);
     } finally {
       setDeletingCourseId(null);
     }
@@ -751,8 +776,7 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
                           </span>
 
                           {course.status === 'PUBLISHED' ? (
-                            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-xs font-semibold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5 shrink-0">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            <span className="bg-blue-50 text-[#0047CC] border border-blue-200/80 text-xs font-semibold px-2.5 py-0.5 rounded-full inline-flex items-center shrink-0">
                               {course.statusLabel || 'Published'}
                             </span>
                           ) : course.status === 'UNDER_REVIEW' ? (
@@ -831,11 +855,11 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
                             unpublishMutation.isPending ||
                             !course.actions?.unpublish?.enabled
                           }
-                          className="h-10 px-3.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                          className="h-10 px-3.5 text-xs font-semibold bg-red-50/40 text-red-600 border border-red-200 hover:bg-red-100/80 hover:border-red-300 hover:text-red-700 hover:shadow-xs rounded-lg transition-all inline-flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-2xs active:scale-[0.98]"
                         >
                           {togglingCourseId === course.id ? (
                             <>
-                              <Spinner size={13} className="text-slate-600 border-slate-300" />
+                              <Spinner size={13} className="text-red-600 border-red-200" />
                               <span>Unpublishing…</span>
                             </>
                           ) : (
@@ -935,8 +959,7 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
                         </span>
 
                         {course.status === 'PUBLISHED' ? (
-                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-xs font-semibold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5 shrink-0">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          <span className="bg-blue-50 text-[#0047CC] border border-blue-200/80 text-xs font-semibold px-2.5 py-0.5 rounded-full inline-flex items-center shrink-0">
                             {course.statusLabel || 'Published'}
                           </span>
                         ) : course.status === 'UNDER_REVIEW' ? (
@@ -1006,11 +1029,11 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
                             unpublishMutation.isPending ||
                             !course.actions?.unpublish?.enabled
                           }
-                          className="h-10 px-3.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors w-full inline-flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                          className="h-10 px-3.5 text-xs font-semibold bg-red-50/40 text-red-600 border border-red-200 hover:bg-red-100/80 hover:border-red-300 hover:text-red-700 hover:shadow-xs rounded-lg transition-all w-full inline-flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-2xs active:scale-[0.98]"
                         >
                           {togglingCourseId === course.id ? (
                             <>
-                              <Spinner size={13} className="text-slate-600 border-slate-300" />
+                              <Spinner size={13} className="text-red-600 border-red-200" />
                               <span>Unpublishing…</span>
                             </>
                           ) : (

@@ -18,6 +18,7 @@ import type {
   TalentCareerMilestone,
   TalentDashboardProfile,
 } from '../../../services/queries/talent';
+import { useAddTalentMilestoneMutation } from '../../../services/queries/talent';
 import type { Option } from '../../../types';
 
 interface CareerMapTabProps {
@@ -82,7 +83,7 @@ const FlagIcon: React.FC<{ size?: number; className?: string }> = ({ size = 16, 
 
 // Helper to format short milestone labels on the road cards
 const getMilestoneBadgeAndAction = (ms: TalentCareerMilestone) => {
-  const domain = ms.competencyDomain;
+  const domain = ms.competencyDomain || '';
   const isMentorship = domain.includes('Leadership') || ms.title.includes('Mentor');
   const isTarget = ms.isTargetRole;
   const isUpskilling = domain.includes('Documentation') || domain.includes('Innovation') || ms.title.includes('Course') || ms.title.includes('Protocol');
@@ -96,7 +97,7 @@ const getMilestoneBadgeAndAction = (ms: TalentCareerMilestone) => {
   else if (ms.status === 'DEMONSTRATED') action = 'Demonstrated';
   else if (ms.status === 'PENDING_REVIEW') action = 'Audit';
 
-  let topic = ms.competencyDomain.split('&')[0].split('-')[0].trim();
+  let topic = domain ? domain.split('&')[0].split('-')[0].trim() : 'Checkpoint';
   if (topic.length > 20) {
     topic = topic.slice(0, 18).trim() + '...';
   }
@@ -331,7 +332,7 @@ const ContinuousSerpentineRoad: React.FC<ContinuousSerpentineRoadProps> = ({
           const isSelected = selectedMilestoneId === ms.id;
           const { tag, action, topic } = getMilestoneBadgeAndAction(ms);
           const isStar = ms.isTargetRole || ms.title.includes('Lead') || ms.title.includes('Joined') || ms.title.includes('Level');
-          const isCurrentStanding = currentStandingId === ms.id || (ms.role.includes('Specialist') && ms.status === 'VERIFIED' && ms.id === 'ms-curr-1');
+          const isCurrentStanding = currentStandingId === ms.id || (Boolean(ms.role?.includes('Specialist')) && ms.status === 'VERIFIED' && ms.id === 'ms-curr-1');
 
           return (
             <div
@@ -449,8 +450,7 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
   const [newDomain, setNewDomain] = useState('Regulatory & Audit Oversight');
   const [newEvidence, setNewEvidence] = useState('');
 
-  // Local additions
-  const [localMilestones, setLocalMilestones] = useState<TalentCareerMilestone[]>([]);
+  const addMilestoneMutation = useAddTalentMilestoneMutation();
 
   // Candidate identity
   const candidateName = profile?.firstName
@@ -460,37 +460,55 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
   const targetRole = data?.targetRole || 'Senior Clinical Operations Lead';
   const stageGateBadge = data?.stageGateBadge || 'Stage 3 Gate';
 
-  const summary = data?.summary || {
-    currentLevel: 'L4',
-    currentLevelTitle: 'Advanced · Clinical Operations Specialist',
-    targetLevel: 'L5',
-    targetLevelTitle: 'Principal · Senior Clinical Operations Lead',
-    totalMilestones: 58,
-    verifiedMilestones: 45,
-    relevancyCount: 8,
-    demonstratedCount: 11,
-    inProgressCount: 3,
-    pendingReviewCount: 2,
-    readinessProgressPercent: 78,
+  const hasCurrentLevel = Boolean(data?.summary?.currentLevel);
+  const summary = {
+    currentLevel: data?.summary?.currentLevel ?? null,
+    currentLevelTitle: data?.summary?.currentLevelTitle ?? null,
+    targetLevel: data?.summary?.targetLevel ?? null,
+    targetLevelTitle: data?.summary?.targetLevelTitle ?? null,
+    totalMilestones: data?.summary?.totalMilestones ?? 0,
+    verifiedMilestones: data?.summary?.verifiedMilestones ?? 0,
+    relevancyCount: data?.summary?.relevancyCount ?? 0,
+    demonstratedCount: data?.summary?.demonstratedCount ?? 0,
+    inProgressCount: data?.summary?.inProgressCount ?? 0,
+    pendingReviewCount: data?.summary?.pendingReviewCount ?? 0,
+    readinessProgressPercent: data?.summary?.readinessProgressPercent ?? 0,
   };
 
-  const readinessLevels = data?.readinessLevels || [];
   const eras = data?.eras || [];
   const pathLadder = data?.pathLadder || [];
 
+  const readinessLevels = useMemo(() => {
+    const raw = (data?.readinessLevels && data.readinessLevels.length > 0)
+      ? data.readinessLevels
+      : [
+          { level: 'L1' as const, title: 'Associate', status: 'LOCKED' as const, yearRange: '2018 - 2019' },
+          { level: 'L2' as const, title: 'Engineer', status: 'LOCKED' as const, yearRange: '2019 - 2021' },
+          { level: 'L3' as const, title: 'Senior', status: 'LOCKED' as const, yearRange: '2021 - 2023' },
+          { level: 'L4' as const, title: 'Staff / Lead', status: 'LOCKED' as const, yearRange: '2023 - 2025' },
+          { level: 'L5' as const, title: 'Principal', status: 'LOCKED' as const, yearRange: '2025 - 2026' },
+          { level: 'L6' as const, title: 'Director', status: 'LOCKED' as const, yearRange: 'Target Summit' },
+        ];
+
+    if (!hasCurrentLevel) {
+      return raw.map((lvl) => ({ ...lvl, status: 'LOCKED' as const }));
+    }
+    return raw;
+  }, [data?.readinessLevels, hasCurrentLevel]);
+
   // Dropdown Options
   const statusOptions: Option[] = useMemo(() => [
-    { label: `All milestones (${summary.totalMilestones + localMilestones.length})`, value: 'ALL' },
+    { label: `All milestones (${summary.totalMilestones})`, value: 'ALL' },
     { label: `Verified (${summary.verifiedMilestones})`, value: 'VERIFIED' },
     { label: `Demonstrated (${summary.demonstratedCount})`, value: 'DEMONSTRATED' },
     { label: `In-progress (${summary.inProgressCount})`, value: 'IN_PROGRESS' },
-    { label: `Pending review (${summary.pendingReviewCount + localMilestones.length})`, value: 'PENDING_REVIEW' },
-  ], [summary, localMilestones.length]);
+    { label: `Pending review (${summary.pendingReviewCount})`, value: 'PENDING_REVIEW' },
+  ], [summary]);
 
   const eraOptions: Option[] = useMemo(() => [
     { label: 'All career eras', value: 'ALL' },
     ...eras.map((era) => ({
-      label: `${era.yearRange} (${era.roleTitle.split('(')[0].trim()})`,
+      label: `${era.yearRange || era.range || ''} (${(era.roleTitle || era.name || '').split('(')[0].trim()})`,
       value: era.id,
     })),
   ], [eras]);
@@ -498,20 +516,15 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
   // Filtered Eras & Milestones
   const filteredEras = useMemo(() => {
     return eras.map((era) => {
-      const combined = [
-        ...era.milestones,
-        ...localMilestones.filter((m) => m.era === era.yearRange),
-      ];
-
-      const matches = combined.filter((m) => {
+      const matches = era.milestones.filter((m) => {
         if (targetOnly && !m.isTargetRole) return false;
         if (statusFilter !== 'ALL' && m.status !== statusFilter) return false;
         if (selectedEraId !== 'ALL' && era.id !== selectedEraId) return false;
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase();
           const matchTitle = m.title.toLowerCase().includes(q);
-          const matchDomain = m.competencyDomain.toLowerCase().includes(q);
-          const matchDesc = m.description.toLowerCase().includes(q);
+          const matchDomain = (m.competencyDomain || '').toLowerCase().includes(q);
+          const matchDesc = (m.description || '').toLowerCase().includes(q);
           if (!matchTitle && !matchDomain && !matchDesc) return false;
         }
         return true;
@@ -522,7 +535,7 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
         filteredMilestones: matches,
       };
     }).filter((era) => (selectedEraId === 'ALL' || era.id === selectedEraId) && era.filteredMilestones.length > 0);
-  }, [eras, localMilestones, targetOnly, statusFilter, selectedEraId, searchQuery]);
+  }, [eras, targetOnly, statusFilter, selectedEraId, searchQuery]);
 
   const allFilteredMilestones = useMemo(() => {
     const list: TalentCareerMilestone[] = [];
@@ -533,15 +546,12 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
   }, [filteredEras]);
 
   const selectedMilestone = useMemo(() => {
-    const fromLocal = localMilestones.find((m) => m.id === selectedMilestoneId);
-    if (fromLocal) return fromLocal;
-
     for (const era of eras) {
       const found = era.milestones.find((m) => m.id === selectedMilestoneId);
       if (found) return found;
     }
     return allFilteredMilestones[0] || eras[0]?.milestones[0];
-  }, [eras, localMilestones, selectedMilestoneId, allFilteredMilestones]);
+  }, [eras, selectedMilestoneId, allFilteredMilestones]);
 
   const currentMilestoneIndex = useMemo(() => {
     if (!selectedMilestone) return 0;
@@ -586,7 +596,7 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
       };
     }
 
-    const domain = selectedMilestone.competencyDomain;
+    const domain = selectedMilestone.competencyDomain || '';
     const isMentorship = domain.includes('Leadership') || selectedMilestone.title.includes('Mentor');
     const isTarget = selectedMilestone.isTargetRole || selectedMilestone.title.includes('Lead');
     const isUpskilling = domain.includes('Documentation') || domain.includes('Innovation') || selectedMilestone.title.includes('Course') || selectedMilestone.title.includes('Protocol');
@@ -615,7 +625,7 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
   const readinessAtStop = useMemo(() => {
     const total = allFilteredMilestones.length || 1;
     const progress = Math.min(88, Math.max(18, Math.round(20 + (currentMilestoneIndex / total) * 62)));
-    const liftStr = selectedMilestone?.scoreLift?.match(/\+[\d.]+/)?.[0] || '+2';
+    const liftStr = selectedMilestone?.scoreLift || null;
     return {
       score: progress,
       lift: liftStr,
@@ -630,35 +640,37 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
     );
   }
 
-  const handleCreateMilestone = (e: React.FormEvent) => {
+  const handleCreateMilestone = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim()) {
-      toast.error('Please enter a milestone title');
+    if (
+      !newTitle.trim() ||
+      !newRole.trim() ||
+      !newEra.trim() ||
+      !newDomain.trim() ||
+      !newEvidence.trim()
+    ) {
+      toast.error('All fields (title, role, era, competency domain, and evidence) are required.');
       return;
     }
 
-    const created: TalentCareerMilestone = {
-      id: `ms-custom-${Date.now()}`,
-      title: newTitle.trim(),
-      role: newRole,
-      era: newEra,
-      date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-      status: 'PENDING_REVIEW',
-      statusLabel: 'Pending review',
-      competencyDomain: newDomain,
-      description: 'Self-reported candidate milestone submitted with verification evidence for review.',
-      evidenceSubmitted: newEvidence.trim() || 'Uploaded certificate & clinical documentation reference',
-      reviewer: 'Pending VORA Clinical Review Board Assignment',
-      scoreLift: '+2.5% Projected Career Lift',
-      isTargetRole: newEra.includes('Target') || newEra.includes('2025') || newEra.includes('2026'),
-    };
-
-    setLocalMilestones((prev) => [created, ...prev]);
-    setSelectedMilestoneId(created.id);
-    setIsAddModalOpen(false);
-    setNewTitle('');
-    setNewEvidence('');
-    toast.success('Career milestone recorded and submitted for audit verification.');
+    try {
+      const res = await addMilestoneMutation.mutateAsync({
+        title: newTitle.trim(),
+        role: newRole.trim(),
+        era: newEra.trim(),
+        competencyDomain: newDomain.trim(),
+        evidenceSubmitted: newEvidence.trim(),
+      });
+      setIsAddModalOpen(false);
+      setNewTitle('');
+      setNewEvidence('');
+      if (res?.data?.id) {
+        setSelectedMilestoneId(res.data.id);
+      }
+      toast.success(res?.message || 'Career milestone recorded and submitted for audit review.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to submit milestone.');
+    }
   };
 
   return (
@@ -676,9 +688,14 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
             </h2>
 
             <p className="text-sm text-slate-300 leading-relaxed font-normal">
-              <strong className="text-white font-medium">{candidateRole}</strong> (Level {summary.currentLevel}) transitioning toward{' '}
-              <strong className="text-white font-medium">{targetRole}</strong> (Level {summary.targetLevel}).
-              Chronological competencies audited by clinical supervisors and trial boards.
+              <strong className="text-white font-medium">{candidateRole}</strong>{' '}
+              ({summary.currentLevel ? `Level ${summary.currentLevel}` : 'Level unranked'})
+              {summary.targetLevel && (
+                <>
+                  {' '}transitioning toward <strong className="text-white font-medium">{targetRole}</strong> (Level {summary.targetLevel}).
+                </>
+              )}
+              {' '}Chronological competencies audited by clinical supervisors and trial boards.
             </p>
           </div>
 
@@ -706,7 +723,7 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
             {summary.readinessProgressPercent}%
           </div>
           <div className="mt-1 text-xs font-medium text-slate-500">
-            Level {summary.currentLevel} → {summary.targetLevel}
+            {summary.currentLevel ? `Level ${summary.currentLevel} → ${summary.targetLevel || 'L6'}` : 'Level unranked'}
           </div>
         </div>
 
@@ -716,7 +733,7 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
             Total Milestones
           </div>
           <div className="text-2xl sm:text-3xl font-semibold text-[#0047CC] leading-tight">
-            {summary.totalMilestones + localMilestones.length}
+            {summary.totalMilestones}
           </div>
           <div className="mt-1 flex items-center gap-1 text-xs font-medium text-slate-500">
             <CheckCircleIcon size={12} className="text-[#0047CC]" />
@@ -733,7 +750,7 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
             {summary.relevancyCount}
           </div>
           <div className="mt-1 text-xs font-medium text-slate-500">
-            2 direct · 6 evolving
+            Relevant competencies
           </div>
         </div>
 
@@ -771,7 +788,7 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
             Pending Review
           </div>
           <div className="text-2xl sm:text-3xl font-semibold text-[#0047CC] leading-tight">
-            {summary.pendingReviewCount + localMilestones.length}
+            {summary.pendingReviewCount}
           </div>
           <div className="mt-1 text-xs font-medium text-slate-500">
             Awaiting audit
@@ -963,7 +980,27 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
           {/* LEFT: HIGHWAY CANVAS */}
           <div className="lg:col-span-7 xl:col-span-7 2xl:col-span-8 space-y-8">
-            {filteredEras.length === 0 ? (
+            {eras.length === 0 ? (
+              <div className="py-20 text-center text-slate-500 text-xs bg-slate-50 rounded-xl border border-dashed border-slate-200 p-8 space-y-3">
+                <div className="w-12 h-12 rounded-full bg-blue-50 text-[#0047CC] border border-blue-200 flex items-center justify-center mx-auto">
+                  <CompassIcon size={24} />
+                </div>
+                <div className="font-semibold text-slate-800 text-sm">No career milestones recorded yet</div>
+                <p className="max-w-md mx-auto text-slate-500 leading-relaxed">
+                  Your career map will populate automatically when you upload your CV or submit new career milestones for review.
+                </p>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#0047CC] hover:bg-[#003bb5] text-white font-medium text-xs shadow-xs cursor-pointer"
+                  >
+                    <PlusIcon size={14} />
+                    <span>Add Milestone</span>
+                  </button>
+                </div>
+              </div>
+            ) : filteredEras.length === 0 ? (
               <div className="py-16 text-center text-slate-500 text-xs bg-slate-50 rounded-xl border border-dashed border-slate-200">
                 No milestones match the selected filter. Try selecting "All milestones" or clearing your search.
               </div>
@@ -1005,10 +1042,10 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
                       <div className="flex flex-wrap items-center justify-between gap-2.5">
                         <div className="flex flex-wrap items-center gap-2.5">
                           <span className="text-xs font-semibold uppercase tracking-wider text-[#0047CC] bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200">
-                            {era.yearRange}
+                            {era.yearRange || era.range || ''}
                           </span>
                           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-[#0047CC] border border-blue-200 shadow-2xs">
-                            <span>CH {chapterNumber} {era.roleTitle.split('(')[0].trim()}</span>
+                            <span>CH {chapterNumber} {(era.roleTitle || era.name || '').split('(')[0].trim()}</span>
                           </div>
                           {era.isTarget && (
                             <Tag variant="yellow" label="Target Goal" />
@@ -1028,9 +1065,9 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
                         selectedMilestoneId={selectedMilestoneId}
                         onSelectMilestone={handleSelectMilestone}
                         startTitle={era.isTarget ? 'Era Launch' : era.isCurrent ? 'Current Phase' : 'Era Origin'}
-                        startSubtitle={era.yearRange.split('-')[0].trim()}
-                        finishTitle={era.roleTitle.split('(')[0].trim()}
-                        finishSubtitle={era.isTarget ? 'Target Goal Summit · L5' : `${era.statusLabel}`}
+                        startSubtitle={(era.yearRange || era.range || '').split('-')[0].trim()}
+                        finishTitle={(era.roleTitle || era.name || '').split('(')[0].trim()}
+                        finishSubtitle={era.isTarget ? 'Target Goal Summit · L5' : `${era.statusLabel || 'Completed'}`}
                         currentStandingId="ms-curr-1"
                       />
                     </div>
@@ -1194,15 +1231,17 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
                     <div className="flex items-start justify-between py-1 gap-2">
                       <span className="text-slate-500 font-medium">Evidence</span>
                       <span className="font-semibold text-slate-900 text-right line-clamp-2">
-                        {selectedMilestone.evidenceSubmitted || 'Clinical audit log & trial record'}
+                        {selectedMilestone.evidenceSubmitted || 'None submitted'}
                       </span>
                     </div>
-                    <div className="flex items-start justify-between py-1 gap-2">
-                      <span className="text-slate-500 font-medium">Reviewer</span>
-                      <span className="font-semibold text-slate-900 text-right">
-                        {selectedMilestone.reviewer || 'VORA Lead Clinical Assessment Committee'}
-                      </span>
-                    </div>
+                    {selectedMilestone.reviewer && (
+                      <div className="flex items-start justify-between py-1 gap-2">
+                        <span className="text-slate-500 font-medium">Reviewer</span>
+                        <span className="font-semibold text-slate-900 text-right">
+                          {selectedMilestone.reviewer}
+                        </span>
+                      </div>
+                    )}
                     {selectedMilestone.scoreLift && (
                       <div className="flex items-start justify-between py-1 gap-2">
                         <span className="text-slate-500 font-medium">Projected Lift</span>
@@ -1327,7 +1366,7 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Clinical Trial Protocol Design & Quality Governance"
+                  placeholder="e.g. Ward forecasting pilot"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-[#0047CC] text-xs text-slate-900 placeholder:text-slate-400"
@@ -1337,10 +1376,12 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-medium text-slate-700 mb-1.5">
-                    Associated Role
+                    Associated Role *
                   </label>
                   <input
                     type="text"
+                    required
+                    placeholder="e.g. Staff Data Lead"
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-[#0047CC] text-xs text-slate-900"
@@ -1348,10 +1389,12 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
                 </div>
                 <div>
                   <label className="block font-medium text-slate-700 mb-1.5">
-                    Era / Year
+                    Era / Year Range *
                   </label>
                   <input
                     type="text"
+                    required
+                    placeholder="e.g. 2025 - 2026"
                     value={newEra}
                     onChange={(e) => setNewEra(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-[#0047CC] text-xs text-slate-900"
@@ -1361,10 +1404,12 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
 
               <div>
                 <label className="block font-medium text-slate-700 mb-1.5">
-                  Competency Domain
+                  Competency Domain *
                 </label>
                 <input
                   type="text"
+                  required
+                  placeholder="e.g. Predictive Modeling"
                   value={newDomain}
                   onChange={(e) => setNewDomain(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-[#0047CC] text-xs text-slate-900"
@@ -1373,11 +1418,12 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
 
               <div>
                 <label className="block font-medium text-slate-700 mb-1.5">
-                  Evidence Submitted / Documentation Reference
+                  Evidence Submitted / Documentation Reference *
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="e.g. Uploaded GCP Audit completion log, sponsor signoff, or certification ID"
+                  required
+                  placeholder="e.g. Supervisor letter, audit report, clinical trial log"
                   value={newEvidence}
                   onChange={(e) => setNewEvidence(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-[#0047CC] text-xs text-slate-900 placeholder:text-slate-400"
@@ -1387,16 +1433,19 @@ export const CareerMapTab: React.FC<CareerMapTabProps> = ({
               <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-slate-100">
                 <button
                   type="button"
+                  disabled={addMilestoneMutation.isPending}
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium text-xs transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium text-xs transition-colors cursor-pointer disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-lg bg-[#0047CC] hover:bg-[#003bb5] text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
+                  disabled={addMilestoneMutation.isPending}
+                  className="px-5 py-2 rounded-lg bg-[#0047CC] hover:bg-[#003bb5] text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
                 >
-                  Save Milestone
+                  {addMilestoneMutation.isPending && <Spinner size={12} />}
+                  <span>Save Milestone</span>
                 </button>
               </div>
             </form>

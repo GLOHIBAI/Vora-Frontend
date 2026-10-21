@@ -826,5 +826,40 @@ export const useEmployerTalentsQuery = (params: EmployerTalentsQueryParams = {})
   });
 };
 
+export interface VaultCompetencyItem {
+  name: string;
+  weight: number;
+  level: string;
+  isRequired?: boolean;
+}
+
+export interface UpdateVaultCompetenciesDto {
+  competencies: VaultCompetencyItem[];
+  minReadinessThreshold?: number;
+}
+
+export const useUpdateVaultRoleCompetenciesMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ rolePostingId, payload }: { rolePostingId: string; payload: UpdateVaultCompetenciesDto }) => {
+      const response = await apiClient.put<any>({
+        url: `/role-postings/${rolePostingId}/vault/competencies`,
+        body: payload,
+        auth: true,
+      });
+      return response?.data?.data ?? response?.data ?? response;
+    },
+    onSuccess: (_, vars) => {
+      toast.success('Vault competencies updated');
+      queryClient.invalidateQueries({ queryKey: ['employer', 'jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['employer', 'job', vars.rolePostingId] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to update vault competencies');
+    },
+  });
+};
+
 export * from './types';
 export * from './keys';

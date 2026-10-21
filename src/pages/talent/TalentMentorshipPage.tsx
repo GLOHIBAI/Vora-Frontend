@@ -24,7 +24,7 @@ import {
   useBookMentorMutation,
 } from '../../services/queries/mentors';
 import { useTalentDashboardQuery } from '../../services/queries/talent';
-import { getMediaUrl, DEFAULT_MENTOR_AVATAR } from '../../utils/media';
+import MentorAvatar from '../../components/mentors/MentorAvatar';
 
 const TalentMentorshipPage: React.FC = () => {
   const navigate = useNavigate();
@@ -32,28 +32,54 @@ const TalentMentorshipPage: React.FC = () => {
   // Active navigation tab
   const [activeTab, setActiveTab] = useState<'find' | 'my-sessions'>('find');
 
-  // Discover filters
+  // Discover filters & search debounce
   const [selectedFocus, setSelectedFocus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
   // My Sessions sub-filter
   const [sessionFilter, setSessionFilter] = useState<'all' | 'upcoming' | 'past'>('all');
 
-  // Dashboard unlocks verification
+  // Dashboard unlocks verification (GET /talent/dashboard -> unlocks.mentors)
   const { data: dashboardData, isLoading: isLoadingDashboard } = useTalentDashboardQuery();
-  const isMentorsLocked = Boolean(dashboardData?.data?.unlocks?.mentors?.locked);
+  const unlockMentor = dashboardData?.data?.unlocks?.mentors;
+  const isMentorsLocked = Boolean(unlockMentor?.locked);
+  const lockHrefHint = unlockMentor?.hrefHint || '/profile';
+  const lockReason =
+    unlockMentor?.reason ||
+    'Connect 1-on-1 with Staff/Principal engineers and technical leaders once your CV is uploaded and verified.';
+  const lockLabel = unlockMentor?.label || 'Verified Mentorship is Locked';
 
-  // Primary API Query: GET /mentors/discover
+  // Inferred country code for PPP compliance (2-letter code e.g. "US", "NG")
+  const userCountry = useMemo(() => {
+    if (typeof navigator !== 'undefined' && navigator.language) {
+      const parts = navigator.language.split('-');
+      if (parts.length > 1 && parts[1].length === 2) {
+        return parts[1].toUpperCase();
+      }
+    }
+    return 'US';
+  }, []);
+
+  // Primary API Query: GET /mentors/discover?page=&limit=&q=&focus=
   const {
     data: discoverData,
     isLoading: isLoadingDiscover,
+    isFetching: isFetchingDiscover,
     error: discoverError,
     refetch: refetchDiscover,
   } = useDiscoverMentors({
     page,
     limit: 12,
-    q: searchQuery,
+    q: debouncedSearch,
     focus: selectedFocus,
   });
 
@@ -61,6 +87,7 @@ const TalentMentorshipPage: React.FC = () => {
   const {
     data: mySessionsData,
     isLoading: isLoadingSessions,
+    isFetching: isFetchingSessions,
     error: sessionsError,
     refetch: refetchSessions,
   } = useMySessions();
@@ -117,12 +144,18 @@ const TalentMentorshipPage: React.FC = () => {
     setTimeout(checkTabsScroll, 350);
   };
 
-  // Focus Filter pills from backend focusFilters
-  const focusFilters = useMemo(() => {
-    const raw = discoverData?.focusFilters || [];
-    const withoutAll = raw.filter((f) => f.toUpperCase() !== 'ALL');
-    return ['ALL', ...withoutAll];
+  // Persistent Focus Filter pills: keep pills in state so switching filters doesn't flash them away
+  const [cachedFocusFilters, setCachedFocusFilters] = useState<string[]>(['ALL']);
+
+  useEffect(() => {
+    if (discoverData?.focusFilters && discoverData.focusFilters.length > 0) {
+      const raw = discoverData.focusFilters;
+      const withoutAll = raw.filter((f) => f.toUpperCase() !== 'ALL');
+      setCachedFocusFilters(['ALL', ...withoutAll]);
+    }
   }, [discoverData?.focusFilters]);
+
+  const focusFilters = cachedFocusFilters;
 
   // Mentors list from API
   const mentors = discoverData?.items || [];
@@ -133,6 +166,11 @@ const TalentMentorshipPage: React.FC = () => {
   const upcomingSessions = mySessionsData?.upcoming || [];
   const pastSessions = mySessionsData?.past || [];
   const totalSessions = mySessionsData?.total ?? allSessions.length;
+
+  // Tab counts per handoff:
+  // Discover Mentors (total)
+  // My Sessions: data.mySessionsCount when non-null; derive from my-sessions.total when null
+  const mySessionsTabCount = discoverData?.mySessionsCount ?? totalSessions;
 
   const displayedSessions = useMemo(() => {
     if (sessionFilter === 'upcoming') return upcomingSessions;
@@ -210,22 +248,24 @@ const TalentMentorshipPage: React.FC = () => {
           sessionTypeId: selectedSessionTypeId,
           scheduledAt: selectedScheduledAt,
           sessionFocus: sessionFocus.trim() || undefined,
-          menteeCountry: 'US',
-          ipCountry: 'US',
-          paymentCountry: 'US',
-          localeCountry: typeof navigator !== 'undefined' ? navigator.language : 'en-US',
+          menteeCountry: userCountry,
+          ipCountry: userCountry,
+          paymentCountry: userCountry,
+          localeCountry: userCountry,
         },
       });
 
       toast.success('1:1 mentorship session booked successfully!');
       handleCloseBooking();
+      await refetchSessions();
       setActiveTab('my-sessions');
     } catch (err: any) {
+      // Show envelope.message from backend, do not replace with mock copy
       toast.error(err?.message || 'Failed to book mentorship session');
     }
   };
 
-  // Cross-cutting requirement 2: Respect unlocks.mentors.locked from /talent/dashboard
+  // Cross-cutting requirement: Respect unlocks.mentors from /talent/dashboard
   if (!isLoadingDashboard && isMentorsLocked) {
     return (
       <div className="space-y-6 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-16">
@@ -235,10 +275,10 @@ const TalentMentorshipPage: React.FC = () => {
           </div>
           <div className="space-y-2 max-w-md mx-auto">
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
-              {dashboardData?.data?.unlocks?.mentors?.label || 'Verified Mentorship is Locked'}
+              {lockLabel}
             </h1>
             <p className="text-xs sm:text-sm text-gray-500 leading-relaxed">
-              Connect 1-on-1 with Staff/Principal engineers and technical leaders once your CV is uploaded and verified.
+              {lockReason}
             </p>
           </div>
           <div className="pt-2">
@@ -246,7 +286,7 @@ const TalentMentorshipPage: React.FC = () => {
               variant="primary"
               size="md"
               pill={false}
-              onClick={() => navigate('/profile')}
+              onClick={() => navigate(lockHrefHint)}
               className="text-xs font-semibold px-6 py-2.5 shadow-xs"
             >
               Upload CV to Unlock
@@ -257,19 +297,9 @@ const TalentMentorshipPage: React.FC = () => {
     );
   }
 
-  // Loading state (Show centered blue spinner, no hardcoded data or skeleton cards)
-  const isPrimaryLoading =
-    isLoadingDashboard ||
-    (activeTab === 'find' && isLoadingDiscover && !discoverData) ||
-    (activeTab === 'my-sessions' && isLoadingSessions && !mySessionsData);
-
-  if (isPrimaryLoading) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
-        <Spinner size={36} className="text-[#0047CC]" />
-      </div>
-    );
-  }
+  // Determine if content is loading (initial or tab switch)
+  const isDiscoverLoading = isLoadingDiscover || (!discoverData && isFetchingDiscover);
+  const isSessionsLoading = isLoadingSessions || (!mySessionsData && isFetchingSessions);
 
   // Active day in modal
   const activeDaySlots = bookingPanelData?.slotDays?.find((d) => d.date === selectedDayDate);
@@ -291,7 +321,7 @@ const TalentMentorshipPage: React.FC = () => {
         </p>
       </div>
 
-      {/* Tabs with Left/Right Chevrons instead of Slider */}
+      {/* Tabs with Left/Right Chevrons */}
       <div className="relative border-b border-gray-200 flex items-center">
         {hasTabsOverflow && (
           <button
@@ -335,7 +365,7 @@ const TalentMentorshipPage: React.FC = () => {
                 : 'text-gray-500 hover:text-gray-900'
             }`}
           >
-            My Sessions ({totalSessions})
+            My Sessions ({mySessionsTabCount})
           </button>
         </div>
 
@@ -401,8 +431,38 @@ const TalentMentorshipPage: React.FC = () => {
             )}
           </div>
 
-          {/* Mentors Grid / Empty state */}
-          {discoverError ? (
+          {/* Mentors Grid with Shimmer Skeleton */}
+          {isDiscoverLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-2xs space-y-4 animate-pulse"
+                >
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-13 h-13 rounded-2xl bg-slate-100 shrink-0" />
+                    <div className="space-y-2 flex-1 min-w-0">
+                      <div className="h-4 bg-slate-200 rounded-md w-3/4" />
+                      <div className="h-3 bg-slate-100 rounded-md w-1/2" />
+                      <div className="h-3 bg-slate-100 rounded-md w-2/3" />
+                    </div>
+                  </div>
+                  <div className="space-y-2 pt-1">
+                    <div className="h-3 bg-slate-100 rounded-md w-full" />
+                    <div className="h-3 bg-slate-100 rounded-md w-4/5" />
+                  </div>
+                  <div className="flex gap-1.5 pt-1">
+                    <div className="h-5 bg-slate-100 rounded-md w-24" />
+                    <div className="h-5 bg-slate-100 rounded-md w-20" />
+                  </div>
+                  <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                    <div className="h-4 bg-slate-100 rounded w-16" />
+                    <div className="h-8 bg-slate-200 rounded-lg w-28" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : discoverError ? (
             <div className="bg-red-50/60 border border-red-200 rounded-2xl p-8 text-center space-y-2">
               <p className="text-sm font-semibold text-red-800">Failed to load verified mentors</p>
               <p className="text-xs text-red-600">
@@ -444,10 +504,14 @@ const TalentMentorshipPage: React.FC = () => {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 ${isFetchingDiscover ? 'opacity-70 transition-opacity' : ''}`}>
               {mentors.map((mentor) => {
-                const avatar = getMediaUrl(mentor.photoS3Key, DEFAULT_MENTOR_AVATAR);
-                const hasRating = mentor.rating !== null && mentor.rating != null;
+                const hasRating = mentor.rating !== null && mentor.rating !== undefined;
+                const rateDisplay = mentor.formattedRate
+                  ? mentor.formattedRate
+                  : mentor.rate != null
+                  ? `${mentor.currency || '$'}${mentor.rate}`
+                  : 'Free';
 
                 return (
                   <div
@@ -455,12 +519,13 @@ const TalentMentorshipPage: React.FC = () => {
                     className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 group"
                   >
                     <div className="space-y-3">
-                      {/* Top info */}
+                      {/* Top info with MentorAvatar (Browser-safe CDN/photoUrl with initials fallback) */}
                       <div className="flex items-start gap-3.5">
-                        <img
-                          src={avatar}
-                          alt={mentor.displayName}
-                          className="w-13 h-13 rounded-2xl object-cover border border-gray-100 shadow-2xs shrink-0 bg-gray-100"
+                        <MentorAvatar
+                          photoUrl={mentor.photoUrl}
+                          photoS3Key={mentor.photoS3Key}
+                          name={mentor.displayName}
+                          className="w-13 h-13 rounded-2xl object-cover shrink-0 border border-gray-100 shadow-2xs"
                         />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
@@ -473,12 +538,16 @@ const TalentMentorshipPage: React.FC = () => {
                               </span>
                             )}
                           </div>
-                          <p className="text-xs font-semibold text-gray-700 truncate mt-0.5">
-                            {mentor.professionalTitle}
-                          </p>
-                          <p className="text-[11px] text-[#0047CC] font-bold truncate">
-                            {mentor.organisation}
-                          </p>
+                          {mentor.professionalTitle && (
+                            <p className="text-xs font-semibold text-gray-700 truncate mt-0.5">
+                              {mentor.professionalTitle}
+                            </p>
+                          )}
+                          {mentor.organisation && (
+                            <p className="text-[11px] text-[#0047CC] font-bold truncate">
+                              {mentor.organisation}
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -531,13 +600,10 @@ const TalentMentorshipPage: React.FC = () => {
                     <div className="pt-3 border-t border-gray-100 space-y-2">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-gray-500 font-medium">Rate:</span>
-                        <span className="font-bold text-gray-900">
-                          {mentor.formattedRate ||
-                            (mentor.rate ? `${mentor.currency || '$'}${mentor.rate}` : 'Free')}
-                        </span>
+                        <span className="font-bold text-gray-900">{rateDisplay}</span>
                       </div>
 
-                      {/* Next slot (null if no availability; never invent) */}
+                      {/* Next slot: hide when null (no invented "Tomorrow 3pm") */}
                       {mentor.nextSlotLabel && (
                         <div className="flex items-center justify-between text-[11px] text-gray-400">
                           <span>Next Slot:</span>
@@ -611,7 +677,31 @@ const TalentMentorshipPage: React.FC = () => {
               </div>
             </div>
 
-            {sessionsError ? (
+            {isSessionsLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="border border-gray-100 rounded-2xl p-4 sm:p-5 bg-white space-y-3 animate-pulse shadow-2xs"
+                  >
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex items-start gap-3.5 min-w-0">
+                        <div className="w-12 h-12 rounded-xl bg-slate-100 shrink-0" />
+                        <div className="space-y-2 flex-1">
+                          <div className="h-4 bg-slate-200 rounded w-36" />
+                          <div className="h-3 bg-slate-100 rounded w-48" />
+                          <div className="h-3 bg-slate-100 rounded w-32" />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="h-8 bg-slate-100 rounded-lg w-24" />
+                        <div className="h-8 bg-slate-100 rounded-lg w-28" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : sessionsError ? (
               <div className="bg-red-50/60 border border-red-200 rounded-xl p-8 text-center space-y-2">
                 <p className="text-sm font-semibold text-red-800">Failed to load mentorship sessions</p>
                 <p className="text-xs text-red-600">
@@ -651,9 +741,8 @@ const TalentMentorshipPage: React.FC = () => {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className={`space-y-4 ${isFetchingSessions ? 'opacity-70 transition-opacity' : ''}`}>
                 {displayedSessions.map((session) => {
-                  const avatar = getMediaUrl(session.mentor?.photoS3Key, DEFAULT_MENTOR_AVATAR);
                   const isConfirmed =
                     session.status?.toLowerCase() === 'confirmed' ||
                     session.statusLabel?.toLowerCase() === 'confirmed';
@@ -667,10 +756,11 @@ const TalentMentorshipPage: React.FC = () => {
                       className="border border-gray-100 rounded-2xl p-4 sm:p-5 bg-white hover:border-gray-200 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xs"
                     >
                       <div className="flex items-start gap-3.5 min-w-0">
-                        <img
-                          src={avatar}
-                          alt={session.mentor?.displayName || 'Mentor'}
-                          className="w-12 h-12 rounded-xl object-cover border border-gray-100 bg-gray-100 shrink-0"
+                        <MentorAvatar
+                          photoUrl={session.mentor?.photoUrl}
+                          photoS3Key={session.mentor?.photoS3Key}
+                          name={session.mentor?.displayName}
+                          className="w-12 h-12 rounded-xl object-cover shrink-0 border border-gray-100"
                         />
                         <div className="space-y-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
@@ -690,12 +780,14 @@ const TalentMentorshipPage: React.FC = () => {
                             </span>
                           </div>
 
-                          <p className="text-xs text-[#0047CC] font-semibold truncate">
-                            {session.mentor?.professionalTitle}
-                            {session.mentor?.organisation ? ` · ${session.mentor.organisation}` : ''}
-                          </p>
+                          {(session.mentor?.professionalTitle || session.mentor?.organisation) && (
+                            <p className="text-xs text-[#0047CC] font-semibold truncate">
+                              {session.mentor?.professionalTitle}
+                              {session.mentor?.organisation ? ` · ${session.mentor.organisation}` : ''}
+                            </p>
+                          )}
 
-                          {/* Topic line (hide if null) */}
+                          {/* Topic line (hide when null or empty per handoff) */}
                           {session.topic && session.topic.trim() ? (
                             <p className="text-xs text-gray-700 font-medium pt-0.5 line-clamp-2">
                               <span className="text-gray-400 font-normal">Topic: </span>
@@ -713,7 +805,7 @@ const TalentMentorshipPage: React.FC = () => {
 
                       {/* Actions */}
                       <div className="flex items-center gap-2.5 shrink-0 self-end md:self-center">
-                        {/* Join Call button (enabled only if meetingLink / actions.joinCall.enabled) */}
+                        {/* Join Call button (enabled only when meetingLink / joinCall.enabled) */}
                         {session.actions?.joinCall?.enabled && (session.actions.joinCall.href || session.meetingLink) ? (
                           <Button
                             variant="primary"
@@ -781,6 +873,7 @@ const TalentMentorshipPage: React.FC = () => {
                   bookMutation.isPending ||
                   !selectedSessionTypeId ||
                   !selectedScheduledAt ||
+                  !bookingPanelData?.acceptingBookings ||
                   !bookingPanelData?.sessionTypes?.length ||
                   !bookingPanelData?.slotDays?.length
                 }
@@ -805,10 +898,11 @@ const TalentMentorshipPage: React.FC = () => {
             <form onSubmit={handleConfirmBooking} className="space-y-4 text-left">
               {/* Mentor Summary Header */}
               <div className="flex items-center gap-3 bg-gray-50 p-3.5 rounded-xl border border-gray-100">
-                <img
-                  src={getMediaUrl(bookingPanelData.mentor?.photoS3Key, DEFAULT_MENTOR_AVATAR)}
-                  alt={bookingPanelData.mentor?.displayName}
-                  className="w-11 h-11 rounded-xl object-cover bg-gray-200 border border-gray-100 shrink-0"
+                <MentorAvatar
+                  photoUrl={bookingPanelData.mentor?.photoUrl}
+                  photoS3Key={bookingPanelData.mentor?.photoS3Key}
+                  name={bookingPanelData.mentor?.displayName}
+                  className="w-11 h-11 rounded-xl object-cover shrink-0 border border-gray-100"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-bold text-gray-900 truncate">
@@ -827,6 +921,13 @@ const TalentMentorshipPage: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {/* Not accepting bookings alert */}
+              {!bookingPanelData.acceptingBookings && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 rounded-xl">
+                  This mentor is currently not accepting new bookings.
+                </div>
+              )}
 
               {/* Duration toggles from sessionTypes[].durationOptionLabel */}
               <div className="space-y-1.5">
@@ -850,7 +951,7 @@ const TalentMentorshipPage: React.FC = () => {
                   </div>
                 ) : (
                   <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 rounded-xl">
-                    This mentor has not configured session rates yet.
+                    This mentor has not configured session options yet.
                   </div>
                 )}
               </div>
@@ -901,14 +1002,18 @@ const TalentMentorshipPage: React.FC = () => {
                 )}
               </div>
 
-              {/* Session Focus Textarea */}
-              <Textarea
-                label="Session Focus &amp; Notes (Optional)"
-                value={sessionFocus}
-                onChange={(e) => setSessionFocus(e.target.value)}
-                rows={3}
-                placeholder="What topics, questions, or challenges would you like to cover during your session?"
-              />
+              {/* Session Focus Textarea (optional, max 2000 chars) */}
+              <div className="space-y-1">
+                <Textarea
+                  label="Session Focus &amp; Notes (Optional)"
+                  value={sessionFocus}
+                  maxLength={2000}
+                  onChange={(e) => setSessionFocus(e.target.value)}
+                  rows={3}
+                  placeholder="What topics, questions, or challenges would you like to cover during your session?"
+                />
+                <p className="text-[10px] text-gray-400 text-right">{sessionFocus.length}/2000</p>
+              </div>
             </form>
           ) : null}
         </ModalDialog>

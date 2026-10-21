@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import Spinner from '../../../components/common/Spinner';
 import Tag from '../../../components/common/Tag';
+import DateInput from '../../../components/common/DateInput';
 import {
   FileIcon,
   UploadIcon,
@@ -9,12 +10,19 @@ import {
   AlertTriangleIcon,
   CheckCircleIcon,
   InfoIcon,
+  PlusIcon,
+  CloseIcon,
 } from '../../../components/common/Icons';
 import type { TalentMyDataData } from '../../../services/queries/talent';
+import {
+  useUploadCertificateMutation,
+  useProfileResetRequestMutation,
+} from '../../../services/queries/talent';
 
 interface MyDataTabProps {
   data?: TalentMyDataData;
   isLoading?: boolean;
+  isJourneyLocked?: boolean;
   onOpenUploadModal: () => void;
   onOpenDeleteModal: () => void;
 }
@@ -22,9 +30,25 @@ interface MyDataTabProps {
 export const MyDataTab: React.FC<MyDataTabProps> = ({
   data,
   isLoading,
+  isJourneyLocked = false,
   onOpenUploadModal,
   onOpenDeleteModal,
 }) => {
+  const uploadCertMutation = useUploadCertificateMutation();
+  const resetMutation = useProfileResetRequestMutation();
+  const certFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Certificate upload modal state
+  const [isCertModalOpen, setIsCertModalOpen] = useState(false);
+  const [certFile, setCertFile] = useState<File | null>(null);
+  const [certTitle, setCertTitle] = useState('');
+  const [certIssuingOrg, setCertIssuingOrg] = useState('');
+  const [certIssueDate, setCertIssueDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+  // Profile reset modal state
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [resetReason, setResetReason] = useState('Interview locked after a failed stage');
+
   const personal = data?.personal;
   const geo = data?.geographicLegal;
   const docs = data?.documents;
@@ -49,6 +73,82 @@ export const MyDataTab: React.FC<MyDataTabProps> = ({
     if (s === 'not_started' || s === 'locked' || s === 'upcoming') return 'gray';
     if (s === 'failed') return 'red';
     return 'blue';
+  };
+
+  const handleCertFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+    if (file.size > MAX_SIZE_BYTES) {
+      toast.error('File size exceeds 10MB limit. Please choose a file up to 10MB.');
+      if (certFileInputRef.current) certFileInputRef.current.value = '';
+      return;
+    }
+    const allowed = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      toast.error('Please upload a PDF, PNG, JPG, or WEBP file.');
+      if (certFileInputRef.current) certFileInputRef.current.value = '';
+      return;
+    }
+    setCertFile(file);
+  };
+
+  const handleUploadCertSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!certFile) {
+      toast.error('Please choose a certificate file to upload.');
+      return;
+    }
+    if (!certTitle.trim()) {
+      toast.error('Please enter the certificate title.');
+      return;
+    }
+    if (!certIssuingOrg.trim()) {
+      toast.error('Please enter the issuing organisation.');
+      return;
+    }
+    if (!certIssueDate) {
+      toast.error('Please specify the issue date.');
+      return;
+    }
+
+    try {
+      const res = await uploadCertMutation.mutateAsync({
+        file: certFile,
+        title: certTitle.trim(),
+        issuingOrg: certIssuingOrg.trim(),
+        issueDate: certIssueDate,
+      });
+      toast.success(res?.message || 'Certificate uploaded and submitted for audit.');
+      setIsCertModalOpen(false);
+      setCertFile(null);
+      setCertTitle('');
+      setCertIssuingOrg('');
+      if (certFileInputRef.current) certFileInputRef.current.value = '';
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to upload certificate.');
+    }
+  };
+
+  const handleResetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetReason.trim()) {
+      toast.error('Please provide a reason for the reset request.');
+      return;
+    }
+
+    try {
+      const res = await resetMutation.mutateAsync({ reason: resetReason.trim() });
+      const dataPayload = res?.data;
+      if (dataPayload?.success) {
+        toast.success(dataPayload?.message || res?.message || 'Profile reset applied.');
+      } else {
+        toast.error(dataPayload?.message || res?.message || 'Profile reset request flagged for review.');
+      }
+      setIsResetModalOpen(false);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to apply profile reset.');
+    }
   };
 
   if (isLoading) {
@@ -132,20 +232,25 @@ export const MyDataTab: React.FC<MyDataTabProps> = ({
               <p className="text-xs text-slate-500 mt-0.5">Used for role eligibility matching</p>
             </div>
 
-            {geo?.rightToWorkVerified ? (
+            {geo?.rightToWorkProfileStatus === 'verified' || geo?.rightToWorkVerified ? (
               <div className="bg-blue-50/80 border border-blue-200/80 rounded-xl p-3.5 flex items-start gap-3 text-xs text-slate-700 leading-relaxed">
                 <CheckCircleIcon size={16} className="text-[#0047CC] shrink-0 mt-0.5" />
                 <span>
-                  <strong className="font-semibold text-slate-900">Right to Work:</strong>{' '}
-                  {geo?.rightToWorkLabel || 'Verified'}. Eligible for verified regional roles.
+                  <strong className="font-semibold text-slate-900">Right to Work:</strong> Verified. Eligible for verified regional roles.
                 </span>
               </div>
-            ) : (
+            ) : geo?.rightToWorkProfileStatus === 'pending' ? (
               <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl p-3.5 flex items-start gap-3 text-xs text-amber-900 leading-relaxed">
                 <AlertTriangleIcon size={16} className="text-amber-600 shrink-0 mt-0.5" />
                 <span>
-                  <strong className="font-semibold text-amber-950">Right to Work:</strong>{' '}
-                  {geo?.rightToWorkLabel || 'Right to Work not confirmed.'} Verification may be required for regional roles.
+                  <strong className="font-semibold text-amber-950">Right to Work:</strong> Verification pending review.
+                </span>
+              </div>
+            ) : (
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex items-start gap-3 text-xs text-slate-700 leading-relaxed">
+                <InfoIcon size={16} className="text-slate-500 shrink-0 mt-0.5" />
+                <span>
+                  <strong className="font-semibold text-slate-900">Right to Work:</strong> Not set. Verification may be required for regional roles.
                 </span>
               </div>
             )}
@@ -166,10 +271,37 @@ export const MyDataTab: React.FC<MyDataTabProps> = ({
               <div className="py-2.5 flex justify-between items-center">
                 <span className="text-slate-500">Right to Work Status</span>
                 <Tag
-                  variant={geo?.rightToWorkVerified ? 'green' : 'yellow'}
-                  label={geo?.rightToWorkStatus || (geo?.rightToWorkVerified ? 'Verified' : 'Not confirmed')}
+                  variant={
+                    (geo?.rightToWorkProfileStatus === 'verified' || geo?.rightToWorkVerified)
+                      ? 'green'
+                      : geo?.rightToWorkProfileStatus === 'pending'
+                      ? 'yellow'
+                      : 'gray'
+                  }
+                  label={
+                    geo?.rightToWorkProfileStatus === 'verified'
+                      ? 'Right to Work verified'
+                      : geo?.rightToWorkProfileStatus === 'pending'
+                      ? 'Right to Work pending'
+                      : geo?.rightToWorkProfileStatus === 'not_set'
+                      ? 'Right to Work not set'
+                      : geo?.rightToWorkStatus || 'Not confirmed'
+                  }
                 />
               </div>
+              {geo?.rightToWorkDocumentUrl && (
+                <div className="py-2.5 flex justify-between items-center">
+                  <span className="text-slate-500">Verification Document</span>
+                  <a
+                    href={geo.rightToWorkDocumentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-[#0047CC] hover:underline"
+                  >
+                    View Document ↗
+                  </a>
+                </div>
+              )}
               <div className="py-2.5 flex justify-between items-center">
                 <span className="text-slate-500">Work Authorisation</span>
                 <span className={geo?.workAuthorisation && geo.workAuthorisation.length > 0 ? 'font-medium text-slate-900' : 'text-slate-400'}>
@@ -236,8 +368,18 @@ export const MyDataTab: React.FC<MyDataTabProps> = ({
                 </div>
                 <button
                   type="button"
-                  onClick={() => toast.success('Active CV dossier verified.')}
-                  className="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-xs font-semibold text-slate-700 cursor-pointer shrink-0 transition-colors"
+                  disabled={!docs.activeCv.downloadUrl}
+                  onClick={() => {
+                    if (docs.activeCv?.downloadUrl) {
+                      window.open(docs.activeCv.downloadUrl, '_blank', 'noopener,noreferrer');
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-semibold shrink-0 transition-colors ${
+                    docs.activeCv.downloadUrl
+                      ? 'border-slate-300 hover:bg-slate-50 text-slate-700 cursor-pointer'
+                      : 'border-slate-200 text-slate-400 bg-slate-50 cursor-not-allowed opacity-60'
+                  }`}
+                  title={docs.activeCv.downloadUrl ? 'Open active CV document' : 'Download link unavailable'}
                 >
                   View
                 </button>
@@ -263,18 +405,57 @@ export const MyDataTab: React.FC<MyDataTabProps> = ({
             </div>
 
             <div className="pt-2">
-              <div className="text-xs font-semibold text-slate-900 mb-2">Uploaded Certificates</div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs font-semibold text-slate-900">Uploaded Certificates</div>
+                <button
+                  type="button"
+                  onClick={() => setIsCertModalOpen(true)}
+                  className="text-xs font-semibold text-[#0047CC] hover:text-[#003bb5] hover:underline inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <PlusIcon size={12} />
+                  <span>Upload Certificate</span>
+                </button>
+              </div>
+
               {docs?.certificates && docs.certificates.length > 0 ? (
                 <div className="divide-y divide-slate-100 text-xs">
-                  {docs.certificates.map((cert) => (
-                    <div key={cert.id} className="py-2 flex justify-between items-center">
-                      <span className="text-slate-600">{cert.title}</span>
-                      <Tag
-                        variant={cert.verified ? 'green' : 'blue'}
-                        label={cert.statusLabel || (cert.verified ? 'Verified' : 'Submitted')}
-                      />
-                    </div>
-                  ))}
+                  {docs.certificates.map((cert) => {
+                    const certUrl = cert.downloadUrl || cert.shareableUrl;
+                    return (
+                      <div key={cert.id} className="py-2.5 flex justify-between items-center gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-slate-800 font-medium truncate">{cert.title}</div>
+                          {cert.issuingOrg && (
+                            <div className="text-[11px] text-slate-500">{cert.issuingOrg}</div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Tag
+                            variant={cert.verified ? 'green' : 'blue'}
+                            label={cert.statusLabel || (cert.verified ? 'Verified' : 'Submitted for Audit')}
+                          />
+                          {certUrl ? (
+                            <a
+                              href={certUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 text-[11px] font-semibold text-[#0047CC] transition-colors"
+                            >
+                              View
+                            </a>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled
+                              className="px-2.5 py-1 rounded-md border border-slate-200 text-[11px] font-medium text-slate-400 cursor-not-allowed opacity-60"
+                            >
+                              View
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-xs text-slate-400 italic">No certificates attached yet.</div>
@@ -332,9 +513,14 @@ export const MyDataTab: React.FC<MyDataTabProps> = ({
 
       {/* PROFILE RESET INFO */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-4">
-        <div className="pb-3 border-b border-slate-100">
-          <h3 className="text-base font-semibold text-slate-900">Profile Reset</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Controlled reset policy for locked assessments</p>
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">Profile Reset</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Controlled reset policy for locked assessments</p>
+          </div>
+          {isJourneyLocked && (
+            <Tag variant="red" label="Interview Locked" />
+          )}
         </div>
 
         <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl p-3.5 flex items-start gap-3 text-xs text-amber-900 leading-relaxed">
@@ -359,6 +545,32 @@ export const MyDataTab: React.FC<MyDataTabProps> = ({
               label={`${reset?.resetsRemaining ?? 3} remaining`}
             />
           </div>
+        </div>
+
+        <div className="pt-2">
+          <button
+            type="button"
+            disabled={!isJourneyLocked || resetMutation.isPending}
+            onClick={() => setIsResetModalOpen(true)}
+            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${
+              isJourneyLocked
+                ? 'bg-amber-600 hover:bg-amber-700 text-white cursor-pointer shadow-xs'
+                : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
+            }`}
+            title={
+              isJourneyLocked
+                ? 'Request a profile reset for locked assessments'
+                : 'Profile reset is only available to talent with a locked interview'
+            }
+          >
+            {resetMutation.isPending && <Spinner size={12} />}
+            <span>Request Profile Reset</span>
+          </button>
+          {!isJourneyLocked && (
+            <p className="text-[11px] text-slate-400 mt-1.5">
+              Profile reset is only available to talent with a locked interview.
+            </p>
+          )}
         </div>
       </div>
 
@@ -390,6 +602,168 @@ export const MyDataTab: React.FC<MyDataTabProps> = ({
           </button>
         </div>
       </div>
+
+      {/* MODAL: UPLOAD CERTIFICATE (POST /api/v1/talent/profile/certificates) */}
+      {isCertModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 space-y-5 shadow-lg border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-semibold text-slate-900">Upload Certificate</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Submit credentials for audit verification (PDF, PNG, JPG, or WEBP up to 10MB)
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCertModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+              >
+                <CloseIcon size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUploadCertSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Certificate Document (PDF, PNG, JPG, WEBP — Max 10MB) *
+                </label>
+                <input
+                  type="file"
+                  ref={certFileInputRef}
+                  accept=".pdf,image/png,image/jpeg,image/webp"
+                  onChange={handleCertFileSelected}
+                  className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-[#0047CC] hover:file:bg-blue-100 cursor-pointer"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Certificate Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. GCP Professional Data Engineer"
+                  value={certTitle}
+                  onChange={(e) => setCertTitle(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-[#0047CC]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Issuing Organisation *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Google"
+                    value={certIssuingOrg}
+                    onChange={(e) => setCertIssuingOrg(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-[#0047CC]"
+                  />
+                </div>
+                <div>
+                  <DateInput
+                    label="Issue Date *"
+                    labelClassName="block font-semibold text-slate-700 mb-1"
+                    required
+                    value={certIssueDate}
+                    onChange={(e) => setCertIssueDate(e.target.value)}
+                    iconPosition="right"
+                    className="!w-full !px-3 !py-2 !rounded-lg !border-slate-200 !text-xs !text-slate-900 focus:!border-[#0047CC] !bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  disabled={uploadCertMutation.isPending}
+                  onClick={() => setIsCertModalOpen(false)}
+                  className="px-3.5 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={uploadCertMutation.isPending}
+                  className="px-4 py-2 rounded-lg bg-[#0047CC] hover:bg-[#003bb5] text-white text-xs font-semibold shadow-xs cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
+                >
+                  {uploadCertMutation.isPending && <Spinner size={12} />}
+                  <span>Upload Certificate</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: PROFILE RESET CONFIRMATION (POST /api/v1/talent/profile/reset-request) */}
+      {isResetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 space-y-5 shadow-lg border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2 text-amber-700">
+                <AlertTriangleIcon size={18} />
+                <h3 className="text-base font-semibold text-slate-900">Request Profile Reset</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsResetModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+              >
+                <CloseIcon size={16} />
+              </button>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 space-y-1">
+              <p className="font-semibold">Important note regarding reset:</p>
+              <p>
+                Resetting clears current assessment locks and restarts the assessment journey.
+                You have <strong>{reset?.resetsRemaining ?? 3}</strong> resets remaining in this window.
+              </p>
+            </div>
+
+            <form onSubmit={handleResetSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Reason for Reset *
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  value={resetReason}
+                  onChange={(e) => setResetReason(e.target.value)}
+                  placeholder="Explain why you are requesting a reset..."
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-[#0047CC]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  disabled={resetMutation.isPending}
+                  onClick={() => setIsResetModalOpen(false)}
+                  className="px-3.5 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resetMutation.isPending}
+                  className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-xs cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
+                >
+                  {resetMutation.isPending && <Spinner size={12} />}
+                  <span>Confirm Profile Reset</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

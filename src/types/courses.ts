@@ -73,11 +73,25 @@ export interface CourseBrowseItem {
   pills: string[];
   cta?: CourseBrowseCta;
   enrolled?: boolean;
+  recommendation?: CourseRecommendationMeta | null;
   // Compatibility aliases
   tagline?: string;
   thumbnailUrl?: string | null;
   accentColor?: string;
   specialisation?: string;
+}
+
+export interface CourseRecommendationMeta {
+  source: 'prescription' | 'gap_link' | 'target_gap' | 'module_gap' | 'catalog_fallback';
+  reason: string;
+  matchedGapIds: string[];
+}
+
+export interface MatchedGapSignal {
+  id: string;
+  title: string;
+  discipline?: string;
+  severity?: string;
 }
 
 export interface RecommendedCoursesData {
@@ -87,6 +101,14 @@ export interface RecommendedCoursesData {
   total: number;
   totalPages?: number;
   hasMore?: boolean;
+  source?: 'prescriptions' | 'gap_signals' | 'empty';
+  focusAreas?: string[];
+  message?: string | null;
+  gaps?: MatchedGapSignal[];
+  emptyState?: {
+    title: string;
+    body: string;
+  } | null;
   items: CourseBrowseItem[];
 }
 

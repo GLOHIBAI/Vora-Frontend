@@ -34,6 +34,7 @@ import {
   DEFAULT_MENTOR_AVATAR,
 } from '../../utils/media';
 import Select from '../../components/common/Select';
+import MentorAvatar from '../../components/mentors/MentorAvatar';
 
 const ENROLL_COUNTRY_OPTIONS = [
   { value: 'US', label: 'United States (US)' },
@@ -636,13 +637,12 @@ const CourseDetails: React.FC = () => {
           {activeTab === 'instructor' && (
             <div className="space-y-6 animate-in fade-in duration-300">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 border border-gray-200 shadow-xs bg-gray-100">
-                  <img 
-                    src={mentorAvatar} 
-                    alt={mentorDisplayName}
-                    className="w-full h-full object-cover" 
-                  />
-                </div>
+                <MentorAvatar
+                  photoUrl={course?.mentor?.photoUrl}
+                  photoS3Key={course?.mentor?.photoS3Key}
+                  name={mentorDisplayName}
+                  className="w-16 h-16 rounded-full object-cover shrink-0 border border-gray-200 shadow-xs"
+                />
                 <div className="space-y-1">
                   <h3 className="text-[17px] font-bold text-gray-900">
                     {mentorDisplayName}

@@ -26,6 +26,7 @@ import {
   normalizeMentorOnboardingState,
 } from '../utils/mentorOnboarding';
 import VoraLogo from '../components/common/VoraLogo';
+import DefaultAvatar from '../components/common/DefaultAvatar';
 import { VORA_LOGO_SRC } from '../constants/brand';
 import { capitalizeName } from '../utils/userName';
 
@@ -338,7 +339,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   );
 
   return (
-    <div className="flex h-screen bg-[#F9FAFB] overflow-hidden">
+    <div className="flex h-screen bg-[#F9FAFB] overflow-hidden w-full max-w-full">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div 
@@ -420,23 +421,26 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             <div className="flex items-center justify-between gap-3 group-data-[nav-collapsed=true]/sidebar:lg:flex-col group-data-[nav-collapsed=true]/sidebar:lg:gap-2">
               <Link
                 to="/settings"
-                className="group/user relative flex items-center gap-3 min-w-0 flex-1 hover:opacity-85 transition-opacity cursor-pointer group-data-[nav-collapsed=true]/sidebar:lg:justify-center group-data-[nav-collapsed=true]/sidebar:lg:gap-0"
+                title={`${displayName} — ${roleLabel}`}
+                className="group/user relative flex items-center gap-3 min-w-0 flex-1 hover:opacity-90 transition-opacity cursor-pointer group-data-[nav-collapsed=true]/sidebar:lg:justify-center group-data-[nav-collapsed=true]/sidebar:lg:gap-0"
               >
                 {avatarUrl && !avatarError ? (
                   <img
                     src={avatarUrl}
                     alt={displayName}
                     onError={() => setAvatarError(true)}
-                    className="w-9 h-9 rounded-full object-cover shrink-0 shadow-xs border border-gray-200"
+                    className="w-9 h-9 rounded-full object-cover shrink-0 shadow-xs border border-slate-200"
+                    style={{ imageRendering: '-webkit-optimize-contrast' }}
                   />
                 ) : (
-                  <div className="w-9 h-9 rounded-full bg-[#0047CC] flex items-center justify-center text-white font-bold text-[13px] shrink-0 uppercase tracking-tight shadow-xs ring-2 ring-blue-100">
-                    {initials}
-                  </div>
+                  <DefaultAvatar
+                    alt={displayName}
+                    className="w-9 h-9 rounded-full shrink-0 shadow-xs border border-slate-200"
+                  />
                 )}
                 <div className="flex-1 min-w-0 group-data-[nav-collapsed=true]/sidebar:lg:hidden">
                   <p className="text-[13px] font-bold text-[#1A1A1A] truncate leading-tight" title={displayName}>{displayName}</p>
-                  <p className="text-[11px] text-[#808080] font-medium truncate" title={roleLabel}>{roleLabel}</p>
+                  <p className="text-[11px] text-slate-500 font-medium truncate" title={roleLabel}>{roleLabel}</p>
                 </div>
 
                 {/* Floating Tooltip for User Profile in Collapsed Sidebar */}
@@ -475,8 +479,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         </header>
 
         {/* Page Content */}
-        <main className={`flex-1 overflow-y-auto custom-scrollbar ${isCourseCreatePage ? 'p-0' : 'px-4 lg:px-8 pb-8 pt-6'}`}>
-          <div className={useFullWidthContent ? 'w-full max-w-none' : 'max-w-7xl mx-auto'}>
+        <main className={`flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar ${isCourseCreatePage ? 'p-0' : 'px-4 lg:px-8 pb-8 pt-6'}`}>
+          <div className={useFullWidthContent ? 'w-full max-w-none' : 'w-full max-w-7xl mx-auto min-w-0'}>
             {children}
           </div>
         </main>

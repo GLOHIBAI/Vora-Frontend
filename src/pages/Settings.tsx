@@ -5,6 +5,7 @@ import Input from '../components/common/Input';
 import Select from '../components/common/Select';
 import Textarea from '../components/common/Textarea';
 import Tag from '../components/common/Tag';
+import DefaultAvatar from '../components/common/DefaultAvatar';
 import ModalDialog from '../components/common/ModalDialog';
 import { PageTitle, SectionHeading, Subheading } from '../components/common/Typography';
 import SettingsTabBar from '../components/settings/SettingsTabBar';
@@ -588,9 +589,10 @@ const StandardSettingsView: React.FC = () => {
                       className="w-[60px] h-[60px] rounded-full object-cover border-2 border-[#0047CC]/10"
                     />
                   ) : (
-                    <div className="w-[60px] h-[60px] rounded-full bg-[#EBF6FF] text-[#0047CC] text-lg font-bold flex items-center justify-center border-2 border-[#0047CC]/20">
-                      {profileInitials}
-                    </div>
+                    <DefaultAvatar
+                      alt="Profile"
+                      className="w-[60px] h-[60px] rounded-full border-2 border-[#0047CC]/10 shadow-xs"
+                    />
                   )}
                   <input
                     autoComplete="off"

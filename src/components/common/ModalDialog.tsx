@@ -247,14 +247,20 @@ const ModalDialog: ModalDialogComponent = Object.assign(
 
     if (!isVisible) return null;
 
+    // Guard against max-w-* classes accidentally passed in className targeting the modal card instead of the backdrop
+    const classes = className.split(' ').filter(Boolean);
+    const backdropClasses = classes.filter((c) => !c.startsWith('max-w-')).join(' ');
+    const cardMaxWidthFromClass = classes.find((c) => c.startsWith('max-w-'));
+    const effectiveMaxWidth = cardMaxWidthFromClass || maxWidth;
+
     return (
       <div
-        className={`fixed inset-0 z-[700] flex items-center justify-center p-3 sm:p-5 bg-black/45 overflow-y-auto ${className}`}
+        className={`fixed inset-0 z-[700] flex items-center justify-center p-3 sm:p-5 bg-black/45 overflow-y-auto ${backdropClasses}`}
         onClick={onClose}
         role="presentation"
       >
         <div
-          className={`bg-white rounded-2xl w-full ${maxWidth} shadow-[0_24px_64px_rgba(0,0,0,0.18)] overflow-hidden max-h-[92vh] flex flex-col my-auto relative ${containerClassName}`}
+          className={`bg-white rounded-2xl w-full ${effectiveMaxWidth} shadow-[0_24px_64px_rgba(0,0,0,0.18)] overflow-hidden max-h-[92vh] flex flex-col my-auto relative ${containerClassName}`}
           onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"

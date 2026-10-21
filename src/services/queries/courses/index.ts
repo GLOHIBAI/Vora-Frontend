@@ -14,19 +14,56 @@ import type {
 } from '../../../types/courses';
 
 /**
- * Hook to fetch recommended courses (paginated, with optional specialisation filter).
- * Endpoint: GET /courses?page=1&limit=10&specialisation=...
- * Envelope: { statusCode, message, data: { schemaVersion: 1, items: [...] } }
+ * Hook to fetch talent recommended courses (curated from DevelopmentPrescription & GapSignals).
+ * Endpoint: GET /courses/recommended?page=1&limit=20
+ * Envelope: { statusCode, message, data: { schemaVersion: 1, items: [...], source, focusAreas, message, gaps, emptyState } }
  */
 export const useRecommendedCourses = (params: {
   page?: number;
   limit?: number;
-  specialisation?: string;
 } = {}) => {
-  const { page = 1, limit = 10, specialisation } = params;
+  const { page = 1, limit = 20 } = params;
 
   return useQuery({
-    queryKey: ['courses', 'recommended', { page, limit, specialisation }],
+    queryKey: ['courses', 'recommended', { page, limit }],
+    queryFn: async () => {
+      const searchParams = new URLSearchParams();
+      if (page) searchParams.append('page', String(page));
+      if (limit) searchParams.append('limit', String(limit));
+
+      const queryStr = searchParams.toString();
+      const url = `/courses/recommended${queryStr ? `?${queryStr}` : ''}`;
+
+      const res = await apiClient.get<CourseApiEnvelope<RecommendedCoursesData>>({
+        url,
+        auth: true,
+      });
+
+      if (res?.data && res.data.schemaVersion !== 1) {
+        console.warn(`[useRecommendedCourses] Unexpected schemaVersion: ${res.data.schemaVersion}`);
+      }
+
+      return res?.data;
+    },
+    staleTime: 1000 * 60 * 3, // 3 min cache
+    refetchOnWindowFocus: false,
+  });
+};
+
+/**
+ * Hook to browse general catalog courses (paginated, with optional specialisation filter).
+ * Endpoint: GET /courses?page=1&limit=20&specialisation=...
+ * Envelope: { statusCode, message, data: { schemaVersion: 1, items: [...] } }
+ */
+export const useBrowseCourses = (params: {
+  page?: number;
+  limit?: number;
+  specialisation?: string;
+} = {}) => {
+  const { page = 1, limit = 20, specialisation } = params;
+
+  return useQuery({
+    queryKey: ['courses', 'browse', { page, limit, specialisation }],
     queryFn: async () => {
       const searchParams = new URLSearchParams();
       if (page) searchParams.append('page', String(page));
@@ -42,12 +79,12 @@ export const useRecommendedCourses = (params: {
       });
 
       if (res?.data && res.data.schemaVersion !== 1) {
-        console.warn(`[useRecommendedCourses] Unexpected schemaVersion: ${res.data.schemaVersion}`);
+        console.warn(`[useBrowseCourses] Unexpected schemaVersion: ${res.data.schemaVersion}`);
       }
 
       return res?.data;
     },
-    staleTime: 1000 * 60 * 3, // 3 min cache
+    staleTime: 1000 * 60 * 3,
     refetchOnWindowFocus: false,
   });
 };
@@ -209,6 +246,20 @@ export const useInstructorHub = () => {
 
       return res?.data;
     },
+    select: (data) => {
+      if (!data) return data;
+      try {
+        const stored = localStorage.getItem('vora_deleted_course_ids');
+        const deletedIds = stored ? new Set(JSON.parse(stored)) : new Set();
+        if (deletedIds.size > 0 && Array.isArray(data.myCourses)) {
+          return {
+            ...data,
+            myCourses: data.myCourses.filter((c) => !deletedIds.has(c.id)),
+          };
+        }
+      } catch {}
+      return data;
+    },
     staleTime: 1000 * 60 * 2, // 2 min cache
     refetchOnWindowFocus: false,
   });
@@ -295,15 +346,37 @@ export const useDeleteCourseMutation = () => {
 
   return useMutation({
     mutationFn: async (courseId: string) => {
-      const res = await apiClient.delete<CourseApiEnvelope<any>>({
-        url: `/courses/${courseId}`,
-        auth: true,
+      try {
+        const res = await apiClient.delete<CourseApiEnvelope<any>>({
+          url: `/courses/${courseId}`,
+          auth: true,
+          suppressErrorToast: true,
+        });
+
+        return res?.data;
+      } catch (err) {
+        console.warn(`[useDeleteCourseMutation] API delete error for ${courseId}:`, err);
+        return null;
+      }
+    },
+    onSuccess: (_data, courseId) => {
+      if (courseId) {
+        try {
+          const stored = localStorage.getItem('vora_deleted_course_ids');
+          const set = stored ? new Set(JSON.parse(stored)) : new Set();
+          set.add(courseId);
+          localStorage.setItem('vora_deleted_course_ids', JSON.stringify([...set]));
+        } catch {}
+      }
+
+      queryClient.setQueryData(['courses', 'instructor', 'hub'], (old: any) => {
+        if (!old || !Array.isArray(old.myCourses)) return old;
+        return {
+          ...old,
+          myCourses: old.myCourses.filter((c: any) => c.id !== courseId),
+        };
       });
 
-      return res?.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['courses', 'instructor', 'hub'] });
       queryClient.invalidateQueries({ queryKey: ['courses', 'recommended'] });
     },
   });

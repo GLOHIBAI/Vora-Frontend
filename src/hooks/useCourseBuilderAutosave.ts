@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { usePatchCourse } from '../services/queries/courses/builder';
 import type { PatchCourseDto } from '../types/courseBuilder';
 
-export type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+export type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'unsaved';
 
 interface UseCourseBuilderAutosaveProps {
   courseId: string | null | undefined;
@@ -75,6 +75,8 @@ export function useCourseBuilderAutosave({
 
     const serialized = JSON.stringify(payload);
     if (serialized === lastSavedJsonRef.current) return;
+
+    setAutosaveStatus('unsaved');
 
     if (timerRef.current) {
       clearTimeout(timerRef.current);

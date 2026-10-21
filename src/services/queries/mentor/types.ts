@@ -324,3 +324,286 @@ export interface MentorDashboardHomeResponse {
   quickActions: MentorQuickActionItem[];
   links?: MentorDashboardLinks;
 }
+
+// -------------------------------------------------------------
+// Mentor Mentees (schemaVersion = 1)
+// -------------------------------------------------------------
+
+export interface MentorMenteeSession {
+  id: string;
+  day?: string;
+  month?: string;
+  durationMinutes?: number;
+  type?: string;
+  topic?: string;
+  status?: string;
+  fee?: number;
+  date?: string;
+}
+
+export interface MentorMenteeNote {
+  id: string;
+  date?: string;
+  text: string;
+  type?: string;
+}
+
+export interface MentorMenteeActionCopyLink {
+  href: string;
+}
+
+export interface MentorMenteeActionItem {
+  enabled: boolean;
+}
+
+export interface MentorMenteeActions {
+  inviteToNextSession?: boolean;
+  copyBookingLink?: MentorMenteeActionCopyLink;
+  message?: MentorMenteeActionItem;
+  viewFullProfile?: MentorMenteeActionItem;
+  markOutcome?: MentorMenteeActionItem;
+  inviteToDiagnosticInterview?: MentorMenteeActionItem;
+}
+
+export interface MentorMenteeCard {
+  talentId: string;
+  displayName: string;
+  initials?: string;
+  photoUrl?: string | null;
+  professionalTitle?: string | null;
+  organisation?: string | null;
+  headline?: string | null;
+  country?: string;
+  tier?: string;
+  tierLabel?: string;
+  pathway?: string;
+  matchingLabel?: string;
+  tab?: 'active' | 'past' | 'interview_referred';
+  sessionCount?: number;
+  totalDurationMinutes?: number;
+  sessionsSummaryLabel?: string;
+  earnedAmount?: number;
+  currency?: string;
+  formattedEarned?: string;
+  outcome?: string | null;
+  outcomeLabel?: string | null;
+  priority?: string | null;
+  flaggedPipeline?: string | null;
+  interventionFocus?: string | null;
+  competencyProgress?: Array<{ name: string; score: number }>;
+  journeyProgressPercent?: number | null;
+  sessions?: MentorMenteeSession[];
+  notes?: MentorMenteeNote[];
+  actions?: MentorMenteeActions;
+}
+
+export interface MentorMenteesSummaryEarningsTier {
+  tier: string;
+  label: string;
+  amount: number;
+  currency: string;
+  formattedAmount: string;
+  sessionsCompleted: number;
+}
+
+export interface MentorMenteesSummaryEarnings {
+  tiers: MentorMenteesSummaryEarningsTier[];
+  totalAmount: number;
+  currency: string;
+  formattedTotal: string;
+  avgPerSession?: number | null;
+  formattedAvgPerSession?: string | null;
+  platformPayoutRate?: number;
+  platformPayoutLabel?: string;
+  fullEarningsHref?: string;
+}
+
+export interface MentorMenteesSummary {
+  activeMentees: number;
+  maxActiveMentees: number;
+  slotsRemaining: number;
+  slotsLabel: string;
+  totalSessions: number;
+  sessionsThisMonth: number;
+  sessionsThisMonthLabel: string;
+  menteeCountries: number;
+  outcomesTrackedPercent?: number | null;
+  outcomesLabel?: string | null;
+  earningsThisMonth: MentorMenteesSummaryEarnings;
+}
+
+export interface MentorMenteesTabsCount {
+  active: number;
+  past: number;
+  interviewReferred: number;
+}
+
+export interface MentorMenteesBookingLink {
+  href: string;
+  label: string;
+}
+
+export interface MentorMenteesResponse {
+  schemaVersion: 1;
+  tab: 'active' | 'past' | 'interview_referred';
+  tabs: MentorMenteesTabsCount;
+  summary: MentorMenteesSummary;
+  bookingLink?: MentorMenteesBookingLink;
+  emptyState?: {
+    title?: string;
+    description?: string;
+    body?: string;
+  } | null;
+  items: MentorMenteeCard[];
+}
+
+export interface SendSessionInviteDto {
+  sessionTypeId: string;
+  proposedAt: string; // ISO UTC
+  sessionFocus?: string;
+}
+
+export interface SendSessionInviteResponse {
+  bookingId: string;
+  talentId: string;
+  proposedAt: string;
+  durationMinutes: number;
+  sessionTypeId: string;
+  sessionFocus?: string;
+  status: string;
+  statusLabel: string;
+}
+
+// -------------------------------------------------------------
+// Mentor Sessions Hub (schemaVersion = 1)
+// -------------------------------------------------------------
+
+export interface MentorSessionActions {
+  joinVideo?: boolean;
+  dossierNotes?: boolean;
+  reschedule?: boolean;
+  confirm?: boolean;
+  decline?: boolean;
+  viewNotes?: boolean;
+}
+
+export interface MentorSessionCard {
+  bookingId: string;
+  talentId: string;
+  displayName: string;
+  initials?: string;
+  photoUrl?: string | null;
+  professionalTitle?: string | null;
+  organisation?: string | null;
+  headline?: string | null;
+  country?: string;
+  tier?: string;
+  tierLabel?: string;
+  pathway?: string;
+  sessionFormat?: string;
+  topic?: string;
+  scheduledAt: string;
+  endsAt?: string;
+  scheduleLabel?: string;
+  timeRangeLabel?: string;
+  durationMinutes: number;
+  status: 'live' | 'confirmed' | 'pending' | 'completed' | 'ended' | 'cancelled';
+  statusLabel?: string;
+  chargedAmount?: number;
+  currency?: string;
+  formattedAmount?: string;
+  mentorPayout?: number;
+  formattedPayout?: string;
+  meetingLink?: string | null;
+  outcome?: string | null;
+  outcomeLabel?: string | null;
+  testimonial?: string | null;
+  isUrgentReferral?: boolean;
+  actions?: MentorSessionActions;
+}
+
+export interface MentorSessionsSummary {
+  liveBookingActive?: boolean;
+  upcomingConfirmedCount: number;
+  upcomingThisWeekLabel?: string;
+  nextSessionLabel?: string;
+  nextSessionStartsInMinutes?: number | null;
+  pendingRequestsCount: number;
+  pendingLabel?: string;
+  coachingImpactHours?: number | null;
+  coachingImpactLabel?: string | null;
+  avgRating?: number | null;
+  avgRatingLabel?: string | null;
+}
+
+export interface MentorSessionsTabsCount {
+  upcoming: number;
+  requests: number;
+  past: number;
+  availabilitySlotsActive?: number;
+}
+
+export interface MentorSessionsFilters {
+  sessionFormats: string[];
+  regions: string[];
+}
+
+export interface MentorAvailabilitySlot {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  durationMinutes?: number;
+}
+
+export interface MentorAvailabilityView {
+  slots: MentorAvailabilitySlot[];
+  timezone: string;
+  bufferLabel?: string;
+  editHref?: string;
+}
+
+export interface MentorSessionsResponse {
+  schemaVersion: 1;
+  tab: 'upcoming' | 'requests' | 'past' | 'availability';
+  tabs: MentorSessionsTabsCount;
+  summary: MentorSessionsSummary;
+  liveSession?: MentorSessionCard | null;
+  filters: MentorSessionsFilters;
+  availability?: MentorAvailabilityView | null;
+  emptyState?: {
+    title?: string;
+    description?: string;
+  } | null;
+  items: MentorSessionCard[];
+}
+
+export interface CalendarProvider {
+  id: string;
+  name: string;
+  status: string;
+}
+
+export interface MentorCalendarResponse {
+  schemaVersion: 1;
+  providers: CalendarProvider[];
+  connectedEmail?: string | null;
+  connectEnabled?: boolean;
+  ical?: {
+    href?: string | null;
+    label?: string;
+  } | null;
+  syncNowEnabled?: boolean;
+  lastSyncLabel?: string;
+}
+
+export interface ScheduleSessionDto {
+  talentId: string;
+  sessionTypeId: string;
+  scheduledAt: string; // ISO-UTC
+  sessionFocus?: string;
+}
+
+export interface RescheduleSessionDto {
+  scheduledAt: string; // ISO-UTC
+}
+

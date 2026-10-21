@@ -109,6 +109,8 @@ const TalentMentorshipPage = lazy(() => import('./pages/talent/TalentMentorshipP
 const MentorCoursesPage = lazy(() => import('./pages/mentor/MentorCoursesPage'))
 const MentorMenteesPage = lazy(() => import('./pages/mentor/MentorMenteesPage'))
 const MentorSessionsPage = lazy(() => import('./pages/mentor/MentorSessionsPage'))
+const MentorFinancesPage = lazy(() => import('./pages/mentor/MentorFinancesPage'))
+const MentorWithdrawPage = lazy(() => import('./pages/mentor/MentorWithdrawPage'))
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -227,8 +229,10 @@ const App = () => {
           <Route path="/courses/create" element={<ProtectedDashboardLayout><CreateCoursePage /></ProtectedDashboardLayout>} />
           <Route path="/courses/new" element={<ProtectedDashboardLayout><CreateCoursePage /></ProtectedDashboardLayout>} />
           <Route path="/courses/:id/edit" element={<ProtectedDashboardLayout><CreateCoursePage /></ProtectedDashboardLayout>} />
+          <Route path="/courses/:id/builder" element={<ProtectedDashboardLayout><CreateCoursePage /></ProtectedDashboardLayout>} />
           <Route path="/mentor/courses/create" element={<ProtectedDashboardLayout><CreateCoursePage /></ProtectedDashboardLayout>} />
           <Route path="/mentor/courses/:id/edit" element={<ProtectedDashboardLayout><CreateCoursePage /></ProtectedDashboardLayout>} />
+          <Route path="/mentor/courses/:id/builder" element={<ProtectedDashboardLayout><CreateCoursePage /></ProtectedDashboardLayout>} />
           <Route path="/courses/:id" element={<ProtectedDashboardLayout><CourseDetails /></ProtectedDashboardLayout>} />
           <Route path="/mentor/courses" element={<ProtectedDashboardLayout><MentorCoursesPage /></ProtectedDashboardLayout>} />
           <Route path="/sessions" element={<ProtectedDashboardLayout><MentorSessionsPage /></ProtectedDashboardLayout>} />
@@ -237,6 +241,13 @@ const App = () => {
           <Route path="/mentor/mentees" element={<ProtectedDashboardLayout><MentorMenteesPage /></ProtectedDashboardLayout>} />
           <Route path="/mentor-mentees" element={<Navigate to="/mentees" replace />} />
           <Route path="/mentor-mentees.html" element={<Navigate to="/mentees" replace />} />
+          <Route path="/finances" element={<ProtectedDashboardLayout><MentorFinancesPage /></ProtectedDashboardLayout>} />
+          <Route path="/mentor/finances" element={<ProtectedDashboardLayout><MentorFinancesPage /></ProtectedDashboardLayout>} />
+          <Route path="/finances/withdraw" element={<ProtectedDashboardLayout><MentorWithdrawPage /></ProtectedDashboardLayout>} />
+          <Route path="/mentor/finances/withdraw" element={<ProtectedDashboardLayout><MentorWithdrawPage /></ProtectedDashboardLayout>} />
+          <Route path="/finances-payout" element={<ProtectedDashboardLayout><MentorWithdrawPage /></ProtectedDashboardLayout>} />
+          <Route path="/mentor/finances-payout" element={<ProtectedDashboardLayout><MentorWithdrawPage /></ProtectedDashboardLayout>} />
+          <Route path="/finances-payout.html" element={<Navigate to="/finances/withdraw" replace />} />
           <Route path="/settings" element={<ProtectedDashboardLayout><Settings /></ProtectedDashboardLayout>} />
 
           {/* Auth Routes */}

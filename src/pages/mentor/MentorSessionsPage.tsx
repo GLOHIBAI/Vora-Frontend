@@ -5,543 +5,308 @@ import {
   CalendarIcon,
   ClockIcon,
   VideoIcon,
-  UserIcon,
   CheckIcon,
   CloseIcon,
   PlusIcon,
   SearchIcon,
-  ChevronDownIcon,
-  ArrowUpIcon,
   InfoIcon,
   StarIcon,
-  MailIcon,
-  UsersIcon,
   GoogleIcon,
+  LockRectIcon,
+  AlertTriangleIcon,
 } from '../../components/common/Icons';
 import ModalDialog from '../../components/common/ModalDialog';
-import Tag from '../../components/common/Tag';
+import Select from '../../components/common/Select';
+import DateInput from '../../components/common/DateInput';
+import EmptyState from '../../components/common/EmptyState';
+import { toISODate } from '../../utils/date';
+import type { Option } from '../../types';
+import {
+  useMentorSessionsQuery,
+  useMentorCalendarQuery,
+  useConfirmSessionMutation,
+  useDeclineSessionMutation,
+  useRescheduleSessionMutation,
+  useScheduleSessionMutation,
+  useAddBookingNotesMutation,
+  useMentorSessionTypesQuery,
+  useMentorMenteesQuery,
+  type MentorSessionCard,
+} from '../../services/queries/mentor';
 
-// --- Type Definitions ---
-export type SessionFormat =
-  | 'Deep Dive'
-  | 'Strategy Session'
-  | 'Executive Coaching'
-  | 'Diagnostic Triage'
-  | 'Mock Panel Interview';
+// Helper to extract day and month for clean neutral calendar badge
+const formatScheduleDay = (dateStr?: string) => {
+  if (!dateStr) return { day: '--', month: '---' };
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return { day: '--', month: '---' };
+    return {
+      day: d.getDate().toString(),
+      month: d.toLocaleString('en-US', { month: 'short' }).toUpperCase(),
+    };
+  } catch {
+    return { day: '--', month: '---' };
+  }
+};
 
-export type SessionStatus = 'LIVE' | 'CONFIRMED' | 'PENDING' | 'COMPLETED' | 'CANCELLED';
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-export interface MentorshipSession {
-  id: string;
-  menteeName: string;
-  menteeAvatarInitials: string;
-  menteeGradient: string;
-  menteeRole: string;
-  menteeOrganization: string;
-  menteeCountry: string;
-  tier: 'T1' | 'T2' | 'T3';
-  pathway: 'VORA Matched' | 'Direct Booking' | 'Assessment Referred';
-  format: SessionFormat;
-  durationMinutes: number;
-  dateDay: string;
-  dateMonth: string;
-  dateFull: string;
-  timeSlot: string;
-  timezone: string;
-  status: SessionStatus;
-  feeAmount: number;
-  tierPricingLabel: string;
-  topicAgenda: string;
-  meetingLink?: string;
-  isUrgent?: boolean;
-  failureNotes?: string;
-  mentorPrepNotes?: string;
-  rating?: number;
-  feedback?: string;
-  outcome?: string;
-}
-
-// --- Initial Mock Data ---
-const INITIAL_SESSIONS: MentorshipSession[] = [
-  {
-    id: 'sess-1',
-    menteeName: 'Chiamaka Obi',
-    menteeAvatarInitials: 'CO',
-    menteeGradient: 'from-[#34D399] to-[#059669]',
-    menteeRole: 'Health Systems Policy Analyst',
-    menteeOrganization: 'Federal Ministry of Health, Nigeria',
-    menteeCountry: 'Nigeria',
-    tier: 'T3',
-    pathway: 'Assessment Referred',
-    format: 'Diagnostic Triage',
-    durationMinutes: 60,
-    dateDay: '09',
-    dateMonth: 'OCT',
-    dateFull: 'Today · Oct 9, 2026',
-    timeSlot: '14:00 - 15:00 WAT',
-    timezone: 'WAT (UTC+1)',
-    status: 'LIVE',
-    feeAmount: 150,
-    tierPricingLabel: 'T3 rate',
-    topicAgenda: 'SJT situational judgment triage & psychometric verbal reasoning reframe for WHO candidate.',
-    meetingLink: 'https://vora.ai/room/session-co-9102',
-    isUrgent: true,
-    failureNotes: 'Failed Psychometric ×2 on WHO Health Systems Leadership track. Requires structured role simulation mindset.',
-    mentorPrepNotes: 'Review cognitive test breakdown. Focus on "most appropriate vs strictly correct" tradeoffs.',
-  },
-  {
-    id: 'sess-2',
-    menteeName: 'Dr. Nadia Benali',
-    menteeAvatarInitials: 'NB',
-    menteeGradient: 'from-[#F87171] to-[#DC2626]',
-    menteeRole: 'Senior Technical Advisor',
-    menteeOrganization: 'WHO HQ, France',
-    menteeCountry: 'France',
-    tier: 'T1',
-    pathway: 'Direct Booking',
-    format: 'Executive Coaching',
-    durationMinutes: 90,
-    dateDay: '11',
-    dateMonth: 'OCT',
-    dateFull: 'Wednesday · Oct 11, 2026',
-    timeSlot: '10:00 - 11:30 CET',
-    timezone: 'CET (UTC+2)',
-    status: 'CONFIRMED',
-    feeAmount: 2200,
-    tierPricingLabel: 'T1 rate',
-    topicAgenda: 'Final multilateral governance panel simulation & non-technical stakeholder communication.',
-    meetingLink: 'https://vora.ai/room/session-nb-4412',
-    mentorPrepNotes: 'Candidate is technically brilliant. Needs coaching on concise executive synthesis under pressure.',
-  },
-  {
-    id: 'sess-3',
-    menteeName: 'Kofi Mensah-Asante',
-    menteeAvatarInitials: 'KM',
-    menteeGradient: 'from-[#60A5FA] to-[#2563EB]',
-    menteeRole: 'Health Systems Analyst',
-    menteeOrganization: 'Ghana Health Service',
-    menteeCountry: 'Ghana',
-    tier: 'T3',
-    pathway: 'VORA Matched',
-    format: 'Deep Dive',
-    durationMinutes: 60,
-    dateDay: '14',
-    dateMonth: 'OCT',
-    dateFull: 'Saturday · Oct 14, 2026',
-    timeSlot: '15:30 - 16:30 GMT',
-    timezone: 'GMT (UTC+0)',
-    status: 'CONFIRMED',
-    feeAmount: 220,
-    tierPricingLabel: 'T3 rate',
-    topicAgenda: 'Review 15-min daily timed practice sets + scenario exercise for upcoming WHO technical stage.',
-    meetingLink: 'https://vora.ai/room/session-km-8831',
-    mentorPrepNotes: 'Check homework from session 2. Verify progress on timed verbal reasoning accuracy.',
-  },
-  {
-    id: 'sess-4',
-    menteeName: 'Dr. Chen Wei',
-    menteeAvatarInitials: 'CW',
-    menteeGradient: 'from-[#818CF8] to-[#4F46E5]',
-    menteeRole: 'Health Informatics Lead',
-    menteeOrganization: 'MOH Singapore',
-    menteeCountry: 'Singapore',
-    tier: 'T1',
-    pathway: 'Direct Booking',
-    format: 'Strategy Session',
-    durationMinutes: 45,
-    dateDay: '18',
-    dateMonth: 'OCT',
-    dateFull: 'Wednesday · Oct 18, 2026',
-    timeSlot: '09:00 - 09:45 SGT',
-    timezone: 'SGT (UTC+8)',
-    status: 'CONFIRMED',
-    feeAmount: 1100,
-    tierPricingLabel: 'T1 rate',
-    topicAgenda: 'Multilateral digital health governance transition & cross-regional advisory framework.',
-    meetingLink: 'https://vora.ai/room/session-cw-2190',
-  },
-];
-
-const INITIAL_REQUESTS: MentorshipSession[] = [
-  {
-    id: 'req-1',
-    menteeName: 'Taiwo Adeyemi',
-    menteeAvatarInitials: 'TA',
-    menteeGradient: 'from-[#FBBF24] to-[#D97706]',
-    menteeRole: 'Programme Analyst',
-    menteeOrganization: 'UNICEF Nigeria',
-    menteeCountry: 'Nigeria',
-    tier: 'T3',
-    pathway: 'Assessment Referred',
-    format: 'Diagnostic Triage',
-    durationMinutes: 60,
-    dateDay: '12',
-    dateMonth: 'OCT',
-    dateFull: 'Thursday · Oct 12, 2026',
-    timeSlot: 'Proposed: 16:00 - 17:00 WAT',
-    timezone: 'WAT (UTC+1)',
-    status: 'PENDING',
-    feeAmount: 150,
-    tierPricingLabel: 'T3 rate',
-    topicAgenda: 'Urgent Intervention: Failed Psychometric ×3 + Video ×2 across WHO + UNICEF applications.',
-    isUrgent: true,
-    failureNotes: 'Critical case: Candidate has severe timing anxiety on situational judgment tests.',
-  },
-  {
-    id: 'req-2',
-    menteeName: 'Samuel Osei',
-    menteeAvatarInitials: 'SO',
-    menteeGradient: 'from-[#38BDF8] to-[#0284C7]',
-    menteeRole: 'Health Policy Associate',
-    menteeOrganization: 'Ghana MoH',
-    menteeCountry: 'Ghana',
-    tier: 'T3',
-    pathway: 'VORA Matched',
-    format: 'Deep Dive',
-    durationMinutes: 60,
-    dateDay: '15',
-    dateMonth: 'OCT',
-    dateFull: 'Sunday · Oct 15, 2026',
-    timeSlot: 'Proposed: 11:00 - 12:00 GMT',
-    timezone: 'GMT (UTC+0)',
-    status: 'PENDING',
-    feeAmount: 220,
-    tierPricingLabel: 'T3 rate',
-    topicAgenda: 'Situational Judgment test breakdown & health system financing prioritization.',
-  },
-  {
-    id: 'req-3',
-    menteeName: 'Grace Kintu',
-    menteeAvatarInitials: 'GK',
-    menteeGradient: 'from-[#C084FC] to-[#9333EA]',
-    menteeRole: 'Grants Operations Manager',
-    menteeOrganization: 'Global Fund',
-    menteeCountry: 'Uganda',
-    tier: 'T3',
-    pathway: 'Assessment Referred',
-    format: 'Mock Panel Interview',
-    durationMinutes: 90,
-    dateDay: '17',
-    dateMonth: 'OCT',
-    dateFull: 'Tuesday · Oct 17, 2026',
-    timeSlot: 'Proposed: 14:00 - 15:30 EAT',
-    timezone: 'EAT (UTC+3)',
-    status: 'PENDING',
-    feeAmount: 280,
-    tierPricingLabel: 'T3 rate',
-    topicAgenda: 'Executive simulation preparation after panel rejection.',
-    isUrgent: true,
-  },
-];
-
-const INITIAL_PAST_SESSIONS: MentorshipSession[] = [
-  {
-    id: 'past-1',
-    menteeName: 'James Okello',
-    menteeAvatarInitials: 'JO',
-    menteeGradient: 'from-[#A78BFA] to-[#7C3AED]',
-    menteeRole: 'Programme Officer',
-    menteeOrganization: 'UNICEF Kenya',
-    menteeCountry: 'Kenya',
-    tier: 'T3',
-    pathway: 'VORA Matched',
-    format: 'Deep Dive',
-    durationMinutes: 60,
-    dateDay: '28',
-    dateMonth: 'SEP',
-    dateFull: 'Sep 28, 2026',
-    timeSlot: '14:00 - 15:00 EAT',
-    timezone: 'EAT',
-    status: 'COMPLETED',
-    feeAmount: 220,
-    tierPricingLabel: 'T3 rate',
-    topicAgenda: 'Health systems financing analysis & final alignment interview mock.',
-    rating: 5,
-    feedback: 'Dr. Adaeze completely restructured how I approach policy tradeoffs. Secured the offer at UNICEF!',
-    outcome: 'Got the role ✓',
-  },
-  {
-    id: 'past-2',
-    menteeName: 'Dr. Emeka Nwosu',
-    menteeAvatarInitials: 'EN',
-    menteeGradient: 'from-[#FB7185] to-[#E11D48]',
-    menteeRole: 'Health Systems Director',
-    menteeOrganization: 'WHO AFRO',
-    menteeCountry: 'Switzerland',
-    tier: 'T1',
-    pathway: 'Direct Booking',
-    format: 'Executive Coaching',
-    durationMinutes: 90,
-    dateDay: '22',
-    dateMonth: 'SEP',
-    dateFull: 'Sep 22, 2026',
-    timeSlot: '10:00 - 11:30 CET',
-    timezone: 'CET',
-    status: 'COMPLETED',
-    feeAmount: 2200,
-    tierPricingLabel: 'T1 rate',
-    topicAgenda: 'Director-level strategic alignment & ministerial negotiation tactics.',
-    rating: 5,
-    feedback: 'World-class advisory. The panel debrief was exact to the letter.',
-    outcome: 'Promoted ✓',
-  },
-  {
-    id: 'past-3',
-    menteeName: 'Amina Diallo',
-    menteeAvatarInitials: 'AD',
-    menteeGradient: 'from-[#34D399] to-[#059669]',
-    menteeRole: 'Regional Epidemiologist',
-    menteeOrganization: 'West Africa Health Org',
-    menteeCountry: 'Senegal',
-    tier: 'T2',
-    pathway: 'VORA Matched',
-    format: 'Strategy Session',
-    durationMinutes: 60,
-    dateDay: '15',
-    dateMonth: 'SEP',
-    dateFull: 'Sep 15, 2026',
-    timeSlot: '15:00 - 16:00 GMT',
-    timezone: 'GMT',
-    status: 'COMPLETED',
-    feeAmount: 480,
-    tierPricingLabel: 'T2 rate',
-    topicAgenda: 'Field outbreak management leadership review & multilateral reporting.',
-    rating: 5,
-    feedback: 'Clear, compassionate, and technically formidable guidance.',
-    outcome: 'Advanced to Lead ✓',
-  },
-];
-
-export const MentorSessionsPage: React.FC = () => {
+const MentorSessionsPage: React.FC = () => {
   const navigate = useNavigate();
 
-  // Navigation tab state
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'requests' | 'past' | 'calendar'>('upcoming');
+  // Active Tab: upcoming | requests | past | availability
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'requests' | 'past' | 'availability'>('upcoming');
 
-  // Sessions state
-  const [upcomingSessions, setUpcomingSessions] = useState<MentorshipSession[]>(INITIAL_SESSIONS);
-  const [pendingRequests, setPendingRequests] = useState<MentorshipSession[]>(INITIAL_REQUESTS);
-  const [pastSessions, setPastSessions] = useState<MentorshipSession[]>(INITIAL_PAST_SESSIONS);
-
-  // Search & Filters
+  // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [filterFormat, setFilterFormat] = useState('ALL');
-  const [filterTier, setFilterTier] = useState('ALL');
+  const [filterRegion, setFilterRegion] = useState('ALL');
 
-  // Modals state
-  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [isDossierModalOpen, setIsDossierModalOpen] = useState(false);
-  const [selectedSessionForDossier, setSelectedSessionForDossier] = useState<MentorshipSession | null>(null);
-
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
-  const [videoCallSession, setVideoCallSession] = useState<MentorshipSession | null>(null);
-
-  const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
-  const [sessionToReschedule, setSessionToReschedule] = useState<MentorshipSession | null>(null);
-  const [newRescheduleDate, setNewRescheduleDate] = useState('');
-  const [newRescheduleTime, setNewRescheduleTime] = useState('15:00');
-
-  // New Session Form State
-  const [newSessionForm, setNewSessionForm] = useState({
-    menteeName: 'Chiamaka Obi',
-    format: 'Deep Dive' as SessionFormat,
-    duration: '60',
-    date: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0],
-    time: '14:00',
-    timezone: 'WAT (UTC+1)',
-    tier: 'T3' as 'T1' | 'T2' | 'T3',
-    agenda: 'Psychometric verbal reasoning practice and SJT simulation',
-    meetingLink: '',
+  // Query Sessions
+  const { data, isLoading, isError, refetch } = useMentorSessionsQuery({
+    tab: activeTab,
+    q: searchQuery.trim() || undefined,
+    format: filterFormat,
+    region: filterRegion,
   });
 
-  // Calendar Sync Status & Modal
-  const [isCalendarSynced, setIsCalendarSynced] = useState(true);
-  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
-  const [isSyncingNow, setIsSyncingNow] = useState(false);
-  const [googleConnected, setGoogleConnected] = useState(true);
-  const [outlookConnected, setOutlookConnected] = useState(false);
-  const [autoBlockBusySlots, setAutoBlockBusySlots] = useState(true);
-  const [sendCalendarInvites, setSendCalendarInvites] = useState(true);
-  const [includeVoraVideoLink, setIncludeVoraVideoLink] = useState(true);
-  const [lastSyncTime, setLastSyncTime] = useState('Just now (4 events synced)');
+  // Query Calendar info (for sync modal)
+  const { data: calendarData, isLoading: isCalendarLoading } = useMentorCalendarQuery();
 
-  // Handle Instant Re-sync
-  const handleSyncNow = () => {
-    setIsSyncingNow(true);
-    setTimeout(() => {
-      setIsSyncingNow(false);
-      setLastSyncTime('Just now (4 events synced)');
-      toast.success('Calendar 2-way sync complete! All 4 mentorship slots up to date.', { icon: '🔄' });
-    }, 700);
+  // Mentees query (for schedule modal mentee selector)
+  const { data: menteesData } = useMentorMenteesQuery({ tab: 'active' });
+
+  // Session types query (for schedule modal session format selector)
+  const { data: sessionTypes } = useMentorSessionTypesQuery();
+
+  // Mutations
+  const confirmMutation = useConfirmSessionMutation();
+  const declineMutation = useDeclineSessionMutation();
+  const rescheduleMutation = useRescheduleSessionMutation();
+  const scheduleMutation = useScheduleSessionMutation();
+  const notesMutation = useAddBookingNotesMutation();
+
+  // Modals state
+  const [isDossierModalOpen, setIsDossierModalOpen] = useState(false);
+  const [selectedSessionForDossier, setSelectedSessionForDossier] = useState<MentorSessionCard | null>(null);
+  const [dossierNotesText, setDossierNotesText] = useState('');
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [videoCallSession, setVideoCallSession] = useState<MentorSessionCard | null>(null);
+
+  const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+  const [sessionToReschedule, setSessionToReschedule] = useState<MentorSessionCard | null>(null);
+  const [newRescheduleDate, setNewRescheduleDate] = useState('');
+  const [newRescheduleTime, setNewRescheduleTime] = useState('14:00');
+  const [rescheduleDateError, setRescheduleDateError] = useState('');
+
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [scheduleForm, setScheduleForm] = useState({
+    talentId: '',
+    sessionTypeId: '',
+    date: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0],
+    time: '14:00',
+    sessionFocus: '',
+  });
+
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [isWebcalTokenRevealed, setIsWebcalTokenRevealed] = useState(false);
+
+  // Available formats filter options from backend
+  const formatOptions: Option[] = useMemo(() => {
+    const list = data?.filters?.sessionFormats || [];
+    return [
+      { value: 'ALL', label: 'All session formats' },
+      ...list.map((fmt) => ({ value: fmt, label: fmt })),
+    ];
+  }, [data?.filters?.sessionFormats]);
+
+  // Available regions filter options from backend (real country list, NOT fake T1/T2/T3)
+  const regionOptions: Option[] = useMemo(() => {
+    const list = data?.filters?.regions || [];
+    return [
+      { value: 'ALL', label: 'All countries / regions' },
+      ...list.map((reg) => ({ value: reg, label: reg })),
+    ];
+  }, [data?.filters?.regions]);
+
+  // Session items from current tab
+  const sessionItems = data?.items || [];
+
+  // Summary counts
+  const summary = data?.summary;
+  const tabsCount = data?.tabs;
+
+  // Live session hero: show ONLY if honest data.liveSession exists or an item is currently live
+  const featuredLiveSession = data?.liveSession || sessionItems.find((s) => s.status === 'live');
+
+  // Open Dossier / Notes
+  const handleOpenDossier = (session: MentorSessionCard) => {
+    setSelectedSessionForDossier(session);
+    setDossierNotesText('');
+    setIsDossierModalOpen(true);
+  };
+
+  // Save Notes
+  const handleSaveNotes = async () => {
+    if (!selectedSessionForDossier || !dossierNotesText.trim()) {
+      setIsDossierModalOpen(false);
+      return;
+    }
+    setIsSavingNotes(true);
+    try {
+      await notesMutation.mutateAsync({
+        bookingId: selectedSessionForDossier.bookingId,
+        text: dossierNotesText.trim(),
+      });
+      setIsDossierModalOpen(false);
+    } catch {
+      // Error handled by mutation
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
+
+  // Launch Video Call
+  const handleLaunchVideo = (session: MentorSessionCard) => {
+    if (session.meetingLink) {
+      if (session.meetingLink.startsWith('http')) {
+        window.open(session.meetingLink, '_blank', 'noopener,noreferrer');
+      } else {
+        navigate(session.meetingLink);
+      }
+    } else {
+      setVideoCallSession(session);
+      setIsVideoModalOpen(true);
+    }
+  };
+
+  // Confirm Booking Request
+  const handleConfirmRequest = async (session: MentorSessionCard) => {
+    try {
+      await confirmMutation.mutateAsync(session.bookingId);
+    } catch {
+      // Handled by mutation toast
+    }
+  };
+
+  // Decline Booking Request
+  const handleDeclineRequest = async (session: MentorSessionCard) => {
+    if (window.confirm(`Decline booking request from ${session.displayName}?`)) {
+      try {
+        await declineMutation.mutateAsync(session.bookingId);
+      } catch {
+        // Handled by mutation toast
+      }
+    }
+  };
+
+  // Open Reschedule Modal
+  const handleOpenReschedule = (session: MentorSessionCard) => {
+    setSessionToReschedule(session);
+    setNewRescheduleDate('');
+    setNewRescheduleTime('14:00');
+    setRescheduleDateError('');
+    setIsRescheduleModalOpen(true);
+  };
+
+  // Confirm Reschedule
+  const handleConfirmReschedule = async () => {
+    if (!sessionToReschedule) return;
+    if (!newRescheduleDate) {
+      setRescheduleDateError('Please choose a valid date.');
+      return;
+    }
+
+    try {
+      const scheduledDateTime = new Date(`${newRescheduleDate}T${newRescheduleTime}:00`);
+      if (isNaN(scheduledDateTime.getTime()) || scheduledDateTime.getTime() <= Date.now()) {
+        setRescheduleDateError('Rescheduled time must be in the future.');
+        return;
+      }
+
+      await rescheduleMutation.mutateAsync({
+        bookingId: sessionToReschedule.bookingId,
+        payload: {
+          scheduledAt: scheduledDateTime.toISOString(),
+        },
+      });
+      setIsRescheduleModalOpen(false);
+    } catch {
+      // Handled by mutation
+    }
+  };
+
+  // Submit Schedule Session
+  const handleCreateSession = async () => {
+    if (!scheduleForm.talentId) {
+      toast.error('Please select a mentee.');
+      return;
+    }
+    if (!scheduleForm.sessionTypeId) {
+      toast.error('Please select a session format.');
+      return;
+    }
+    if (!scheduleForm.date) {
+      toast.error('Please select a date.');
+      return;
+    }
+
+    try {
+      const scheduledDateTime = new Date(`${scheduleForm.date}T${scheduleForm.time}:00`);
+      if (isNaN(scheduledDateTime.getTime()) || scheduledDateTime.getTime() <= Date.now()) {
+        toast.error('Session date and time must be in the future.');
+        return;
+      }
+
+      await scheduleMutation.mutateAsync({
+        talentId: scheduleForm.talentId,
+        sessionTypeId: scheduleForm.sessionTypeId,
+        scheduledAt: scheduledDateTime.toISOString(),
+        sessionFocus: scheduleForm.sessionFocus.trim() || undefined,
+      });
+
+      setIsScheduleModalOpen(false);
+      setScheduleForm({
+        talentId: '',
+        sessionTypeId: '',
+        date: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0],
+        time: '14:00',
+        sessionFocus: '',
+      });
+    } catch {
+      // Handled by mutation
+    }
   };
 
   // Copy Webcal Feed URL
   const handleCopyWebcalFeed = () => {
-    const feedUrl = 'webcal://vora.ai/api/v1/mentors/calendar/feed.ics?token=vora_live_k8a9';
-    navigator.clipboard.writeText(feedUrl);
-    toast.success('Live calendar feed link copied to clipboard!');
-  };
-
-  // Filtered upcoming sessions
-  const filteredUpcoming = useMemo(() => {
-    return upcomingSessions.filter((s) => {
-      const matchSearch =
-        s.menteeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.menteeOrganization.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.topicAgenda.toLowerCase().includes(searchQuery.toLowerCase());
-      if (!matchSearch) return false;
-      if (filterFormat !== 'ALL' && s.format !== filterFormat) return false;
-      if (filterTier !== 'ALL' && s.tier !== filterTier) return false;
-      return true;
-    });
-  }, [upcomingSessions, searchQuery, filterFormat, filterTier]);
-
-  // Handle Accept Booking Request
-  const handleAcceptRequest = (request: MentorshipSession) => {
-    setPendingRequests((prev) => prev.filter((r) => r.id !== request.id));
-    const confirmed: MentorshipSession = {
-      ...request,
-      status: 'CONFIRMED',
-      meetingLink: `https://vora.ai/room/session-${request.id}`,
-    };
-    setUpcomingSessions((prev) => [confirmed, ...prev]);
-    toast.success(`Booking confirmed with ${request.menteeName}! Calendar invite sent.`);
-  };
-
-  // Handle Decline Booking Request
-  const handleDeclineRequest = (request: MentorshipSession) => {
-    setPendingRequests((prev) => prev.filter((r) => r.id !== request.id));
-    toast('Request declined. Mentee notified to pick an alternative slot.', { icon: 'ℹ️' });
-  };
-
-  // Handle Launch Video
-  const handleLaunchVideo = (session: MentorshipSession) => {
-    setVideoCallSession(session);
-    setIsVideoModalOpen(true);
-  };
-
-  // Handle Reschedule
-  const handleConfirmReschedule = () => {
-    if (!sessionToReschedule || !newRescheduleDate) {
-      toast.error('Please choose a valid date and time');
-      return;
+    if (calendarData?.ical?.href) {
+      navigator.clipboard.writeText(calendarData.ical.href);
+      toast.success('Calendar feed link copied to clipboard!');
+    } else {
+      toast('Live calendar feed link is not available yet.');
     }
-    const d = new Date(newRescheduleDate);
-    const day = d.getDate().toString().padStart(2, '0');
-    const mon = d.toLocaleString('en-US', { month: 'short' }).toUpperCase();
-
-    setUpcomingSessions((prev) =>
-      prev.map((s) => {
-        if (s.id === sessionToReschedule.id) {
-          return {
-            ...s,
-            dateDay: day,
-            dateMonth: mon,
-            dateFull: `${d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`,
-            timeSlot: `${newRescheduleTime} ${s.timezone.split(' ')[0]}`,
-          };
-        }
-        return s;
-      })
-    );
-    toast.success(`Session with ${sessionToReschedule.menteeName} rescheduled!`);
-    setIsRescheduleModalOpen(false);
   };
-
-  // Handle Schedule New Session
-  const handleCreateSession = () => {
-    if (!newSessionForm.menteeName.trim() || !newSessionForm.agenda.trim()) {
-      toast.error('Please complete mentee name and agenda');
-      return;
-    }
-
-    const d = new Date(newSessionForm.date);
-    const day = d.getDate().toString().padStart(2, '0');
-    const mon = d.toLocaleString('en-US', { month: 'short' }).toUpperCase();
-
-    const created: MentorshipSession = {
-      id: `sess-${Date.now()}`,
-      menteeName: newSessionForm.menteeName,
-      menteeAvatarInitials: newSessionForm.menteeName
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase(),
-      menteeGradient: 'from-[#3B82F6] to-[#1D4ED8]',
-      menteeRole: 'Healthcare Professional',
-      menteeOrganization: 'Multilateral Applicant',
-      menteeCountry: 'International',
-      tier: newSessionForm.tier,
-      pathway: 'Direct Booking',
-      format: newSessionForm.format,
-      durationMinutes: parseInt(newSessionForm.duration, 10) || 60,
-      dateDay: day,
-      dateMonth: mon,
-      dateFull: d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }),
-      timeSlot: `${newSessionForm.time} ${newSessionForm.timezone.split(' ')[0]}`,
-      timezone: newSessionForm.timezone,
-      status: 'CONFIRMED',
-      feeAmount: newSessionForm.tier === 'T1' ? 1200 : newSessionForm.tier === 'T2' ? 500 : 200,
-      tierPricingLabel: `${newSessionForm.tier} rate`,
-      topicAgenda: newSessionForm.agenda,
-      meetingLink: newSessionForm.meetingLink || `https://vora.ai/room/session-${Date.now()}`,
-    };
-
-    setUpcomingSessions((prev) => [created, ...prev]);
-    setIsScheduleModalOpen(false);
-    toast.success(`Session scheduled with ${newSessionForm.menteeName}!`);
-  };
-
-  // Calendar .ics Export
-  const handleExportCalendar = () => {
-    const calendarData = `BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//VORA Mentorship//Sessions Calendar//EN
-CALSCALE:GREGORIAN
-METHOD:PUBLISH
-${upcomingSessions
-  .map(
-    (s) => `BEGIN:VEVENT
-SUMMARY:VORA Mentorship: ${s.menteeName} (${s.format})
-DESCRIPTION:${s.topicAgenda}
-LOCATION:${s.meetingLink || 'VORA Video Room'}
-STATUS:CONFIRMED
-END:VEVENT`
-  )
-  .join('\n')}
-END:VCALENDAR`;
-
-    const blob = new Blob([calendarData], { type: 'text/calendar;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'vora_mentorship_sessions.ics');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Calendar .ics export downloaded. Compatible with Google Calendar & Outlook.');
-  };
-
-  // Active / Live Session (First Live or Confirmed Today)
-  const featuredLiveSession = upcomingSessions.find((s) => s.status === 'LIVE') || upcomingSessions[0];
 
   return (
     <div className="w-full pb-20 max-w-full overflow-x-hidden">
       {/* ── HEADER ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl sm:text-[28px] font-extrabold text-[#1A1A1A] tracking-tight leading-tight">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <h1 className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight leading-tight">
               Sessions Hub
             </h1>
-            <Tag
-              label="Live Booking Active"
-              variant="green"
-              className="font-bold text-[10px] py-0.5 px-2 border border-[#86EFAC]"
-            />
+            {summary?.liveBookingActive && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live Booking Active
+              </span>
+            )}
           </div>
-          <p className="text-[13px] sm:text-sm text-gray-500 font-medium">
+          <p className="text-sm text-slate-500 font-medium">
             Manage your 1-on-1 coaching calendar, upcoming deep dives, booking requests, and historical session logs.
           </p>
         </div>
@@ -551,166 +316,201 @@ END:VCALENDAR`;
           <button
             type="button"
             onClick={() => setIsSyncModalOpen(true)}
-            title="Manage 2-way Google & Outlook sync and calendar feeds"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-semibold text-gray-700 hover:text-[#0047CC] hover:border-[#0047CC] hover:bg-gray-50 transition-all cursor-pointer shadow-xs active:scale-98"
+            title="Manage calendar sync and integrations"
+            className="h-10 inline-flex items-center gap-2 px-4 rounded-full border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:text-[#0047CC] hover:border-[#0047CC] hover:bg-slate-50 transition-all cursor-pointer shadow-xs active:scale-98"
           >
             <CalendarIcon size={14} className="text-[#0047CC]" />
             <span>Sync Calendar</span>
-            <span className="w-2 h-2 rounded-full bg-[#15803D] animate-pulse" />
+            <span
+              className={`w-2 h-2 rounded-full ${
+                calendarData?.connectEnabled ? 'bg-emerald-500' : 'bg-slate-300'
+              }`}
+            />
           </button>
 
           {/* Schedule Session */}
           <button
             type="button"
             onClick={() => setIsScheduleModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#0047CC] text-[13px] font-bold text-white hover:bg-[#003d99] transition-all cursor-pointer shadow-sm hover:shadow-md active:scale-98"
+            className="h-10 inline-flex items-center gap-2 px-5 rounded-full bg-[#0047CC] text-xs font-bold text-white hover:bg-[#0038A8] transition-all cursor-pointer shadow-xs hover:shadow-md active:scale-98"
           >
             <PlusIcon size={14} strokeWidth={2.5} />
-            Schedule Session
+            <span>Schedule Session</span>
           </button>
         </div>
       </div>
 
       {/* ── KEY METRIC STAT CARDS ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
-        {/* Stat 1: Upcoming */}
-        <div className="bg-white border border-gray-100 rounded-[16px] p-4 sm:p-5 shadow-xs">
-          <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-1.5">
+      {/* 
+        Note: Removed hardcoded coaching impact "186 hrs" and fake "4.9 rating" per handoff instructions.
+        Render honest cards based on summary data.
+      */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+        {/* Stat 1: Upcoming Confirmed */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
             Upcoming Sessions
           </p>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl sm:text-[28px] font-extrabold text-[#1A1A1A] leading-tight">
-              {upcomingSessions.length}
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl sm:text-[28px] font-bold text-slate-900 leading-tight">
+              {summary?.upcomingConfirmedCount ?? tabsCount?.upcoming ?? 0}
             </span>
-            <span className="text-xs font-semibold text-[#0047CC] bg-[#EBF6FF] px-2 py-0.5 rounded-full">
+            <span className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
               Confirmed
             </span>
           </div>
-          <p className="text-[11px] font-semibold text-gray-500 mt-1">2 scheduled this week</p>
+          <p className="text-xs font-medium text-slate-500 mt-1">
+            {summary?.upcomingThisWeekLabel || 'Scheduled sessions'}
+          </p>
         </div>
 
-        {/* Stat 2: Next Live Slot */}
-        <div className="bg-white border border-gray-100 rounded-[16px] p-4 sm:p-5 shadow-xs">
-          <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-1.5">
+        {/* Stat 2: Next Session */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
             Next Session
           </p>
           <div className="flex items-baseline gap-1">
-            <span className="text-xl sm:text-[22px] font-extrabold text-[#15803D] leading-tight">
-              Today · 14:00
+            <span className="text-xl sm:text-[22px] font-bold text-slate-900 leading-tight truncate">
+              {summary?.nextSessionLabel || 'No sessions today'}
             </span>
           </div>
-          <p className="text-[11px] font-bold text-[#15803D] mt-1 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#2CA62C] animate-ping" />
-            Starts in 45 mins
+          <p className="text-xs font-semibold text-slate-600 mt-1 flex items-center gap-1.5">
+            {summary?.nextSessionStartsInMinutes != null ? (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>
+                  {summary.nextSessionStartsInMinutes > 0
+                    ? `Starts in ${summary.nextSessionStartsInMinutes} mins`
+                    : 'Starting now'}
+                </span>
+              </>
+            ) : (
+              <span className="text-slate-400">Check your upcoming calendar</span>
+            )}
           </p>
         </div>
 
         {/* Stat 3: Pending Booking Requests */}
-        <div className="bg-white border border-gray-100 rounded-[16px] p-4 sm:p-5 shadow-xs">
-          <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-1.5">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
             Pending Requests
           </p>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl sm:text-[28px] font-extrabold text-[#D97706] leading-tight">
-              {pendingRequests.length}
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl sm:text-[28px] font-bold text-slate-900 leading-tight">
+              {summary?.pendingRequestsCount ?? tabsCount?.requests ?? 0}
             </span>
-            <span className="text-xs font-bold text-[#C2410C] bg-[#FFF7ED] px-2 py-0.5 rounded-full">
-              Action Needed
-            </span>
+            {(summary?.pendingRequestsCount ?? 0) > 0 && (
+              <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                Action Needed
+              </span>
+            )}
           </div>
-          <p className="text-[11px] font-medium text-gray-500 mt-1">1 urgent referral case</p>
+          <p className="text-xs font-medium text-slate-500 mt-1">
+            {summary?.pendingLabel || 'Awaiting confirmation'}
+          </p>
         </div>
 
-        {/* Stat 4: Hours Mentored */}
-        <div className="bg-white border border-gray-100 rounded-[16px] p-4 sm:p-5 shadow-xs">
-          <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-1.5">
-            Coaching Impact
-          </p>
-          <div className="flex items-baseline gap-1">
-            <span className="text-2xl sm:text-[28px] font-extrabold text-[#1A1A1A] leading-tight">
-              186
-            </span>
-            <span className="text-xs font-semibold text-gray-400">hrs</span>
+        {/* Optional Stat 4: Only if real coachingImpactHours or avgRating are provided by backend */}
+        {summary?.coachingImpactHours != null && (
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+              Coaching Impact
+            </p>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl sm:text-[28px] font-bold text-slate-900 leading-tight">
+                {summary.coachingImpactHours}
+              </span>
+              <span className="text-xs font-medium text-slate-400">hrs</span>
+            </div>
+            {summary.avgRating != null && (
+              <p className="text-xs font-semibold text-slate-600 mt-1 flex items-center gap-1.5">
+                <StarIcon size={13} className="text-amber-500 fill-amber-500" />
+                <span>{summary.avgRating} avg rating</span>
+              </p>
+            )}
           </div>
-          <p className="text-[11px] font-bold text-[#15803D] mt-1 flex items-center gap-1">
-            <StarIcon size={12} className="text-amber-500 fill-amber-500" /> 4.9 ★ avg rating
-          </p>
-        </div>
+        )}
       </div>
 
-      {/* ── FEATURED NEXT / LIVE SESSION HERO CALLOUT ── */}
+      {/* ── FEATURED LIVE SESSION HERO CALLOUT ── */}
+      {/*
+        Handoff Rule: Only render when data.liveSession exists or an item is currently live.
+        Removed hardcoded Oct 9 session.
+      */}
       {featuredLiveSession && (
-        <div className="mb-6 rounded-2xl bg-gradient-to-br from-[#18234B] to-[#283979] text-white p-5 sm:p-6 shadow-md relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-72 h-72 bg-[#387DFF]/10 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative z-10">
-            {/* Left information */}
-            <div className="space-y-2 max-w-2xl">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  {featuredLiveSession.status === 'LIVE' ? 'SESSION READY TO JOIN' : 'UPCOMING NEXT'}
+        <div className="mb-6 rounded-2xl bg-white border border-slate-200 border-l-4 border-l-[#0047CC] p-5 sm:p-6 shadow-sm relative">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+            <div className="space-y-3 max-w-2xl">
+              <div className="flex items-center gap-2 flex-wrap">
+                {featuredLiveSession.status === 'live' ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Live now
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                    Upcoming Next
+                  </span>
+                )}
+                <span className="text-xs text-slate-600 font-medium">
+                  {featuredLiveSession.scheduleLabel || featuredLiveSession.timeRangeLabel}
                 </span>
-                <span className="text-xs text-blue-200 font-medium">
-                  {featuredLiveSession.dateFull} · {featuredLiveSession.timeSlot}
-                </span>
-                <Tag
-                  label={featuredLiveSession.format}
-                  variant="blue"
-                  className="bg-white/10 text-white border-white/20 text-[10px]"
-                />
+                {featuredLiveSession.sessionFormat && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium">
+                    {featuredLiveSession.sessionFormat}
+                  </span>
+                )}
+                {featuredLiveSession.country && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium">
+                    {featuredLiveSession.country}
+                  </span>
+                )}
               </div>
 
-              <div className="flex items-center gap-3 pt-1">
-                <div
-                  className={`w-12 h-12 rounded-full bg-gradient-to-br ${featuredLiveSession.menteeGradient} flex items-center justify-center font-extrabold text-sm text-white shrink-0 shadow-sm border border-white/30`}
-                >
-                  {featuredLiveSession.menteeAvatarInitials}
+              <div className="flex items-center gap-3 pt-0.5">
+                <div className="w-12 h-12 rounded-full bg-blue-50 text-[#0047CC] border border-blue-200 flex items-center justify-center font-bold text-sm shrink-0">
+                  {featuredLiveSession.initials || featuredLiveSession.displayName?.slice(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <h2 className="text-lg sm:text-xl font-extrabold text-white leading-tight">
-                    {featuredLiveSession.menteeName}
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight">
+                    {featuredLiveSession.displayName}
                   </h2>
-                  <p className="text-xs text-blue-200 font-medium">
-                    {featuredLiveSession.menteeRole} · {featuredLiveSession.menteeOrganization}
+                  <p className="text-xs sm:text-sm text-slate-500 font-medium">
+                    {featuredLiveSession.professionalTitle || featuredLiveSession.headline || 'Mentee'}
                   </p>
                 </div>
               </div>
 
-              <p className="text-xs sm:text-[13px] text-gray-200 leading-relaxed pt-1 font-normal bg-black/15 p-3 rounded-xl border border-white/10">
-                <strong className="text-white font-bold">Agenda: </strong>
-                {featuredLiveSession.topicAgenda}
-              </p>
+              {featuredLiveSession.topic && (
+                <div className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                  <strong className="text-slate-500 font-semibold">Agenda: </strong>
+                  <span className="text-slate-800">{featuredLiveSession.topic}</span>
+                </div>
+              )}
             </div>
 
-            {/* Right actions */}
             <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 shrink-0 justify-end">
               <button
                 type="button"
                 onClick={() => handleLaunchVideo(featuredLiveSession)}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#0047CC] hover:bg-[#387DFF] text-white text-sm font-extrabold transition-all shadow-lg hover:shadow-xl cursor-pointer active:scale-98 border border-blue-400/30"
+                className="h-10 inline-flex items-center justify-center gap-2 px-6 rounded-full bg-[#0047CC] hover:bg-[#0038A8] text-white text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer active:scale-98"
               >
-                <VideoIcon size={16} /> Join Video
+                <VideoIcon size={14} />
+                <span>Join Video Room</span>
               </button>
 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedSessionForDossier(featuredLiveSession);
-                    setIsDossierModalOpen(true);
-                  }}
-                  className="flex-1 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all cursor-pointer border border-white/15 text-center"
+                  onClick={() => handleOpenDossier(featuredLiveSession)}
+                  className="h-10 flex-1 px-4 rounded-full bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-all cursor-pointer border border-slate-200 text-center inline-flex items-center justify-center"
                 >
-                  Mentee Dossier
+                  Dossier & Notes
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setSessionToReschedule(featuredLiveSession);
-                    setIsRescheduleModalOpen(true);
-                  }}
-                  className="flex-1 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all cursor-pointer border border-white/15 text-center"
+                  onClick={() => handleOpenReschedule(featuredLiveSession)}
+                  className="h-10 flex-1 px-4 rounded-full bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-all cursor-pointer border border-slate-200 text-center inline-flex items-center justify-center"
                 >
                   Reschedule
                 </button>
@@ -721,95 +521,104 @@ END:VCALENDAR`;
       )}
 
       {/* ── TABS NAVIGATION ── */}
-      <div className="flex items-center border-b border-gray-200 mb-5 overflow-x-auto scrollbar-none gap-2">
+      <div className="flex items-center border-b border-slate-200 mb-5 overflow-x-auto scrollbar-none gap-2">
         <button
           type="button"
           onClick={() => setActiveTab('upcoming')}
-          className={`pb-3 px-3 text-[13.5px] font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+          className={`pb-3 px-3 text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
             activeTab === 'upcoming'
               ? 'text-[#0047CC] border-[#0047CC]'
-              : 'text-gray-500 border-transparent hover:text-gray-800'
+              : 'text-slate-500 border-transparent hover:text-slate-800'
           }`}
         >
           <span>Upcoming Sessions</span>
           <span
-            className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${
-              activeTab === 'upcoming' ? 'bg-[#EBF6FF] text-[#0047CC]' : 'bg-gray-100 text-gray-600'
+            className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+              activeTab === 'upcoming' ? 'bg-blue-50 text-[#0047CC]' : 'bg-slate-100 text-slate-600'
             }`}
           >
-            {upcomingSessions.length}
+            {tabsCount?.upcoming ?? 0}
           </span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('requests')}
-          className={`pb-3 px-3 text-[13.5px] font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+          className={`pb-3 px-3 text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
             activeTab === 'requests'
-              ? 'text-[#D97706] border-[#D97706]'
-              : 'text-gray-500 border-transparent hover:text-gray-800'
+              ? 'text-[#0047CC] border-[#0047CC]'
+              : 'text-slate-500 border-transparent hover:text-slate-800'
           }`}
         >
           <span>Booking Requests</span>
           <span
-            className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${
-              pendingRequests.length > 0 ? 'bg-[#FFFBEB] text-[#D97706]' : 'bg-gray-100 text-gray-600'
+            className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+              activeTab === 'requests' ? 'bg-blue-50 text-[#0047CC]' : 'bg-slate-100 text-slate-600'
             }`}
           >
-            {pendingRequests.length}
+            {tabsCount?.requests ?? 0}
           </span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('past')}
-          className={`pb-3 px-3 text-[13.5px] font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+          className={`pb-3 px-3 text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
             activeTab === 'past'
               ? 'text-[#0047CC] border-[#0047CC]'
-              : 'text-gray-500 border-transparent hover:text-gray-800'
+              : 'text-slate-500 border-transparent hover:text-slate-800'
           }`}
         >
           <span>Past Sessions & Logs</span>
-          <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600">
-            {pastSessions.length}
+          <span
+            className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+              activeTab === 'past' ? 'bg-blue-50 text-[#0047CC]' : 'bg-slate-100 text-slate-600'
+            }`}
+          >
+            {tabsCount?.past ?? 0}
           </span>
         </button>
 
         <button
           type="button"
-          onClick={() => setActiveTab('calendar')}
-          className={`pb-3 px-3 text-[13.5px] font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-            activeTab === 'calendar'
+          onClick={() => setActiveTab('availability')}
+          className={`pb-3 px-3 text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+            activeTab === 'availability'
               ? 'text-[#0047CC] border-[#0047CC]'
-              : 'text-gray-500 border-transparent hover:text-gray-800'
+              : 'text-slate-500 border-transparent hover:text-slate-800'
           }`}
         >
           <span>Weekly Availability</span>
-          <Tag label="Slots Active" variant="green" className="text-[10px] py-0.2" />
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            {tabsCount?.availabilitySlotsActive != null
+              ? `${tabsCount.availabilitySlotsActive} Slots Active`
+              : 'Slots Active'}
+          </span>
         </button>
       </div>
 
-      {/* ── SEARCH & FILTERS ── */}
-      {activeTab !== 'calendar' && (
+      {/* ── SEARCH & FILTERS (Only on session tabs) ── */}
+      {activeTab !== 'availability' && (
         <div className="flex flex-wrap items-center gap-2.5 mb-5">
           {/* Search */}
-          <div className="relative min-w-[200px] flex-1 max-w-xs">
+          <div className="relative min-w-[220px] flex-1 max-w-xs">
             <SearchIcon
               size={14}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
             />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by mentee, topic, role…"
-              className="w-full bg-white border border-gray-200 rounded-full pl-9 pr-3.5 py-2 text-[13px] font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#0047CC] focus:ring-2 focus:ring-[#0047CC]/10 transition-all"
+              className="w-full h-10 bg-white border border-slate-200 rounded-full pl-9 pr-3.5 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0047CC] focus:ring-2 focus:ring-[#0047CC]/15 transition-all"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
                 <CloseIcon size={12} />
               </button>
@@ -817,145 +626,190 @@ END:VCALENDAR`;
           </div>
 
           {/* Format Filter */}
-          <select
+          <Select
+            variant="compact"
             value={filterFormat}
             onChange={(e) => setFilterFormat(e.target.value)}
-            aria-label="Filter by session format"
-            className="bg-white border border-gray-200 rounded-full px-3.5 py-2 text-[12.5px] font-semibold text-gray-700 focus:outline-none focus:border-[#0047CC] cursor-pointer"
-          >
-            <option value="ALL">All session formats</option>
-            <option value="Deep Dive">Deep Dive (60 min)</option>
-            <option value="Strategy Session">Strategy Session (30/45 min)</option>
-            <option value="Executive Coaching">Executive Coaching (90 min)</option>
-            <option value="Diagnostic Triage">Diagnostic Triage</option>
-            <option value="Mock Panel Interview">Mock Panel Interview</option>
-          </select>
+            options={formatOptions}
+            className="!h-10 !bg-white !border-slate-200 !rounded-full !px-3.5 !text-xs !font-semibold !text-slate-700 hover:!border-slate-300 shadow-2xs"
+            containerClassName="shrink-0"
+          />
 
-          {/* Tier Filter */}
-          <select
-            value={filterTier}
-            onChange={(e) => setFilterTier(e.target.value)}
-            aria-label="Filter by country tier"
-            className="bg-white border border-gray-200 rounded-full px-3.5 py-2 text-[12.5px] font-semibold text-gray-700 focus:outline-none focus:border-[#0047CC] cursor-pointer"
+          {/* Region Filter: Real country strings from API */}
+          <Select
+            variant="compact"
+            value={filterRegion}
+            onChange={(e) => setFilterRegion(e.target.value)}
+            options={regionOptions}
+            className="!h-10 !bg-white !border-slate-200 !rounded-full !px-3.5 !text-xs !font-semibold !text-slate-700 hover:!border-slate-300 shadow-2xs"
+            containerClassName="shrink-0"
+          />
+        </div>
+      )}
+
+      {/* ── LOADING STATE ── */}
+      {isLoading && (
+        <div className="space-y-3.5">
+          {[1, 2, 3].map((n) => (
+            <div
+              key={n}
+              className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs animate-pulse flex items-center justify-between"
+            >
+              <div className="flex items-center gap-4 flex-1">
+                <div className="w-14 h-16 rounded-xl bg-slate-100" />
+                <div className="space-y-2 flex-1 max-w-md">
+                  <div className="h-4 bg-slate-200 rounded w-1/3" />
+                  <div className="h-3 bg-slate-100 rounded w-1/2" />
+                  <div className="h-3 bg-slate-100 rounded w-3/4" />
+                </div>
+              </div>
+              <div className="w-24 h-9 bg-slate-100 rounded-full" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── ERROR STATE ── */}
+      {isError && !isLoading && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center">
+          <AlertTriangleIcon size={32} className="mx-auto text-amber-500 mb-2" />
+          <h3 className="text-base font-bold text-slate-800">Failed to load sessions</h3>
+          <p className="text-xs text-slate-500 mt-1 mb-4">An error occurred while fetching your sessions hub.</p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="h-9 px-4 rounded-full bg-[#0047CC] text-white text-xs font-semibold hover:bg-[#0038A8] transition-all cursor-pointer"
           >
-            <option value="ALL">All country tiers</option>
-            <option value="T1">T1 · High Income ($1,200+)</option>
-            <option value="T2">T2 · Middle Income ($450+)</option>
-            <option value="T3">T3 · Low Income ($150 - $220)</option>
-          </select>
+            Retry
+          </button>
         </div>
       )}
 
       {/* ── TAB 1: UPCOMING SESSIONS ── */}
-      {activeTab === 'upcoming' && (
+      {!isLoading && !isError && activeTab === 'upcoming' && (
         <div className="space-y-3.5">
-          {filteredUpcoming.length === 0 ? (
-            <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center">
-              <CalendarIcon size={32} className="mx-auto text-gray-300 mb-2" />
-              <h3 className="text-base font-bold text-gray-800">No sessions match your filters</h3>
-              <p className="text-xs text-gray-500 mt-1">Try resetting search query or format selection</p>
+          {sessionItems.length === 0 ? (
+            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs">
+              <EmptyState
+                icon={CalendarIcon}
+                title={data?.emptyState?.title || 'No upcoming sessions'}
+                description={
+                  data?.emptyState?.description ||
+                  'Confirmed sessions with your mentees will appear here.'
+                }
+                variant="dashed"
+                className="m-4 sm:m-6"
+                action={{
+                  label: 'Schedule a Session',
+                  onClick: () => setIsScheduleModalOpen(true),
+                  icon: PlusIcon,
+                }}
+              />
             </div>
           ) : (
-            filteredUpcoming.map((session) => {
-              const isLive = session.status === 'LIVE';
+            sessionItems.map((session) => {
+              const { day, month } = formatScheduleDay(session.scheduledAt);
+              const isLive = session.status === 'live';
 
               return (
                 <div
-                  key={session.id}
-                  className={`bg-white rounded-2xl border transition-all duration-200 overflow-hidden shadow-2xs hover:shadow-md p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-                    isLive
-                      ? 'border-emerald-300 ring-2 ring-emerald-500/20 bg-emerald-50/20'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                  key={session.bookingId}
+                  className="bg-white rounded-2xl border border-slate-200 hover:border-slate-300 transition-all duration-200 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs"
                 >
-                  {/* Left: Date box + Mentee info */}
+                  {/* Left: Neutral Date tile + Mentee info */}
                   <div className="flex items-start gap-4 flex-1 min-w-0">
-                    {/* Date Badge */}
-                    <div
-                      className={`w-14 h-16 rounded-xl flex flex-col items-center justify-center shrink-0 border shadow-2xs ${
-                        isLive
-                          ? 'bg-emerald-500 text-white border-emerald-600'
-                          : 'bg-gray-50 border-gray-200 text-gray-800'
-                      }`}
-                    >
-                      <span className="text-xl font-black leading-none">{session.dateDay}</span>
-                      <span className="text-[9px] font-extrabold uppercase tracking-wider mt-1 opacity-80">
-                        {session.dateMonth}
+                    <div className="w-14 h-16 rounded-xl flex flex-col items-center justify-center shrink-0 border border-slate-200 bg-slate-50 text-slate-900 shadow-2xs">
+                      <span className="text-xl font-bold leading-none">{day}</span>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider mt-1 text-slate-500">
+                        {month}
                       </span>
                     </div>
 
-                    {/* Mentee Details */}
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[15px] sm:text-base font-extrabold text-[#1A1A1A]">
-                          {session.menteeName}
+                        <span className="text-base font-bold text-slate-900">
+                          {session.displayName}
                         </span>
+
                         {isLive ? (
-                          <Tag
-                            label="Live Now"
-                            variant="green"
-                            className="font-extrabold text-[10px] py-0.5 px-2"
-                          />
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Live now
+                          </span>
                         ) : (
-                          <Tag
-                            label="Confirmed"
-                            variant="blue"
-                            className="font-extrabold text-[10px] py-0.5 px-2"
-                          />
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold">
+                            {session.statusLabel || 'Confirmed'}
+                          </span>
                         )}
-                        <Tag
-                          label={session.format}
-                          variant="blue-light"
-                          className="text-[10px] font-bold py-0.5 px-2"
-                        />
-                        <Tag
-                          label={`${session.tier} · ${session.menteeCountry}`}
-                          variant={session.tier === 'T1' ? 'blue' : session.tier === 'T2' ? 'purple' : 'yellow'}
-                          className="text-[10px] font-bold py-0.5 px-2"
-                        />
+
+                        {session.sessionFormat && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium">
+                            {session.sessionFormat}
+                          </span>
+                        )}
+                        {session.country && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium">
+                            {session.country}
+                          </span>
+                        )}
+                        {session.tierLabel && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium">
+                            {session.tierLabel}
+                          </span>
+                        )}
                       </div>
 
-                      <p className="text-xs text-gray-500 font-medium truncate">
-                        {session.menteeRole} · {session.menteeOrganization}
+                      <p className="text-xs text-slate-500 font-medium truncate">
+                        {session.professionalTitle || session.headline || 'Mentee'}
                       </p>
 
-                      <div className="text-xs text-gray-700 font-normal pt-1 line-clamp-2">
-                        <strong className="font-semibold text-gray-900">Topic: </strong>
-                        {session.topicAgenda}
-                      </div>
+                      {session.topic && (
+                        <div className="text-sm text-slate-800 font-normal pt-0.5 line-clamp-2">
+                          <strong className="font-medium text-slate-400">Topic: </strong>
+                          {session.topic}
+                        </div>
+                      )}
 
-                      <div className="flex items-center gap-3 text-xs text-gray-500 pt-1 flex-wrap">
-                        <span className="font-semibold text-[#0047CC] flex items-center gap-1">
-                          <ClockIcon size={12} /> {session.timeSlot}
+                      <div className="flex items-center gap-3 text-xs text-slate-500 pt-1 flex-wrap">
+                        <span className="font-semibold text-slate-900 flex items-center gap-1.5">
+                          <ClockIcon size={13} className="text-slate-400" />
+                          <span>{session.timeRangeLabel || session.scheduleLabel}</span>
                         </span>
-                        <span>•</span>
+                        <span className="text-slate-300">•</span>
                         <span>{session.durationMinutes} minutes</span>
-                        <span>•</span>
-                        <span className="font-bold text-[#15803D]">${session.feeAmount} ({session.tierPricingLabel})</span>
+                        {session.formattedPayout ? (
+                          <>
+                            <span className="text-slate-300">•</span>
+                            <span className="font-bold text-slate-900">
+                              {session.formattedPayout}
+                            </span>
+                          </>
+                        ) : session.formattedAmount ? (
+                          <>
+                            <span className="text-slate-300">•</span>
+                            <span className="font-bold text-slate-900">
+                              {session.formattedAmount}
+                            </span>
+                          </>
+                        ) : null}
                       </div>
                     </div>
                   </div>
 
                   {/* Right Actions */}
-                  <div className="flex items-center gap-2 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-gray-100 flex-wrap justify-end">
+                  <div className="flex items-center gap-2 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 flex-wrap justify-end">
                     <button
                       type="button"
-                      onClick={() => {
-                        setSelectedSessionForDossier(session);
-                        setIsDossierModalOpen(true);
-                      }}
-                      className="px-3.5 py-2 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-700 transition-all cursor-pointer shadow-2xs"
+                      onClick={() => handleOpenDossier(session)}
+                      className="h-10 px-3.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-all cursor-pointer shadow-2xs inline-flex items-center justify-center"
                     >
                       Dossier & Notes
                     </button>
 
                     <button
                       type="button"
-                      onClick={() => {
-                        setSessionToReschedule(session);
-                        setIsRescheduleModalOpen(true);
-                      }}
-                      className="px-3 py-2 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-600 transition-all cursor-pointer shadow-2xs"
+                      onClick={() => handleOpenReschedule(session)}
+                      className="h-10 px-3.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-all cursor-pointer shadow-2xs inline-flex items-center justify-center"
                     >
                       Reschedule
                     </button>
@@ -963,13 +817,14 @@ END:VCALENDAR`;
                     <button
                       type="button"
                       onClick={() => handleLaunchVideo(session)}
-                      className={`px-4 py-2 rounded-full text-xs font-extrabold text-white transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-98 ${
+                      className={`h-10 px-4 rounded-full text-xs font-bold transition-all shadow-xs cursor-pointer inline-flex items-center gap-1.5 active:scale-98 ${
                         isLive
-                          ? 'bg-[#15803D] hover:bg-[#135813] shadow-emerald-500/20'
-                          : 'bg-[#0047CC] hover:bg-[#003d99]'
+                          ? 'bg-[#0047CC] hover:bg-[#0038A8] text-white'
+                          : 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
                       }`}
                     >
-                      <VideoIcon size={13} /> {isLive ? 'Join Live Room' : 'Launch Video'}
+                      <VideoIcon size={14} className={isLive ? 'text-white' : 'text-[#0047CC]'} />
+                      <span>Join Video</span>
                     </button>
                   </div>
                 </div>
@@ -980,349 +835,460 @@ END:VCALENDAR`;
       )}
 
       {/* ── TAB 2: PENDING BOOKING REQUESTS ── */}
-      {activeTab === 'requests' && (
+      {!isLoading && !isError && activeTab === 'requests' && (
         <div className="space-y-4">
-          <div className="bg-[#FFFBEB] border border-[#FDE68A] rounded-2xl p-4 sm:p-5 text-xs text-[#92400E] leading-relaxed flex items-start gap-3">
-            <InfoIcon size={18} className="text-[#D97706] shrink-0 mt-0.5" />
+          <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 sm:p-5 text-xs text-amber-900 leading-relaxed flex items-start gap-3">
+            <InfoIcon size={18} className="text-amber-600 shrink-0 mt-0.5" />
             <div>
-              <strong className="font-extrabold text-[#78350F] block mb-0.5">
+              <strong className="font-bold text-amber-900 block mb-0.5">
                 Inbound Booking Requests
               </strong>
-              These candidates requested a 1-on-1 session with you based on your expertise or via VORA assessment referrals. Review their target applications and confirm or suggest an alternate slot.
+              These candidates requested a 1-on-1 session with you. Confirm to reserve the slot and generate a secure WebRTC video room, or suggest an alternate time.
             </div>
           </div>
 
-          {pendingRequests.length === 0 ? (
-            <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center">
-              <CheckIcon size={32} className="mx-auto text-emerald-500 mb-2" />
-              <h3 className="text-base font-bold text-gray-800">All booking requests cleared!</h3>
-              <p className="text-xs text-gray-500 mt-1">You have no pending requests awaiting confirmation.</p>
+          {sessionItems.length === 0 ? (
+            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs">
+              <EmptyState
+                icon={CheckIcon}
+                title={data?.emptyState?.title || 'No pending booking requests'}
+                description={
+                  data?.emptyState?.description ||
+                  'You are all caught up on new booking requests.'
+                }
+                variant="dashed"
+                className="m-4 sm:m-6"
+              />
             </div>
           ) : (
-            <div className="space-y-3.5">
-              {pendingRequests.map((req) => (
+            sessionItems.map((request) => {
+              const { day, month } = formatScheduleDay(request.scheduledAt);
+
+              return (
                 <div
-                  key={req.id}
-                  className="bg-white border border-[#FDBA74] rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  key={request.bookingId}
+                  className="bg-white rounded-2xl border border-slate-200 hover:border-slate-300 transition-all duration-200 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs"
                 >
-                  <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                    <div
-                      className={`w-12 h-12 rounded-full bg-gradient-to-br ${req.menteeGradient} flex items-center justify-center font-extrabold text-sm text-white shrink-0 shadow-2xs`}
-                    >
-                      {req.menteeAvatarInitials}
+                  <div className="flex items-start gap-4 flex-1 min-w-0">
+                    <div className="w-14 h-16 rounded-xl flex flex-col items-center justify-center shrink-0 border border-amber-200 bg-amber-50 text-amber-900 shadow-2xs">
+                      <span className="text-xl font-bold leading-none">{day}</span>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider mt-1 text-amber-600">
+                        {month}
+                      </span>
                     </div>
 
-                    <div className="space-y-1 flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[15px] font-extrabold text-gray-900">
-                          {req.menteeName}
+                        <span className="text-base font-bold text-slate-900">
+                          {request.displayName}
                         </span>
-                        {req.isUrgent && (
-                          <Tag
-                            label="Critical Referral"
-                            variant="red"
-                            className="text-[10px] font-extrabold py-0.5 px-2"
-                          />
+
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-semibold">
+                          Action Needed
+                        </span>
+
+                        {request.isUrgentReferral && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-xs font-semibold">
+                            <AlertTriangleIcon size={11} className="text-red-600" />
+                            Urgent Referral
+                          </span>
                         )}
-                        <Tag
-                          label={req.format}
-                          variant="blue-light"
-                          className="text-[10px] font-bold py-0.5 px-2"
-                        />
-                        <Tag
-                          label={`${req.tier} · ${req.menteeCountry}`}
-                          variant="yellow"
-                          className="text-[10px] font-bold py-0.5 px-2"
-                        />
+
+                        {request.sessionFormat && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium">
+                            {request.sessionFormat}
+                          </span>
+                        )}
+
+                        {request.country && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium">
+                            {request.country}
+                          </span>
+                        )}
                       </div>
 
-                      <p className="text-xs text-gray-500 font-medium">
-                        {req.menteeRole} · {req.menteeOrganization}
+                      <p className="text-xs text-slate-500 font-medium truncate">
+                        {request.professionalTitle || request.headline || 'Mentee'}
                       </p>
 
-                      <div className="text-xs text-gray-800 font-normal pt-1">
-                        <strong className="text-gray-900 font-semibold">Focus: </strong>
-                        {req.topicAgenda}
-                      </div>
-
-                      {req.failureNotes && (
-                        <div className="bg-red-50/80 border border-red-200/60 rounded-xl p-2.5 text-xs text-red-900 font-medium mt-2">
-                          <strong className="block text-[11px] font-bold text-red-800">
-                            Failure Diagnostic:
-                          </strong>
-                          {req.failureNotes}
+                      {request.topic && (
+                        <div className="text-sm text-slate-800 font-normal pt-0.5 line-clamp-2">
+                          <strong className="font-medium text-slate-400">Target Focus: </strong>
+                          {request.topic}
                         </div>
                       )}
 
-                      <div className="flex items-center gap-3 text-xs text-gray-500 pt-1">
-                        <span className="font-semibold text-[#D97706]">{req.timeSlot}</span>
-                        <span>•</span>
-                        <span className="font-bold text-[#15803D]">${req.feeAmount} fee</span>
+                      <div className="flex items-center gap-3 text-xs text-slate-500 pt-1 flex-wrap">
+                        <span className="font-semibold text-slate-900 flex items-center gap-1.5">
+                          <ClockIcon size={13} className="text-slate-400" />
+                          <span>{request.timeRangeLabel || request.scheduleLabel}</span>
+                        </span>
+                        <span className="text-slate-300">•</span>
+                        <span>{request.durationMinutes} minutes</span>
+                        {request.formattedPayout ? (
+                          <>
+                            <span className="text-slate-300">•</span>
+                            <span className="font-bold text-slate-900">
+                              {request.formattedPayout}
+                            </span>
+                          </>
+                        ) : null}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-gray-100 justify-end">
+                  {/* Actions: Confirm, Decline, Reschedule */}
+                  <div className="flex items-center gap-2 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 flex-wrap justify-end">
                     <button
                       type="button"
-                      onClick={() => handleDeclineRequest(req)}
-                      className="px-3.5 py-2 rounded-full border border-gray-200 bg-white hover:bg-gray-100 text-xs font-semibold text-gray-600 transition-all cursor-pointer"
+                      onClick={() => handleDeclineRequest(request)}
+                      disabled={declineMutation.isPending}
+                      className="h-10 px-3.5 rounded-full border border-slate-200 bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-xs font-semibold text-slate-600 transition-all cursor-pointer shadow-2xs"
                     >
                       Decline
                     </button>
+
                     <button
                       type="button"
-                      onClick={() => handleAcceptRequest(req)}
-                      className="px-5 py-2 rounded-full bg-[#15803D] hover:bg-[#135813] text-xs font-bold text-white transition-all shadow-xs cursor-pointer active:scale-98"
+                      onClick={() => handleOpenReschedule(request)}
+                      className="h-10 px-3.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-all cursor-pointer shadow-2xs"
                     >
-                      Confirm Slot
+                      Propose Slot
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleConfirmRequest(request)}
+                      disabled={confirmMutation.isPending}
+                      className="h-10 px-4 rounded-full bg-[#0047CC] hover:bg-[#0038A8] text-white text-xs font-bold transition-all shadow-xs cursor-pointer inline-flex items-center gap-1.5 active:scale-98 disabled:opacity-50"
+                    >
+                      <CheckIcon size={14} />
+                      <span>Confirm Session</span>
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+            })
           )}
         </div>
       )}
 
       {/* ── TAB 3: PAST SESSIONS & LOGS ── */}
-      {activeTab === 'past' && (
+      {/* 
+        Handoff Rule: Hide testimonials and outcome badges when null.
+      */}
+      {!isLoading && !isError && activeTab === 'past' && (
         <div className="space-y-3.5">
-          {pastSessions.map((session) => (
-            <div
-              key={session.id}
-              className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5 shadow-2xs hover:shadow-xs transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
-            >
-              <div className="flex items-start gap-4 flex-1 min-w-0">
-                <div className="w-12 h-14 rounded-xl bg-gray-100 border border-gray-200 flex flex-col items-center justify-center shrink-0 text-gray-600">
-                  <span className="text-lg font-black leading-none">{session.dateDay}</span>
-                  <span className="text-[9px] font-extrabold uppercase mt-1">{session.dateMonth}</span>
-                </div>
-
-                <div className="space-y-1 flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[15px] font-extrabold text-gray-900">
-                      {session.menteeName}
-                    </span>
-                    <Tag
-                      label="Completed"
-                      variant="green"
-                      className="text-[10px] font-bold py-0.5 px-2"
-                    />
-                    {session.outcome && (
-                      <Tag
-                        label={session.outcome}
-                        variant="green"
-                        className="text-[10px] font-extrabold py-0.5 px-2 border border-[#86EFAC]"
-                      />
-                    )}
-                    <Tag
-                      label={session.format}
-                      variant="blue-light"
-                      className="text-[10px] font-bold py-0.5 px-2"
-                    />
-                  </div>
-
-                  <p className="text-xs text-gray-500 font-medium">
-                    {session.menteeRole} · {session.menteeOrganization}
-                  </p>
-
-                  <div className="text-xs text-gray-700 font-normal">
-                    {session.topicAgenda}
-                  </div>
-
-                  {session.feedback && (
-                    <div className="bg-gray-50 rounded-xl p-2.5 text-xs text-gray-600 italic border border-gray-100 mt-1">
-                      "{session.feedback}"
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-3 text-xs text-gray-500 pt-1">
-                    <span>{session.durationMinutes} mins completed</span>
-                    <span>•</span>
-                    <span className="font-bold text-[#15803D]">${session.feeAmount} earned ({session.tierPricingLabel})</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="shrink-0 flex items-center gap-2 justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedSessionForDossier(session);
-                    setIsDossierModalOpen(true);
-                  }}
-                  className="px-4 py-2 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-700 transition-all cursor-pointer shadow-2xs"
-                >
-                  View Notes
-                </button>
-              </div>
+          {sessionItems.length === 0 ? (
+            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs">
+              <EmptyState
+                icon={CalendarIcon}
+                title={data?.emptyState?.title || 'No past sessions logged'}
+                description={
+                  data?.emptyState?.description ||
+                  'Completed sessions and notes will appear here.'
+                }
+                variant="dashed"
+                className="m-4 sm:m-6"
+              />
             </div>
-          ))}
+          ) : (
+            sessionItems.map((session) => {
+              const { day, month } = formatScheduleDay(session.scheduledAt);
+
+              return (
+                <div
+                  key={session.bookingId}
+                  className="bg-white rounded-2xl border border-slate-200 hover:border-slate-300 transition-all duration-200 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs"
+                >
+                  <div className="flex items-start gap-4 flex-1 min-w-0">
+                    <div className="w-14 h-16 rounded-xl flex flex-col items-center justify-center shrink-0 border border-slate-200 bg-slate-50 text-slate-500 shadow-2xs">
+                      <span className="text-xl font-bold leading-none">{day}</span>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider mt-1">
+                        {month}
+                      </span>
+                    </div>
+
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-base font-bold text-slate-900">
+                          {session.displayName}
+                        </span>
+
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold">
+                          {session.statusLabel || (session.status === 'cancelled' ? 'Cancelled' : 'Completed')}
+                        </span>
+
+                        {session.sessionFormat && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium">
+                            {session.sessionFormat}
+                          </span>
+                        )}
+
+                        {session.country && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium">
+                            {session.country}
+                          </span>
+                        )}
+
+                        {/* Real outcome label if present from backend, honest null otherwise */}
+                        {session.outcomeLabel && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold">
+                            {session.outcomeLabel}
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-xs text-slate-500 font-medium truncate">
+                        {session.professionalTitle || session.headline || 'Mentee'}
+                      </p>
+
+                      {session.topic && (
+                        <div className="text-sm text-slate-700 font-normal pt-0.5 line-clamp-2">
+                          <strong className="font-medium text-slate-400">Topic: </strong>
+                          {session.topic}
+                        </div>
+                      )}
+
+                      {/* Real testimonial quote if present, otherwise hidden */}
+                      {session.testimonial && (
+                        <div className="text-xs italic text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200 mt-1">
+                          “{session.testimonial}”
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-3 text-xs text-slate-500 pt-1 flex-wrap">
+                        <span>{session.scheduleLabel || session.timeRangeLabel}</span>
+                        <span className="text-slate-300">•</span>
+                        <span>{session.durationMinutes} minutes</span>
+                        {session.formattedPayout ? (
+                          <>
+                            <span className="text-slate-300">•</span>
+                            <span className="font-bold text-slate-900">
+                              {session.formattedPayout}
+                            </span>
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 flex-wrap justify-end">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDossier(session)}
+                      className="h-10 px-4 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-all cursor-pointer shadow-2xs"
+                    >
+                      View Notes
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       )}
 
-      {/* ── TAB 4: WEEKLY AVAILABILITY SLOTS ── */}
-      {activeTab === 'calendar' && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 sm:p-6 shadow-xs space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
+      {/* ── TAB 4: WEEKLY AVAILABILITY ── */}
+      {!isLoading && !isError && activeTab === 'availability' && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
             <div>
-              <h3 className="text-base font-extrabold text-gray-900">
+              <h3 className="text-base font-bold text-slate-900">
                 Weekly Recurring Availability
               </h3>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Your public profile allows mentees to book slots automatically within these time windows.
               </p>
             </div>
             <button
               type="button"
-              onClick={() => navigate('/settings?tab=availability')}
-              className="px-4 py-2 rounded-full bg-[#0047CC] text-white text-xs font-bold hover:bg-[#003d99] transition-all cursor-pointer shadow-xs self-start sm:self-auto"
+              onClick={() =>
+                navigate(data?.availability?.editHref || '/settings?tab=availability')
+              }
+              className="h-10 px-5 rounded-full bg-[#0047CC] text-white text-xs font-bold hover:bg-[#0038A8] transition-all cursor-pointer shadow-xs self-start sm:self-auto inline-flex items-center justify-center"
             >
               Edit Availability in Settings →
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {[
-              { day: 'Tuesday', slots: ['14:00 - 16:00 WAT', '16:30 - 18:00 WAT'], active: true },
-              { day: 'Wednesday', slots: ['10:00 - 12:00 WAT', '14:00 - 17:00 WAT'], active: true },
-              { day: 'Thursday', slots: ['15:00 - 18:00 WAT'], active: true },
-              { day: 'Saturday', slots: ['11:00 - 14:00 WAT'], active: true },
-            ].map((schedule, i) => (
-              <div key={i} className="p-4 rounded-xl border border-gray-100 bg-gray-50/70 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-xs text-gray-900">{schedule.day}</span>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                </div>
-                <div className="space-y-1 pt-1">
-                  {schedule.slots.map((slot, sIdx) => (
-                    <div
-                      key={sIdx}
-                      className="bg-white text-xs font-semibold text-[#0047CC] py-1 px-2.5 rounded-lg border border-blue-100 shadow-2xs"
-                    >
-                      {slot}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+          {/* Slots display */}
+          {data?.availability?.slots && data.availability.slots.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {DAY_NAMES.map((dayName, dayIdx) => {
+                const daySlots = (data?.availability?.slots || []).filter(
+                  (s) => s.dayOfWeek === dayIdx
+                );
+                if (daySlots.length === 0) return null;
 
-          <div className="p-4 rounded-xl bg-[#EBF6FF] border border-[#BFDBFE] text-xs text-[#0047CC] font-medium flex items-center justify-between gap-3">
+                return (
+                  <div key={dayIdx} className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-slate-900">{dayName}</span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    </div>
+                    <div className="space-y-1.5 pt-1">
+                      {daySlots.map((slot, sIdx) => (
+                        <div
+                          key={sIdx}
+                          className="bg-white text-xs font-semibold text-slate-800 py-1.5 px-3 rounded-lg border border-slate-200 shadow-2xs"
+                        >
+                          {slot.startTime} - {slot.endTime}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+              <ClockIcon size={28} className="mx-auto text-slate-400 mb-2" />
+              <p className="text-sm font-semibold text-slate-700">No active availability slots configured</p>
+              <p className="text-xs text-slate-500 mt-1 mb-3">
+                Configure your weekly time windows so candidates can book sessions directly with you.
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(data?.availability?.editHref || '/settings?tab=availability')
+                }
+                className="h-9 px-4 rounded-full bg-[#0047CC] text-white text-xs font-semibold hover:bg-[#0038A8] transition-all cursor-pointer"
+              >
+                Configure Availability
+              </button>
+            </div>
+          )}
+
+          <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-200 text-xs text-[#0047CC] font-medium flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <span>
-              💡 <strong>Booking buffer:</strong> 24 hours advance notice required. 15-minute padding between calls.
+              💡 <strong>Booking buffer:</strong>{' '}
+              {data?.availability?.bufferLabel ||
+                '24 hours advance notice required. 15-minute padding between calls.'}
             </span>
-            <span className="font-bold shrink-0">Timezone: WAT (GMT+1)</span>
+            <span className="font-bold shrink-0">
+              Timezone: {data?.availability?.timezone || 'UTC'}
+            </span>
           </div>
         </div>
       )}
 
       {/* ── MODAL: SCHEDULE NEW SESSION ── */}
       <ModalDialog
-        open={isScheduleModalOpen}
+        isOpen={isScheduleModalOpen}
         onClose={() => setIsScheduleModalOpen(false)}
         title="Schedule 1-on-1 Mentorship Session"
-        maxWidth="max-w-[500px]"
+        showCloseButton={true}
+        maxWidth="max-w-[520px]"
         footer={
-          <div className="flex items-center justify-end gap-2.5">
+          <div className="flex items-center justify-end gap-2.5 w-full">
             <button
               type="button"
               onClick={() => setIsScheduleModalOpen(false)}
-              className="px-4 py-2 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-all cursor-pointer"
+              className="h-10 px-4 rounded-full border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleCreateSession}
-              className="px-5 py-2 rounded-full bg-[#0047CC] hover:bg-[#003d99] text-xs font-bold text-white transition-all cursor-pointer shadow-xs"
+              disabled={scheduleMutation.isPending}
+              className="h-10 px-5 rounded-full bg-[#0047CC] hover:bg-[#0038A8] text-xs font-bold text-white transition-all cursor-pointer shadow-xs disabled:opacity-50"
             >
-              Schedule Session
+              {scheduleMutation.isPending ? 'Scheduling…' : 'Schedule Session'}
             </button>
           </div>
         }
       >
-        <div className="space-y-4 pt-2">
+        <div className="space-y-4 pt-1">
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">Mentee Name</label>
-            <input
-              type="text"
-              value={newSessionForm.menteeName}
-              onChange={(e) => setNewSessionForm({ ...newSessionForm, menteeName: e.target.value })}
-              placeholder="e.g. Chiamaka Obi"
-              className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-medium text-gray-900 focus:outline-none focus:border-[#0047CC]"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Session Format</label>
-              <select
-                value={newSessionForm.format}
-                onChange={(e) =>
-                  setNewSessionForm({ ...newSessionForm, format: e.target.value as SessionFormat })
-                }
-                className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium text-gray-900 focus:outline-none focus:border-[#0047CC] cursor-pointer"
-              >
-                <option value="Deep Dive">Deep Dive (60m)</option>
-                <option value="Strategy Session">Strategy Session (30/45m)</option>
-                <option value="Executive Coaching">Executive Coaching (90m)</option>
-                <option value="Diagnostic Triage">Diagnostic Triage (60m)</option>
-                <option value="Mock Panel Interview">Mock Panel Interview (90m)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Country Tier</label>
-              <select
-                value={newSessionForm.tier}
-                onChange={(e) =>
-                  setNewSessionForm({ ...newSessionForm, tier: e.target.value as 'T1' | 'T2' | 'T3' })
-                }
-                className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium text-gray-900 focus:outline-none focus:border-[#0047CC] cursor-pointer"
-              >
-                <option value="T3">T3 · LMIC (Subsidized)</option>
-                <option value="T2">T2 · UMIC (Moderate)</option>
-                <option value="T1">T1 · HIC (Standard Global)</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Date</label>
+            <label className="block text-sm font-semibold text-slate-800 mb-1.5">Select Mentee</label>
+            {menteesData?.items && menteesData.items.length > 0 ? (
+              <Select
+                value={scheduleForm.talentId}
+                onChange={(e) => setScheduleForm({ ...scheduleForm, talentId: e.target.value })}
+                options={[
+                  { value: '', label: 'Choose a mentee…' },
+                  ...menteesData.items.map((m) => ({
+                    value: m.talentId,
+                    label: `${m.displayName} (${m.professionalTitle || m.country || 'Mentee'})`,
+                  })),
+                ]}
+                className="!h-11 !bg-white !border-slate-200 !rounded-xl !px-3 !text-sm !font-medium !text-slate-900"
+              />
+            ) : (
               <input
-                type="date"
-                value={newSessionForm.date}
-                onChange={(e) => setNewSessionForm({ ...newSessionForm, date: e.target.value })}
-                className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium text-gray-900 focus:outline-none focus:border-[#0047CC]"
+                type="text"
+                value={scheduleForm.talentId}
+                onChange={(e) => setScheduleForm({ ...scheduleForm, talentId: e.target.value })}
+                placeholder="Enter talent / mentee ID"
+                className="w-full h-11 bg-white border border-slate-200 rounded-xl px-3.5 text-sm font-medium text-slate-900 focus:outline-none focus:border-[#0047CC]"
+              />
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-800 mb-1.5">Session Format / Type</label>
+            {sessionTypes && sessionTypes.length > 0 ? (
+              <Select
+                value={scheduleForm.sessionTypeId}
+                onChange={(e) => setScheduleForm({ ...scheduleForm, sessionTypeId: e.target.value })}
+                options={[
+                  { value: '', label: 'Choose session format…' },
+                  ...sessionTypes.map((st: any) => ({
+                    value: st.id,
+                    label: `${st.customName || st.type || 'Session'} (${st.durationMinutes || 60}m)`,
+                  })),
+                ]}
+                className="!h-11 !bg-white !border-slate-200 !rounded-xl !px-3 !text-sm !font-medium !text-slate-900"
+              />
+            ) : (
+              <input
+                type="text"
+                value={scheduleForm.sessionTypeId}
+                onChange={(e) => setScheduleForm({ ...scheduleForm, sessionTypeId: e.target.value })}
+                placeholder="Enter session type ID"
+                className="w-full h-11 bg-white border border-slate-200 rounded-xl px-3.5 text-sm font-medium text-slate-900 focus:outline-none focus:border-[#0047CC]"
+              />
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <DateInput
+                label="Date"
+                labelClassName="block text-sm font-semibold text-slate-800 mb-1.5"
+                value={scheduleForm.date}
+                onChange={(e) => setScheduleForm({ ...scheduleForm, date: e.target.value })}
+                min={toISODate(new Date())}
+                iconPosition="right"
+                className="!h-11 !rounded-xl !border-slate-200 !py-0 !text-sm !font-medium !text-slate-900 focus:!border-[#0047CC]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Start Time</label>
+              <label className="block text-sm font-semibold text-slate-800 mb-1.5">Start Time</label>
               <input
                 type="time"
-                value={newSessionForm.time}
-                onChange={(e) => setNewSessionForm({ ...newSessionForm, time: e.target.value })}
-                className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium text-gray-900 focus:outline-none focus:border-[#0047CC]"
+                value={scheduleForm.time}
+                onChange={(e) => setScheduleForm({ ...scheduleForm, time: e.target.value })}
+                className="w-full h-11 bg-white border border-slate-200 rounded-xl px-3 text-sm font-medium text-slate-900 focus:outline-none focus:border-[#0047CC]"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">Agenda / Focus Area</label>
+            <label className="block text-sm font-semibold text-slate-800 mb-1.5">Agenda / Focus Area</label>
             <textarea
               rows={3}
-              value={newSessionForm.agenda}
-              onChange={(e) => setNewSessionForm({ ...newSessionForm, agenda: e.target.value })}
-              placeholder="e.g. WHO application situational judgment triage and verbal reasoning reframe"
-              className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-medium text-gray-900 focus:outline-none focus:border-[#0047CC] resize-y"
+              value={scheduleForm.sessionFocus}
+              onChange={(e) => setScheduleForm({ ...scheduleForm, sessionFocus: e.target.value })}
+              placeholder="e.g. Technical preparation, mock interview practice, or career roadmapping"
+              className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm font-medium text-slate-900 focus:outline-none focus:border-[#0047CC] focus:ring-2 focus:ring-[#0047CC]/15 resize-y"
             />
           </div>
 
-          <div className="bg-[#EBF6FF] border border-[#BFDBFE] rounded-xl p-3 text-xs text-[#0047CC] font-medium">
+          <div className="bg-blue-50/60 border border-blue-200 rounded-xl p-3 text-xs text-[#0047CC] font-medium">
             🎥 A dedicated VORA Video encrypted meeting link will be created and dispatched to both calendars.
           </div>
         </div>
@@ -1330,90 +1296,98 @@ END:VCALENDAR`;
 
       {/* ── MODAL: MENTEE DOSSIER & PREP NOTES ── */}
       <ModalDialog
-        open={isDossierModalOpen}
+        isOpen={isDossierModalOpen}
         onClose={() => setIsDossierModalOpen(false)}
-        title={`Session Dossier · ${selectedSessionForDossier?.menteeName || ''}`}
-        maxWidth="max-w-[540px]"
+        title={`Session Notes · ${selectedSessionForDossier?.displayName || ''}`}
+        showCloseButton={true}
+        maxWidth="max-w-[560px]"
         footer={
           <div className="flex items-center justify-between w-full">
             <button
               type="button"
               onClick={() => {
                 setIsDossierModalOpen(false);
-                if (selectedSessionForDossier) {
-                  navigate(`/mentees`);
-                }
+                navigate('/mentees');
               }}
-              className="text-xs font-bold text-[#0047CC] hover:underline cursor-pointer"
+              className="text-xs font-semibold text-[#0047CC] hover:underline cursor-pointer"
             >
               Open Full Mentee Profile →
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                toast.success('Session prep notes updated.');
-                setIsDossierModalOpen(false);
-              }}
-              className="px-5 py-2 rounded-full bg-[#0047CC] hover:bg-[#003d99] text-xs font-bold text-white transition-all cursor-pointer shadow-xs"
-            >
-              Done
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsDossierModalOpen(false)}
+                className="h-10 px-4 rounded-full border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveNotes}
+                disabled={isSavingNotes}
+                className="h-10 px-5 rounded-full bg-[#0047CC] hover:bg-[#0038A8] text-xs font-bold text-white transition-all cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                {isSavingNotes ? 'Saving…' : 'Save Notes'}
+              </button>
+            </div>
           </div>
         }
       >
         {selectedSessionForDossier && (
-          <div className="space-y-4 pt-2">
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
-              <div
-                className={`w-12 h-12 rounded-full bg-gradient-to-br ${selectedSessionForDossier.menteeGradient} flex items-center justify-center font-extrabold text-sm text-white shrink-0`}
-              >
-                {selectedSessionForDossier.menteeAvatarInitials}
+          <div className="space-y-4 pt-1">
+            <div className="flex items-center gap-3.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="w-12 h-12 rounded-full bg-blue-50 text-[#0047CC] border border-blue-200 flex items-center justify-center font-bold text-sm shrink-0">
+                {selectedSessionForDossier.initials ||
+                  selectedSessionForDossier.displayName?.slice(0, 2).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
-                <h4 className="text-sm font-extrabold text-gray-900 truncate">
-                  {selectedSessionForDossier.menteeName}
+                <h4 className="text-sm font-bold text-slate-900 truncate">
+                  {selectedSessionForDossier.displayName}
                 </h4>
-                <p className="text-xs text-gray-500 truncate">
-                  {selectedSessionForDossier.menteeRole} · {selectedSessionForDossier.menteeOrganization}
+                <p className="text-xs text-slate-500 truncate">
+                  {selectedSessionForDossier.professionalTitle ||
+                    selectedSessionForDossier.headline ||
+                    'Mentee'}
                 </p>
-                <div className="flex items-center gap-1.5 pt-1">
-                  <Tag
-                    label={`${selectedSessionForDossier.tier} · ${selectedSessionForDossier.menteeCountry}`}
-                    variant="blue"
-                    className="text-[10px] py-0.2"
-                  />
-                  <Tag
-                    label={selectedSessionForDossier.pathway}
-                    variant="gray"
-                    className="text-[10px] py-0.2"
-                  />
+                <div className="flex items-center gap-2 pt-1.5 flex-wrap">
+                  {selectedSessionForDossier.country && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium">
+                      {selectedSessionForDossier.country}
+                    </span>
+                  )}
+                  {selectedSessionForDossier.pathway && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold">
+                      {selectedSessionForDossier.pathway}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
 
-            {selectedSessionForDossier.failureNotes && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-900">
-                <strong className="block font-bold text-red-800 mb-0.5">Assessment Triage Alert:</strong>
-                {selectedSessionForDossier.failureNotes}
+            {selectedSessionForDossier.topic && (
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-1.5">Session Focus</label>
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-800 leading-relaxed">
+                  {selectedSessionForDossier.topic}
+                </div>
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Session Agenda</label>
-              <div className="p-3 rounded-xl bg-gray-50 border border-gray-200 text-xs text-gray-800 leading-relaxed">
-                {selectedSessionForDossier.topicAgenda}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">
-                Mentor Private Preparation Notes
+              <label className="text-sm font-semibold text-slate-800 flex items-center gap-1.5 mb-1.5">
+                <LockRectIcon size={13} className="text-slate-500" />
+                <span>Mentor Preparation Notes</span>
+                <span className="text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
+                  Private
+                </span>
               </label>
+
               <textarea
-                rows={3}
-                defaultValue={selectedSessionForDossier.mentorPrepNotes || ''}
+                rows={4}
+                value={dossierNotesText}
+                onChange={(e) => setDossierNotesText(e.target.value)}
                 placeholder="Key questions to probe, cognitive traps to monitor, practice sets to assign…"
-                className="w-full bg-white border border-gray-200 rounded-xl p-3 text-xs text-gray-900 focus:outline-none focus:border-[#0047CC] leading-relaxed"
+                className="w-full bg-white border border-slate-200 rounded-xl p-3.5 text-sm text-slate-900 focus:outline-none focus:border-[#0047CC] focus:ring-2 focus:ring-[#0047CC]/15 leading-relaxed resize-y"
               />
             </div>
           </div>
@@ -1422,72 +1396,85 @@ END:VCALENDAR`;
 
       {/* ── MODAL: RESCHEDULE SESSION ── */}
       <ModalDialog
-        open={isRescheduleModalOpen}
+        isOpen={isRescheduleModalOpen}
         onClose={() => setIsRescheduleModalOpen(false)}
-        title={`Reschedule Session with ${sessionToReschedule?.menteeName || ''}`}
-        maxWidth="max-w-[440px]"
+        title={`Reschedule Session with ${sessionToReschedule?.displayName || ''}`}
+        showCloseButton={true}
+        maxWidth="max-w-[460px]"
         footer={
-          <div className="flex items-center justify-end gap-2.5">
+          <div className="flex items-center justify-end gap-2.5 w-full">
             <button
               type="button"
               onClick={() => setIsRescheduleModalOpen(false)}
-              className="px-4 py-2 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-all cursor-pointer"
+              className="h-10 px-4 rounded-full border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleConfirmReschedule}
-              className="px-5 py-2 rounded-full bg-[#0047CC] hover:bg-[#003d99] text-xs font-bold text-white transition-all cursor-pointer shadow-xs"
+              disabled={!newRescheduleDate || rescheduleMutation.isPending}
+              className="h-10 px-5 rounded-full bg-[#0047CC] hover:bg-[#0038A8] text-xs font-bold text-white transition-all cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Save New Slot
+              {rescheduleMutation.isPending ? 'Saving…' : 'Save New Slot'}
             </button>
           </div>
         }
       >
-        <div className="space-y-4 pt-2">
-          <p className="text-xs text-gray-600">
-            Select a new date and time for this session. A calendar update will be sent immediately to the mentee.
+        <div className="space-y-4 pt-1">
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Select a new date and time for this session. A calendar update will be sent to the mentee.
           </p>
 
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">New Date</label>
-            <input
-              type="date"
+            <DateInput
+              label="New Date"
+              labelClassName="block text-sm font-semibold text-slate-800 mb-1.5"
               value={newRescheduleDate}
-              onChange={(e) => setNewRescheduleDate(e.target.value)}
-              className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium text-gray-900 focus:outline-none focus:border-[#0047CC]"
+              onChange={(e) => {
+                setNewRescheduleDate(e.target.value);
+                setRescheduleDateError('');
+              }}
+              min={toISODate(new Date())}
+              iconPosition="right"
+              error={!!rescheduleDateError}
+              helperText={rescheduleDateError}
+              className="!h-11 !rounded-xl !border-slate-200 !py-0 !text-sm !font-medium !text-slate-900 focus:!border-[#0047CC]"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">New Start Time</label>
+            <label className="block text-sm font-semibold text-slate-800 mb-1.5">New Start Time</label>
             <input
               type="time"
               value={newRescheduleTime}
               onChange={(e) => setNewRescheduleTime(e.target.value)}
-              className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium text-gray-900 focus:outline-none focus:border-[#0047CC]"
+              className="w-full h-11 bg-white border border-slate-200 rounded-xl px-3.5 text-sm font-medium text-slate-900 focus:outline-none focus:border-[#0047CC] focus:ring-2 focus:ring-[#0047CC]/15"
             />
+            <p className="text-xs text-slate-500 mt-1.5">
+              Times are in UTC. Mentee will receive the invite converted to their local time.
+            </p>
           </div>
         </div>
       </ModalDialog>
 
-      {/* ── MODAL: VORA VIDEO LAUNCH PREVIEW ── */}
+      {/* ── MODAL: VIDEO LAUNCH PREVIEW ── */}
       <ModalDialog
-        open={isVideoModalOpen}
+        isOpen={isVideoModalOpen}
         onClose={() => setIsVideoModalOpen(false)}
         title="VORA Encrypted Video Room"
+        showCloseButton={true}
         maxWidth="max-w-[500px]"
         footer={
           <div className="flex items-center justify-between w-full">
-            <span className="text-[11px] text-gray-500 font-medium flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" /> WebRTC Audio/Video Ready
+            <span className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" /> Provisional Video Room
             </span>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setIsVideoModalOpen(false)}
-                className="px-4 py-2 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-all cursor-pointer"
+                className="h-10 px-4 rounded-full border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
               >
                 Close
               </button>
@@ -1497,10 +1484,14 @@ END:VCALENDAR`;
                   toast.success('Joining video room…');
                   setIsVideoModalOpen(false);
                   if (videoCallSession?.meetingLink) {
-                    window.open(videoCallSession.meetingLink, '_blank', 'noopener,noreferrer');
+                    if (videoCallSession.meetingLink.startsWith('http')) {
+                      window.open(videoCallSession.meetingLink, '_blank', 'noopener,noreferrer');
+                    } else {
+                      navigate(videoCallSession.meetingLink);
+                    }
                   }
                 }}
-                className="px-5 py-2 rounded-full bg-[#15803D] hover:bg-[#135813] text-xs font-extrabold text-white transition-all cursor-pointer shadow-xs active:scale-98"
+                className="h-10 px-5 rounded-full bg-[#0047CC] hover:bg-[#0038A8] text-xs font-bold text-white transition-all cursor-pointer shadow-xs active:scale-98"
               >
                 Enter Call
               </button>
@@ -1515,265 +1506,171 @@ END:VCALENDAR`;
                 <VideoIcon size={28} />
               </div>
               <div>
-                <h4 className="text-base font-extrabold text-white">
-                  {videoCallSession.format} with {videoCallSession.menteeName}
+                <h4 className="text-base font-bold text-white">
+                  {videoCallSession.sessionFormat || 'Session'} with {videoCallSession.displayName}
                 </h4>
                 <p className="text-xs text-blue-200 mt-0.5">
-                  Room: {videoCallSession.meetingLink?.split('/').pop() || 'room-vora-secure'}
+                  Room: {videoCallSession.meetingLink || `/mentor/sessions/${videoCallSession.bookingId}/join`}
                 </p>
               </div>
-              <div className="inline-block bg-black/20 text-emerald-400 font-bold text-xs py-1 px-3 rounded-full border border-emerald-500/30">
-                Waiting for host to begin meeting
+              <div className="inline-block bg-white/10 text-emerald-300 font-semibold text-xs py-1 px-3 rounded-full border border-emerald-400/30">
+                Encrypted Session
               </div>
             </div>
 
-            <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-1">
-              <div className="font-bold text-gray-800">Session Outline:</div>
-              <div>{videoCallSession.topicAgenda}</div>
-            </div>
+            {videoCallSession.topic && (
+              <div className="text-xs text-slate-600 bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1">
+                <div className="font-semibold text-slate-800">Session Outline:</div>
+                <div>{videoCallSession.topic}</div>
+              </div>
+            )}
           </div>
         )}
       </ModalDialog>
 
-      {/* ── MODAL: CALENDAR SYNC & INTEGRATIONS ── */}
+      {/* ── MODAL: CALENDAR SYNC (HONEST STUB PER HANDOFF) ── */}
+      {/* 
+        Handoff Rule:
+        providers[].status = "available" (NOT "connected")
+        connectedEmail = null, connectEnabled = false
+        ical.href = null, syncNowEnabled = false
+        lastSyncLabel = "Calendar sync is not connected yet"
+        Do NOT show Google as Connected or “4 events synced” until OAuth lands.
+      */}
       <ModalDialog
-        open={isSyncModalOpen}
+        isOpen={isSyncModalOpen}
         onClose={() => setIsSyncModalOpen(false)}
-        title="Calendar Synchronization & 2-Way Integrations"
+        title="Calendar Synchronization & Integrations"
+        showCloseButton={true}
         maxWidth="max-w-[560px]"
         footer={
           <div className="flex items-center justify-between w-full">
-            <span className="text-[11px] text-gray-500 font-medium truncate max-w-[220px]">
-              {lastSyncTime}
+            <span className="text-xs text-slate-500 font-medium truncate max-w-[260px]">
+              {calendarData?.lastSyncLabel || 'Calendar sync is not connected yet'}
             </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsSyncModalOpen(false)}
-                className="px-4 py-2 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-all cursor-pointer"
-              >
-                Done
-              </button>
-              <button
-                type="button"
-                onClick={handleSyncNow}
-                disabled={isSyncingNow}
-                className="px-5 py-2 rounded-full bg-[#0047CC] hover:bg-[#003d99] text-xs font-bold text-white transition-all cursor-pointer shadow-xs flex items-center gap-1.5 disabled:opacity-60 active:scale-98"
-              >
-                {isSyncingNow ? (
-                  <>
-                    <span className="w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                    <span>Syncing…</span>
-                  </>
-                ) : (
-                  <>
-                    <span>🔄 Sync Now</span>
-                  </>
-                )}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setIsSyncModalOpen(false)}
+              className="h-10 px-5 rounded-full bg-[#0047CC] hover:bg-[#0038A8] text-xs font-bold text-white transition-all cursor-pointer shadow-xs"
+            >
+              Done
+            </button>
           </div>
         }
       >
-        <div className="space-y-4 pt-1 text-xs">
-          {/* Explanation */}
-          <p className="text-gray-500 leading-relaxed">
-            Keep your VORA mentorship appointments seamlessly synchronized with your primary work calendars. Changes to sessions, rescheduling, and meeting room links will sync automatically.
+        <div className="space-y-4 pt-1 max-h-[70vh] overflow-y-auto pr-1">
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Synchronize your VORA mentorship appointments with your primary calendar. Automatic 2-way sync allows upcoming sessions and rescheduled slots to appear in your calendar.
           </p>
 
-          {/* Connected Services */}
+          {/* Calendar Providers (Honest status: "available" / not connected) */}
           <div className="space-y-2.5">
-            <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-gray-400">
-              Connected Calendar Services
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Calendar Services
             </h4>
 
             {/* Google Calendar */}
-            <div className="p-3.5 rounded-2xl border border-gray-200 bg-white hover:border-gray-300 transition-all flex items-center justify-between gap-3 shadow-2xs">
+            <div className="p-3.5 rounded-2xl border border-slate-200 bg-white flex items-center justify-between gap-3 shadow-2xs">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0">
                   <GoogleIcon size={20} />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-gray-900 text-[13px]">Google Calendar</span>
-                    {googleConnected && (
-                      <Tag
-                        label="Connected"
-                        variant="green"
-                        className="text-[9px] font-bold py-0.2 px-1.5 border border-[#86EFAC]"
-                      />
-                    )}
+                    <span className="font-bold text-slate-900 text-sm">Google Calendar</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-semibold">
+                      {calendarData?.providers?.find((p) => p.id === 'google')?.status || 'Available'}
+                    </span>
                   </div>
-                  <p className="text-gray-500 text-[11px] font-medium">
-                    {googleConnected ? 'dr.adaeze.okonkwo@gmail.com · 2-way sync enabled' : 'Not connected'}
+                  <p className="text-slate-500 text-xs font-medium">
+                    {calendarData?.connectedEmail || 'OAuth integration landing soon'}
                   </p>
                 </div>
               </div>
 
-              <div>
-                {googleConnected ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setGoogleConnected(false);
-                      toast('Google Calendar disconnected.');
-                    }}
-                    className="text-[11px] font-bold text-gray-500 hover:text-red-600 px-3 py-1.5 rounded-full border border-gray-200 hover:border-red-200 transition-all cursor-pointer"
-                  >
-                    Disconnect
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setGoogleConnected(true);
-                      toast.success('Google Calendar connected successfully!');
-                    }}
-                    className="text-[11px] font-bold text-[#0047CC] hover:bg-[#EBF6FF] px-3.5 py-1.5 rounded-full border border-[#0047CC]/30 transition-all cursor-pointer"
-                  >
-                    Connect
-                  </button>
-                )}
-              </div>
+              <button
+                type="button"
+                disabled={!calendarData?.connectEnabled}
+                onClick={() => toast('Google Calendar OAuth integration is in progress.')}
+                className="h-9 px-3.5 rounded-full border border-slate-200 text-slate-500 bg-slate-50 text-xs font-semibold cursor-not-allowed opacity-75"
+              >
+                Connect
+              </button>
             </div>
 
-            {/* Outlook / Office 365 */}
-            <div className="p-3.5 rounded-2xl border border-gray-200 bg-white hover:border-gray-300 transition-all flex items-center justify-between gap-3 shadow-2xs">
+            {/* Microsoft Outlook 365 */}
+            <div className="p-3.5 rounded-2xl border border-slate-200 bg-white flex items-center justify-between gap-3 shadow-2xs">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50/60 border border-blue-100 flex items-center justify-center shrink-0 text-[#0047CC] font-bold text-sm">
+                <div className="w-10 h-10 rounded-xl bg-blue-50/60 border border-blue-200 flex items-center justify-center shrink-0 text-[#0047CC] font-bold text-sm">
                   O
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-gray-900 text-[13px]">Microsoft Outlook 365</span>
-                    {outlookConnected ? (
-                      <Tag label="Connected" variant="green" className="text-[9px] font-bold py-0.2 px-1.5" />
-                    ) : (
-                      <span className="text-[10px] text-gray-400 font-semibold">Available</span>
-                    )}
+                    <span className="font-bold text-slate-900 text-sm">Microsoft Outlook 365</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-semibold">
+                      {calendarData?.providers?.find((p) => p.id === 'outlook')?.status || 'Available'}
+                    </span>
                   </div>
-                  <p className="text-gray-500 text-[11px] font-medium">
-                    {outlookConnected ? 'Syncing with Outlook Calendar' : 'Connect your Outlook or Office 365 work calendar'}
+                  <p className="text-slate-500 text-xs font-medium">
+                    Connect your Outlook or Office 365 work calendar
                   </p>
                 </div>
               </div>
 
-              <div>
-                {outlookConnected ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOutlookConnected(false);
-                      toast('Outlook disconnected.');
-                    }}
-                    className="text-[11px] font-bold text-gray-500 hover:text-red-600 px-3 py-1.5 rounded-full border border-gray-200 transition-all cursor-pointer"
-                  >
-                    Disconnect
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOutlookConnected(true);
-                      toast.success('Outlook Calendar connected successfully!');
-                    }}
-                    className="text-[11px] font-bold text-gray-700 hover:text-[#0047CC] hover:bg-gray-50 px-3.5 py-1.5 rounded-full border border-gray-200 transition-all cursor-pointer"
-                  >
-                    Connect
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Subscribable Live Calendar Feed */}
-          <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-extrabold text-gray-800 text-xs">
-                Subscribe via iCal / Webcal Feed
-              </span>
-              <span className="text-[10px] font-bold text-[#0047CC]">Apple & Outlook</span>
-            </div>
-            <p className="text-[11px] text-gray-500 leading-relaxed">
-              Add this live URL to Apple Calendar or any calendar client to auto-sync confirmed mentorship sessions in real time.
-            </p>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                readOnly
-                value="webcal://vora.ai/api/v1/mentors/calendar/feed.ics?token=vora_live_k8a9"
-                className="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-[11px] font-mono text-gray-700 outline-none select-all"
-              />
               <button
                 type="button"
-                onClick={handleCopyWebcalFeed}
-                className="shrink-0 px-3 py-1.5 rounded-xl bg-white hover:bg-gray-100 border border-gray-200 text-xs font-bold text-[#0047CC] transition-all cursor-pointer shadow-2xs"
+                disabled={!calendarData?.connectEnabled}
+                onClick={() => toast('Outlook Calendar OAuth integration is in progress.')}
+                className="h-9 px-3.5 rounded-full border border-slate-200 text-slate-500 bg-slate-50 text-xs font-semibold cursor-not-allowed opacity-75"
               >
-                Copy URL
-              </button>
-            </div>
-            <div className="pt-1 flex items-center justify-between text-[11px]">
-              <span className="text-gray-500">Need a one-time file export instead?</span>
-              <button
-                type="button"
-                onClick={handleExportCalendar}
-                className="text-[#0047CC] font-bold hover:underline cursor-pointer"
-              >
-                Download .ICS File →
+                Connect
               </button>
             </div>
           </div>
 
-          {/* Synchronization Preferences */}
-          <div className="space-y-2.5 pt-1">
-            <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-gray-400">
-              2-Way Sync Preferences
-            </h4>
-
-            <label className="flex items-start gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={autoBlockBusySlots}
-                onChange={(e) => setAutoBlockBusySlots(e.target.checked)}
-                className="mt-0.5 rounded text-[#0047CC] focus:ring-[#0047CC] cursor-pointer"
-              />
-              <div className="text-xs">
-                <span className="font-bold text-gray-800 block">Prevent double bookings</span>
-                <span className="text-gray-500 text-[11px]">
-                  Automatically block out availability in VORA when events exist on your connected work calendar.
+          {/* iCal / Webcal Feed */}
+          {calendarData?.ical?.href && (
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-900 text-xs">
+                  Subscribe via iCal / Webcal Feed
                 </span>
+                <span className="text-xs font-medium text-slate-500">Apple & Outlook</span>
               </div>
-            </label>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Add this live URL to Apple Calendar or your calendar client to auto-sync confirmed mentorship sessions in real time.
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={
+                    isWebcalTokenRevealed
+                      ? calendarData.ical.href
+                      : calendarData.ical.href.replace(/(token=)([^&]+)/, '$1••••••••')
+                  }
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-700 outline-none select-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsWebcalTokenRevealed(!isWebcalTokenRevealed)}
+                  className="shrink-0 px-2.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-600 transition-all cursor-pointer shadow-2xs"
+                >
+                  {isWebcalTokenRevealed ? 'Hide' : 'Reveal'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyWebcalFeed}
+                  className="shrink-0 px-3 py-2 rounded-xl bg-[#0047CC] hover:bg-[#0038A8] text-white text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                >
+                  Copy URL
+                </button>
+              </div>
+            </div>
+          )}
 
-            <label className="flex items-start gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={includeVoraVideoLink}
-                onChange={(e) => setIncludeVoraVideoLink(e.target.checked)}
-                className="mt-0.5 rounded text-[#0047CC] focus:ring-[#0047CC] cursor-pointer"
-              />
-              <div className="text-xs">
-                <span className="font-bold text-gray-800 block">Include VORA Video Room Link</span>
-                <span className="text-gray-500 text-[11px]">
-                  Attach the encrypted WebRTC meeting room link directly in the event location and notes.
-                </span>
-              </div>
-            </label>
-
-            <label className="flex items-start gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={sendCalendarInvites}
-                onChange={(e) => setSendCalendarInvites(e.target.checked)}
-                className="mt-0.5 rounded text-[#0047CC] focus:ring-[#0047CC] cursor-pointer"
-              />
-              <div className="text-xs">
-                <span className="font-bold text-gray-800 block">Send calendar invites to mentee email</span>
-                <span className="text-gray-500 text-[11px]">
-                  Dispatch automated Google/Outlook calendar invites to the mentee when bookings are confirmed.
-                </span>
-              </div>
-            </label>
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
+            ℹ️ {calendarData?.lastSyncLabel || 'Calendar sync is not connected yet'}
           </div>
         </div>
       </ModalDialog>

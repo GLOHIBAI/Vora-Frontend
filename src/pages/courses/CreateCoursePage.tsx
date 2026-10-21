@@ -1,11 +1,31 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Link, useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/common/Button';
 import Select from '../../components/common/Select';
 import Tag from '../../components/common/Tag';
 import Spinner from '../../components/common/Spinner';
+import {
+  CheckIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  LockRectIcon,
+  TrashIcon,
+  PlayIcon,
+  GlobeIcon,
+  AwardIcon,
+  DollarSignIcon,
+  TrendingUpIcon,
+  VideoIcon,
+  BriefcaseIcon,
+  HelpCircleIcon,
+  BookOpenIcon,
+  PencilIcon,
+  UsersIcon,
+} from '../../components/common/Icons';
+import type { Option } from '../../types';
 import type { CourseFormat } from '../../types/courses';
 import { useCourseDetail } from '../../services/queries/courses';
 import {
@@ -13,9 +33,11 @@ import {
   type CertificateTemplate,
   type BuilderModule,
   type BuilderLesson,
+  type PatchLessonDto,
   CONTENT_TYPE_MAP,
 } from '../../types/courseBuilder';
 import {
+  courseBuilderKeys,
   useCourseBuilder,
   useCreateDraftCourse,
   usePatchCourse,
@@ -24,14 +46,25 @@ import {
   useCreateModule,
   usePatchModule,
   useDeleteModule,
+  useReorderModules,
   useCreateLesson,
   usePatchLesson,
   useDeleteLesson,
+  useReorderLessons,
   usePublishCourseBuilder,
   useUnpublishCourseBuilder,
 } from '../../services/queries/courses/builder';
 import { useCourseBuilderAutosave } from '../../hooks/useCourseBuilderAutosave';
-import { getMediaUrl, mediaSrc, displayMedia, getYouTubeEmbedUrl, isYouTubeUrl } from '../../utils/media';
+import {
+  getMediaUrl,
+  mediaSrc,
+  displayMedia,
+  getYouTubeEmbedUrl,
+  isYouTubeUrl,
+  isGoogleDriveUrl,
+  getGoogleDriveEmbedUrl,
+  GOOGLE_DRIVE_URL_REGEX,
+} from '../../utils/media';
 
 type StepId = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -118,20 +151,20 @@ const CATEGORY_OPTIONS = CATEGORIES.map((c) => ({ label: c, value: c }));
 const DIFFICULTY_OPTIONS = DIFFICULTY_LEVELS.map((l) => ({ label: l, value: l }));
 const LANGUAGE_OPTIONS = LANGUAGES.map((lang) => ({ label: lang, value: lang }));
 
-const LESSON_TYPE_OPTIONS = [
-  { value: 'VIDEO', label: '🎬 Video Masterclass' },
-  { value: 'FIELD_CASE_STUDY', label: '💼 Field Case Study' },
-  { value: 'QUIZ', label: '✓ Knowledge Check' },
-  { value: 'READING', label: '📄 Reading / Framework' },
-  { value: 'GRADED_ASSIGNMENT', label: '✏️ Graded Assignment' },
+const LESSON_TYPE_OPTIONS: Option[] = [
+  { value: 'VIDEO', label: 'Video Lesson', icon: <VideoIcon size={16} /> },
+  { value: 'FIELD_CASE_STUDY', label: 'Field Case Study', icon: <BriefcaseIcon size={16} /> },
+  { value: 'QUIZ', label: 'Knowledge Quiz', icon: <HelpCircleIcon size={16} /> },
+  { value: 'READING', label: 'Reading / Paper', icon: <BookOpenIcon size={16} /> },
+  { value: 'GRADED_ASSIGNMENT', label: 'Graded Assignment', icon: <PencilIcon size={16} /> },
 ];
 
-const LESSON_TYPE_MODAL_OPTIONS = [
-  { value: 'VIDEO', label: 'Video Masterclass' },
-  { value: 'FIELD_CASE_STUDY', label: 'Field Case Study' },
-  { value: 'QUIZ', label: 'Knowledge Check / Quiz' },
-  { value: 'READING', label: 'Framework & Reading' },
-  { value: 'GRADED_ASSIGNMENT', label: 'Graded Assignment' },
+const LESSON_TYPE_MODAL_OPTIONS: Option[] = [
+  { value: 'VIDEO', label: 'Video Lesson', icon: <VideoIcon size={16} /> },
+  { value: 'FIELD_CASE_STUDY', label: 'Field Case Study', icon: <BriefcaseIcon size={16} /> },
+  { value: 'QUIZ', label: 'Knowledge Quiz', icon: <HelpCircleIcon size={16} /> },
+  { value: 'READING', label: 'Reading / Paper', icon: <BookOpenIcon size={16} /> },
+  { value: 'GRADED_ASSIGNMENT', label: 'Graded Assignment', icon: <PencilIcon size={16} /> },
 ];
 
 const BILLING_MODEL_OPTIONS = [
@@ -170,54 +203,102 @@ const PEER_REVIEW_OPTIONS = [
   { value: 'Self-assessed', label: 'Self-assessed' },
 ];
 
+const renderFormatLineIcon = (id: CourseFormat) => {
+  switch (id) {
+    case 'VIDEO_MASTERCLASS':
+      return (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="23 7 16 12 23 17 23 7" />
+          <rect x="1" y="5" width="15" height="14" rx="2" />
+        </svg>
+      );
+    case 'HYBRID':
+      return (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+          <circle cx="12" cy="11" r="3" />
+        </svg>
+      );
+    case 'COHORT_BASED':
+      return (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      );
+    case 'CASE_STUDY_SERIES':
+      return (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="7" width="20" height="14" rx="2" />
+          <path d="M16 7V5a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v2" />
+          <line x1="12" y1="12" x2="12" y2="12.01" />
+        </svg>
+      );
+    case 'WORKSHOP_SPRINT':
+      return (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg>
+      );
+    case 'WRITTEN_TEXT':
+    default:
+      return (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+          <polyline points="10 9 9 9 8 9" />
+        </svg>
+      );
+  }
+};
+
 const FORMATS: Array<{
   id: CourseFormat;
   name: string;
-  icon: string;
   desc: string;
   recommended?: boolean;
 }> = [
   {
     id: 'VIDEO_MASTERCLASS',
     name: 'Video Masterclass',
-    icon: '🎬',
     desc: 'High-production recorded video lessons with field case studies and knowledge checks. CPD accreditation eligible.',
     recommended: true,
   },
   {
     id: 'HYBRID',
     name: 'Hybrid Masterclass',
-    icon: '📚',
     desc: 'Blend of high-impact video lectures and structured policy readings, frameworks, and practical assignments.',
   },
   {
     id: 'COHORT_BASED',
     name: 'Cohort-Based Experience',
-    icon: '👥',
     desc: 'Fixed-schedule group learning with live mentor sessions, collaborative case breakouts, and capstone presentation.',
   },
   {
     id: 'CASE_STUDY_SERIES',
     name: 'Case Study Series',
-    icon: '🌍',
     desc: 'Immersive field scenarios simulating real institutional dilemmas in ministry, NGO, and donor settings.',
   },
   {
     id: 'WORKSHOP_SPRINT',
     name: 'Workshop / Sprint',
-    icon: '🔬',
     desc: 'Intensive tool-specific sprint focused on a single execution framework or technical method.',
   },
   {
     id: 'WRITTEN_TEXT',
     name: 'Executive Frameworks',
-    icon: '📝',
     desc: 'Deep-dive structured readings, policy briefings, and analytical assignments. No video required.',
   },
 ];
 
 export const CreateCoursePage: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const location = useLocation();
   const { id: routeCourseId } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -264,6 +345,8 @@ export const CreateCoursePage: React.FC = () => {
   const createLessonMutation = useCreateLesson();
   const patchLessonMutation = usePatchLesson();
   const deleteLessonMutation = useDeleteLesson();
+  const reorderModulesMutation = useReorderModules();
+  const reorderLessonsMutation = useReorderLessons();
   const publishMutation = usePublishCourseBuilder();
   const unpublishMutation = useUnpublishCourseBuilder();
 
@@ -319,18 +402,47 @@ export const CreateCoursePage: React.FC = () => {
   const normalizedPricingTiers = useMemo(() => {
     if (!pricingPreviewData) return [];
 
+    const formatPriceNumber = (val: any) => {
+      const num = typeof val === 'number' ? val : parseFloat(val);
+      if (isNaN(num)) return '$0.00';
+      return `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    };
+
+    const getTierMeta = (idx: number, name?: string) => {
+      const lower = (name || '').toLowerCase();
+      if (lower.includes('high') || idx === 0) {
+        return {
+          tierCode: 'High-Income',
+          title: 'Standard Global',
+          desc: 'Standard global rate (e.g. US, UK, EU, Canada, Aus)',
+        };
+      }
+      if (lower.includes('upper') || lower.includes('middle') || idx === 1) {
+        return {
+          tierCode: 'Upper-Middle',
+          title: 'Regional Parity',
+          desc: 'Purchasing Power Parity adjusted (e.g. Brazil, South Africa, Malaysia)',
+        };
+      }
+      return {
+        tierCode: 'Lower-Middle & Low',
+        title: 'Emerging Markets / Equity',
+        desc: 'High-equity access tier (e.g. Nigeria, Kenya, India, Philippines)',
+      };
+    };
+
     if (Array.isArray(pricingPreviewData.tiers)) {
       return pricingPreviewData.tiers.map((tier: any, idx: number) => {
         const price = tier.discountedPrice ?? tier.price ?? tier.amount ?? tier.originalPrice ?? 0;
         const currency = tier.currency || pricingPreviewData.currency || pricingPreviewData.baseCurrency || 'USD';
-        const label = tier.name || tier.tierName || tier.label || tier.countryName || (idx === 0 ? 'High Income' : idx === 1 ? 'Middle Income' : 'LMIC');
-        const icon = idx === 0 ? '🌍' : idx === 1 ? '🌏' : '🌱';
-        const sub = tier.countryName && tier.countryName !== label ? `${tier.countryName} (${currency})` : tier.countries || tier.description || currency;
+        const meta = getTierMeta(idx, tier.name || tier.tierName);
+        const sub = tier.countryName && tier.countryName !== meta.title ? `${tier.countryName} (${currency})` : tier.countries || tier.description || meta.desc;
 
         return {
           id: tier.countryCode || tier.id || String(idx),
-          badge: `${icon} ${label}`,
-          priceDisplay: typeof price === 'number' ? `$${price}` : `${currency} ${price}`,
+          tierCode: meta.tierCode,
+          badge: meta.title,
+          priceDisplay: formatPriceNumber(price),
           subtext: sub,
         };
       });
@@ -340,29 +452,31 @@ export const CreateCoursePage: React.FC = () => {
       return (pricingPreviewData as any[]).map((tier: any, idx: number) => {
         const price = tier.discountedPrice ?? tier.price ?? tier.amount ?? tier.originalPrice ?? 0;
         const currency = tier.currency || 'USD';
-        const label = tier.name || tier.tierName || tier.label || `Tier ${idx + 1}`;
-        const icon = idx === 0 ? '🌍' : idx === 1 ? '🌏' : '🌱';
+        const meta = getTierMeta(idx, tier.name || tier.tierName);
         return {
           id: tier.id || String(idx),
-          badge: `${icon} ${label}`,
-          priceDisplay: typeof price === 'number' ? `$${price}` : `${currency} ${price}`,
-          subtext: tier.countryName || tier.countries || currency,
+          tierCode: meta.tierCode,
+          badge: meta.title,
+          priceDisplay: formatPriceNumber(price),
+          subtext: tier.countryName || tier.countries || meta.desc,
         };
       });
     }
 
     if (pricingPreviewData.tiers && typeof pricingPreviewData.tiers === 'object') {
       return Object.entries(pricingPreviewData.tiers).map(([key, val]: [string, any], idx) => {
-        const price = typeof val === 'number' ? val : (val.discountedPrice ?? val.price ?? val.amount ?? 0);
-        const currency = typeof val === 'object' && val.currency ? val.currency : (pricingPreviewData.currency || 'USD');
-        const label = typeof val === 'object' && val.label ? val.label : key.replace(/([A-Z])/g, ' $1').replace(/^./, (str: string) => str.toUpperCase());
-        const icon = idx === 0 ? '🌍' : idx === 1 ? '🌏' : '🌱';
-        const sub = typeof val === 'object' && val.examples ? val.examples : (typeof val === 'object' && val.countries ? val.countries : (typeof val === 'object' && val.countryName ? `${val.countryName} (${currency})` : currency));
+        const price = typeof val === 'number' ? val : (val?.price ?? val?.discountedPrice ?? val?.amount ?? 0);
+        const currency = typeof val === 'object' && val?.currency ? val.currency : (pricingPreviewData.currency || 'USD');
+        const meta = getTierMeta(idx, typeof val === 'object' && val?.label ? val.label : key);
+        const sub = typeof val === 'object' && (val?.countries || val?.description || val?.examples)
+          ? (val.countries || val.description || val.examples)
+          : meta.desc;
 
         return {
           id: key,
-          badge: `${icon} ${label}`,
-          priceDisplay: typeof price === 'number' ? `$${price}` : `${currency} ${price}`,
+          tierCode: meta.tierCode,
+          badge: meta.title,
+          priceDisplay: formatPriceNumber(price),
           subtext: sub,
         };
       });
@@ -383,6 +497,7 @@ export const CreateCoursePage: React.FC = () => {
   const [discussionForum, setDiscussionForum] = useState('Enabled');
   const [peerReview, setPeerReview] = useState('Required for certificate');
   const [seoSlugPreview, setSeoSlugPreview] = useState('');
+  const [enrollmentCap, setEnrollmentCap] = useState<string>('');
   const [completedSteps, setCompletedSteps] = useState<Set<StepId>>(new Set());
   const [isNavigatingNext, setIsNavigatingNext] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
@@ -390,10 +505,12 @@ export const CreateCoursePage: React.FC = () => {
   const [thumbnailUploadProgress, setThumbnailUploadProgress] = useState(0);
   const [isUploadingPromoVideo, setIsUploadingPromoVideo] = useState(false);
   const [promoVideoUploadProgress, setPromoVideoUploadProgress] = useState(0);
+  const [isUploadingLessonVideo, setIsUploadingLessonVideo] = useState(false);
 
   const isAnyLoadingOrUploading = Boolean(
     isUploadingThumbnail ||
     isUploadingPromoVideo ||
+    isUploadingLessonVideo ||
     uploadMediaMutation.isPending ||
     isSavingDraft ||
     isNavigatingNext ||
@@ -413,6 +530,34 @@ export const CreateCoursePage: React.FC = () => {
     moduleId: string;
     lesson: BuilderLesson;
   } | null>(null);
+  const [isSavingLesson, setIsSavingLesson] = useState(false);
+  const [isReplacingLessonVideo, setIsReplacingLessonVideo] = useState(false);
+  const [googleDriveInputVal, setGoogleDriveInputVal] = useState('');
+
+  useEffect(() => {
+    setIsReplacingLessonVideo(false);
+    if (editingLesson) {
+      const key = editingLesson.lesson.contentS3Key || editingLesson.lesson.videoS3Key || '';
+      if (key && (key.startsWith('http://') || key.startsWith('https://')) && !isGoogleDriveUrl(key)) {
+        // Auto-clear invalid external link so user never sees it or has to delete it
+        setEditingLesson((prev) => prev ? {
+          ...prev,
+          lesson: {
+            ...prev.lesson,
+            contentS3Key: null,
+            videoS3Key: null,
+          },
+        } : null);
+        setGoogleDriveInputVal('');
+      } else if (key && isGoogleDriveUrl(key)) {
+        setGoogleDriveInputVal(key);
+      } else {
+        setGoogleDriveInputVal('');
+      }
+    } else {
+      setGoogleDriveInputVal('');
+    }
+  }, [editingLesson?.lesson?.id]);
 
   // Gap intelligence banner
   const [gapBannerInfo, setGapBannerInfo] = useState<{ title: string; desc: string } | null>(null);
@@ -422,6 +567,34 @@ export const CreateCoursePage: React.FC = () => {
   const promoVideoInputRef = useRef<HTMLInputElement>(null);
   const topContainerRef = useRef<HTMLDivElement>(null);
   const hasLoadedInitialBuilderData = useRef(false);
+
+  // Stable deterministic module sorter and deduplicator
+  const sortModules = useCallback((mods: BuilderModule[]): BuilderModule[] => {
+    if (!Array.isArray(mods)) return [];
+    // Deduplicate by module ID, preferring the entry with lessons or latest edits
+    const map = new Map<string, BuilderModule>();
+    for (const m of mods) {
+      if (!m || !m.id) continue;
+      const existing = map.get(m.id);
+      if (!existing) {
+        map.set(m.id, m);
+      } else {
+        const existingCount = existing.lessons?.length || 0;
+        const newCount = m.lessons?.length || 0;
+        if (newCount >= existingCount) {
+          map.set(m.id, { ...existing, ...m });
+        } else {
+          map.set(m.id, { ...m, ...existing });
+        }
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => {
+      const orderA = a.orderIndex ?? 0;
+      const orderB = b.orderIndex ?? 0;
+      if (orderA !== orderB) return orderA - orderB;
+      return (a.id || '').localeCompare(b.id || '');
+    });
+  }, []);
 
   // Hydrate from builderData, courseDetails, or navStateCourse
   useEffect(() => {
@@ -490,7 +663,8 @@ export const CreateCoursePage: React.FC = () => {
       if (source.cpdCredits != null) setContactHours(String(source.cpdCredits));
       if (source.cpdBody) setCpdBody(source.cpdBody);
       if (source.seoSlugPreview) setSeoSlugPreview(source.seoSlugPreview);
-      if (source.modules) setModules(source.modules);
+      if ((source as any).enrollmentCap != null) setEnrollmentCap(String((source as any).enrollmentCap));
+      if (source.modules) setModules(sortModules(source.modules));
 
       // Hydrate tags/skills from backend (without mock fallbacks)
       const rawTags = source.tags || (source as any).skills;
@@ -508,55 +682,17 @@ export const CreateCoursePage: React.FC = () => {
         setOutcomes(source.learningOutcomes);
       }
 
-      // Pre-populate completed steps for existing courses sequentially
-      const initialDone = new Set<StepId>();
-      const step1Done = Boolean(
-        source.title &&
-        source.description &&
-        source.description.trim().length >= 10 &&
-        source.category
-      );
-      if (step1Done) initialDone.add(1);
-
-      const step2Done =
-        step1Done &&
-        Boolean(source.format && (initialCoverKey || source.promotionalVideoS3Key));
-      if (step2Done) initialDone.add(2);
-
-      const step3Done =
-        step2Done &&
-        Boolean(
-          source.modules &&
-          source.modules.length > 0 &&
-          source.modules.some((m: any) => (m.lessons || []).length > 0)
-        );
-      if (step3Done) initialDone.add(3);
-
-      const step4Done =
-        step3Done &&
-        Boolean((source as any).tier1Price != null || (source as any).price != null || source.priceAmount != null);
-      if (step4Done) initialDone.add(4);
-
-      const step5Done =
-        step4Done &&
-        Boolean(source.certificateTemplate && source.certificateTemplate !== 'NONE');
-      if (step5Done) initialDone.add(5);
-
+      // Only fully published courses start with all steps completed.
+      // For drafts, steps are completed sequentially as the author proceeds through the wizard.
       if (source.status === 'PUBLISHED') {
-        initialDone.add(1);
-        initialDone.add(2);
-        initialDone.add(3);
-        initialDone.add(4);
-        initialDone.add(5);
-        initialDone.add(6);
-      }
-      if (initialDone.size > 0) {
-        setCompletedSteps(initialDone);
+        setCompletedSteps(new Set<StepId>([1, 2, 3, 4, 5, 6]));
       }
     } else if (builderData?.modules) {
-      setModules(builderData.modules);
+      if (!isAddingModule) {
+        setModules(sortModules(builderData.modules));
+      }
     }
-  }, [builderData, courseDetails, navStateCourse]);
+  }, [builderData, courseDetails, isAddingModule, navStateCourse, sortModules]);
 
   // Load from Gap parameter
   useEffect(() => {
@@ -591,8 +727,9 @@ export const CreateCoursePage: React.FC = () => {
       tier1Price: parsedPrice,
       certificateTemplate,
       isCpdAccredited,
-      cpdCredits: parseFloat(contactHours) || 0,
-      cpdBody,
+      cpdCredits: isCpdAccredited ? (parseFloat(contactHours) || null) : null,
+      cpdBody: isCpdAccredited ? (cpdBody.trim() || null) : null,
+      enrollmentCap: enrollmentCap.trim() ? (parseInt(enrollmentCap, 10) || null) : null,
       tags,
       skills: tags,
       learningOutcomes: outcomes.filter((o) => Boolean(o && o.trim())),
@@ -614,6 +751,7 @@ export const CreateCoursePage: React.FC = () => {
     isCpdAccredited,
     contactHours,
     cpdBody,
+    enrollmentCap,
     tags,
     outcomes,
     prerequisites,
@@ -691,8 +829,8 @@ export const CreateCoursePage: React.FC = () => {
 
       if (created?.id) {
         setCourseId(created.id);
-        toast.success('Course draft created on server.', { icon: '✨' });
-        window.history.replaceState(null, '', `/courses/${created.id}/edit`);
+        toast.success('Course draft initialized on server.', { icon: '✨' });
+        navigate(`/courses/${created.id}/edit`, { replace: true });
         return created.id;
       }
     } catch (err: any) {
@@ -700,7 +838,7 @@ export const CreateCoursePage: React.FC = () => {
       toast.error(err?.message || 'Failed to initialize course draft.');
     }
     return null;
-  }, [courseId, title, format, parsedPrice, createDraftMutation]);
+  }, [courseId, title, format, parsedPrice, createDraftMutation, navigate]);
 
   // Tags helper
   const commitTag = (valueToCommit?: string) => {
@@ -933,15 +1071,67 @@ export const CreateCoursePage: React.FC = () => {
     }
   };
 
+  // Remove Thumbnail Handler
+  const handleRemoveThumbnail = async (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setThumbnailPreview('');
+    setThumbnailS3Key(null);
+    setThumbnailFileName('');
+    if (thumbnailInputRef.current) thumbnailInputRef.current.value = '';
+    if (courseId) {
+      try {
+        await patchCourseMutation.mutateAsync({
+          courseId,
+          payload: { thumbnailS3Key: null },
+        });
+        toast.success('Course thumbnail removed.');
+      } catch (err: any) {
+        console.error('Failed to clear thumbnail on server', err);
+      }
+    }
+  };
+
+  // Remove Promo Video Handler
+  const handleRemovePromoVideo = async (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setPromoVideoPreview('');
+    setPromoVideoS3Key(null);
+    setPromoVideoFileName('');
+    if (promoVideoInputRef.current) promoVideoInputRef.current.value = '';
+    if (courseId) {
+      try {
+        await patchCourseMutation.mutateAsync({
+          courseId,
+          payload: { promoVideoS3Key: null },
+        });
+        toast.success('Promotional video removed.');
+      } catch (err: any) {
+        console.error('Failed to clear promo video on server', err);
+      }
+    }
+  };
+
   // Curriculum Modules & Lessons
   const handleAddModule = async () => {
     if (isAddingModule) return;
-    const activeId = await ensureDraftCourse();
-    if (!activeId) return;
-
     setIsAddingModule(true);
+
+    const activeId = await ensureDraftCourse();
+    if (!activeId) {
+      setIsAddingModule(false);
+      return;
+    }
+
+    // Determine the next module number by checking existing numbers
+    const existingNums = modules
+      .map((m) => {
+        const match = (m.title || '').match(/Module\s+(\d+)/i);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter((n) => !isNaN(n) && n > 0);
+    const nextNum = existingNums.length > 0 ? Math.max(...existingNums, modules.length) + 1 : modules.length + 1;
+    const moduleTitle = `Module ${nextNum}: `;
     const nextOrder = modules.length;
-    const moduleTitle = `Module ${nextOrder + 1}: `;
 
     try {
       const createdMod = await createModuleMutation.mutateAsync({
@@ -987,7 +1177,28 @@ export const CreateCoursePage: React.FC = () => {
           lessons: initialLessons,
         };
 
-        setModules((prev) => [...prev, newModule]);
+        setModules((prev) => {
+          const map = new Map<string, BuilderModule>();
+          for (const m of prev) {
+            if (m.id) map.set(m.id, m);
+          }
+          map.set(newModule.id, newModule);
+          return sortModules(Array.from(map.values()));
+        });
+
+        queryClient.setQueryData(courseBuilderKeys.detail(activeId), (old: any) => {
+          if (!old) return old;
+          const oldMods: BuilderModule[] = old.modules || [];
+          const map = new Map<string, BuilderModule>();
+          for (const m of oldMods) {
+            if (m.id) map.set(m.id, m);
+          }
+          map.set(newModule.id, newModule);
+          return {
+            ...old,
+            modules: sortModules(Array.from(map.values())),
+          };
+        });
         toast.success('New module added.');
       }
     } catch (err: any) {
@@ -1017,8 +1228,23 @@ export const CreateCoursePage: React.FC = () => {
     }
     if (!courseId || !moduleId) return;
 
+    // Immediately remove from UI and update query cache so background refetch never restores deleted module
+    setModules((prev) => prev.filter((m) => m.id !== moduleId));
+    setFormErrors((prev) => {
+      if (!prev.curriculum) return prev;
+      const copy = { ...prev };
+      delete copy.curriculum;
+      return copy;
+    });
+    queryClient.setQueryData(courseBuilderKeys.detail(courseId), (old: any) => {
+      if (!old) return old;
+      return {
+        ...old,
+        modules: (old.modules || []).filter((m: any) => m.id !== moduleId),
+      };
+    });
+
     if (moduleId.startsWith('temp-')) {
-      setModules((prev) => prev.filter((m) => m.id !== moduleId));
       return;
     }
 
@@ -1027,11 +1253,10 @@ export const CreateCoursePage: React.FC = () => {
         courseId,
         moduleId,
       });
-      setModules((prev) => prev.filter((m) => m.id !== moduleId));
       toast.success('Module removed.');
-      refetchBuilder();
     } catch (err: any) {
       toast.error(err?.message || 'Failed to delete module.');
+      refetchBuilder();
     }
   };
 
@@ -1083,6 +1308,12 @@ export const CreateCoursePage: React.FC = () => {
     lessonId: string,
     updates: Partial<BuilderLesson>
   ) => {
+    setFormErrors((prev) => {
+      if (!prev.curriculum) return prev;
+      const copy = { ...prev };
+      delete copy.curriculum;
+      return copy;
+    });
     setModules((prev) =>
       prev.map((mod) => {
         if (mod.id !== moduleId) return mod;
@@ -1100,22 +1331,33 @@ export const CreateCoursePage: React.FC = () => {
     }
 
     try {
+      const payload: PatchLessonDto = {};
+      if (updates.title !== undefined) payload.title = updates.title;
+      if (updates.contentType !== undefined) payload.contentType = updates.contentType;
+      const s3Key = updates.contentS3Key !== undefined ? updates.contentS3Key : (updates as any).videoS3Key;
+      if (s3Key !== undefined) payload.contentS3Key = s3Key;
+      if (updates.durationMinutes !== undefined) payload.durationMinutes = updates.durationMinutes;
+      if (updates.orderIndex !== undefined && updates.orderIndex >= 0) payload.orderIndex = updates.orderIndex;
+
       await patchLessonMutation.mutateAsync({
         courseId,
         moduleId,
         lessonId,
-        payload: {
-          ...updates,
-          contentS3Key: updates.contentS3Key || (updates as any).videoS3Key,
-          videoS3Key: updates.contentS3Key || (updates as any).videoS3Key,
-        },
+        payload,
       });
     } catch (err: any) {
       console.error('Failed to update lesson:', err);
+      throw err;
     }
   };
 
   const handleDeleteLesson = async (moduleId: string, lessonId: string) => {
+    setFormErrors((prev) => {
+      if (!prev.curriculum) return prev;
+      const copy = { ...prev };
+      delete copy.curriculum;
+      return copy;
+    });
     if (!courseId || !moduleId || !lessonId) return;
 
     if (moduleId.startsWith('temp-') || lessonId.startsWith('temp-')) {
@@ -1146,6 +1388,69 @@ export const CreateCoursePage: React.FC = () => {
       refetchBuilder();
     } catch (err: any) {
       toast.error(err?.message || 'Failed to delete lesson.');
+    }
+  };
+
+  const handleMoveModule = async (index: number, direction: 'up' | 'down') => {
+    if (!courseId) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= modules.length) return;
+
+    const newModules = [...modules];
+    const temp = newModules[index];
+    newModules[index] = newModules[targetIndex];
+    newModules[targetIndex] = temp;
+
+    const updated = newModules.map((m, idx) => ({ ...m, orderIndex: idx }));
+    setModules(updated);
+
+    try {
+      const ids = updated.map((m) => m.id);
+      await reorderModulesMutation.mutateAsync({
+        courseId,
+        payload: { ids },
+      });
+      toast.success('Modules reordered.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to reorder modules.');
+      refetchBuilder();
+    }
+  };
+
+  const handleMoveLesson = async (
+    moduleId: string,
+    lessonIndex: number,
+    direction: 'up' | 'down'
+  ) => {
+    if (!courseId) return;
+    const targetModule = modules.find((m) => m.id === moduleId);
+    if (!targetModule || !targetModule.lessons) return;
+
+    const targetIndex = direction === 'up' ? lessonIndex - 1 : lessonIndex + 1;
+    if (targetIndex < 0 || targetIndex >= targetModule.lessons.length) return;
+
+    const newLessons = [...targetModule.lessons];
+    const temp = newLessons[lessonIndex];
+    newLessons[lessonIndex] = newLessons[targetIndex];
+    newLessons[targetIndex] = temp;
+
+    const updatedLessons = newLessons.map((l, idx) => ({ ...l, orderIndex: idx }));
+
+    setModules((prev) =>
+      prev.map((m) => (m.id === moduleId ? { ...m, lessons: updatedLessons } : m))
+    );
+
+    try {
+      const ids = updatedLessons.map((l) => l.id);
+      await reorderLessonsMutation.mutateAsync({
+        courseId,
+        moduleId,
+        payload: { ids },
+      });
+      toast.success('Lessons reordered.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to reorder lessons.');
+      refetchBuilder();
     }
   };
 
@@ -1198,12 +1503,29 @@ export const CreateCoursePage: React.FC = () => {
         let hasEmptyModTitle = false;
         let hasEmptyLessonTitle = false;
         let totalLessonsCount = 0;
+        let missingVideoLessonTitle: string | null = null;
+        let invalidExternalVideoTitle: string | null = null;
 
         modules.forEach((mod) => {
           if (!mod.title.trim()) hasEmptyModTitle = true;
           totalLessonsCount += (mod.lessons || []).length;
           (mod.lessons || []).forEach((les) => {
             if (!les.title.trim()) hasEmptyLessonTitle = true;
+            if (les.contentType === 'VIDEO') {
+              const videoKey = les.contentS3Key || les.videoS3Key;
+              if (!videoKey) {
+                if (!missingVideoLessonTitle) {
+                  missingVideoLessonTitle = les.title.trim() || 'Untitled Video Lesson';
+                }
+              } else if (
+                (videoKey.startsWith('http://') || videoKey.startsWith('https://')) &&
+                !isGoogleDriveUrl(videoKey)
+              ) {
+                if (!invalidExternalVideoTitle) {
+                  invalidExternalVideoTitle = les.title.trim() || 'Untitled Video Lesson';
+                }
+              }
+            }
           });
         });
 
@@ -1213,6 +1535,10 @@ export const CreateCoursePage: React.FC = () => {
           errors.curriculum = 'Please add at least one lesson to your modules';
         } else if (hasEmptyLessonTitle) {
           errors.curriculum = 'All lessons must have a title';
+        } else if (missingVideoLessonTitle) {
+          errors.curriculum = `Please upload a video for "${missingVideoLessonTitle}" before continuing`;
+        } else if (invalidExternalVideoTitle) {
+          errors.curriculum = 'External link is not allowed';
         }
       }
     } else if (step === 4) {
@@ -1290,7 +1616,19 @@ export const CreateCoursePage: React.FC = () => {
       modules.length > 0 &&
       modules.every((m) => m.title.trim().length > 0) &&
       modules.some((m) => (m.lessons || []).length > 0) &&
-      modules.every((m) => (m.lessons || []).every((l) => l.title.trim().length > 0));
+      modules.every((m) =>
+        (m.lessons || []).every((l) => {
+          if (!l.title.trim()) return false;
+          if (l.contentType === 'VIDEO') {
+            const videoKey = l.contentS3Key || l.videoS3Key;
+            if (!videoKey) return false;
+            if ((videoKey.startsWith('http://') || videoKey.startsWith('https://')) && !isGoogleDriveUrl(videoKey)) {
+              return false;
+            }
+          }
+          return true;
+        })
+      );
     const pricingOk = basePrice !== '' && !isNaN(Number(basePrice)) && Number(basePrice) >= 0;
     const certOk = Boolean(certificateTemplate);
 
@@ -1330,7 +1668,19 @@ export const CreateCoursePage: React.FC = () => {
           modules.length > 0 &&
           modules.every((m) => m.title.trim().length > 0) &&
           modules.some((m) => (m.lessons || []).length > 0) &&
-          modules.every((m) => (m.lessons || []).every((l) => l.title.trim().length > 0))
+          modules.every((m) =>
+            (m.lessons || []).every((l) => {
+              if (!l.title.trim()) return false;
+              if (l.contentType === 'VIDEO') {
+                const videoKey = l.contentS3Key || l.videoS3Key;
+                if (!videoKey) return false;
+                if ((videoKey.startsWith('http://') || videoKey.startsWith('https://')) && !isGoogleDriveUrl(videoKey)) {
+                  return false;
+                }
+              }
+              return true;
+            })
+          )
         );
       }
       if (stepId === 4) {
@@ -1379,6 +1729,11 @@ export const CreateCoursePage: React.FC = () => {
       // Current step being worked on must never show a checkmark (shows its step number in active state)
       if (currentStep === stepId) return false;
 
+      // An upcoming step should NEVER show as done while the user is actively on an earlier step
+      if (builderData?.status !== 'PUBLISHED' && stepId > currentStep) {
+        return false;
+      }
+
       // The step content itself must be valid
       if (!isStepContentValid(stepId)) return false;
 
@@ -1390,22 +1745,38 @@ export const CreateCoursePage: React.FC = () => {
       // Has been explicitly completed during this editing flow or prior to current step
       return completedSteps.has(stepId) || stepId < currentStep;
     },
-    [currentStep, completedSteps, isStepContentValid]
+    [currentStep, completedSteps, isStepContentValid, builderData?.status]
   );
 
-  // Save Draft Action
+  // Auto-clear stale curriculum errors whenever modules become valid
+  useEffect(() => {
+    if (formErrors.curriculum && isStepContentValid(3)) {
+      setFormErrors((prev) => {
+        if (!prev.curriculum) return prev;
+        const copy = { ...prev };
+        delete copy.curriculum;
+        return copy;
+      });
+    }
+  }, [modules, formErrors.curriculum, isStepContentValid]);
+
+  // Save Draft Action (Saves current draft, shows loading state, and redirects to /courses)
   const handleSaveDraft = async () => {
     if (isAnyLoadingOrUploading) return;
     setIsSavingDraft(true);
     try {
       const activeId = await ensureDraftCourse();
-      if (!activeId) return;
+      if (!activeId) {
+        setIsSavingDraft(false);
+        return;
+      }
 
       await flushSave();
-      toast.success('Course draft saved.', { icon: '💾' });
+      await queryClient.invalidateQueries();
+      toast.success('Course draft saved successfully.', { icon: '💾' });
+      navigate('/courses');
     } catch (err: any) {
       toast.error(err?.message || 'Failed to save draft.');
-    } finally {
       setIsSavingDraft(false);
     }
   };
@@ -1437,7 +1808,20 @@ export const CreateCoursePage: React.FC = () => {
       }, 1500);
     } catch (err: any) {
       console.error('Publish error:', err);
-      toast.error(err?.message || 'Failed to publish course.');
+      const returnedChecklist =
+        err?.data?.publishChecklist ||
+        err?.data?.data?.publishChecklist ||
+        err?.publishChecklist;
+
+      if (returnedChecklist && courseId) {
+        queryClient.setQueryData(courseBuilderKeys.detail(courseId), (prev: any) =>
+          prev ? { ...prev, publishChecklist: returnedChecklist } : prev
+        );
+      }
+      toast.error(
+        err?.message ||
+        'Course is not ready to publish. Please review the pre-publish checklist requirements.'
+      );
     }
   };
 
@@ -1453,30 +1837,49 @@ export const CreateCoursePage: React.FC = () => {
     }
   };
 
-  // Brand Status Chip
-  const statusLabel = useMemo(() => {
-    if (builderData?.status === 'PUBLISHED') return 'Published';
-    if (autosaveStatus === 'saving') return 'Saving…';
-    if (autosaveStatus === 'error') return 'Save failed';
-    if (courseId || autosaveStatus === 'saved') return 'Draft saved';
-    return 'Unsaved';
-  }, [builderData?.status, autosaveStatus, courseId]);
-
-  const statusBadgeClass = useMemo(() => {
+  // Brand Status Chip (supporting saving, saved, unsaved, failed, published states)
+  const statusConfig = useMemo(() => {
     if (builderData?.status === 'PUBLISHED') {
-      return 'bg-[#0047CC]/10 text-[#0047CC] border-[#0047CC]/30 font-semibold';
+      return {
+        label: 'Published',
+        className: 'bg-blue-50 text-[#0047CC] border-blue-200 font-semibold',
+        icon: <CheckCircleIcon size={13} className="text-[#0047CC]" />,
+      };
     }
-    if (autosaveStatus === 'saving') {
-      return 'bg-[#EBF6FF] text-[#0047CC] border-[#0047CC]/40 animate-pulse font-semibold';
+    if (autosaveStatus === 'saving' || isSavingDraft) {
+      return {
+        label: 'Saving draft…',
+        className: 'bg-blue-50 text-[#0047CC] border-blue-200 animate-pulse font-semibold',
+        icon: <Spinner size={12} className="text-[#0047CC]" />,
+      };
     }
     if (autosaveStatus === 'error') {
-      return 'bg-rose-50 text-rose-700 border-rose-200 font-semibold';
+      return {
+        label: 'Save failed',
+        className: 'bg-rose-50 text-rose-700 border-rose-200 font-semibold',
+        icon: <XCircleIcon size={13} className="text-rose-600" />,
+      };
+    }
+    if (autosaveStatus === 'unsaved') {
+      return {
+        label: 'Unsaved changes',
+        className: 'bg-amber-50 text-amber-800 border-amber-200 font-semibold',
+        icon: <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />,
+      };
     }
     if (courseId || autosaveStatus === 'saved') {
-      return 'bg-slate-100 text-slate-700 border-slate-200 font-semibold';
+      return {
+        label: 'Draft saved',
+        className: 'bg-slate-100 text-slate-700 border-slate-200 font-semibold',
+        icon: <CheckIcon size={11} strokeWidth={3} className="text-[#0047CC]" />,
+      };
     }
-    return 'bg-slate-50 text-slate-500 border-slate-200 font-medium';
-  }, [builderData?.status, autosaveStatus, courseId]);
+    return {
+      label: 'New Draft',
+      className: 'bg-slate-50 text-slate-500 border-slate-200 font-medium',
+      icon: null,
+    };
+  }, [builderData?.status, autosaveStatus, isSavingDraft, courseId]);
 
   if (routeCourseId && isBuilderLoading && !builderData) {
     return (
@@ -1487,6 +1890,22 @@ export const CreateCoursePage: React.FC = () => {
       </div>
     );
   }
+
+  const editingVideoKey = editingLesson?.lesson.contentS3Key || editingLesson?.lesson.videoS3Key;
+  const isEditingVideoHttp = Boolean(
+    editingVideoKey && (editingVideoKey.startsWith('http://') || editingVideoKey.startsWith('https://'))
+  );
+  const isEditingGoogleDrive = Boolean(editingVideoKey && isGoogleDriveUrl(editingVideoKey));
+  const isEditingInvalidExternal = Boolean(editingVideoKey && isEditingVideoHttp && !isEditingGoogleDrive);
+  const isVideoValid = Boolean(
+    editingVideoKey && (!isEditingVideoHttp || isEditingGoogleDrive)
+  );
+  const isSaveLessonDisabled = Boolean(
+    isSavingLesson ||
+    isUploadingLessonVideo ||
+    !editingLesson?.lesson.title?.trim() ||
+    (editingLesson?.lesson.contentType === 'VIDEO' && (!isVideoValid || isEditingInvalidExternal))
+  );
 
   return (
     <div
@@ -1506,7 +1925,10 @@ export const CreateCoursePage: React.FC = () => {
             Courses
           </Link>
           <span className="text-[#CBD5E1]">/</span>
-          <span className="font-bold text-[#0F172A] truncate max-w-[200px] sm:max-w-md">
+          <span
+            className="font-bold text-[#0F172A] truncate max-w-[200px] sm:max-w-md cursor-default"
+            title={title.trim() || 'New Course'}
+          >
             {title.trim() || 'New Course'}
           </span>
         </div>
@@ -1514,9 +1936,10 @@ export const CreateCoursePage: React.FC = () => {
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Status Badge */}
           <span
-            className={`text-xs px-3 py-1 rounded-full border transition-all ${statusBadgeClass}`}
+            className={`inline-flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border transition-all ${statusConfig.className}`}
           >
-            {statusLabel}
+            {statusConfig.icon}
+            <span>{statusConfig.label}</span>
           </span>
 
           {/* Preview Action */}
@@ -1529,7 +1952,7 @@ export const CreateCoursePage: React.FC = () => {
               }
               setIsPreviewModalOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#475569] hover:text-[#0047CC] hover:bg-[#EBF6FF] rounded-lg transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#475569] hover:text-[#0047CC] hover:bg-[#EBF6FF] rounded-xl transition-colors cursor-pointer"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
@@ -1543,12 +1966,12 @@ export const CreateCoursePage: React.FC = () => {
             type="button"
             onClick={handleSaveDraft}
             disabled={isAnyLoadingOrUploading}
-            className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 text-xs font-bold bg-white text-[#334155] border border-[#CBD5E1] hover:border-[#0047CC] hover:text-[#0047CC] hover:bg-[#F8FAFC] disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-all cursor-pointer shadow-2xs"
+            className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 text-xs font-bold bg-white text-[#334155] border border-[#CBD5E1] hover:border-[#0047CC] hover:text-[#0047CC] hover:bg-[#F8FAFC] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all cursor-pointer shadow-2xs"
           >
             {isSavingDraft ? (
               <>
                 <Spinner size={14} className="text-[#0047CC]" />
-                Saving…
+                Saving & Exiting…
               </>
             ) : (
               <>
@@ -1568,7 +1991,7 @@ export const CreateCoursePage: React.FC = () => {
               type="button"
               onClick={handleUnpublishCourse}
               disabled={isAnyLoadingOrUploading}
-              className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-1.5 text-xs font-bold bg-slate-700 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-full transition-all cursor-pointer shadow-xs"
+              className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-1.5 text-xs font-bold bg-slate-700 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl transition-all cursor-pointer shadow-xs"
             >
               {unpublishMutation.isPending ? 'Unpublishing…' : 'Unpublish'}
             </button>
@@ -1577,7 +2000,7 @@ export const CreateCoursePage: React.FC = () => {
               type="button"
               onClick={handleOpenPublish}
               disabled={!isPublishReady || isAnyLoadingOrUploading}
-              className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-1.5 text-xs font-bold bg-[#0047CC] hover:bg-[#0037a3] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-full transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+              className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-1.5 text-xs font-bold bg-[#0047CC] hover:bg-[#0037a3] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl transition-all cursor-pointer shadow-xs active:scale-[0.98]"
             >
               {publishMutation.isPending ? (
                 <>
@@ -1601,9 +2024,9 @@ export const CreateCoursePage: React.FC = () => {
       {/* ── BUILDER WORKSPACE ── */}
       <div className="flex-1 flex w-full">
         {/* ── LEFT STEPPER NAVIGATION ── */}
-        <aside className="hidden lg:block w-72 bg-white border-r border-[#E2E8F0] py-6 sticky top-16 h-[calc(100vh-64px)] overflow-y-auto shrink-0 select-none">
+        <aside className="hidden lg:block w-72 bg-white border-r border-[#E2E8F0] py-6 sticky top-16 h-[calc(100vh-64px)] overflow-y-auto [scrollbar-width:thin] [scrollbar-color:#CBD5E1_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-button]:hidden shrink-0 select-none">
           <div className="px-6 pb-4">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#0047CC]">
+            <span className="text-[12px] font-semibold tracking-wider uppercase text-slate-500">
               Course Authoring
             </span>
             <h3 className="text-sm font-bold text-[#0F172A] mt-0.5">Wizard Navigation</h3>
@@ -1657,34 +2080,34 @@ export const CreateCoursePage: React.FC = () => {
           </div>
 
           {/* Quick Metrics in Sidebar */}
-          <div className="mt-8 mx-4 p-4 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs">
-            <div className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider mb-2.5">
+          <div className="mt-8 mx-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs">
+            <div className="text-[12px] font-semibold tracking-wider uppercase text-slate-500 mb-2.5">
               Course Summary
             </div>
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-[#475569]">
+              <div className="flex items-center justify-between text-[13px] text-slate-700">
                 <span>Modules</span>
                 <span className="font-bold text-[#0F172A]">{modules.length}</span>
               </div>
-              <div className="flex items-center justify-between text-[#475569]">
+              <div className="flex items-center justify-between text-[13px] text-slate-700">
                 <span>Total Lessons</span>
                 <span className="font-bold text-[#0F172A]">
                   {modules.reduce((acc, m) => acc + (m.lessons?.length || 0), 0)}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-[#475569]">
+              <div className="flex items-center justify-between text-[13px] text-slate-700">
                 <span>Format</span>
-                <span className="font-semibold text-[#0047CC]">
+                <span className="font-semibold text-slate-900">
                   {FORMATS.find((f) => f.id === format)?.name || 'Masterclass'}
                 </span>
               </div>
-              <div className="pt-2 border-t border-[#E2E8F0] flex items-center justify-between">
-                <span>Checklist</span>
+              <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[13px]">
+                <span className="text-slate-700">Checklist</span>
                 <span
                   className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
                     isPublishReady
-                      ? 'bg-blue-100 text-[#0047CC]'
-                      : 'bg-amber-100 text-amber-800'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-amber-50 text-amber-800 border border-amber-200'
                   }`}
                 >
                   {isPublishReady ? 'Complete' : 'Incomplete'}
@@ -1761,7 +2184,7 @@ export const CreateCoursePage: React.FC = () => {
             {currentStep === 1 && (
               <div className="animate-in fade-in duration-200 space-y-6">
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#0047CC]">
+                  <span className="text-[12px] font-semibold tracking-wider uppercase text-slate-500">
                     Step 1 of 6
                   </span>
                   <h2 className="text-2xl font-black text-[#0F172A] tracking-tight mt-0.5">
@@ -1779,7 +2202,17 @@ export const CreateCoursePage: React.FC = () => {
                       <label className="text-xs font-bold text-[#1E293B]">
                         Course Title <span className="text-[#0047CC]">*</span>
                       </label>
-                      <span className="text-[11px] text-[#94A3B8] font-mono">{title.length} / 100</span>
+                      <span
+                        className={`text-xs tabular-nums font-medium ${
+                          title.length >= 100
+                            ? 'text-rose-600 font-bold'
+                            : title.length >= 80
+                            ? 'text-amber-600 font-semibold'
+                            : 'text-slate-500'
+                        }`}
+                      >
+                        {title.length} / 100
+                      </span>
                     </div>
                     <input
                       id="titleInput"
@@ -1797,32 +2230,39 @@ export const CreateCoursePage: React.FC = () => {
                         }
                       }}
                       placeholder="e.g. Epidemiology in Crisis Response: Field Methods for Outbreak Control"
-                      className={`w-full bg-white border rounded-xl px-4 py-3 text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none transition-all ${
+                      className={`w-full bg-white border rounded-xl px-4 py-3 text-sm text-[#0F172A] placeholder:text-slate-400 focus:outline-none transition-all ${
                         formErrors.title
                           ? 'border-rose-400 ring-2 ring-rose-100'
                           : 'border-[#CBD5E1] focus:border-[#0047CC] focus:ring-3 focus:ring-[#0047CC]/15'
                       }`}
                     />
-                    {formErrors.title && (
-                      <p className="text-xs text-rose-600 font-semibold mt-1">{formErrors.title}</p>
+                    {formErrors.title ? (
+                      <div className="flex items-center gap-1.5 text-xs text-rose-600 font-semibold mt-1.5">
+                        <XCircleIcon size={14} className="shrink-0" />
+                        <span>{formErrors.title}</span>
+                      </div>
+                    ) : (
+                      <p className="text-[13px] text-slate-600 mt-1.5">
+                        Clear, descriptive title specifying the public health dilemma or technical competency.
+                      </p>
                     )}
                   </div>
 
                   {/* Subtitle */}
                   <div>
                     <label className="block text-xs font-bold text-[#1E293B] mb-1.5">
-                      Executive Subtitle{' '}
-                      <span className="text-[#64748B] font-normal text-[11px] ml-1">
-                        One-line hook shown in search &amp; catalog cards
-                      </span>
+                      Executive Subtitle <span className="text-slate-400 font-normal text-xs ml-1">(Optional)</span>
                     </label>
                     <input
                       type="text"
                       value={subtitle}
                       onChange={(e) => setSubtitle(e.target.value)}
                       placeholder="e.g. Master the strategic frameworks for navigating complex health systems at national and global scale."
-                      className="w-full bg-white border border-[#CBD5E1] rounded-xl px-4 py-3 text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0047CC] focus:ring-3 focus:ring-[#0047CC]/15 transition-all"
+                      className="w-full bg-white border border-[#CBD5E1] rounded-xl px-4 py-3 text-sm text-[#0F172A] placeholder:text-slate-400 focus:outline-none focus:border-[#0047CC] focus:ring-3 focus:ring-[#0047CC]/15 transition-all"
                     />
+                    <p className="text-[13px] text-slate-600 mt-1.5">
+                      One-line hook shown in search results and catalog course cards.
+                    </p>
                   </div>
 
                   {/* Full Description */}
@@ -1845,15 +2285,20 @@ export const CreateCoursePage: React.FC = () => {
                         }
                       }}
                       placeholder="Who is this course for? What strategic challenges will learners be equipped to solve? Which real-world field experiences inform this syllabus?"
-                      className={`w-full bg-white border rounded-xl p-4 text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none transition-all leading-relaxed ${
+                      className={`w-full bg-white border rounded-xl p-4 text-sm text-[#0F172A] placeholder:text-slate-400 focus:outline-none transition-all leading-relaxed ${
                         formErrors.description
                           ? 'border-rose-400 ring-2 ring-rose-100'
                           : 'border-[#CBD5E1] focus:border-[#0047CC] focus:ring-3 focus:ring-[#0047CC]/15'
                       }`}
                     />
-                    {formErrors.description && (
-                      <p className="text-xs text-rose-600 font-semibold mt-1">
-                        {formErrors.description}
+                    {formErrors.description ? (
+                      <div className="flex items-center gap-1.5 text-xs text-rose-600 font-semibold mt-1.5">
+                        <XCircleIcon size={14} className="shrink-0" />
+                        <span>{formErrors.description}</span>
+                      </div>
+                    ) : (
+                      <p className="text-[13px] text-slate-600 mt-1.5">
+                        Provide comprehensive curriculum context, practical relevance, and institutional audience details.
                       </p>
                     )}
                   </div>
@@ -1911,12 +2356,13 @@ export const CreateCoursePage: React.FC = () => {
                               formErrors.customCategory
                                 ? 'border-rose-500 focus:ring-rose-200'
                                 : 'border-[#CBD5E1] focus:border-[#0047CC] focus:ring-[#0047CC]/15'
-                            } bg-white text-[#0F172A] outline-none transition-all placeholder:text-[#94A3B8]`}
+                            } bg-white text-[#0F172A] outline-none transition-all placeholder:text-slate-400`}
                           />
                           {formErrors.customCategory && (
-                            <p className="text-xs text-rose-600 font-semibold mt-1">
-                              {formErrors.customCategory}
-                            </p>
+                            <div className="flex items-center gap-1.5 text-xs text-rose-600 font-semibold mt-1">
+                              <XCircleIcon size={14} className="shrink-0" />
+                              <span>{formErrors.customCategory}</span>
+                            </div>
                           )}
                         </div>
                       )}
@@ -1964,30 +2410,28 @@ export const CreateCoursePage: React.FC = () => {
 
                     <div>
                       <label className="block text-xs font-bold text-[#1E293B] mb-1.5">
-                        Prerequisites <span className="text-[#64748B] font-normal text-[11px] ml-1">Optional</span>
+                        Prerequisites <span className="text-slate-400 font-normal text-xs ml-1">(Optional)</span>
                       </label>
                       <input
                         type="text"
                         value={prerequisites}
                         onChange={(e) => setPrerequisites(e.target.value)}
                         placeholder="e.g. 3+ years field experience, MPH or equivalent…"
-                        className="w-full bg-white border border-[#CBD5E1] rounded-xl px-4 py-2.5 text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0047CC] transition-all"
+                        className="w-full bg-white border border-[#CBD5E1] rounded-xl px-4 py-2.5 text-sm text-[#0F172A] placeholder:text-slate-400 focus:outline-none focus:border-[#0047CC] focus:ring-3 focus:ring-[#0047CC]/15 transition-all"
                       />
+                      <p className="text-[13px] text-slate-600 mt-1.5">
+                        Recommended academic or institutional background for optimal comprehension.
+                      </p>
                     </div>
                   </div>
 
                   {/* Skills & Tags */}
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-bold text-[#1E293B]">
-                        Competency Tags
-                      </label>
-                      <span className="text-[11px] text-[#64748B]">
-                        Press Enter or comma to add
-                      </span>
-                    </div>
+                    <label className="block text-xs font-bold text-[#1E293B] mb-1.5">
+                      Competency Tags <span className="text-slate-400 font-normal text-xs ml-1">(Optional)</span>
+                    </label>
                     <div
-                      className="bg-white border border-[#CBD5E1] focus-within:border-[#0047CC] focus-within:ring-2 focus-within:ring-[#0047CC]/10 rounded-xl p-2.5 flex flex-wrap gap-2 items-center min-h-[48px] transition-all cursor-text"
+                      className="bg-white border border-[#CBD5E1] focus-within:border-[#0047CC] focus-within:ring-3 focus-within:ring-[#0047CC]/15 rounded-xl p-2.5 flex flex-wrap gap-2 items-center min-h-[48px] transition-all cursor-text"
                       onClick={() => document.getElementById('tagInputEl')?.focus()}
                     >
                       {tags.map((tg) => (
@@ -1996,7 +2440,7 @@ export const CreateCoursePage: React.FC = () => {
                           label={tg}
                           variant="blue"
                           onRemove={() => handleRemoveTag(tg)}
-                          className="border border-[#BDD9FF] text-xs font-semibold py-1 px-3 shrink-0"
+                          className="bg-blue-50 text-[#0047CC] border border-[#BDD9FF] text-xs font-semibold py-1 px-3 shrink-0"
                         />
                       ))}
                       <div className="flex-1 flex items-center min-w-[180px] gap-1.5">
@@ -2012,7 +2456,7 @@ export const CreateCoursePage: React.FC = () => {
                             }
                           }}
                           placeholder={tags.length === 0 ? "Type a skill/tag and press Enter…" : "Add more…"}
-                          className="bg-transparent border-none text-xs text-[#0F172A] outline-none flex-1 py-1 placeholder:text-[#94A3B8]"
+                          className="bg-transparent border-none text-xs text-[#0F172A] outline-none flex-1 py-1 placeholder:text-slate-400"
                         />
                         {tagInput.trim() && (
                           <button
@@ -2028,6 +2472,9 @@ export const CreateCoursePage: React.FC = () => {
                         )}
                       </div>
                     </div>
+                    <p className="text-[13px] text-slate-600 mt-1.5">
+                      Press Enter or comma to add tags (e.g. Health Economics, Outbreak Surveillance).
+                    </p>
                   </div>
 
                   {/* Learning Outcomes */}
@@ -2035,7 +2482,7 @@ export const CreateCoursePage: React.FC = () => {
                     <label className="block text-xs font-bold text-[#1E293B] mb-1">
                       Target Learning Outcomes <span className="text-[#0047CC]">*</span>
                     </label>
-                    <p className="text-xs text-[#64748B] mb-3">
+                    <p className="text-[13px] text-slate-600 mb-3">
                       List observable capabilities learners will gain after completing this curriculum.
                     </p>
 
@@ -2047,15 +2494,15 @@ export const CreateCoursePage: React.FC = () => {
                             value={outcome}
                             onChange={(e) => handleOutcomeChange(idx, e.target.value)}
                             placeholder="e.g. Design context-appropriate health financing strategies for resource-limited settings"
-                            className="flex-1 bg-white border border-[#CBD5E1] focus:border-[#0047CC] rounded-xl px-4 py-2.5 text-sm text-[#0F172A] placeholder:text-[#94A3B8] outline-none transition-colors"
+                            className="flex-1 bg-white border border-[#CBD5E1] focus:border-[#0047CC] focus:ring-3 focus:ring-[#0047CC]/15 rounded-xl px-4 py-2.5 text-sm text-[#0F172A] placeholder:text-slate-400 outline-none transition-all"
                           />
                           <button
                             type="button"
                             onClick={() => handleRemoveOutcome(idx)}
                             title="Remove outcome"
-                            className="p-2.5 text-[#94A3B8] hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                            className="w-10 h-10 flex items-center justify-center shrink-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-xl transition-all cursor-pointer"
                           >
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                               <line x1="18" y1="6" x2="6" y2="18" />
                               <line x1="6" y1="6" x2="18" y2="18" />
                             </svg>
@@ -2065,13 +2512,16 @@ export const CreateCoursePage: React.FC = () => {
                     </div>
 
                     {formErrors.outcomes && (
-                      <p className="text-xs text-rose-600 font-semibold mt-1">{formErrors.outcomes}</p>
+                      <div className="flex items-center gap-1.5 text-xs text-rose-600 font-semibold mt-2">
+                        <XCircleIcon size={14} className="shrink-0" />
+                        <span>{formErrors.outcomes}</span>
+                      </div>
                     )}
 
                     <button
                       type="button"
                       onClick={handleAddOutcome}
-                      className="mt-3 inline-flex items-center gap-2 px-4 py-2 border border-dashed border-[#CBD5E1] hover:border-[#0047CC] text-[#64748B] hover:text-[#0047CC] hover:bg-[#EBF6FF] rounded-xl text-xs font-bold transition-all cursor-pointer"
+                      className="mt-3 inline-flex items-center gap-2 px-4 py-2.5 border border-dashed border-[#CBD5E1] hover:border-[#0047CC] text-[#64748B] hover:text-[#0047CC] hover:bg-[#EBF6FF] rounded-xl text-xs font-bold transition-all cursor-pointer"
                     >
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <line x1="12" y1="5" x2="12" y2="19" />
@@ -2090,7 +2540,7 @@ export const CreateCoursePage: React.FC = () => {
             {currentStep === 2 && (
               <div className="animate-in fade-in duration-200 space-y-6">
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#0047CC]">
+                  <span className="text-[12px] font-semibold tracking-wider uppercase text-slate-500">
                     Step 2 of 6
                   </span>
                   <h2 className="text-2xl font-black text-[#0F172A] tracking-tight mt-0.5">
@@ -2114,27 +2564,33 @@ export const CreateCoursePage: React.FC = () => {
                         <div
                           key={fmt.id}
                           onClick={() => setFormat(fmt.id)}
-                          className={`relative p-5 rounded-2xl border-2 transition-all cursor-pointer bg-white flex flex-col justify-between ${
+                          className={`relative p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
                             isSelected
-                              ? 'border-[#0047CC] bg-[#F0F6FF] shadow-xs'
-                              : 'border-[#E2E8F0] hover:border-blue-300 hover:bg-[#F8FAFC]'
+                              ? 'border-[#0047CC] bg-blue-50/80 shadow-xs ring-2 ring-[#0047CC]/15'
+                              : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50 bg-white'
                           }`}
                         >
-                          {isSelected && (
-                            <div className="absolute top-3.5 right-3.5 w-5 h-5 rounded-full bg-[#0047CC] text-white flex items-center justify-center text-xs font-bold">
-                              ✓
+                          <div className="flex items-start justify-between gap-2 mb-3">
+                            <div className={`p-2 rounded-xl ${isSelected ? 'bg-[#0047CC] text-white' : 'bg-slate-100 text-slate-600'}`}>
+                              {renderFormatLineIcon(fmt.id)}
                             </div>
-                          )}
+                            <div className="flex items-center gap-1.5">
+                              {fmt.recommended && (
+                                <span className="bg-slate-100 text-slate-700 text-[10px] font-semibold uppercase px-2 py-0.5 rounded tracking-wider border border-slate-200">
+                                  Recommended
+                                </span>
+                              )}
+                              {isSelected && (
+                                <div className="w-5 h-5 rounded-full bg-[#0047CC] text-white flex items-center justify-center text-xs font-bold shadow-2xs">
+                                  <CheckIcon size={11} strokeWidth={3} />
+                                </div>
+                              )}
+                            </div>
+                          </div>
 
                           <div>
-                            {fmt.recommended && (
-                              <span className="inline-block bg-[#EBF6FF] text-[#0047CC] text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md tracking-wider mb-2.5 border border-[#0047CC]/20">
-                                Recommended
-                              </span>
-                            )}
-                            <span className="text-2xl block mb-2">{fmt.icon}</span>
                             <h4 className="text-sm font-bold text-[#0F172A] mb-1">{fmt.name}</h4>
-                            <p className="text-xs text-[#64748B] leading-relaxed">{fmt.desc}</p>
+                            <p className="text-xs text-slate-600 leading-relaxed">{fmt.desc}</p>
                           </div>
                         </div>
                       );
@@ -2142,13 +2598,17 @@ export const CreateCoursePage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Media Uploads */}
+                {/* Media Uploads (Single Container Pattern) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 items-stretch">
-                  {/* Thumbnail */}
-                  <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-xs flex flex-col h-full">
-                    <label className="block text-xs font-bold text-[#1E293B] mb-2 shrink-0">
-                      Course Cover Thumbnail <span className="text-[#0047CC]">*</span>
-                    </label>
+                  {/* Thumbnail Container */}
+                  <div className="bg-white border border-[#CBD5E1] rounded-2xl p-5 shadow-xs flex flex-col justify-between min-h-[300px]">
+                    <div className="flex items-center justify-between mb-2 shrink-0">
+                      <label className="block text-xs font-bold text-[#1E293B]">
+                        Course Cover Thumbnail <span className="text-[#0047CC]">*</span>
+                      </label>
+                      <span className="text-[11px] text-slate-500">JPG, PNG or WebP · Up to 3 MB</span>
+                    </div>
+
                     <input
                       ref={thumbnailInputRef}
                       type="file"
@@ -2156,76 +2616,91 @@ export const CreateCoursePage: React.FC = () => {
                       className="hidden"
                       onChange={handleThumbnailSelect}
                     />
-                    <div
-                      onClick={() => !isUploadingThumbnail && thumbnailInputRef.current?.click()}
-                      className={`flex-1 min-h-[220px] border-2 border-dashed rounded-xl p-5 text-center transition-all bg-[#F8FAFC] flex flex-col items-center justify-center ${
-                        isUploadingThumbnail
-                          ? 'border-[#0047CC]/50 bg-[#F0F6FF]/60 cursor-wait'
-                          : 'border-[#CBD5E1] hover:border-[#0047CC] hover:bg-[#F0F6FF] cursor-pointer'
-                      }`}
-                    >
-                      {isUploadingThumbnail ? (
-                        <div className="w-full py-2 flex flex-col items-center justify-center animate-in fade-in duration-200">
-                          <div className="w-12 h-12 bg-[#EBF6FF] text-[#0047CC] rounded-xl flex items-center justify-center mx-auto mb-2.5 shadow-2xs">
-                            <Spinner size={24} className="text-[#0047CC]" />
-                          </div>
-                          <div className="text-xs font-bold text-[#0F172A] truncate max-w-[240px] mb-1">
-                            {thumbnailFileName || 'Uploading banner…'}
-                          </div>
-                          <div className="text-[11px] font-semibold text-[#0047CC]">
-                            <span>
-                              {thumbnailUploadProgress >= 100
-                                ? 'Processing image on server…'
-                                : `Uploading banner… ${thumbnailUploadProgress}%`}
-                            </span>
-                          </div>
-                          <div className="w-full max-w-[240px] bg-[#E2E8F0] h-2 rounded-full mt-3 overflow-hidden">
-                            <div
-                              className="bg-[#0047CC] h-full rounded-full transition-all duration-200 ease-out"
-                              style={{ width: `${Math.max(thumbnailUploadProgress, 5)}%` }}
-                            />
-                          </div>
+
+                    {isUploadingThumbnail ? (
+                      <div className="flex-1 border-2 border-dashed border-[#0047CC]/50 bg-blue-50/40 rounded-xl p-5 flex flex-col items-center justify-center text-center animate-in fade-in duration-200">
+                        <div className="w-12 h-12 bg-blue-100 text-[#0047CC] rounded-xl flex items-center justify-center mx-auto mb-2.5 shadow-2xs">
+                          <Spinner size={24} className="text-[#0047CC]" />
                         </div>
-                      ) : thumbnailPreview ? (
-                        <div className="w-full flex flex-col items-center justify-center">
+                        <div className="text-xs font-bold text-[#0F172A] truncate max-w-[240px] mb-1">
+                          {thumbnailFileName || 'Uploading thumbnail…'}
+                        </div>
+                        <div className="text-[11px] font-semibold text-[#0047CC]">
+                          {thumbnailUploadProgress >= 100
+                            ? 'Processing image on server…'
+                            : `Uploading banner… ${thumbnailUploadProgress}%`}
+                        </div>
+                        <div className="w-full max-w-[240px] bg-slate-200 h-2 rounded-full mt-3 overflow-hidden">
+                          <div
+                            className="bg-[#0047CC] h-full rounded-full transition-all duration-200 ease-out"
+                            style={{ width: `${Math.max(thumbnailUploadProgress, 5)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : thumbnailPreview ? (
+                      <div className="flex-1 flex flex-col items-center justify-between p-2">
+                        <div className="w-full flex-1 flex items-center justify-center overflow-hidden rounded-xl bg-slate-100 border border-slate-200 mb-3 max-h-[160px]">
                           <img
                             src={thumbnailPreview}
                             alt="Course thumbnail"
-                            className="w-full max-h-32 object-cover rounded-lg mb-2 shadow-2xs"
+                            className="w-full h-full object-cover"
                             onError={(e) => {
                               if (thumbnailS3Key && !thumbnailPreview.includes('blob:')) {
                                 (e.currentTarget as HTMLImageElement).src = getMediaUrl(thumbnailS3Key);
                               }
                             }}
                           />
-                          <div className="text-xs font-semibold text-[#0F172A] truncate max-w-[240px]">
+                        </div>
+                        <div className="w-full flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
+                          <span className="text-xs font-semibold text-[#0F172A] truncate max-w-[180px]">
                             {thumbnailFileName || 'Cover image attached'}
-                          </div>
-                          <span className="text-[11px] text-[#0047CC] font-bold underline mt-1 inline-block">
-                            Change image
                           </span>
-                        </div>
-                      ) : (
-                        <div className="w-full flex flex-col items-center justify-center">
-                          <div className="w-12 h-12 bg-[#EBF6FF] text-[#0047CC] rounded-xl flex items-center justify-center mx-auto mb-2.5">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <rect x="3" y="3" width="18" height="18" rx="2" />
-                              <circle cx="8.5" cy="8.5" r="1.5" />
-                              <polyline points="21 15 16 10 5 21" />
-                            </svg>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => thumbnailInputRef.current?.click()}
+                              className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 hover:border-[#0047CC] hover:text-[#0047CC] text-slate-700 rounded-xl transition-all cursor-pointer shadow-2xs"
+                            >
+                              Replace
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleRemoveThumbnail}
+                              className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 hover:border-rose-300 hover:text-rose-600 hover:bg-rose-50 text-slate-700 rounded-xl transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs"
+                            >
+                              <TrashIcon size={12} />
+                              Remove
+                            </button>
                           </div>
-                          <div className="text-sm font-bold text-[#1E293B] mb-0.5">Upload Course Banner</div>
-                          <div className="text-[11px] text-[#64748B]">JPG, PNG or WebP · Up to 3 MB</div>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => thumbnailInputRef.current?.click()}
+                        className="flex-1 border-2 border-dashed border-slate-300 hover:border-[#0047CC] bg-slate-50/80 hover:bg-blue-50/30 rounded-xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[180px]"
+                      >
+                        <div className="w-12 h-12 bg-blue-50 text-[#0047CC] rounded-xl flex items-center justify-center mx-auto mb-2.5">
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" />
+                            <circle cx="8.5" cy="8.5" r="1.5" />
+                            <polyline points="21 15 16 10 5 21" />
+                          </svg>
+                        </div>
+                        <div className="text-sm font-bold text-slate-900 mb-0.5">Upload Course Banner</div>
+                        <div className="text-[11px] text-slate-500">Drag &amp; drop or browse image files</div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Promo Video */}
-                  <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-xs flex flex-col h-full">
-                    <label className="block text-xs font-bold text-[#1E293B] mb-2 shrink-0">
-                      Promotional Teaser Video
-                    </label>
+                  {/* Promo Video Container */}
+                  <div className="bg-white border border-[#CBD5E1] rounded-2xl p-5 shadow-xs flex flex-col justify-between min-h-[300px]">
+                    <div className="flex items-center justify-between mb-2 shrink-0">
+                      <label className="block text-xs font-bold text-[#1E293B]">
+                        Promotional Teaser Video
+                      </label>
+                      <span className="text-[12px] font-semibold text-slate-500">(Optional)</span>
+                    </div>
+
                     <input
                       ref={promoVideoInputRef}
                       type="file"
@@ -2233,70 +2708,77 @@ export const CreateCoursePage: React.FC = () => {
                       className="hidden"
                       onChange={handlePromoVideoSelect}
                     />
-                    <div
-                      onClick={() => !isUploadingPromoVideo && promoVideoInputRef.current?.click()}
-                      className={`flex-1 min-h-[220px] border-2 border-dashed rounded-xl p-5 text-center transition-all bg-[#F8FAFC] flex flex-col items-center justify-center ${
-                        isUploadingPromoVideo
-                          ? 'border-[#0047CC]/50 bg-[#F0F6FF]/60 cursor-wait'
-                          : 'border-[#CBD5E1] hover:border-[#0047CC] hover:bg-[#F0F6FF] cursor-pointer'
-                      }`}
-                    >
-                      {isUploadingPromoVideo ? (
-                        <div className="w-full py-2 flex flex-col items-center justify-center animate-in fade-in duration-200">
-                          <div className="w-12 h-12 bg-[#EBF6FF] text-[#0047CC] rounded-xl flex items-center justify-center mx-auto mb-2.5 shadow-2xs">
-                            <Spinner size={24} className="text-[#0047CC]" />
-                          </div>
-                          <div className="text-xs font-bold text-[#0F172A] truncate max-w-[240px] mb-1">
-                            {promoVideoFileName || 'Uploading promo video…'}
-                          </div>
-                          <div className="text-[11px] font-semibold text-[#0047CC]">
-                            <span>
-                              {promoVideoUploadProgress >= 100
-                                ? 'Processing video on server…'
-                                : `Uploading video… ${promoVideoUploadProgress}%`}
-                            </span>
-                          </div>
-                          <div className="w-full max-w-[240px] bg-[#E2E8F0] h-2 rounded-full mt-3 overflow-hidden">
-                            <div
-                              className="bg-[#0047CC] h-full rounded-full transition-all duration-200 ease-out"
-                              style={{ width: `${Math.max(promoVideoUploadProgress, 5)}%` }}
-                            />
-                          </div>
+
+                    {isUploadingPromoVideo ? (
+                      <div className="flex-1 border-2 border-dashed border-[#0047CC]/50 bg-blue-50/40 rounded-xl p-5 flex flex-col items-center justify-center text-center animate-in fade-in duration-200">
+                        <div className="w-12 h-12 bg-blue-100 text-[#0047CC] rounded-xl flex items-center justify-center mx-auto mb-2.5 shadow-2xs">
+                          <Spinner size={24} className="text-[#0047CC]" />
                         </div>
-                      ) : promoVideoPreview || promoVideoS3Key ? (
-                        <div className="w-full flex flex-col items-center justify-center">
+                        <div className="text-xs font-bold text-[#0F172A] truncate max-w-[240px] mb-1">
+                          {promoVideoFileName || 'Uploading promo video…'}
+                        </div>
+                        <div className="text-[11px] font-semibold text-[#0047CC]">
+                          {promoVideoUploadProgress >= 100
+                            ? 'Processing video on server…'
+                            : `Uploading video… ${promoVideoUploadProgress}%`}
+                        </div>
+                        <div className="w-full max-w-[240px] bg-slate-200 h-2 rounded-full mt-3 overflow-hidden">
                           <div
-                            className="w-full max-h-32 rounded-lg overflow-hidden mb-2 bg-slate-900 shadow-2xs flex items-center justify-center relative"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <video
-                              src={promoVideoPreview || (promoVideoS3Key ? getMediaUrl(promoVideoS3Key) : '')}
-                              controls
-                              playsInline
-                              preload="metadata"
-                              className="w-full max-h-32 object-contain rounded-lg"
-                            />
-                          </div>
-                          <div className="text-xs font-semibold text-[#0F172A] truncate max-w-[240px]">
-                            {promoVideoFileName || 'Promotional teaser attached'}
-                          </div>
-                          <span className="text-[11px] text-[#0047CC] font-bold underline mt-1 inline-block">
-                            Change video
+                            className="bg-[#0047CC] h-full rounded-full transition-all duration-200 ease-out"
+                            style={{ width: `${Math.max(promoVideoUploadProgress, 5)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : promoVideoPreview || promoVideoS3Key ? (
+                      <div className="flex-1 flex flex-col items-center justify-between p-2">
+                        <div className="w-full flex-1 flex items-center justify-center overflow-hidden rounded-xl bg-slate-900 shadow-2xs relative max-h-[160px] mb-3">
+                          <video
+                            src={promoVideoPreview || (promoVideoS3Key ? getMediaUrl(promoVideoS3Key) : '')}
+                            controls
+                            playsInline
+                            preload="metadata"
+                            className="w-full h-full object-contain max-h-[160px]"
+                          />
+                        </div>
+                        <div className="w-full flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
+                          <span className="text-xs font-semibold text-[#0F172A] truncate max-w-[180px]">
+                            {promoVideoFileName || 'Teaser video attached'}
                           </span>
-                        </div>
-                      ) : (
-                        <div className="w-full flex flex-col items-center justify-center">
-                          <div className="w-12 h-12 bg-[#EBF6FF] text-[#0047CC] rounded-xl flex items-center justify-center mx-auto mb-2.5">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <polygon points="23 7 16 12 23 17 23 7" />
-                              <rect x="1" y="5" width="15" height="14" rx="2" />
-                            </svg>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => promoVideoInputRef.current?.click()}
+                              className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 hover:border-[#0047CC] hover:text-[#0047CC] text-slate-700 rounded-xl transition-all cursor-pointer shadow-2xs"
+                            >
+                              Replace
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleRemovePromoVideo}
+                              className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 hover:border-rose-300 hover:text-rose-600 hover:bg-rose-50 text-slate-700 rounded-xl transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs"
+                            >
+                              <TrashIcon size={12} />
+                              Remove
+                            </button>
                           </div>
-                          <div className="text-sm font-bold text-[#1E293B] mb-0.5">Upload 3-Minute Teaser</div>
-                          <div className="text-[11px] text-[#64748B]">MP4 or WebM · Up to 50 MB · Max 3 mins</div>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => promoVideoInputRef.current?.click()}
+                        className="flex-1 border-2 border-dashed border-slate-300 hover:border-[#0047CC] bg-slate-50/80 hover:bg-blue-50/30 rounded-xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[180px]"
+                      >
+                        <div className="w-12 h-12 bg-blue-50 text-[#0047CC] rounded-xl flex items-center justify-center mx-auto mb-2.5">
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polygon points="23 7 16 12 23 17 23 7" />
+                            <rect x="1" y="5" width="15" height="14" rx="2" />
+                          </svg>
+                        </div>
+                        <div className="text-sm font-bold text-slate-900 mb-0.5">Upload 3-Minute Teaser</div>
+                        <div className="text-[11px] text-slate-500">Drag &amp; drop or browse MP4 / WebM</div>
+                        <div className="text-[11px] text-slate-400 mt-1">Max 50 MB · Less than 3 mins</div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2328,7 +2810,7 @@ export const CreateCoursePage: React.FC = () => {
                     >
                       {/* Module Header */}
                       <div className="flex items-center gap-3 px-5 py-4 bg-[#F8FAFC] border-b border-[#E2E8F0] rounded-t-2xl">
-                        <span className="text-xs font-mono font-bold text-[#0047CC] bg-[#EBF6FF] px-2 py-0.5 rounded-md">
+                        <span className="text-xs font-bold tabular-nums text-[#0047CC] bg-[#EBF6FF] px-2 py-0.5 rounded-md">
                           0{modIdx + 1}
                         </span>
                         <input
@@ -2347,6 +2829,30 @@ export const CreateCoursePage: React.FC = () => {
                         <span className="text-xs text-[#64748B] font-semibold">
                           {(mod.lessons || []).length} {(mod.lessons || []).length === 1 ? 'lesson' : 'lessons'}
                         </span>
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            title="Move module up"
+                            disabled={modIdx === 0 || reorderModulesMutation.isPending}
+                            onClick={() => handleMoveModule(modIdx, 'up')}
+                            className="p-1 text-[#64748B] hover:text-[#0047CC] disabled:opacity-25 disabled:cursor-not-allowed rounded-md hover:bg-slate-200/60 transition-colors cursor-pointer"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <polyline points="18 15 12 9 6 15" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            title="Move module down"
+                            disabled={modIdx === modules.length - 1 || reorderModulesMutation.isPending}
+                            onClick={() => handleMoveModule(modIdx, 'down')}
+                            className="p-1 text-[#64748B] hover:text-[#0047CC] disabled:opacity-25 disabled:cursor-not-allowed rounded-md hover:bg-slate-200/60 transition-colors cursor-pointer"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <polyline points="6 9 12 15 18 9" />
+                            </svg>
+                          </button>
+                        </div>
                         <button
                           type="button"
                           title="Delete module"
@@ -2362,111 +2868,211 @@ export const CreateCoursePage: React.FC = () => {
 
                       {/* Module Body */}
                       <div className="p-4 space-y-2.5">
-                        {(mod.lessons || []).map((les) => (
-                          <div
-                            key={les.id}
-                            className="flex items-center gap-2.5 p-2.5 px-3.5 rounded-xl border border-[#E2E8F0] bg-white hover:border-[#CBD5E1] transition-all"
-                          >
-                            {/* Type Dropdown */}
-                            <div className="shrink-0 w-44 sm:w-48">
-                              <Select
-                                hideLabel
-                                variant="compact"
-                                value={les.contentType}
-                                options={LESSON_TYPE_OPTIONS}
-                                className="!bg-[#F8FAFC] !border-[#CBD5E1] !text-xs font-bold !text-[#1E293B] !rounded-lg"
-                                onChange={(e) =>
-                                  handleLessonUpdate(mod.id, les.id, {
-                                    contentType: e.target.value as BuilderLessonContentType,
-                                  })
-                                }
-                              />
-                            </div>
+                        {(mod.lessons || []).map((les, lesIdx) => {
+                          const hasVideo = Boolean(
+                            (les.contentS3Key || les.videoS3Key) &&
+                            (!((les.contentS3Key || les.videoS3Key)?.startsWith('http')) || isGoogleDriveUrl(les.contentS3Key || les.videoS3Key))
+                          );
+                          const hasReading = Boolean(les.articleBody);
+                          const hasCase = Boolean(les.fieldCaseBrief);
 
-                            {/* Lesson Title */}
-                            <input
-                              type="text"
-                              value={les.title}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setModules((prev) =>
-                                  prev.map((m) =>
-                                    m.id === mod.id
-                                      ? {
-                                          ...m,
-                                          lessons: m.lessons.map((l) =>
-                                            l.id === les.id ? { ...l, title: val } : l
-                                          ),
-                                        }
-                                      : m
-                                  )
-                                );
-                              }}
-                              onBlur={(e) =>
-                                handleLessonUpdate(mod.id, les.id, { title: e.target.value })
-                              }
-                              placeholder="Lesson Title…"
-                              className="flex-1 bg-transparent border-none text-xs text-[#0F172A] outline-none font-semibold placeholder:text-[#94A3B8]"
-                            />
-
-                            {/* Duration */}
-                            <div className="flex items-center gap-1">
-                              <input
-                                type="number"
-                                min="1"
-                                value={les.durationMinutes || 15}
-                                onChange={(e) => {
-                                  const val = parseInt(e.target.value, 10) || 1;
-                                  setModules((prev) =>
-                                    prev.map((m) =>
-                                      m.id === mod.id
-                                        ? {
-                                            ...m,
-                                            lessons: m.lessons.map((l) =>
-                                              l.id === les.id ? { ...l, durationMinutes: val } : l
-                                            ),
-                                          }
-                                        : m
-                                    )
-                                  );
-                                }}
-                                onBlur={(e) =>
-                                  handleLessonUpdate(mod.id, les.id, {
-                                    durationMinutes: parseInt(e.target.value, 10) || 15,
-                                  })
-                                }
-                                className="w-14 text-center text-xs text-[#475569] border border-[#CBD5E1] rounded-lg px-1.5 py-1 outline-none font-mono"
-                              />
-                              <span className="text-[11px] text-[#64748B]">min</span>
-                            </div>
-
-                            {/* Edit content modal */}
-                            <button
-                              type="button"
-                              title="Edit lesson details"
-                              onClick={() => setEditingLesson({ moduleId: mod.id, lesson: les })}
-                              className="p-1.5 text-[#64748B] hover:text-[#0047CC] hover:bg-[#EBF6FF] rounded-lg transition-colors cursor-pointer"
+                          return (
+                            <div
+                              key={les.id}
+                              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 px-3.5 rounded-xl border border-[#E2E8F0] bg-white hover:border-[#CBD5E1] transition-all"
                             >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M12 20h9" />
-                                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                              </svg>
-                            </button>
+                              <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                                {/* Type Dropdown */}
+                                <div className="shrink-0 w-48 sm:w-56">
+                                  <Select
+                                    hideLabel
+                                    value={les.contentType}
+                                    options={LESSON_TYPE_OPTIONS}
+                                    className="!bg-white !border-slate-200 !text-xs font-semibold !text-slate-800 !rounded-lg hover:!border-slate-300"
+                                    onChange={(e) =>
+                                      handleLessonUpdate(mod.id, les.id, {
+                                        contentType: e.target.value as BuilderLessonContentType,
+                                      })
+                                    }
+                                  />
+                                </div>
 
-                            {/* Remove lesson */}
-                            <button
-                              type="button"
-                              title="Delete lesson"
-                              onClick={() => handleDeleteLesson(mod.id, les.id)}
-                              className="p-1.5 text-[#94A3B8] hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <line x1="18" y1="6" x2="6" y2="18" />
-                                <line x1="6" y1="6" x2="18" y2="18" />
-                              </svg>
-                            </button>
-                          </div>
-                        ))}
+                                {/* Lesson Title */}
+                                <input
+                                  type="text"
+                                  value={les.title}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setModules((prev) =>
+                                      prev.map((m) =>
+                                        m.id === mod.id
+                                          ? {
+                                              ...m,
+                                              lessons: m.lessons.map((l) =>
+                                                l.id === les.id ? { ...l, title: val } : l
+                                              ),
+                                            }
+                                          : m
+                                      )
+                                    );
+                                  }}
+                                  onBlur={(e) =>
+                                    handleLessonUpdate(mod.id, les.id, { title: e.target.value })
+                                  }
+                                  placeholder="Lesson Title…"
+                                  className="flex-1 min-w-0 bg-transparent border-none text-xs text-[#0F172A] outline-none font-semibold placeholder:text-[#94A3B8]"
+                                />
+                              </div>
+
+                              <div className="flex items-center justify-end gap-2 shrink-0">
+                                {/* Direct Media/Content Action Pill */}
+                                {les.contentType === 'VIDEO' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingLesson({ moduleId: mod.id, lesson: les })}
+                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                                      hasVideo
+                                        ? 'bg-blue-50 hover:bg-blue-100 text-[#0047CC] border border-blue-200/90 shadow-2xs'
+                                        : formErrors.curriculum && (!les.contentS3Key && !les.videoS3Key)
+                                          ? 'bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-300 shadow-2xs'
+                                          : 'bg-blue-50 hover:bg-blue-100 text-[#0047CC] border border-blue-200/90 shadow-2xs'
+                                    }`}
+                                    title={hasVideo ? 'Video attached. Click to preview or replace.' : 'Upload or link video for this lesson'}
+                                  >
+                                    {hasVideo ? (
+                                      <>
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                                          <polygon points="5 3 19 12 5 21 5 3" />
+                                        </svg>
+                                        <span>Video Attached</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                          <polyline points="17 8 12 3 7 8" />
+                                          <line x1="12" y1="5" x2="12" y2="15" />
+                                        </svg>
+                                        <span>+ Upload Video</span>
+                                      </>
+                                    )}
+                                  </button>
+                                )}
+
+                                {les.contentType === 'READING' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingLesson({ moduleId: mod.id, lesson: les })}
+                                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                                      hasReading
+                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                        : 'bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100'
+                                    }`}
+                                  >
+                                    <span>{hasReading ? '✓ Text Added' : '+ Add Text'}</span>
+                                  </button>
+                                )}
+
+                                {les.contentType === 'FIELD_CASE_STUDY' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingLesson({ moduleId: mod.id, lesson: les })}
+                                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                                      hasCase
+                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                        : 'bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100'
+                                    }`}
+                                  >
+                                    <span>{hasCase ? '✓ Case Added' : '+ Add Case'}</span>
+                                  </button>
+                                )}
+
+                                {/* Duration */}
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={les.durationMinutes || 15}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value, 10) || 1;
+                                      setModules((prev) =>
+                                        prev.map((m) =>
+                                          m.id === mod.id
+                                            ? {
+                                                ...m,
+                                                lessons: m.lessons.map((l) =>
+                                                  l.id === les.id ? { ...l, durationMinutes: val } : l
+                                                ),
+                                              }
+                                            : m
+                                        )
+                                      );
+                                    }}
+                                    onBlur={(e) =>
+                                      handleLessonUpdate(mod.id, les.id, {
+                                        durationMinutes: parseInt(e.target.value, 10) || 15,
+                                      })
+                                    }
+                                    className="w-13 text-center text-xs text-[#475569] border border-[#CBD5E1] rounded-lg px-1 py-1 outline-none font-semibold tabular-nums"
+                                  />
+                                  <span className="text-[11px] text-[#64748B]">min</span>
+                                </div>
+
+                                {/* Reorder lesson */}
+                                <div className="flex items-center gap-0.5">
+                                  <button
+                                    type="button"
+                                    title="Move lesson up"
+                                    disabled={lesIdx === 0 || reorderLessonsMutation.isPending}
+                                    onClick={() => handleMoveLesson(mod.id, lesIdx, 'up')}
+                                    className="p-1 text-[#64748B] hover:text-[#0047CC] disabled:opacity-25 disabled:cursor-not-allowed rounded-md hover:bg-slate-100 transition-colors cursor-pointer"
+                                  >
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                      <polyline points="18 15 12 9 6 15" />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title="Move lesson down"
+                                    disabled={lesIdx === (mod.lessons || []).length - 1 || reorderLessonsMutation.isPending}
+                                    onClick={() => handleMoveLesson(mod.id, lesIdx, 'down')}
+                                    className="p-1 text-[#64748B] hover:text-[#0047CC] disabled:opacity-25 disabled:cursor-not-allowed rounded-md hover:bg-slate-100 transition-colors cursor-pointer"
+                                  >
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                      <polyline points="6 9 12 15 18 9" />
+                                    </svg>
+                                  </button>
+                                </div>
+
+                                {/* Edit content modal */}
+                                <button
+                                  type="button"
+                                  title="Edit lesson details"
+                                  onClick={() => setEditingLesson({ moduleId: mod.id, lesson: les })}
+                                  className="p-1.5 text-[#64748B] hover:text-[#0047CC] hover:bg-[#EBF6FF] rounded-lg transition-colors cursor-pointer"
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M12 20h9" />
+                                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                  </svg>
+                                </button>
+
+                                {/* Remove lesson */}
+                                <button
+                                  type="button"
+                                  title="Delete lesson"
+                                  onClick={() => handleDeleteLesson(mod.id, les.id)}
+                                  className="p-1.5 text-[#94A3B8] hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
 
                         <button
                           type="button"
@@ -2544,7 +3150,7 @@ export const CreateCoursePage: React.FC = () => {
                     {/* Base Price */}
                     <div>
                       <label className="block text-xs font-bold text-[#1E293B] mb-1.5">
-                        Tier 1 Baseline Price (USD) <span className="text-[#0047CC]">*</span>
+                        Baseline Price (USD) <span className="text-[#0047CC]">*</span>
                       </label>
                       <div className="relative">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#64748B]">
@@ -2574,7 +3180,7 @@ export const CreateCoursePage: React.FC = () => {
                         />
                       </div>
                       <p className="text-[11px] text-[#64748B] mt-1.5">
-                        High Income Country (Tier 1) standard rate.
+                        High Income Country standard rate.
                       </p>
                     </div>
 
@@ -2595,15 +3201,15 @@ export const CreateCoursePage: React.FC = () => {
                   <div className="pt-4 border-t border-[#E2E8F0]">
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <h4 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider">
+                        <span className="text-[12px] font-semibold tracking-wider uppercase text-slate-500 block">
                           Global Pricing Engine Breakdown
-                        </h4>
-                        <p className="text-[11px] text-[#64748B] mt-0.5">
+                        </span>
+                        <p className="text-[13px] text-slate-600 mt-0.5">
                           Real-time localized price tiers computed by the VORA Pricing Engine
                         </p>
                       </div>
                       {isPricingLoading && (
-                        <span className="text-[11px] font-bold text-[#0047CC] animate-pulse">
+                        <span className="text-xs font-semibold text-[#0047CC] animate-pulse">
                           Fetching live rates…
                         </span>
                       )}
@@ -2614,7 +3220,7 @@ export const CreateCoursePage: React.FC = () => {
                         {[1, 2, 3].map((n) => (
                           <div
                             key={n}
-                            className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-4 shadow-2xs animate-pulse"
+                            className="bg-slate-50 border border-slate-200 rounded-xl p-4.5 shadow-2xs animate-pulse"
                           >
                             <div className="h-3 w-24 bg-slate-200 rounded mb-2.5"></div>
                             <div className="h-7 w-20 bg-slate-200 rounded mb-2"></div>
@@ -2623,30 +3229,40 @@ export const CreateCoursePage: React.FC = () => {
                         ))}
                       </div>
                     ) : isPricingError ? (
-                      <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-xs text-rose-700">
-                        Unable to connect to VORA Pricing Engine. Please check your baseline price.
+                      <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-xs text-rose-700 font-semibold flex items-center gap-2">
+                        <XCircleIcon size={16} className="text-rose-600 shrink-0" />
+                        <span>Unable to connect to VORA Pricing Engine. Please check your baseline price.</span>
                       </div>
                     ) : normalizedPricingTiers.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                         {normalizedPricingTiers.map((tier) => (
                           <div
                             key={tier.id}
-                            className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl p-4 shadow-2xs hover:border-[#0047CC] transition-colors"
+                            className="bg-slate-50 border border-slate-200 rounded-xl p-4.5 shadow-2xs hover:border-slate-300 transition-colors"
                           >
-                            <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#0047CC] mb-1.5">
-                              {tier.badge}
+                            <div className="flex items-center justify-between gap-1 mb-2">
+                              <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                <GlobeIcon size={14} className="text-slate-400 shrink-0" />
+                                {tier.tierCode}
+                              </span>
+                              <span className="text-[10px] font-medium text-slate-500 bg-slate-200/70 px-1.5 py-0.5 rounded">
+                                Computed Parity
+                              </span>
                             </div>
-                            <div className="text-2xl font-black text-[#0F172A]">
+                            <div className="text-2xl font-bold tabular-nums text-slate-900 tracking-tight">
                               {tier.priceDisplay}
                             </div>
-                            <div className="text-[11px] text-[#64748B] mt-1 truncate">
+                            <div className="text-xs font-semibold text-slate-800 mt-1 truncate">
+                              {tier.badge}
+                            </div>
+                            <div className="text-[11px] text-slate-500 mt-0.5 truncate">
                               {tier.subtext}
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="bg-[#F8FAFC] border border-dashed border-[#CBD5E1] rounded-xl p-6 text-center text-xs text-[#64748B]">
+                      <div className="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-6 text-center text-xs text-slate-500">
                         Enter a baseline tuition above to compute equitable regional tiers.
                       </div>
                     )}
@@ -2661,7 +3277,7 @@ export const CreateCoursePage: React.FC = () => {
             {currentStep === 5 && (
               <div className="animate-in fade-in duration-200 space-y-6">
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#0047CC]">
+                  <span className="text-[12px] font-semibold tracking-wider uppercase text-slate-500">
                     Step 5 of 6
                   </span>
                   <h2 className="text-2xl font-black text-[#0F172A] tracking-tight mt-0.5">
@@ -2676,7 +3292,7 @@ export const CreateCoursePage: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-[#1E293B] mb-1.5">
-                        Certificate Standard
+                        Certificate Standard <span className="text-[#0047CC]">*</span>
                       </label>
                       <Select
                         hideLabel
@@ -2687,11 +3303,14 @@ export const CreateCoursePage: React.FC = () => {
                           setCertificateTemplate(e.target.value as CertificateTemplate)
                         }
                       />
+                      <p className="text-[13px] text-slate-600 mt-1.5">
+                        Template format and verification architecture for issued learner credentials.
+                      </p>
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-[#1E293B] mb-1.5">
-                        CPD Accreditation Status
+                        CPD Accreditation Status <span className="text-[#0047CC]">*</span>
                       </label>
                       <Select
                         hideLabel
@@ -2700,13 +3319,16 @@ export const CreateCoursePage: React.FC = () => {
                         className="!py-2.5 !rounded-xl !border-[#CBD5E1] text-sm text-[#0F172A]"
                         onChange={(e) => setIsCpdAccredited(e.target.value === 'yes')}
                       />
+                      <p className="text-[13px] text-slate-600 mt-1.5">
+                        Specify whether this course satisfies Continuing Professional Development criteria.
+                      </p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-[#1E293B] mb-1.5">
-                        Estimated Contact Hours
+                        Estimated Contact Hours <span className="text-slate-400 font-normal text-xs ml-1">(Optional)</span>
                       </label>
                       <input
                         type="number"
@@ -2715,38 +3337,52 @@ export const CreateCoursePage: React.FC = () => {
                         value={contactHours}
                         onChange={(e) => setContactHours(e.target.value)}
                         placeholder="e.g. 8.3"
-                        className="w-full bg-white border border-[#CBD5E1] rounded-xl px-4 py-2.5 text-sm text-[#0F172A] outline-none focus:border-[#0047CC] transition-all"
+                        className="w-full bg-white border border-[#CBD5E1] rounded-xl px-4 py-2.5 text-sm text-[#0F172A] placeholder:text-slate-400 outline-none focus:border-[#0047CC] focus:ring-3 focus:ring-[#0047CC]/15 transition-all"
                       />
-                      <p className="text-[11px] text-[#64748B] mt-1.5">
-                        CEUs = contact hours ÷ 10 (University of Washington metric).
+                      <p className="text-[13px] text-slate-600 mt-1.5">
+                        CEUs = contact hours ÷ 10 (University of Washington global health metric).
                       </p>
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-[#1E293B] mb-1.5">
-                        Accreditation Body
+                        Accreditation Body <span className="text-slate-400 font-normal text-xs ml-1">(Optional)</span>
                       </label>
                       <input
                         type="text"
                         value={cpdBody}
                         onChange={(e) => setCpdBody(e.target.value)}
                         placeholder="e.g. VORA Global Health Accreditation Board"
-                        className="w-full bg-white border border-[#CBD5E1] rounded-xl px-4 py-2.5 text-sm text-[#0F172A] outline-none focus:border-[#0047CC] transition-all"
+                        className="w-full bg-white border border-[#CBD5E1] rounded-xl px-4 py-2.5 text-sm text-[#0F172A] placeholder:text-slate-400 outline-none focus:border-[#0047CC] focus:ring-3 focus:ring-[#0047CC]/15 transition-all"
                       />
+                      <p className="text-[13px] text-slate-600 mt-1.5">
+                        Authorizing medical board, global health faculty, or institutional council.
+                      </p>
                     </div>
                   </div>
 
-                  {/* Executive Certificate Preview Card (Branded Navy/Blue) */}
+                  {/* Executive Certificate Preview Card (Branded VORA Hero Style) */}
                   <div className="pt-3">
-                    <label className="block text-xs font-bold text-[#1E293B] mb-2.5">
-                      Learner Credential Preview
-                    </label>
-                    <div className="bg-gradient-to-br from-[#0F1E36] via-[#15284F] to-[#1E3A8A] rounded-2xl p-7 sm:p-9 text-white relative overflow-hidden shadow-md border border-blue-900/40">
+                    <div className="flex items-center justify-between mb-2.5">
+                      <label className="text-xs font-bold text-[#1E293B]">
+                        Learner Credential Preview
+                      </label>
+                      <span className="bg-slate-100 text-slate-700 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-slate-200">
+                        Preview
+                      </span>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-[#18234B] via-[#283979] to-[#0047CC] rounded-2xl p-7 sm:p-9 text-white relative overflow-hidden shadow-md border border-blue-900/40">
                       <div className="absolute right-[-20px] top-[-20px] w-48 h-48 rounded-full bg-white/5 pointer-events-none" />
-                      <div className="text-[10px] font-extrabold uppercase tracking-widest text-blue-200 mb-2">
-                        Certificate of Completion
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-[11px] font-bold uppercase tracking-widest text-blue-200">
+                          Certificate of Completion
+                        </div>
+                        <span className="bg-white/20 backdrop-blur-xs text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
+                          Preview
+                        </span>
                       </div>
-                      <div className="text-xl sm:text-2xl font-bold tracking-tight mb-2 text-white">
+                      <div className="text-xl sm:text-2xl font-bold tracking-tight mb-2 text-white break-words leading-tight max-w-full">
                         {title.trim() || 'Your Course Title'}
                       </div>
                       <div className="text-xs sm:text-sm text-blue-100/80 mb-5">
@@ -2756,17 +3392,18 @@ export const CreateCoursePage: React.FC = () => {
                         </span>
                       </div>
                       <div className="flex flex-wrap gap-2.5">
-                        <span className="bg-white/10 border border-white/20 text-white text-[11px] font-bold px-3 py-1 rounded-md">
+                        <span className="bg-white/10 border border-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-xl">
                           VORA Global
                         </span>
                         {isCpdAccredited && (
-                          <span className="bg-white/10 border border-white/20 text-white text-[11px] font-bold px-3 py-1 rounded-md">
+                          <span className="bg-white/10 border border-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-xl">
                             CPD Accredited
                           </span>
                         )}
                         {certificateTemplate === 'BLOCKCHAIN' && (
-                          <span className="bg-white/10 border border-white/20 text-white text-[11px] font-bold px-3 py-1 rounded-md">
-                            🔗 Blockchain Verified
+                          <span className="bg-white/10 border border-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-xl inline-flex items-center gap-1.5">
+                            <AwardIcon size={13} className="text-blue-200" />
+                            <span>Blockchain Verified</span>
                           </span>
                         )}
                       </div>
@@ -2782,7 +3419,7 @@ export const CreateCoursePage: React.FC = () => {
             {currentStep === 6 && (
               <div className="animate-in fade-in duration-200 space-y-6">
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#0047CC]">
+                  <span className="text-[12px] font-semibold tracking-wider uppercase text-slate-500">
                     Step 6 of 6
                   </span>
                   <h2 className="text-2xl font-black text-[#0F172A] tracking-tight mt-0.5">
@@ -2794,71 +3431,108 @@ export const CreateCoursePage: React.FC = () => {
                 </div>
 
                 <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 sm:p-7 shadow-xs space-y-6">
-                  {/* Settings Grid */}
+                  {/* Settings Grid (Truly disabled coming-soon selects with lock icons) */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-xs font-bold text-[#1E293B]">Enrollment Mode</label>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-[#0047CC]">
+                        <label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                          <LockRectIcon size={13} className="text-slate-400" />
+                          Enrollment Mode
+                        </label>
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
                           Coming Soon
                         </span>
                       </div>
                       <Select
                         hideLabel
+                        disabled={true}
                         value={enrollmentMode}
                         options={ENROLLMENT_MODE_OPTIONS}
-                        className="!py-2.5 !rounded-xl !border-[#CBD5E1] text-sm text-[#0F172A] !bg-[#F8FAFC]"
+                        className="!py-2.5 !rounded-xl !border-slate-200 text-sm !text-slate-400 !bg-slate-100/70 cursor-not-allowed"
                         onChange={(e) => setEnrollmentMode(e.target.value)}
                       />
                     </div>
 
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-xs font-bold text-[#1E293B]">Delivery Schedule</label>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-[#0047CC]">
+                        <label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                          <LockRectIcon size={13} className="text-slate-400" />
+                          Delivery Schedule
+                        </label>
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
                           Coming Soon
                         </span>
                       </div>
                       <Select
                         hideLabel
+                        disabled={true}
                         value={deliveryMode}
                         options={DELIVERY_MODE_OPTIONS}
-                        className="!py-2.5 !rounded-xl !border-[#CBD5E1] text-sm text-[#0F172A] !bg-[#F8FAFC]"
+                        className="!py-2.5 !rounded-xl !border-slate-200 text-sm !text-slate-400 !bg-slate-100/70 cursor-not-allowed"
                         onChange={(e) => setDeliveryMode(e.target.value)}
                       />
                     </div>
 
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-xs font-bold text-[#1E293B]">Discussion Space</label>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-[#0047CC]">
+                        <label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                          <LockRectIcon size={13} className="text-slate-400" />
+                          Discussion Space
+                        </label>
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
                           Coming Soon
                         </span>
                       </div>
                       <Select
                         hideLabel
+                        disabled={true}
                         value={discussionForum}
                         options={DISCUSSION_FORUM_OPTIONS}
-                        className="!py-2.5 !rounded-xl !border-[#CBD5E1] text-sm text-[#0F172A] !bg-[#F8FAFC]"
+                        className="!py-2.5 !rounded-xl !border-slate-200 text-sm !text-slate-400 !bg-slate-100/70 cursor-not-allowed"
                         onChange={(e) => setDiscussionForum(e.target.value)}
                       />
                     </div>
 
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-xs font-bold text-[#1E293B]">Capstone Review</label>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-[#0047CC]">
+                        <label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                          <LockRectIcon size={13} className="text-slate-400" />
+                          Capstone Review
+                        </label>
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
                           Coming Soon
                         </span>
                       </div>
                       <Select
                         hideLabel
+                        disabled={true}
                         value={peerReview}
                         options={PEER_REVIEW_OPTIONS}
-                        className="!py-2.5 !rounded-xl !border-[#CBD5E1] text-sm text-[#0F172A] !bg-[#F8FAFC]"
+                        className="!py-2.5 !rounded-xl !border-slate-200 text-sm !text-slate-400 !bg-slate-100/70 cursor-not-allowed"
                         onChange={(e) => setPeerReview(e.target.value)}
                       />
                     </div>
+                  </div>
+
+                  {/* Persisted Enrollment Cap Setting */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <UsersIcon size={14} className="text-[#0047CC]" />
+                        <span>Enrollment Capacity (Learner Limit)</span>
+                      </label>
+                      <span className="text-[11px] text-slate-500">
+                        Optional limit — leave empty for unlimited enrollment
+                      </span>
+                    </div>
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 50 (leave empty for open enrollment)"
+                      value={enrollmentCap}
+                      onChange={(e) => setEnrollmentCap(e.target.value)}
+                      className="w-full bg-white border border-[#CBD5E1] rounded-xl px-4 py-2.5 text-xs text-[#0F172A] outline-none focus:ring-2 focus:ring-[#0047CC]/20 focus:border-[#0047CC] transition-all"
+                    />
                   </div>
 
                   {/* Course Slug URL */}
@@ -2867,14 +3541,15 @@ export const CreateCoursePage: React.FC = () => {
                       Platform URL Routing
                     </label>
                     <div className="flex items-center">
-                      <span className="bg-[#F1F5F9] border border-r-0 border-[#CBD5E1] rounded-l-xl px-4 py-2.5 text-xs text-[#64748B] font-mono">
+                      <span className="bg-[#F1F5F9] border border-r-0 border-[#CBD5E1] rounded-l-xl px-4 py-2.5 text-xs text-[#64748B] font-mono select-none">
                         vora.ai/courses/
                       </span>
                       <input
                         type="text"
                         readOnly
                         value={seoSlugPreview || courseId || 'your-course'}
-                        className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-r-xl px-4 py-2.5 text-sm text-[#0F172A] font-mono outline-none cursor-not-allowed"
+                        title={`vora.ai/courses/${seoSlugPreview || courseId || 'your-course'}`}
+                        className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-r-xl px-4 py-2.5 text-sm text-[#0F172A] font-mono outline-none focus:ring-2 focus:ring-[#0047CC]/20 focus:border-[#0047CC] transition-all cursor-default"
                       />
                     </div>
                   </div>
@@ -2882,14 +3557,14 @@ export const CreateCoursePage: React.FC = () => {
                   {/* Backend Pre-Publish Checklist */}
                   <div className="pt-4 border-t border-[#E2E8F0]">
                     <div className="flex items-center justify-between mb-3.5">
-                      <h4 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider">
+                      <span className="text-[12px] font-semibold tracking-wider uppercase text-slate-500">
                         Pre-Publish Verification
-                      </h4>
+                      </span>
                       <span
-                        className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                        className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
                           isPublishReady
-                            ? 'bg-blue-100 text-[#0047CC]'
-                            : 'bg-amber-100 text-amber-800'
+                            ? 'bg-blue-50 text-[#0047CC] border-blue-200'
+                            : 'bg-amber-50 text-amber-800 border-amber-200'
                         }`}
                       >
                         {isPublishReady ? 'Ready for Publish' : 'Requirements Pending'}
@@ -2899,80 +3574,134 @@ export const CreateCoursePage: React.FC = () => {
                     <div className="space-y-2 text-xs">
                       {(builderData?.publishChecklist?.items || [
                         {
+                          id: 'title',
                           key: 'title',
                           label: 'Course title configured (min 3 characters)',
-                          passed: title.trim().length >= 3,
-                          stepNumber: 1,
+                          ok: title.trim().length >= 3,
+                          required: true,
                         },
                         {
+                          id: 'description',
                           key: 'description',
                           label: 'Overview description written (min 20 characters)',
-                          passed: description.trim().length >= 20,
-                          stepNumber: 1,
+                          ok: description.trim().length >= 20,
+                          required: true,
                         },
                         {
+                          id: 'format',
                           key: 'format',
                           label: 'Delivery format selected',
-                          passed: Boolean(format),
-                          stepNumber: 2,
+                          ok: Boolean(format),
+                          required: true,
                         },
                         {
+                          id: 'category',
+                          key: 'category',
+                          label: 'Category selected',
+                          ok: Boolean(category && (category !== 'Others' || customCategory.trim())),
+                          required: true,
+                        },
+                        {
+                          id: 'difficulty',
+                          key: 'difficulty',
+                          label: 'Difficulty level chosen',
+                          ok: Boolean(difficultyLevel),
+                          required: true,
+                        },
+                        {
+                          id: 'curriculum',
                           key: 'curriculum',
                           label: 'At least 1 curriculum module with titled lessons',
-                          passed: modules.length > 0 && modules.some((m) => (m.lessons || []).length > 0),
-                          stepNumber: 3,
+                          ok:
+                            modules.length > 0 &&
+                            modules.some((m) => (m.lessons || []).length > 0) &&
+                            modules.every((m) =>
+                              (m.lessons || []).every(
+                                (l) =>
+                                  l.title.trim().length > 0 &&
+                                  (l.contentType !== 'VIDEO' ||
+                                    Boolean(
+                                      (l.contentS3Key || l.videoS3Key) &&
+                                        (!((l.contentS3Key || l.videoS3Key)?.startsWith('http')) ||
+                                          isGoogleDriveUrl(l.contentS3Key || l.videoS3Key))
+                                    ))
+                              )
+                            ),
+                          required: true,
                         },
                         {
+                          id: 'pricing',
                           key: 'pricing',
                           label: 'Baseline price established',
-                          passed: parsedPrice >= 0,
-                          stepNumber: 4,
+                          ok: parsedPrice >= 0,
+                          required: true,
+                        },
+                        {
+                          id: 'thumbnail',
+                          key: 'thumbnail',
+                          label: 'Course card thumbnail image (Recommended)',
+                          ok: Boolean(thumbnailPreview || thumbnailS3Key || builderData?.thumbnailS3Key || builderData?.coverImageS3Key),
+                          required: false,
                         },
                       ]).map((item: any, i: number) => {
-                        const labelLower = (item.label || '').toLowerCase();
-                        const isPassed = Boolean(
-                          item.passed ||
-                          (item as any).isPassed ||
-                          (item as any).completed ||
-                          (item as any).status === 'PASSED' ||
-                          (labelLower.includes('title') && title.trim().length >= 3) ||
-                          (labelLower.includes('description') && description.trim().length >= 20) ||
-                          (labelLower.includes('format') && Boolean(format)) ||
-                          (labelLower.includes('category') && Boolean(category)) ||
-                          (labelLower.includes('difficulty') && Boolean(difficultyLevel)) ||
-                          (labelLower.includes('module') && modules.length > 0 && modules.some((m) => (m.lessons || []).length > 0)) ||
-                          (labelLower.includes('pricing') && basePrice !== '' && !isNaN(Number(basePrice)) && Number(basePrice) >= 0) ||
-                          (labelLower.includes('thumbnail') && Boolean(thumbnailPreview || thumbnailS3Key || builderData?.thumbnailS3Key || builderData?.coverImageS3Key))
-                        );
-
-                        const stepNum = item.stepNumber || (
-                          labelLower.includes('title') || labelLower.includes('description') || labelLower.includes('category') || labelLower.includes('difficulty') ? 1 :
-                          labelLower.includes('format') || labelLower.includes('thumbnail') ? 2 :
-                          labelLower.includes('module') || labelLower.includes('lesson') ? 3 :
-                          labelLower.includes('pricing') ? 4 :
-                          labelLower.includes('certificate') ? 5 : 1
-                        );
+                        const itemId = (item.id || item.key || '').toLowerCase();
+                        const isThumbnail = itemId === 'thumbnail';
+                        const isRequired = !isThumbnail && item.required !== false && !item.label?.toLowerCase().includes('recommended');
+                        const isPassed = item.ok !== undefined
+                          ? Boolean(item.ok)
+                          : item.passed !== undefined
+                            ? Boolean(item.passed)
+                            : false;
 
                         return (
                           <div
-                            key={item.key || i}
-                            className="flex items-center justify-between py-2.5 border-b border-[#F1F5F9] last:border-b-0"
+                            key={item.id || item.key || i}
+                            className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-b-0"
                           >
                             <div className="flex items-center gap-2.5">
-                              <span
-                                className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                                  isPassed
-                                    ? 'bg-[#0047CC] text-white shadow-2xs'
-                                    : 'border border-[#CBD5E1] text-transparent'
-                                }`}
-                              >
-                                {isPassed ? '✓' : ''}
-                              </span>
-                              <span
-                                className={isPassed ? 'text-[#0F172A] font-semibold' : 'text-[#64748B]'}
-                              >
-                                {item.label}
-                              </span>
+                              {isPassed ? (
+                                <CheckCircleIcon size={16} className="text-[#0047CC] shrink-0" />
+                              ) : isRequired ? (
+                                <XCircleIcon size={16} className="text-rose-500 shrink-0" />
+                              ) : (
+                                <div className="w-4 h-4 rounded-full border border-amber-400 bg-amber-50 shrink-0 flex items-center justify-center text-[10px] text-amber-700 font-bold">
+                                  !
+                                </div>
+                              )}
+                              <div>
+                                <span
+                                  className={
+                                    isPassed
+                                      ? 'text-slate-800 font-semibold'
+                                      : isRequired
+                                      ? 'text-rose-700 font-medium'
+                                      : 'text-slate-700 font-normal'
+                                  }
+                                >
+                                  {item.label}
+                                </span>
+                                {isThumbnail && !isPassed && (
+                                  <span className="block text-[10px] text-amber-600 font-medium mt-0.5">
+                                    Recommended: missing thumbnail will not block publishing.
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="shrink-0">
+                              {isPassed ? (
+                                <span className="text-[10px] font-bold text-[#0047CC] bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                                  Passed
+                                </span>
+                              ) : isRequired ? (
+                                <span className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+                                  Required
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                                  Optional
+                                </span>
+                              )}
                             </div>
                           </div>
                         );
@@ -3014,51 +3743,58 @@ export const CreateCoursePage: React.FC = () => {
               )}
             </div>
 
-            <div className="flex items-center gap-2.5">
-              <Button
-                variant="outline"
-                fullWidth={false}
-                pill={true}
-                onClick={handleSaveDraft}
-                isLoading={isSavingDraft}
-                loadingLabel="Saving Draft…"
-                disabled={isAnyLoadingOrUploading}
-                className="px-4 min-h-[38px] text-xs font-bold border-[#CBD5E1] text-[#334155] hover:border-[#0047CC] hover:text-[#0047CC] disabled:opacity-40 disabled:cursor-not-allowed bg-white cursor-pointer shadow-2xs"
-              >
-                Save Draft
-              </Button>
-
-              {currentStep < 6 ? (
+            <div className="flex flex-col items-end gap-1.5">
+              <div className="flex items-center gap-2.5">
                 <Button
-                  onClick={handleNextStep}
-                  isLoading={isNavigatingNext}
-                  loadingLabel="Proceeding…"
+                  variant="outline"
+                  fullWidth={false}
+                  pill={false}
+                  onClick={handleSaveDraft}
+                  isLoading={isSavingDraft}
+                  loadingLabel="Saving & Exiting…"
                   disabled={isAnyLoadingOrUploading}
-                  fullWidth={false}
-                  pill={true}
-                  className="px-6 min-h-[38px] bg-[#0047CC] hover:bg-[#0037a3] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+                  className="px-4 min-h-[38px] !rounded-xl text-xs font-bold border-[#CBD5E1] text-[#334155] hover:border-[#0047CC] hover:text-[#0047CC] disabled:opacity-40 disabled:cursor-not-allowed bg-white cursor-pointer shadow-2xs"
                 >
-                  <span>Continue</span>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
+                  Save Draft
                 </Button>
-              ) : (
-                <Button
-                  onClick={handleOpenPublish}
-                  isLoading={publishMutation.isPending}
-                  loadingLabel="Publishing…"
-                  disabled={!isPublishReady || isAnyLoadingOrUploading}
-                  fullWidth={false}
-                  pill={true}
-                  className="px-6 min-h-[38px] bg-[#0047CC] hover:bg-[#0037a3] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98]"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M22 2L11 13" />
-                    <path d="M22 2L15 22 11 13 2 9l20-7z" />
-                  </svg>
-                  <span>Publish Course</span>
-                </Button>
+
+                {currentStep < 6 ? (
+                  <Button
+                    onClick={handleNextStep}
+                    isLoading={isNavigatingNext}
+                    loadingLabel="Proceeding…"
+                    disabled={isAnyLoadingOrUploading}
+                    fullWidth={false}
+                    pill={false}
+                    className="px-6 min-h-[38px] !rounded-xl bg-[#0047CC] hover:bg-[#0037a3] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+                  >
+                    <span>Continue</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleOpenPublish}
+                    isLoading={publishMutation.isPending}
+                    loadingLabel="Publishing…"
+                    disabled={!isPublishReady || isAnyLoadingOrUploading}
+                    fullWidth={false}
+                    pill={false}
+                    className="px-6 min-h-[38px] !rounded-xl bg-[#0047CC] hover:bg-[#0037a3] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M22 2L11 13" />
+                      <path d="M22 2L15 22 11 13 2 9l20-7z" />
+                    </svg>
+                    <span>Publish Course</span>
+                  </Button>
+                )}
+              </div>
+              {currentStep === 6 && !isPublishReady && (
+                <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200/80 rounded-lg px-2.5 py-1 text-right">
+                  Publish is locked until all required pre-publish checklist criteria are fulfilled.
+                </p>
               )}
             </div>
           </div>
@@ -3068,27 +3804,33 @@ export const CreateCoursePage: React.FC = () => {
       {/* ── EDIT LESSON CONTENT MODAL ── */}
       {editingLesson && (
         <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={() => setEditingLesson(null)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto animate-in fade-in duration-200"
+          onClick={() => !isSavingLesson && !isUploadingLessonVideo && setEditingLesson(null)}
         >
           <div
-            className="bg-white rounded-3xl w-full max-w-lg p-6 shadow-2xl relative"
+            className="bg-white rounded-2xl w-full max-w-lg shadow-2xl relative flex flex-col max-h-[calc(100vh-2.5rem)] sm:max-h-[calc(100vh-4rem)] my-auto overflow-hidden border border-slate-100"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3.5 border-b border-[#E2E8F0] mb-4">
-              <h3 className="text-base font-bold text-[#0F172A]">Lesson Configuration</h3>
+            {/* Modal Header (pinned at top) */}
+            <div className="flex items-start justify-between p-5 pb-3.5 border-b border-slate-200 shrink-0 bg-white">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Lesson Configuration</h3>
+                <p className="text-[12px] text-slate-500 mt-0.5">Configure title, media delivery format, and accessibility settings</p>
+              </div>
               <button
                 type="button"
+                disabled={isSavingLesson || isUploadingLessonVideo}
                 onClick={() => setEditingLesson(null)}
-                className="p-1 text-[#94A3B8] hover:text-[#0F172A] rounded-lg cursor-pointer"
+                className="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-4 text-xs">
+            {/* Modal Scrollable Body */}
+            <div className="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-4 text-xs">
               <div>
-                <label className="block font-bold text-[#1E293B] mb-1">Title</label>
+                <label className="block font-bold text-slate-800 mb-1">Title</label>
                 <input
                   type="text"
                   value={editingLesson.lesson.title}
@@ -3098,17 +3840,17 @@ export const CreateCoursePage: React.FC = () => {
                       lesson: { ...editingLesson.lesson, title: e.target.value },
                     })
                   }
-                  className="w-full bg-white border border-[#CBD5E1] rounded-xl px-3.5 py-2 text-xs text-[#0F172A] outline-none focus:border-[#0047CC]"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#0047CC] focus:ring-2 focus:ring-[#0047CC]/15"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-[#1E293B] mb-1">Content Delivery Type</label>
+                <label className="block font-bold text-slate-800 mb-1">Content Delivery Type</label>
                 <Select
                   hideLabel
                   value={editingLesson.lesson.contentType}
                   options={LESSON_TYPE_MODAL_OPTIONS}
-                  className="!py-2 !rounded-xl !border-[#CBD5E1] text-xs text-[#0F172A]"
+                  className="!py-2.5 !rounded-xl !border-slate-300 text-xs text-slate-900 focus:!border-[#0047CC]"
                   onChange={(e) =>
                     setEditingLesson({
                       ...editingLesson,
@@ -3122,115 +3864,265 @@ export const CreateCoursePage: React.FC = () => {
               </div>
 
               {editingLesson.lesson.contentType === 'VIDEO' && (
-                <div className="space-y-2">
-                  <label className="block font-bold text-[#1E293B]">
-                    Lesson Video / Media Asset
-                  </label>
-                  {(editingLesson.lesson.contentS3Key || editingLesson.lesson.videoS3Key) ? (
-                    <div className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-[#0047CC] truncate max-w-[280px]">
-                          Key: {editingLesson.lesson.contentS3Key || editingLesson.lesson.videoS3Key}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingLesson({
-                              ...editingLesson,
-                              lesson: {
-                                ...editingLesson.lesson,
-                                contentS3Key: null,
-                                videoS3Key: null,
-                              },
-                            });
-                          }}
-                          className="text-[11px] text-rose-600 hover:underline cursor-pointer"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                      {isYouTubeUrl(editingLesson.lesson.contentS3Key || editingLesson.lesson.videoS3Key) ? (
-                        <div className="aspect-video w-full rounded-lg overflow-hidden bg-black">
-                          <iframe
-                            src={getYouTubeEmbedUrl(editingLesson.lesson.contentS3Key || editingLesson.lesson.videoS3Key) || ''}
-                            title="Lesson Preview"
-                            className="w-full h-full"
-                            allowFullScreen
-                          />
-                        </div>
-                      ) : mediaSrc(editingLesson.lesson.contentS3Key || editingLesson.lesson.videoS3Key) ? (
-                        <video
-                          src={mediaSrc(editingLesson.lesson.contentS3Key || editingLesson.lesson.videoS3Key) || ''}
-                          controls
-                          className="aspect-video w-full rounded-lg bg-black object-cover"
-                        />
-                      ) : null}
-                    </div>
-                  ) : null}
+                <div className="space-y-3 pt-1">
+                  <div className="flex items-center justify-between">
+                    <label className="block font-bold text-slate-800">
+                      Lesson Video / Media Asset
+                    </label>
+                    <span className="text-[11px] text-slate-500">MP4, WebM, MOV or Streaming Link</span>
+                  </div>
 
-                  <div className="flex flex-col gap-2">
-                    <label className="flex items-center justify-center gap-2 border border-dashed border-[#CBD5E1] hover:border-[#0047CC] rounded-xl p-3 text-center cursor-pointer transition-colors bg-[#F8FAFC]">
-                      <input
-                        type="file"
-                        accept="video/*"
-                        className="hidden"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file || !courseId) return;
-                          const toastId = toast.loading('Uploading lesson video…');
-                          try {
-                            const res: any = await uploadMediaMutation.mutateAsync({
-                              file,
-                              courseId,
-                            });
-                            const storageKey = res?.storageKey || res?.s3Key;
-                            if (storageKey) {
+                  {editingVideoKey && isVideoValid && !isReplacingLessonVideo ? (
+                    <div className="border border-slate-200 rounded-xl p-3.5 space-y-3 bg-slate-50">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 bg-blue-100 text-[#0047CC]">
+                            <CheckCircleIcon size={14} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold truncate text-slate-800">
+                              {isEditingGoogleDrive
+                                ? 'Google Drive Video Linked'
+                                : 'Attached Lesson Video Asset (Cloudinary)'}
+                            </div>
+                            <div className="text-[11px] text-slate-500 truncate">
+                              {editingVideoKey}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            disabled={isUploadingLessonVideo || isSavingLesson}
+                            onClick={() => setIsReplacingLessonVideo(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:text-[#0047CC] hover:border-blue-200 hover:bg-blue-50/50 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                            </svg>
+                            <span>Replace</span>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isUploadingLessonVideo || isSavingLesson}
+                            onClick={() => {
                               setEditingLesson({
                                 ...editingLesson,
                                 lesson: {
                                   ...editingLesson.lesson,
-                                  contentS3Key: storageKey,
-                                  videoS3Key: storageKey,
+                                  contentS3Key: null,
+                                  videoS3Key: null,
                                 },
                               });
-                              toast.success('Video uploaded. Remember to save changes.', { id: toastId });
-                            }
-                          } catch (err: any) {
-                            toast.error(err?.message || 'Failed to upload video.', { id: toastId });
-                          }
-                        }}
-                      />
-                      <span className="text-xs font-semibold text-[#0047CC]">
-                        📁 Upload Video File (MP4)
-                      </span>
-                    </label>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-gray-400">or YouTube / Video URL:</span>
-                      <input
-                        type="text"
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        value={editingLesson.lesson.contentS3Key || editingLesson.lesson.videoS3Key || ''}
-                        onChange={(e) => {
-                          setEditingLesson({
-                            ...editingLesson,
-                            lesson: {
-                              ...editingLesson.lesson,
-                              contentS3Key: e.target.value.trim() || null,
-                              videoS3Key: e.target.value.trim() || null,
-                            },
-                          });
-                        }}
-                        className="flex-1 bg-white border border-[#CBD5E1] rounded-lg px-2.5 py-1 text-xs text-[#0F172A] outline-none focus:border-[#0047CC]"
-                      />
+                              setGoogleDriveInputVal('');
+                              setIsReplacingLessonVideo(false);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-600 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                          >
+                            <TrashIcon size={12} />
+                            <span>Remove</span>
+                          </button>
+                        </div>
+                      </div>
+                      {isEditingGoogleDrive ? (
+                        <div className="aspect-video w-full rounded-xl overflow-hidden bg-black shadow-xs border border-slate-200">
+                          <iframe
+                            src={getGoogleDriveEmbedUrl(editingVideoKey) || ''}
+                            title="Google Drive Lesson Preview"
+                            className="w-full h-full"
+                            allowFullScreen
+                            allow="autoplay"
+                          />
+                        </div>
+                      ) : (!isEditingVideoHttp && mediaSrc(editingVideoKey)) ? (
+                        <div className="relative aspect-video w-full rounded-xl bg-slate-900 overflow-hidden shadow-xs border border-slate-200">
+                          <video
+                            src={mediaSrc(editingVideoKey) || ''}
+                            controls
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : null}
                     </div>
-                  </div>
+                  ) : null}
+
+                  {(!editingVideoKey || !isVideoValid || isReplacingLessonVideo) ? (
+                    <div className="flex flex-col gap-2.5">
+                      {isReplacingLessonVideo && (
+                        <div className="flex items-center justify-between p-2.5 bg-blue-50/70 border border-blue-200/80 rounded-xl text-xs font-medium text-slate-700">
+                          <span className="flex items-center gap-1.5 text-[#0047CC] font-semibold">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                            </svg>
+                            <span>Replacing current video asset</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setIsReplacingLessonVideo(false)}
+                            className="text-xs text-slate-600 hover:text-slate-900 font-semibold underline cursor-pointer"
+                          >
+                            Cancel (keep current)
+                          </button>
+                        </div>
+                      )}
+
+                      <label className={`group flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all ${
+                        isUploadingLessonVideo
+                          ? 'border-[#0047CC] bg-blue-50/50'
+                          : 'border-slate-300 hover:border-[#0047CC] bg-slate-50/60 hover:bg-blue-50/30'
+                      }`}>
+                        <input
+                          type="file"
+                          accept="video/mp4,video/webm,video/quicktime,video/*"
+                          disabled={isUploadingLessonVideo}
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file || !courseId) return;
+                            setIsUploadingLessonVideo(true);
+                            const toastId = toast.loading(`Uploading "${file.name}"…`);
+                            try {
+                              const res: any = await uploadMediaMutation.mutateAsync({
+                                file,
+                                courseId,
+                              });
+                              const storageKey = res?.storageKey || res?.s3Key;
+                              if (storageKey) {
+                                setEditingLesson({
+                                  ...editingLesson,
+                                  lesson: {
+                                    ...editingLesson.lesson,
+                                    contentS3Key: storageKey,
+                                    videoS3Key: storageKey,
+                                  },
+                                });
+                                setGoogleDriveInputVal('');
+                                // Immediately persist uploaded storageKey to server
+                                await handleLessonUpdate(editingLesson.moduleId, editingLesson.lesson.id, {
+                                  contentS3Key: storageKey,
+                                });
+                                setIsReplacingLessonVideo(false);
+                                toast.success('Video uploaded and attached to lesson.', { id: toastId });
+                              }
+                            } catch (err: any) {
+                              toast.error(err?.message || 'Failed to upload video.', { id: toastId });
+                            } finally {
+                              setIsUploadingLessonVideo(false);
+                            }
+                          }}
+                        />
+                        {isUploadingLessonVideo ? (
+                          <div className="flex items-center gap-2 text-[#0047CC] font-bold text-xs py-2">
+                            <Spinner size={16} />
+                            <span>Uploading video to VORA media storage…</span>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0047CC] flex items-center justify-center group-hover:scale-105 transition-transform">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="5" x2="12" y2="15" />
+                              </svg>
+                            </div>
+                            <div>
+                              <span className="text-xs font-bold text-[#0047CC] block">
+                                Click or drag video file here to upload (MP4, WebM)
+                              </span>
+                              <span className="text-[11px] text-slate-500 mt-0.5 block">
+                                Max recommended size 500MB per lesson
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </label>
+
+                      <div className="relative my-1">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-slate-200"></div>
+                        </div>
+                        <div className="relative flex justify-center text-[11px]">
+                          <span className="bg-white px-3 font-semibold text-slate-400 uppercase tracking-wider">or</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Google Drive Link
+                        </label>
+                        <input
+                          type="url"
+                          placeholder="https://drive.google.com/file/d/.../view"
+                          value={googleDriveInputVal}
+                          onPaste={(e) => {
+                            const pasted = e.clipboardData.getData('text').trim();
+                            if (pasted && (pasted.startsWith('http://') || pasted.startsWith('https://')) && !isGoogleDriveUrl(pasted)) {
+                              e.preventDefault();
+                              toast.error('External link is not allowed');
+                              setGoogleDriveInputVal('');
+                              setEditingLesson((prev) => prev ? {
+                                ...prev,
+                                lesson: { ...prev.lesson, contentS3Key: null, videoS3Key: null }
+                              } : null);
+                            }
+                          }}
+                          onChange={(e) => {
+                            const rawVal = e.target.value;
+                            const val = rawVal.trim();
+                            if (!val) {
+                              setGoogleDriveInputVal('');
+                              setEditingLesson((prev) => prev ? {
+                                ...prev,
+                                lesson: { ...prev.lesson, contentS3Key: null, videoS3Key: null }
+                              } : null);
+                              return;
+                            }
+                            if (val.startsWith('http://') || val.startsWith('https://')) {
+                              if (!isGoogleDriveUrl(val)) {
+                                if (val.length > 12 && val.includes('/')) {
+                                  toast.error('External link is not allowed');
+                                  setGoogleDriveInputVal('');
+                                  setEditingLesson((prev) => prev ? {
+                                    ...prev,
+                                    lesson: { ...prev.lesson, contentS3Key: null, videoS3Key: null }
+                                  } : null);
+                                  return;
+                                }
+                              } else {
+                                setGoogleDriveInputVal(val);
+                                setEditingLesson((prev) => prev ? {
+                                  ...prev,
+                                  lesson: { ...prev.lesson, contentS3Key: val, videoS3Key: val }
+                                } : null);
+                                return;
+                              }
+                            }
+                            setGoogleDriveInputVal(rawVal);
+                          }}
+                          onBlur={() => {
+                            if (googleDriveInputVal && !isGoogleDriveUrl(googleDriveInputVal)) {
+                              toast.error('External link is not allowed');
+                              setGoogleDriveInputVal('');
+                              setEditingLesson((prev) => prev ? {
+                                ...prev,
+                                lesson: { ...prev.lesson, contentS3Key: null, videoS3Key: null }
+                              } : null);
+                            }
+                          }}
+                          className="w-full bg-white border border-slate-300 focus:border-[#0047CC] focus:ring-2 focus:ring-[#0047CC]/15 rounded-xl px-3.5 py-2 text-xs text-slate-900 placeholder:text-slate-400 outline-none transition-colors"
+                        />
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          Paste a shareable Google Drive video link (e.g. https://drive.google.com/file/d/.../view). Ensure link sharing is set to &ldquo;Anyone with the link&rdquo;.
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               )}
 
               {editingLesson.lesson.contentType === 'READING' && (
                 <div>
-                  <label className="block font-bold text-[#1E293B] mb-1">
+                  <label className="block font-bold text-slate-800 mb-1">
                     Reading & Framework Content (Markdown supported)
                   </label>
                   <textarea
@@ -3243,14 +4135,14 @@ export const CreateCoursePage: React.FC = () => {
                       })
                     }
                     placeholder="Enter analytical brief, references, and core reading material…"
-                    className="w-full bg-white border border-[#CBD5E1] rounded-xl p-3 text-xs text-[#0F172A] outline-none focus:border-[#0047CC]"
+                    className="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#0047CC] focus:ring-2 focus:ring-[#0047CC]/15"
                   />
                 </div>
               )}
 
               {editingLesson.lesson.contentType === 'FIELD_CASE_STUDY' && (
                 <div>
-                  <label className="block font-bold text-[#1E293B] mb-1">
+                  <label className="block font-bold text-slate-800 mb-1">
                     Field Scenario Brief
                   </label>
                   <textarea
@@ -3263,7 +4155,7 @@ export const CreateCoursePage: React.FC = () => {
                       })
                     }
                     placeholder="Institutional context, dilemma background, stakeholder tradeoffs, and key decision questions…"
-                    className="w-full bg-white border border-[#CBD5E1] rounded-xl p-3 text-xs text-[#0F172A] outline-none focus:border-[#0047CC]"
+                    className="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#0047CC] focus:ring-2 focus:ring-[#0047CC]/15"
                   />
                 </div>
               )}
@@ -3277,51 +4169,99 @@ export const CreateCoursePage: React.FC = () => {
                 </div>
               )}
 
-              <div className="flex items-center gap-4 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editingLesson.lesson.isPreview || false}
-                    onChange={(e) =>
-                      setEditingLesson({
-                        ...editingLesson,
-                        lesson: { ...editingLesson.lesson, isPreview: e.target.checked },
-                      })
-                    }
-                    className="rounded border-[#CBD5E1] text-[#0047CC]"
-                  />
-                  <span className="font-semibold text-[#1E293B]">Free Preview Access</span>
-                </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEditingLesson({
+                      ...editingLesson,
+                      lesson: { ...editingLesson.lesson, isPreview: !editingLesson.lesson.isPreview },
+                    })
+                  }
+                  className={`flex items-start gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                    editingLesson.lesson.isPreview
+                      ? 'border-[#0047CC] bg-blue-50/50 shadow-xs'
+                      : 'border-slate-200 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <div
+                    className={`mt-0.5 w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
+                      editingLesson.lesson.isPreview
+                        ? 'bg-[#0047CC] border-[#0047CC] text-white'
+                        : 'border-slate-300 bg-white'
+                    }`}
+                  >
+                    {editingLesson.lesson.isPreview && <CheckIcon size={11} strokeWidth={3} />}
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xs font-bold text-slate-800">Free Preview Access</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                      Allow prospective learners to sample this lesson before enrolling
+                    </div>
+                  </div>
+                </button>
 
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editingLesson.lesson.isOptional || false}
-                    onChange={(e) =>
-                      setEditingLesson({
-                        ...editingLesson,
-                        lesson: { ...editingLesson.lesson, isOptional: e.target.checked },
-                      })
-                    }
-                    className="rounded border-[#CBD5E1] text-[#0047CC]"
-                  />
-                  <span className="font-semibold text-[#1E293B]">Optional Material</span>
-                </label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEditingLesson({
+                      ...editingLesson,
+                      lesson: { ...editingLesson.lesson, isOptional: !editingLesson.lesson.isOptional },
+                    })
+                  }
+                  className={`flex items-start gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                    editingLesson.lesson.isOptional
+                      ? 'border-[#0047CC] bg-blue-50/50 shadow-xs'
+                      : 'border-slate-200 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <div
+                    className={`mt-0.5 w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
+                      editingLesson.lesson.isOptional
+                        ? 'bg-[#0047CC] border-[#0047CC] text-white'
+                        : 'border-slate-300 bg-white'
+                    }`}
+                  >
+                    {editingLesson.lesson.isOptional && <CheckIcon size={11} strokeWidth={3} />}
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xs font-bold text-slate-800">Optional Material</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                      Supplemental content that won't block module progression
+                    </div>
+                  </div>
+                </button>
               </div>
             </div>
 
-            <div className="mt-6 pt-3.5 border-t border-[#E2E8F0] flex justify-end gap-2.5">
+            {/* Modal Sticky Footer (pinned at bottom) */}
+            <div className="p-4 px-5 border-t border-slate-200 flex items-center justify-end gap-3 bg-slate-50/90 shrink-0 rounded-b-2xl">
               <button
                 type="button"
+                disabled={isSavingLesson || isUploadingLessonVideo}
                 onClick={() => setEditingLesson(null)}
-                className="px-4 py-2 text-xs font-bold text-[#64748B] hover:text-[#0F172A]"
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 rounded-xl transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 type="button"
+                disabled={isSaveLessonDisabled}
                 onClick={async () => {
-                  if (editingLesson) {
+                  if (isSaveLessonDisabled || !editingLesson) return;
+                  if (!editingLesson.lesson.title?.trim()) {
+                    toast.error('Please enter a lesson title.');
+                    return;
+                  }
+                  if (
+                    editingLesson.lesson.contentType === 'VIDEO' &&
+                    (!isVideoValid || isEditingInvalidExternal)
+                  ) {
+                    toast.error('External link is not allowed');
+                    return;
+                  }
+                  setIsSavingLesson(true);
+                  try {
                     await handleLessonUpdate(
                       editingLesson.moduleId,
                       editingLesson.lesson.id,
@@ -3329,11 +4269,31 @@ export const CreateCoursePage: React.FC = () => {
                     );
                     setEditingLesson(null);
                     toast.success('Lesson updated.');
+                  } catch (err: any) {
+                    toast.error(err?.message || 'Failed to update lesson. Please try again.');
+                  } finally {
+                    setIsSavingLesson(false);
                   }
                 }}
-                className="px-5 py-2 text-xs font-bold bg-[#0047CC] text-white rounded-full hover:bg-[#0037a3]"
+                className={`inline-flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-bold rounded-xl shadow-xs transition-all min-w-[125px] ${
+                  isSaveLessonDisabled
+                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60'
+                    : 'bg-[#0047CC] text-white hover:bg-[#0037a3] cursor-pointer'
+                }`}
               >
-                Save Changes
+                {isSavingLesson ? (
+                  <>
+                    <Spinner size={14} className="text-white border-white/20 border-t-white" />
+                    <span>Saving…</span>
+                  </>
+                ) : isUploadingLessonVideo ? (
+                  <>
+                    <Spinner size={14} className="text-white border-white/20 border-t-white" />
+                    <span>Uploading…</span>
+                  </>
+                ) : (
+                  <span>Save Changes</span>
+                )}
               </button>
             </div>
           </div>
@@ -3347,7 +4307,7 @@ export const CreateCoursePage: React.FC = () => {
           onClick={() => setIsPublishModalOpen(false)}
         >
           <div
-            className="bg-white rounded-3xl w-full max-w-md p-6 sm:p-8 shadow-2xl relative"
+            className="bg-white rounded-2xl w-full max-w-md p-6 sm:p-8 shadow-2xl relative"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-xl font-bold text-[#0F172A] mb-2">Publish Course Live?</h3>
@@ -3364,7 +4324,7 @@ export const CreateCoursePage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsPublishModalOpen(false)}
-                className="px-4 py-2 text-xs font-bold text-[#64748B] hover:text-[#0F172A] rounded-full transition-colors cursor-pointer"
+                className="px-4 py-2 text-xs font-bold text-[#64748B] hover:text-[#0F172A] rounded-xl transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -3372,7 +4332,7 @@ export const CreateCoursePage: React.FC = () => {
                 type="button"
                 disabled={!isPublishReady || publishMutation.isPending}
                 onClick={handlePublishCourse}
-                className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold bg-[#0047CC] hover:bg-[#0037a3] disabled:opacity-50 text-white rounded-full transition-all cursor-pointer shadow-xs"
+                className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold bg-[#0047CC] hover:bg-[#0037a3] disabled:opacity-50 text-white rounded-xl transition-all cursor-pointer shadow-xs"
               >
                 {publishMutation.isPending ? (
                   <>
@@ -3400,7 +4360,7 @@ export const CreateCoursePage: React.FC = () => {
           >
             <div className="flex items-center justify-between pb-4 border-b border-[#E2E8F0] mb-5">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-[#0047CC] bg-[#EBF6FF] px-3 py-1 rounded-full">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-[#0047CC] bg-[#EBF6FF] px-3 py-1 rounded-lg">
                   Learner Catalog Preview
                 </span>
               </div>
@@ -3514,10 +4474,25 @@ export const CreateCoursePage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsPreviewModalOpen(false)}
-                className="px-5 py-2 text-xs font-bold bg-[#0047CC] text-white rounded-full hover:bg-[#0037a3] cursor-pointer"
+                className="px-5 py-2 text-xs font-bold bg-[#0047CC] text-white rounded-xl hover:bg-[#0037a3] cursor-pointer"
               >
                 Close Preview
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── SAVING DRAFT & REDIRECTING OVERLAY ── */}
+      {isSavingDraft && (
+        <div className="fixed inset-0 z-50 bg-white/80 backdrop-blur-xs flex flex-col items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-gray-100 flex flex-col items-center gap-3 text-center max-w-sm">
+            <Spinner size={36} className="text-[#0047CC]" />
+            <div>
+              <p className="font-bold text-sm text-gray-900">Saving Course Draft…</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Saving your changes and returning to your Courses dashboard.
+              </p>
             </div>
           </div>
         </div>

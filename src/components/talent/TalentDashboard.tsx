@@ -91,26 +91,33 @@ const TalentDashboard: React.FC = () => {
 
   // Handle primary activity navigation
   const handleActivityClick = (activity: TalentDashboardActivity) => {
-    // 1. Resolve role slug
-    let roleSlug = activeRoleSlug;
-    if (!roleSlug && activity.context?.rolePostingId && sampleOpportunities) {
+    // 1. Prefer backend-provided canonical hrefHint if available
+    if (activity.hrefHint) {
+      navigate(activity.hrefHint);
+      return;
+    }
+
+    // 2. Resolve role slug from enhanced backend context
+    const context = activity.context as any;
+    let roleSlug = context?.roleSlug || context?.roleLink || activeRoleSlug;
+    if (!roleSlug && context?.rolePostingId && sampleOpportunities) {
       const matchingOpp = sampleOpportunities.find(
-        (o) => o.rolePostingId === activity.context?.rolePostingId
+        (o) => o.rolePostingId === context.rolePostingId
       );
       if (matchingOpp?.roleLink) {
         roleSlug = matchingOpp.roleLink;
       }
     }
-    if (!roleSlug && activity.context?.roleTitle) {
-      roleSlug = activity.context.roleTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    if (!roleSlug && context?.roleTitle) {
+      roleSlug = context.roleTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     }
     if (!roleSlug) {
       roleSlug = 'backend-engineer';
     }
 
-    // 2. Persist assessment session parameters
-    const assessmentId = activity.context?.assessmentId;
-    const rolePostingId = activity.context?.rolePostingId;
+    // 3. Keep active assessment session IDs synced if present
+    const assessmentId = context?.assessmentId;
+    const rolePostingId = context?.rolePostingId;
     if (assessmentId) {
       localStorage.setItem('vora_assessment_id', assessmentId);
       localStorage.setItem('active_assessment_id', assessmentId);
@@ -122,19 +129,9 @@ const TalentDashboard: React.FC = () => {
       localStorage.setItem('active_assessment_role_slug', roleSlug);
     }
 
-    const stage = activity.context?.stage;
-    if (stage === 2) {
-      localStorage.setItem('vora_stage1_completed', 'true');
-      localStorage.setItem('vora_stage2_unlocked', 'true');
-    } else if (stage === 3) {
-      localStorage.setItem('vora_stage2_completed', 'true');
-      localStorage.setItem('vora_stage3_unlocked', 'true');
-    } else if (stage === 4) {
-      localStorage.setItem('vora_stage3_completed', 'true');
-      localStorage.setItem('vora_stage4_unlocked', 'true');
-    }
+    const stage = context?.stage;
 
-    // 3. Navigate directly to the corresponding interview stage or journey
+    // 4. Navigate directly to the corresponding interview stage or journey
     if (stage === 4) {
       navigate(`/onboarding/talent/${roleSlug}/interview/stage-4/decision`);
     } else if (stage === 3) {

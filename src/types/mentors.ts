@@ -1,6 +1,6 @@
 /**
  * Types for VORA Talent Verified Mentorship
- * Conforms to frontend handoff specification (schemaVersion === 1)
+ * Conforms strictly to frontend handoff specification (schemaVersion === 1)
  */
 
 export interface MentorsApiEnvelope<T> {
@@ -11,50 +11,75 @@ export interface MentorsApiEnvelope<T> {
 
 // ─── Discover Mentors ────────────────────────────────────────────────────────
 
-export interface DiscoverMentorSessionType {
+export interface MentorDiscoverSessionType {
   id: string;
+  type?: string;
+  customName?: string | null;
   durationMinutes: number;
-  rate: number;
+  rate: number | null;
   currency: string;
-  formattedRate: string;
+  formattedRate: string | null;
   durationOptionLabel: string; // e.g. "45 Mins ($65)"
 }
 
-export interface DiscoverMentorItem {
+export interface MentorDiscoverCard {
   id: string;
   displayName: string;
   verified: boolean;
-  professionalTitle: string;
-  organisation: string;
-  headline?: string;
-  bio?: string;
-  photoS3Key?: string | null;
+  professionalTitle: string | null;
+  organisation: string | null;
+  headline: string | null;
+  bio: string | null;
+  photoS3Key: string | null;
+  photoUrl: string | null;
   focusTags: string[];
-  rating: number | null; // HIDE stars when null
-  ratingsCount: number | null;
+  rating: number | null; // HIDE stars when null (never show 0)
+  ratingsCount: number | null; // HIDE when null
   sessionsCompleted: number;
-  rate: number;
+  rate: number | null; // null -> Rate: Free
   currency: string;
-  formattedRate: string;
-  nextSlotAt: string | null; // null if no availability
-  nextSlotLabel: string | null; // null if no availability
-  primarySessionType?: DiscoverMentorSessionType | null;
-  sessionTypes: DiscoverMentorSessionType[];
+  formattedRate: string | null; // prefer this when non-null (e.g. "$65 / session")
+  nextSlotAt: string | null; // null if no availability (hide next slot chrome)
+  nextSlotLabel: string | null;
+  primarySessionType: {
+    id: string;
+    type: string;
+    customName: string | null;
+    durationMinutes: number;
+  } | null;
+  sessionTypes: Array<{
+    id: string;
+    type: string;
+    customName: string | null;
+    durationMinutes: number;
+    rate: number | null;
+    currency: string;
+    formattedRate: string | null;
+    durationOptionLabel: string;
+  }>;
   cta: {
     label: string; // "Book 1:1 Session"
     enabled: boolean;
-    hrefHint?: string;
+    hrefHint: string;
   };
 }
 
-export interface DiscoverMentorsData {
+/** Backward compatibility alias */
+export type DiscoverMentorItem = MentorDiscoverCard;
+export type DiscoverMentorSessionType = MentorDiscoverSessionType;
+
+export interface MentorDiscoverResponse {
   schemaVersion: 1;
   page: number;
   limit: number;
   total: number;
   focusFilters: string[]; // ["ALL", ...] from real expertise
-  items: DiscoverMentorItem[];
+  mySessionsCount: number | null; // Discover Mentors tab vs My Sessions tab count
+  items: MentorDiscoverCard[];
 }
+
+/** Backward compatibility alias */
+export type DiscoverMentorsData = MentorDiscoverResponse;
 
 export interface DiscoverMentorsParams {
   page?: number;
@@ -66,7 +91,7 @@ export interface DiscoverMentorsParams {
 // ─── Booking Panel & Book Modal ──────────────────────────────────────────────
 
 export interface BookingPanelSlotTime {
-  scheduledAt: string; // ISO format or target scheduled timestamp
+  scheduledAt: string; // ISO format
   timeLabel: string; // e.g. "3:00 PM WAT"
 }
 
@@ -78,21 +103,24 @@ export interface BookingPanelSlotDay {
 
 export interface BookingPanelSessionType {
   id: string;
+  type?: string;
+  customName?: string | null;
   durationMinutes: number;
-  rate: number;
+  rate: number | null;
   currency: string;
-  formattedRate: string;
+  formattedRate: string | null;
   durationOptionLabel: string; // e.g. "45 Mins ($65)"
 }
 
 export interface BookingPanelMentor {
   id: string;
   displayName: string;
-  professionalTitle: string;
-  organisation: string;
-  headline?: string;
+  professionalTitle: string | null;
+  organisation: string | null;
+  headline?: string | null;
   photoS3Key?: string | null;
-  timezone?: string;
+  photoUrl?: string | null;
+  timezone?: string | null;
 }
 
 export interface BookingPanelData {
@@ -105,12 +133,12 @@ export interface BookingPanelData {
 
 export interface BookMentorPayload {
   sessionTypeId: string;
-  scheduledAt: string; // from times[].scheduledAt
-  sessionFocus?: string; // optional notes / topic
-  menteeCountry?: string;
-  ipCountry?: string;
-  paymentCountry?: string;
-  localeCountry?: string;
+  scheduledAt: string; // ISO format from times[].scheduledAt
+  sessionFocus?: string; // optional notes / topic (max 2000 chars)
+  menteeCountry: string; // required (PPP tier)
+  ipCountry: string; // required (PPP tier)
+  paymentCountry: string; // required (PPP tier)
+  localeCountry: string; // required (PPP tier)
 }
 
 export interface BookMentorResponseData {
@@ -142,7 +170,7 @@ export interface MentorSessionItem {
   scheduleLabel: string;
   scheduleDetail: string; // includes "(45 mins)"
   durationMinutes: number;
-  topic: string | null; // from sessionFocus at book time | null
+  topic: string | null; // from sessionFocus at book time | null -> hide line
   chargedAmount: number;
   currency: string;
   formattedRate: string;
@@ -150,10 +178,11 @@ export interface MentorSessionItem {
   mentor: {
     id: string;
     displayName: string;
-    professionalTitle: string;
-    organisation: string;
-    headline?: string;
+    professionalTitle: string | null;
+    organisation: string | null;
+    headline?: string | null;
     photoS3Key?: string | null;
+    photoUrl?: string | null;
   };
   sessionType: {
     id: string;

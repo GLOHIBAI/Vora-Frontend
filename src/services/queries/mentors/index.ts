@@ -111,9 +111,20 @@ export const useBookMentorMutation = () => {
       mentorId: string;
       payload: BookMentorPayload;
     }) => {
-      const localeCountry =
-        payload.localeCountry ||
-        (typeof navigator !== 'undefined' ? navigator.language : 'en-US');
+      const fallbackCountry = (() => {
+        if (typeof navigator !== 'undefined' && navigator.language) {
+          const parts = navigator.language.split('-');
+          if (parts.length > 1 && parts[1].length === 2) {
+            return parts[1].toUpperCase();
+          }
+        }
+        return 'US';
+      })();
+
+      const menteeCountry = payload.menteeCountry || fallbackCountry;
+      const ipCountry = payload.ipCountry || fallbackCountry;
+      const paymentCountry = payload.paymentCountry || fallbackCountry;
+      const localeCountry = payload.localeCountry || fallbackCountry;
 
       const res = await apiClient.post<MentorsApiEnvelope<BookMentorResponseData>>({
         url: `/mentors/${mentorId}/book`,
@@ -121,9 +132,9 @@ export const useBookMentorMutation = () => {
           sessionTypeId: payload.sessionTypeId,
           scheduledAt: payload.scheduledAt,
           ...(payload.sessionFocus ? { sessionFocus: payload.sessionFocus.trim() } : {}),
-          menteeCountry: payload.menteeCountry || 'US',
-          ipCountry: payload.ipCountry || 'US',
-          paymentCountry: payload.paymentCountry || 'US',
+          menteeCountry,
+          ipCountry,
+          paymentCountry,
           localeCountry,
         },
         auth: true,

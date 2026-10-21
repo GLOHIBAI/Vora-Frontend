@@ -43,13 +43,14 @@ export const useCourseBuilder = (
         auth: true,
       });
 
-      if (res.data?.schemaVersion !== 1) {
+      const payload = (res as any)?.data ?? res;
+      if (payload?.schemaVersion !== 1) {
         console.warn(
-          `[CourseBuilder] Expected schemaVersion=1, received ${res.data?.schemaVersion}. UI may degrade.`
+          `[CourseBuilder] Expected schemaVersion=1, received ${payload?.schemaVersion}. UI may degrade.`
         );
       }
 
-      return res.data;
+      return payload;
     },
     enabled: Boolean(courseId) && (options?.enabled ?? true),
     staleTime: options?.staleTime ?? 1000 * 60 * 2, // 2 min cache
@@ -66,17 +67,18 @@ export const usePricingPreview = (tier1Price: number) => {
     queryKey: courseBuilderKeys.pricingPreview(tier1Price),
     queryFn: async (): Promise<PricingPreviewData> => {
       const res = await apiClient.get<CourseApiEnvelope<PricingPreviewData>>({
-        url: `/courses/pricing/preview?tier1Price=${encodeURIComponent(tier1Price)}`,
+        url: `/courses/pricing/preview?tier1Price=${encodeURIComponent(tier1Price)}&currency=USD`,
         auth: true,
       });
 
-      if (res.data?.schemaVersion !== 1) {
+      const payload = (res as any)?.data ?? res;
+      if (payload?.schemaVersion !== 1) {
         console.warn(
-          `[PricingPreview] Expected schemaVersion=1, received ${res.data?.schemaVersion}.`
+          `[PricingPreview] Expected schemaVersion=1, received ${payload?.schemaVersion}.`
         );
       }
 
-      return res.data;
+      return payload;
     },
     enabled: tier1Price > 0,
     staleTime: 1000 * 60 * 5, // 5m cache
@@ -365,11 +367,12 @@ export const useReorderModules = () => {
       payload,
     }: {
       courseId: string;
-      payload: ReorderModulesDto;
+      payload: ReorderModulesDto | { ids: string[] };
     }): Promise<void> => {
-      await apiClient.put<any>({
+      const ids = 'ids' in payload && payload.ids ? payload.ids : (payload as any).orderedModuleIds;
+      await apiClient.post<any>({
         url: `/courses/${courseId}/modules/reorder`,
-        body: payload,
+        body: { ids },
         auth: true,
       });
     },
@@ -429,9 +432,21 @@ export const usePatchLesson = () => {
       if (!moduleId || moduleId.startsWith('temp-') || !lessonId || lessonId.startsWith('temp-')) {
         return {} as BuilderLesson;
       }
+      // Strictly construct write payload per contract:
+      // Allowed: title, contentType, contentS3Key | videoS3Key (alias), durationMinutes, orderIndex (>=0)
+      // Ignored: id, durationLabel
+      // Do not send: contentUrl
+      const cleanPayload: Record<string, any> = {};
+      if (payload.title !== undefined) cleanPayload.title = payload.title;
+      if (payload.contentType !== undefined) cleanPayload.contentType = payload.contentType;
+      const s3Key = payload.contentS3Key ?? payload.videoS3Key;
+      if (s3Key !== undefined) cleanPayload.contentS3Key = s3Key;
+      if (payload.durationMinutes !== undefined) cleanPayload.durationMinutes = payload.durationMinutes;
+      if (payload.orderIndex !== undefined && payload.orderIndex >= 0) cleanPayload.orderIndex = payload.orderIndex;
+
       const res = await apiClient.patch<any>({
         url: `/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`,
-        body: payload,
+        body: cleanPayload,
         auth: true,
       });
       const data = res?.data?.data ?? res?.data ?? res;
@@ -479,11 +494,12 @@ export const useReorderLessons = () => {
     }: {
       courseId: string;
       moduleId: string;
-      payload: ReorderLessonsDto;
+      payload: ReorderLessonsDto | { ids: string[] };
     }): Promise<void> => {
-      await apiClient.put<CourseApiEnvelope<any>>({
+      const ids = 'ids' in payload && payload.ids ? payload.ids : (payload as any).orderedLessonIds;
+      await apiClient.post<CourseApiEnvelope<any>>({
         url: `/courses/${courseId}/modules/${moduleId}/lessons/reorder`,
-        body: payload,
+        body: { ids },
         auth: true,
       });
     },

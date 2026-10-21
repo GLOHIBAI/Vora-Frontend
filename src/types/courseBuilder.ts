@@ -40,10 +40,13 @@ export interface BuilderModule {
 }
 
 export interface PublishChecklistItem {
-  key: string;
+  id?: string;
+  key?: string;
   label: string;
-  passed: boolean;
-  stepNumber: number;
+  ok?: boolean;
+  passed?: boolean;
+  required?: boolean;
+  stepNumber?: number;
 }
 
 export interface PublishChecklist {
@@ -68,6 +71,7 @@ export interface CourseBuilderData {
   promoVideoS3Key?: string | null;
   coverImageS3Key?: string | null;
   promotionalVideoS3Key?: string | null;
+  tier1Price?: number | null;
   priceAmount?: number | null;
   priceCurrency?: string | null;
   enablePppPricing?: boolean;
@@ -75,10 +79,13 @@ export interface CourseBuilderData {
   isCpdAccredited?: boolean;
   cpdCredits?: number | null;
   cpdBody?: string | null;
+  enrollmentCap?: number | null;
   seoSlugPreview?: string | null;
   seoPathHint?: string | null;
   modules: BuilderModule[];
   publishChecklist: PublishChecklist;
+  settings?: Record<string, any> | null;
+  lessonContentTypes?: string[];
 }
 
 export interface PricingPreviewTier {
@@ -141,8 +148,9 @@ export interface PatchCourseDto {
   enablePppPricing?: boolean;
   certificateTemplate?: CertificateTemplate;
   isCpdAccredited?: boolean;
-  cpdCredits?: number;
-  cpdBody?: string;
+  cpdCredits?: number | null;
+  cpdBody?: string | null;
+  enrollmentCap?: number | null;
   tags?: string[];
   skills?: string[];
   learningOutcomes?: string[];
@@ -167,34 +175,24 @@ export interface CreateLessonDto {
   durationMinutes?: number;
   contentS3Key?: string | null;
   videoS3Key?: string | null;
-  articleBody?: string | null;
-  fieldCaseBrief?: string | null;
-  isOptional?: boolean;
-  isPreview?: boolean;
-  resources?: LessonResourceItem[];
   orderIndex?: number;
 }
 
 export interface PatchLessonDto {
   title?: string;
   contentType?: BuilderLessonContentType;
-  durationMinutes?: number;
   contentS3Key?: string | null;
   videoS3Key?: string | null;
-  articleBody?: string | null;
-  fieldCaseBrief?: string | null;
-  isOptional?: boolean;
-  isPreview?: boolean;
-  resources?: LessonResourceItem[];
+  durationMinutes?: number;
   orderIndex?: number;
 }
 
 export interface ReorderModulesDto {
-  orderedModuleIds: string[];
+  ids: string[];
 }
 
 export interface ReorderLessonsDto {
-  orderedLessonIds: string[];
+  ids: string[];
 }
 
 export const CONTENT_TYPE_MAP: Record<
