@@ -5,7 +5,7 @@ import { buildUserDisplayName } from '../../components/talent/profileMatch/RoleA
 import MatchBlockedEligibilityCard from '../../components/talent/profileMatchBlocked/MatchBlockedEligibilityCard';
 import MatchBlockedAlternatives from '../../components/talent/profileMatchBlocked/MatchBlockedAlternatives';
 import MatchBlockedGapAnalysisCard from '../../components/talent/profileMatchBlocked/MatchBlockedGapAnalysisCard';
-import { MOCK_PROFILE_MATCH_SCAN_BLOCKED, MOCK_BLOCKED_REASONS, MOCK_PATHWAY_STEPS } from '../../constants/profileMatchBlocked';
+import { MOCK_PROFILE_MATCH_SCAN_BLOCKED } from '../../constants/profileMatchBlocked';
 import { useAuth } from '../../context/AuthContext';
 import { useGetPublicRoleQuery } from '../../services/queries/talent';
 import { getRoleLandingForSlug, mapApiResponseToRoleData } from '../../utils/roleLanding';
@@ -103,13 +103,7 @@ const RoleProfileMatchBlocked: React.FC = () => {
       });
     });
 
-    if (reasons.length > 0) return reasons;
-
-    return MOCK_BLOCKED_REASONS.map((row) =>
-      row.key === 'Role' && role
-        ? { key: 'Role', value: `${role.roleTitle} · ${role.companyName}` }
-        : row,
-    );
+    return reasons;
   }, [role, matchScan.explanation]);
 
   const pathwaySteps = useMemo(() => {
@@ -122,7 +116,7 @@ const RoleProfileMatchBlocked: React.FC = () => {
         tags: [{ text: action.type, color: 'blue' }],
       }));
     }
-    return MOCK_PATHWAY_STEPS;
+    return [];
   }, [matchScan.explanation?.improvementActions]);
 
   return (

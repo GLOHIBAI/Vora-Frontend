@@ -6,225 +6,543 @@ import {
   VideoIcon, 
   LocationIcon, 
   CheckIcon,
-  AlertTriangleIcon
+  AlertTriangleIcon,
+  CloseIcon,
 } from '../../components/common/Icons';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Textarea from '../../components/common/Textarea';
-import { SAMPLE_JOB_DETAILS } from '../../constants/mockData';
-import type { AlignmentStep, AlignmentSessionType } from '../../types';
+import { toast } from 'react-hot-toast';
+import {
+  useEmployerAlignmentSessionQuery,
+  useEmployerDecideAlignMutation,
+  useEmployerDecideHireMutation,
+  useEmployerDecideRejectMutation,
+} from '../../services/queries/assessments';
 
 const FinalAlignmentSession: React.FC = () => {
-  const { id, candidateId } = useParams();
+  const { id: rolePostingId, candidateId: assessmentId } = useParams<{ id: string; candidateId: string }>();
   const navigate = useNavigate();
-  
-  const [step, setStep] = useState<AlignmentStep>('choose');
-  const [sessionType, setSessionType] = useState<AlignmentSessionType | null>(null);
-  
-  // Mock job and candidate data
-  const job = SAMPLE_JOB_DETAILS;
-  const candidate = {
-    code: candidateId || 'APP-008',
-    score: '92%',
-    location: 'Addis Ababa, Ethiopia'
-  };
 
-  const handleBack = () => {
-    if (step === 'choose') {
-      navigate(`/jobs/${id}`);
-    } else {
-      setStep('choose');
+  // Queries & Mutations
+  const { 
+    data: session, 
+    isLoading, 
+    error, 
+    refetch 
+  } = useEmployerAlignmentSessionQuery(assessmentId, rolePostingId);
+
+  const alignMutation = useEmployerDecideAlignMutation();
+  const hireMutation = useEmployerDecideHireMutation();
+  const rejectMutation = useEmployerDecideRejectMutation();
+
+  // Modals state
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [showHireModal, setShowHireModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+
+  // Reschedule form state
+  const [slotDate, setSlotDate] = useState('');
+  const [slotTime, setSlotTime] = useState('10:00');
+  const [slotLabel, setSlotLabel] = useState('Video Alignment Session');
+
+  // Hire form state
+  const [compensation, setCompensation] = useState('');
+  const [currency, setCurrency] = useState('USD');
+  const [startDate, setStartDate] = useState('');
+
+  // Reject form state
+  const [rejectKind, setRejectKind] = useState<'LEGITIMATE' | 'FRAUD'>('LEGITIMATE');
+  const [rejectReason, setRejectReason] = useState('ROLE_MISMATCH');
+  const [rejectDetails, setRejectDetails] = useState('');
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <div className="w-10 h-10 border-4 border-[#0047CC] border-t-transparent rounded-full animate-spin" />
+        <p className="text-[14px] font-medium text-gray-500">Loading alignment session details...</p>
+      </div>
+    );
+  }
+
+  if (error || !session) {
+    const errMessage = (error as any)?.message || 'Failed to load alignment session';
+    const isNotReady = errMessage.includes('ASSESSMENT_STAGE4_ALIGNMENT_SESSION_NOT_READY');
+
+    return (
+      <div className="bg-white border border-gray-100 rounded-[24px] p-10 max-w-2xl mx-auto my-12 text-center shadow-xs">
+        <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <AlertTriangleIcon size={28} />
+        </div>
+        <h2 className="text-[20px] font-bold text-gray-900 mb-2">
+          {isNotReady ? 'Alignment Session Not Ready' : 'Unable to Load Session'}
+        </h2>
+        <p className="text-[14px] text-gray-500 mb-6 leading-relaxed">
+          {isNotReady
+            ? 'No alignment invite or deposit has been locked for this candidate yet. The candidate must progress through stage 3 screenings first.'
+            : errMessage}
+        </p>
+        <div className="flex justify-center gap-3">
+          <Button variant="secondary" onClick={() => navigate(`/jobs/${rolePostingId}`)}>
+            Back to Job Details
+          </Button>
+          <Button onClick={() => refetch()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const candidate = session.candidate;
+  const candidateInitials = candidate.initials || candidate.fullName?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'C';
+
+  const handleSendSlots = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!slotDate || !slotTime) {
+      toast.error('Please select both a date and time');
+      return;
+    }
+    if (!assessmentId) return;
+
+    try {
+      const startsAt = new Date(`${slotDate}T${slotTime}:00`).toISOString();
+      await alignMutation.mutateAsync({
+        assessmentId,
+        slots: [{
+          label: slotLabel.trim() || 'Video Alignment Session',
+          startsAt,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }],
+      });
+      toast.success('Alignment session slots sent to candidate!');
+      setShowRescheduleModal(false);
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to send slot proposal');
     }
   };
 
-  const handleConfirm = () => {
-    setStep('confirm');
+  const handleHireSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!assessmentId) return;
+
+    try {
+      await hireMutation.mutateAsync({
+        assessmentId,
+        offer: {
+          compensationCurrency: currency,
+          finalCompensation: compensation ? parseFloat(compensation) : undefined,
+          confirmedStartDate: startDate || undefined,
+        },
+      });
+      toast.success('Hire confirmed successfully!');
+      setShowHireModal(false);
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to confirm hire');
+    }
+  };
+
+  const handleRejectSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!assessmentId) return;
+    if (rejectDetails.trim().length < 10) {
+      toast.error('Please provide at least 10 characters explaining the decision');
+      return;
+    }
+
+    try {
+      await rejectMutation.mutateAsync({
+        assessmentId,
+        kind: rejectKind,
+        primaryReason: rejectReason,
+        details: rejectDetails.trim(),
+      });
+      toast.success('Decision recorded.');
+      setShowRejectModal(false);
+      navigate(`/jobs/${rolePostingId}`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to record rejection');
+    }
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
       {/* Breadcrumbs */}
       <div className="flex items-center gap-3 text-[14px]">
         <Link to="/jobs" className="text-gray-400 hover:text-[#0047CC] transition-colors font-medium">Jobs</Link>
         <ChevronRightIcon size={14} className="text-gray-300" />
-        <Link to={`/jobs/${id}`} className="text-gray-400 hover:text-[#0047CC] transition-colors font-medium">{job.title}</Link>
+        <Link to={`/jobs/${rolePostingId}`} className="text-gray-400 hover:text-[#0047CC] transition-colors font-medium">
+          {session.roleTitle || 'Job Overview'}
+        </Link>
         <ChevronRightIcon size={14} className="text-gray-300" />
         <span className="text-gray-900 font-medium">Final Alignment Session</span>
       </div>
 
-      {/* Candidate Chip */}
-      <div className="flex flex-col sm:flex-row items-center gap-4 bg-white border border-[#387DFF] rounded-2xl p-5">
-        <div className="w-10 h-10 rounded-full bg-[#0047CC] text-white flex items-center justify-center font-medium text-[14px] shrink-0">
-          1
-        </div>
-        <div className="flex-1 min-w-0 text-center sm:text-left">
-          <p className="text-[14px] font-medium text-[#0047CC]">{candidate.code}</p>
-          <p className="text-[12px] font-medium text-gray-500">Overall score: {candidate.score} · Top-ranked candidate</p>
-        </div>
-        <span className="px-4 py-1 bg-[#EEFBEE] text-[#135813] border border-transparent rounded-full text-[11px] font-medium uppercase tracking-tight">
-          Provisional hire intent logged
-        </span>
-      </div>
-
-      {step === 'choose' && (
-        <div className="bg-white border border-gray-100 rounded-[24px] p-8 shadow-sm">
-          <h2 className="text-[20px] font-medium text-gray-900 mb-2 ">Request a Final Alignment Session</h2>
-          <p className="text-[14px] font-medium text-gray-400 mb-8 leading-relaxed max-w-2xl">
-            This is a structured session to confirm logistics, cultural alignment, and onboarding readiness, not a reassessment of competency already verified. Select your preferred format.
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            <button 
-              onClick={() => setSessionType('video')}
-              className={`p-6 rounded-2xl border-2 text-left transition-all group ${sessionType === 'video' ? 'bg-white border-[#0047CC]' : 'bg-white border-gray-100 hover:border-gray-200'}`}
-            >
-              <div className={`p-3 rounded-xl mb-4 inline-block ${sessionType === 'video' ? 'bg-[#0047CC] text-white' : 'bg-gray-50 text-gray-400'}`}>
-                <VideoIcon size={24} />
-              </div>
-              <p className="text-[16px] font-medium text-gray-900 mb-2">Video Session</p>
-              <p className="text-[13px] font-medium text-gray-400 leading-relaxed">
-                Conducted within the VORA platform. Recorded, structured, 45-minute maximum.
-              </p>
-            </button>
-
-            <button 
-              onClick={() => setSessionType('inperson')}
-              className={`p-6 rounded-2xl border-2 text-left transition-all group ${sessionType === 'inperson' ? 'bg-white border-[#0047CC]' : 'bg-white border-gray-100 hover:border-gray-200'}`}
-            >
-              <div className={`p-3 rounded-xl mb-4 inline-block ${sessionType === 'inperson' ? 'bg-[#0047CC] text-white' : 'bg-gray-50 text-gray-400'}`}>
-                <LocationIcon size={24} />
-              </div>
-              <p className="text-[16px] font-medium text-gray-900 mb-2">In-Person Visit</p>
-              <p className="text-[13px] font-medium text-gray-400 leading-relaxed">
-                On-site session. Employer covers all candidate travel and accommodation through the platform.
-              </p>
-            </button>
+      {/* Candidate Overview Card */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white border border-[#387DFF] rounded-2xl p-6 shadow-xs">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-[#0047CC] text-white flex items-center justify-center font-bold text-[15px] shrink-0 shadow-xs">
+            {candidateInitials}
           </div>
-
-          {sessionType === 'inperson' && (
-            <div className="bg-white border border-blue-200 rounded-xl p-5 flex gap-4 mb-8">
-              <AlertTriangleIcon size={20} className="text-blue-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-[13px] font-medium text-blue-900 mb-1">Note on travel costs:</p>
-                <p className="text-[13px] font-medium text-gray-800 leading-relaxed">
-                  As this candidate is based in {candidate.location}, you will be required to fund travel and accommodation. Funds will be loaded through the VORA platform before the session is confirmed. <span className="font-medium">Same-city visits require no transport coverage.</span>
-                </p>
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-end">
-            <Button 
-              onClick={() => setStep(sessionType === 'video' ? 'video-setup' : 'inperson-setup')}
-              disabled={!sessionType}
-              className="px-10"
-            >
-              Continue
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {(step === 'video-setup' || step === 'inperson-setup') && (
-        <div className="bg-white border border-gray-100 rounded-[24px] p-8 shadow-sm space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
           <div>
-            <button onClick={handleBack} className="flex items-center gap-2 text-[13px] font-medium text-gray-400 hover:text-[#0047CC] transition-colors mb-6 cursor-pointer group">
-              <ChevronLeftIcon size={16} strokeWidth={3} className="group-hover:-translate-x-0.5 transition-transform" />
-              Back
-            </button>
-            <h2 className="text-[20px] font-medium text-gray-900 mb-2 ">
-              {step === 'video-setup' ? 'Video Session Details' : 'In-Person Visit Details'}
-            </h2>
-            <p className="text-[14px] font-medium text-gray-400 leading-relaxed">
-              {step === 'video-setup' 
-                ? 'The session will be hosted within VORA. Both parties consent to recording as per platform terms. Maximum duration: 45 minutes.'
-                : 'You must fund candidate travel and accommodation through the VORA platform before this request is confirmed. The candidate books directly through our travel integration.'
-              }
+            <div className="flex items-center gap-2">
+              <h1 className="text-[18px] font-bold text-gray-900">
+                {candidate.fullName || `${candidate.firstName || ''} ${candidate.lastName || ''}`.trim() || 'Candidate'}
+              </h1>
+              {candidate.grade && (
+                <span className="px-2.5 py-0.5 bg-blue-50 text-[#0047CC] border border-blue-200/60 rounded-full text-[11px] font-bold">
+                  {candidate.grade}
+                </span>
+              )}
+            </div>
+            <p className="text-[13px] text-gray-500 mt-0.5">
+              {[candidate.professionalTitle, candidate.country || session.location].filter(Boolean).join(' · ') || 'Verified Applicant'}
             </p>
           </div>
+        </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <Input label={step === 'video-setup' ? 'Proposed Date' : 'Visit Date'} type="date" placeholder="Select date" />
-            {step === 'video-setup' ? (
-              <Input label="Proposed Time" type="time" placeholder="Select time" />
-            ) : (
-              <Input label="Travel Budget (USD)" type="number" placeholder="Estimated travel + accommodation" />
-            )}
-            
-            {step === 'inperson-setup' && (
-              <div className="sm:col-span-2">
-                <Input label="Location / Office Address" placeholder="e.g. WHO Regional Office, Brazzaville, Congo" />
+        <div className="flex items-center gap-3">
+          <span className="px-4 py-1.5 bg-[#EEFBEE] text-[#135813] border border-green-200/50 rounded-full text-[11px] font-bold uppercase tracking-wider">
+            {session.decisionStatus || 'Alignment Stage'}
+          </span>
+          {session.actions?.report && (
+            <Link
+              to={`/jobs/${rolePostingId}/candidate/${assessmentId}/report`}
+              className="text-[13px] font-medium text-[#0047CC] hover:underline px-3 py-1.5 bg-blue-50/60 rounded-lg"
+            >
+              View Report
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {/* Main Grid: Session Details & Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column: Scheduled Slot & Session Info */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Alignment Meeting Card */}
+          <div className="bg-white border border-gray-100 rounded-[24px] p-8 shadow-xs">
+            <h2 className="text-[18px] font-bold text-gray-900 mb-2">Session Logistics</h2>
+            <p className="text-[13px] text-gray-400 mb-6 leading-relaxed">
+              Final alignment sessions confirm cultural fit, working arrangements, and start dates. Maximum duration: {session.durationMins ?? 30} minutes.
+            </p>
+
+            {/* Scheduled Slot Status */}
+            <div className="bg-slate-50/80 border border-slate-200/70 rounded-2xl p-5 mb-6">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">Scheduled Time</p>
+              {session.scheduledAt ? (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[16px] font-bold text-gray-900">
+                      {new Date(session.scheduledAt).toLocaleDateString(undefined, {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </p>
+                    <p className="text-[13px] text-gray-500 mt-0.5">
+                      {new Date(session.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {session.selectedSlot?.timezone ? ` (${session.selectedSlot.timezone})` : ''}
+                    </p>
+                  </div>
+                  <span className="px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full text-[11px] font-semibold">
+                    Confirmed Slot
+                  </span>
+                </div>
+              ) : session.slots && session.slots.length > 0 ? (
+                <div>
+                  <p className="text-[13px] font-medium text-amber-700 mb-2">
+                    Awaiting candidate confirmation for proposed slots:
+                  </p>
+                  <div className="space-y-2">
+                    {session.slots.map((s, idx) => (
+                      <div key={s.id || idx} className="flex items-center justify-between bg-white px-3.5 py-2.5 rounded-xl border border-slate-200 text-[13px]">
+                        <span className="font-medium text-gray-800">{s.label || 'Proposed Slot'}</span>
+                        <span className="text-gray-500">
+                          {new Date(s.startsAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <p className="text-[13px] text-gray-500">No time slot scheduled yet.</p>
+                  <Button size="sm" onClick={() => setShowRescheduleModal(true)}>
+                    Propose Slots
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Video Meeting Link */}
+            <div className="border border-gray-100 rounded-2xl p-5 flex items-center justify-between">
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0047CC] flex items-center justify-center shrink-0">
+                  <VideoIcon size={20} />
+                </div>
+                <div>
+                  <p className="text-[14px] font-bold text-gray-900">Virtual Meeting Room</p>
+                  <p className="text-[12px] text-gray-500">Conducted securely within VORA platform</p>
+                </div>
               </div>
-            )}
-            
-            <div className="sm:col-span-2">
-              <Textarea 
-                label="Session Focus Notes (optional)"
-                className="min-h-[120px] bg-gray-50"
-                placeholder={step === 'video-setup' ? "e.g. Confirm start date, discuss onboarding preferences, team introduction…" : "Topics to confirm during the in-person visit…"}
-              />
+
+              {session.meetingLink ? (
+                <a
+                  href={session.meetingLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2 bg-[#0047CC] text-white rounded-xl text-[13px] font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Join Meeting
+                </a>
+              ) : (
+                <span className="px-3 py-1.5 bg-gray-100 text-gray-500 rounded-full text-[12px] font-medium">
+                  Link pending
+                </span>
+              )}
             </div>
           </div>
 
-          {step === 'video-setup' ? (
-            <div className="bg-white border border-blue-200 rounded-xl p-5 flex gap-4 mb-8">
-              <AlertTriangleIcon size={20} className="text-blue-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-[13px] font-medium text-blue-900 mb-1">Note on travel costs:</p>
-                <p className="text-[12px] font-medium text-gray-500 leading-relaxed">
-                  In-person alignment sessions require the employer to cover standard transport and/or lodging.
-                </p>
+          {/* Session Checklist */}
+          {session.checklist && session.checklist.length > 0 && (
+            <div className="bg-white border border-gray-100 rounded-[24px] p-8 shadow-xs">
+              <h3 className="text-[16px] font-bold text-gray-900 mb-4">Stage 4 Alignment Checklist</h3>
+              <div className="space-y-3">
+                {session.checklist.map((item, idx) => (
+                  <div key={item.key || idx} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50/70">
+                    <div className={`w-5 h-5 rounded-md flex items-center justify-center text-white ${item.done ? 'bg-green-600' : 'bg-gray-300'}`}>
+                      {item.done && <CheckIcon size={14} strokeWidth={3} />}
+                    </div>
+                    <span className={`text-[13px] ${item.done ? 'text-gray-900 font-medium' : 'text-gray-500'}`}>
+                      {item.label}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
-          ) : (
-            <div className="bg-white border border-blue-200 rounded-xl p-5">
-              <p className="text-[13px] font-medium text-gray-800 leading-relaxed">
-                The employer has <span className="font-medium">5 business days</span> after the visit to confirm hire or submit a documented rejection. If no decision is received, VORA will intervene and the candidate will be notified.
+          )}
+        </div>
+
+        {/* Right Column: Actions */}
+        <div className="space-y-6">
+          <div className="bg-white border border-gray-100 rounded-[24px] p-6 shadow-xs space-y-4">
+            <h3 className="text-[16px] font-bold text-gray-900">Employer Actions</h3>
+            <p className="text-[13px] text-gray-400 leading-relaxed">
+              You may propose new interview times, or record the final hire or rejection decision.
+            </p>
+
+            <div className="space-y-3 pt-2">
+              <Button
+                variant="outline"
+                className="w-full justify-center"
+                onClick={() => setShowRescheduleModal(true)}
+              >
+                {session.slots?.length ? 'Reschedule / Update Slots' : 'Propose Slots'}
+              </Button>
+
+              <Button
+                className="w-full justify-center bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => setShowHireModal(true)}
+              >
+                Proceed to Hire
+              </Button>
+
+              <Button
+                variant="outline"
+                className="w-full justify-center text-red-600 hover:bg-red-50 hover:border-red-200"
+                onClick={() => setShowRejectModal(true)}
+              >
+                Reject Candidate
+              </Button>
+            </div>
+          </div>
+
+          {/* Deposit info note */}
+          {session.deposit && (
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 text-[12px] text-slate-600 space-y-1">
+              <p className="font-bold text-slate-900">Alignment Deposit Notice</p>
+              <p>
+                Deposit ID: <span className="font-mono text-slate-800">{session.deposit.depositId}</span>
+              </p>
+              <p>
+                Status: <span className="font-semibold text-slate-800">{session.deposit.status}</span> ({session.deposit.currency} {session.deposit.amount})
               </p>
             </div>
           )}
+        </div>
+      </div>
 
-          <div className="flex justify-end gap-4 pt-4">
-            <button onClick={handleBack} className="px-8 py-3 bg-white border border-gray-100 rounded-full text-[14px] font-medium text-gray-500 hover:bg-gray-50 transition-all cursor-pointer">
-              Cancel
-            </button>
-            <Button onClick={handleConfirm} className="px-8">
-              {step === 'video-setup' ? 'Confirm & Send Invite' : 'Confirm & Load Funds'}
-            </Button>
+      {/* Modal: Reschedule / Propose Slots */}
+      {showRescheduleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white rounded-[24px] max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[18px] font-bold text-gray-900">Propose Alignment Slot</h3>
+              <button onClick={() => setShowRescheduleModal(false)} className="text-gray-400 hover:text-gray-600">
+                <CloseIcon size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleSendSlots} className="space-y-4">
+              <Input
+                label="Session Label"
+                value={slotLabel}
+                onChange={(e) => setSlotLabel(e.target.value)}
+                placeholder="e.g. Video Alignment Session"
+              />
+              <Input
+                label="Proposed Date"
+                type="date"
+                required
+                value={slotDate}
+                onChange={(e) => setSlotDate(e.target.value)}
+              />
+              <Input
+                label="Proposed Time"
+                type="time"
+                required
+                value={slotTime}
+                onChange={(e) => setSlotTime(e.target.value)}
+              />
+              <p className="text-[12px] text-gray-500">
+                Timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
+              </p>
+              <div className="flex justify-end gap-3 pt-3">
+                <Button variant="secondary" type="button" onClick={() => setShowRescheduleModal(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={alignMutation.isPending}>
+                  {alignMutation.isPending ? 'Sending...' : 'Send Slot Proposal'}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      {step === 'confirm' && (
-        <div className="bg-white border border-gray-100 rounded-[32px] p-12 shadow-sm text-center max-w-xl mx-auto animate-in zoom-in-95 duration-500">
-          <div className="w-20 h-20 bg-green-50 border-4 border-green-100 rounded-full flex items-center justify-center mx-auto mb-8">
-            <CheckIcon size={32} className="text-green-600" strokeWidth={3} />
+      {/* Modal: Hire Decision */}
+      {showHireModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white rounded-[24px] max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[18px] font-bold text-gray-900">Confirm Candidate Hire</h3>
+              <button onClick={() => setShowHireModal(false)} className="text-gray-400 hover:text-gray-600">
+                <CloseIcon size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleHireSubmit} className="space-y-4">
+              <p className="text-[13px] text-gray-500">
+                Confirming hire will close this assessment and mark the candidate as hired for this role.
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2">
+                  <Input
+                    label="Final Compensation"
+                    type="number"
+                    placeholder="e.g. 85000"
+                    value={compensation}
+                    onChange={(e) => setCompensation(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Input
+                    label="Currency"
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                  />
+                </div>
+              </div>
+              <Input
+                label="Confirmed Start Date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+              <div className="flex justify-end gap-3 pt-3">
+                <Button variant="secondary" type="button" onClick={() => setShowHireModal(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={hireMutation.isPending} className="bg-green-600 hover:bg-green-700 text-white">
+                  {hireMutation.isPending ? 'Confirming...' : 'Confirm Hire'}
+                </Button>
+              </div>
+            </form>
           </div>
-          <h2 className="text-[24px] font-medium text-gray-900 mb-4 ">Session Request Confirmed</h2>
-          <p className="text-[15px] font-medium text-gray-400 mb-10 leading-relaxed">
-            Your Final Alignment Session request has been sent to {candidate.code}. They have been informed that you have declared provisional hire intent. A decision is required within 48 hours of the session concluding.
-          </p>
+        </div>
+      )}
 
-          <div className="bg-white border border-blue-100 rounded-[24px] p-8 text-left space-y-4 mb-10">
-            <p className="text-[13px] font-medium text-[#0047CC] uppercase tracking-widest">What happens next</p>
-            <ul className="space-y-4">
-              {[
-                'Candidate accepts or proposes an alternative time',
-                'Session brief is generated for both parties',
-                'Session is hosted within VORA (recorded per platform terms)',
-                'You have 48 hours post-session to click Hire or submit a documented rejection'
-              ].map((item, i) => (
-                <li key={i} className="flex items-start gap-4 text-[14px] font-medium text-gray-600">
-                  <span className="w-6 h-6 rounded-full bg-[#0047CC] text-white flex items-center justify-center text-[10px] shrink-0 mt-0.5">{i + 1}</span>
-                  {item}
-                </li>
-              ))}
-            </ul>
+      {/* Modal: Reject Decision */}
+      {showRejectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white rounded-[24px] max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[18px] font-bold text-gray-900">Reject Candidate</h3>
+              <button onClick={() => setShowRejectModal(false)} className="text-gray-400 hover:text-gray-600">
+                <CloseIcon size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleRejectSubmit} className="space-y-4">
+              <div>
+                <label className="block text-[13px] font-medium text-gray-700 mb-1">Rejection Type</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 text-[13px] cursor-pointer">
+                    <input
+                      type="radio"
+                      name="rejectKind"
+                      checked={rejectKind === 'LEGITIMATE'}
+                      onChange={() => setRejectKind('LEGITIMATE')}
+                    />
+                    Legitimate
+                  </label>
+                  <label className="flex items-center gap-2 text-[13px] cursor-pointer">
+                    <input
+                      type="radio"
+                      name="rejectKind"
+                      checked={rejectKind === 'FRAUD'}
+                      onChange={() => setRejectKind('FRAUD')}
+                    />
+                    Fraud / Violation
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[13px] font-medium text-gray-700 mb-1">Primary Reason</label>
+                <select
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-[13px] bg-white focus:outline-none focus:ring-2 focus:ring-[#0047CC]/20 focus:border-[#0047CC]"
+                >
+                  <option value="ROLE_MISMATCH">Role Mismatch</option>
+                  <option value="COMPENSATION_MISALIGNMENT">Compensation Misalignment</option>
+                  <option value="AVAILABILITY_TIMELINE">Availability Timeline</option>
+                  <option value="COMMUNICATION_FIT">Communication / Culture Fit</option>
+                  <option value="OTHER">Other Reason</option>
+                </select>
+              </div>
+
+              <Textarea
+                label="Detailed Explanation (min 10 characters)"
+                required
+                value={rejectDetails}
+                onChange={(e) => setRejectDetails(e.target.value)}
+                placeholder="Provide specific feedback justifying the rejection decision..."
+                className="min-h-[100px]"
+              />
+
+              <div className="flex justify-end gap-3 pt-3">
+                <Button variant="secondary" type="button" onClick={() => setShowRejectModal(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={rejectMutation.isPending} className="bg-red-600 hover:bg-red-700 text-white">
+                  {rejectMutation.isPending ? 'Submitting...' : 'Submit Rejection'}
+                </Button>
+              </div>
+            </form>
           </div>
-
-          <Button onClick={() => navigate(`/jobs/${id}`)} className="w-full sm:w-auto px-12">
-            Back to Applicants
-          </Button>
         </div>
       )}
     </div>

@@ -41,22 +41,30 @@ const VaultEscrowAdjustmentCard: React.FC<VaultEscrowAdjustmentCardProps> = ({
 
   return (
     <ContentCard title={title}>
-      <div className="bg-[#EEFBEE] border-[1.5px] border-[#85E585] rounded-lg px-3.5 py-3 -mt-1">
-        {rows.map((row) => (
-          <div key={row.label} className="flex justify-between gap-3 text-[13px] py-1">
-            <span className="text-[#808080]">{row.label}</span>
-            <span
-              className={`font-bold shrink-0 ${
-                row.charge ? 'text-[#D97706]' : 'text-[#1A1A1A]'
-              }`}
-            >
-              {row.value}
-            </span>
-          </div>
-        ))}
-        <div className="flex justify-between gap-3 text-[13px] pt-2 mt-1 border-t border-[#85E585]">
-          <span className="font-bold text-[#135813]">New total escrow after top-up</span>
-          <span className="font-bold text-[#135813]">{formatUsd(recalc.newEscrow)}</span>
+      <div className="bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-3 -mt-1">
+        <div className="divide-y divide-slate-200/60">
+          {rows.map((row) => (
+            <div key={row.label} className="flex items-center justify-between gap-3 text-[13px] py-1.5">
+              <span className="text-slate-600">{row.label}</span>
+              <span
+                className={`tabular-nums shrink-0 text-right ${
+                  row.value === 'None'
+                    ? 'text-slate-400 font-normal'
+                    : row.charge
+                    ? 'font-semibold text-[#0047CC]'
+                    : 'font-medium text-slate-800'
+                }`}
+              >
+                {row.value}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-between gap-3 text-sm pt-2.5 mt-2 border-t border-slate-200">
+          <span className="font-semibold text-slate-900">New total escrow after top-up</span>
+          <span className="font-semibold tabular-nums text-slate-900 text-right">
+            {formatUsd(recalc.newEscrow)}
+          </span>
         </div>
       </div>
     </ContentCard>

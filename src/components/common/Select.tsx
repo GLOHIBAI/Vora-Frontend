@@ -238,7 +238,7 @@ const Select: React.FC<SelectProps> = ({
           ? 'opacity-50 cursor-not-allowed bg-slate-50 text-slate-400'
           : 'hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#0047CC]/20 focus:border-[#0047CC] cursor-pointer text-slate-800'
       } font-semibold transition-all flex items-center justify-between gap-2.5 text-left ${className}`
-    : `w-full h-10 min-h-[40px] px-3.5 py-2 text-sm rounded-lg border ${
+    : `w-full h-11 min-h-[44px] px-3.5 py-2.5 text-sm rounded-lg border ${
         error ? 'border-red-500 bg-white' : 'border-slate-200 bg-white'
       } ${
         disabled

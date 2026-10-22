@@ -670,7 +670,10 @@ export const useEmployerJobsQuery = (params: EmployerJobsQueryParams = {}) => {
     queryKey: employerKeys.jobs(filter, status, search, page, limit),
     queryFn: async () => {
       const qs = new URLSearchParams();
-      if (filter) qs.set('filter', filter);
+      if (filter) {
+        const normFilter = filter.toLowerCase().replace(/[\s-]+/g, '_');
+        qs.set('filter', normFilter === 'all_jobs' ? 'all' : normFilter);
+      }
       if (status && status !== 'ALL') {
         const normStatus =
           status.toUpperCase() === 'VAULT'

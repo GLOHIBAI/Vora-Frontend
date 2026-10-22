@@ -17,7 +17,6 @@ import PostJobWizard from '../../components/employer/PostJobWizard';
 import TabSlider from '../../components/common/TabSlider';
 import Button from '../../components/common/Button';
 import PaginationControls from '../../components/common/PaginationControls';
-import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
 import Tag from '../../components/common/Tag';
 import Spinner from '../../components/common/Spinner';
@@ -258,7 +257,15 @@ const Jobs: React.FC = () => {
       actionLabel.includes('edit') ||
       actionLabel.includes('continue')
     ) {
-      navigate(`/jobs/${job.id}?edit=true`);
+      const s = (job.status || '').toUpperCase();
+      const ds = (job.displayStatus || '').toUpperCase();
+      const isVaultJob = s === 'SCHEDULED' || s === 'VAULT' || ds === 'SCHEDULED' || ds === 'VAULT';
+
+      if (isVaultJob) {
+        navigate(`/jobs/vault/edit/${job.id}`);
+      } else {
+        navigate(`/jobs/${job.id}?edit=true`);
+      }
       return;
     }
 
@@ -359,7 +366,10 @@ const Jobs: React.FC = () => {
   // Sync URL tab and status params
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab) setActiveFilter(tab);
+    if (tab) {
+      const tabNorm = tab.toLowerCase().replace(/[\s-]+/g, '_');
+      setActiveFilter(tabNorm === 'all_jobs' ? 'all' : tabNorm);
+    }
     const status = searchParams.get('status');
     if (status) {
       const sNorm = status.toUpperCase();
@@ -413,12 +423,20 @@ const Jobs: React.FC = () => {
   }, [filters]);
 
   const activeTabLabel = useMemo(() => {
-    return filters.find(f => f.key === activeFilter)?.label || filters[0]?.label || 'All jobs';
+    return (
+      filters.find(
+        (f) =>
+          f.key.toLowerCase() === activeFilter.toLowerCase() ||
+          f.label.toLowerCase() === activeFilter.toLowerCase()
+      )?.label ||
+      filters[0]?.label ||
+      'All jobs'
+    );
   }, [filters, activeFilter]);
 
   const handleTabChange = (label: string) => {
     const key = filterKeyMap[label] || 'all';
-    setActiveFilter(key);
+    setActiveFilter(key.toLowerCase());
   };
 
   return (
@@ -460,15 +478,27 @@ const Jobs: React.FC = () => {
 
       {/* Search Bar & Status Filter */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
-        <div className="flex-1">
-          <Input 
-            label=""
+        <div className="relative flex-1">
+          <SearchIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <input 
+            type="text"
             placeholder="Search jobs..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            icon={SearchIcon}
-            className="rounded-xl shadow-sm border-gray-100"
+            className="w-full h-10 pl-10 pr-9 py-2 text-sm text-slate-800 placeholder:text-gray-400 bg-white border border-gray-200/90 rounded-xl shadow-2xs hover:border-gray-300 focus:outline-none focus:border-[#0047CC] focus:ring-2 focus:ring-[#0047CC]/10 transition-all"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+              aria-label="Clear search"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
         <div className="w-full sm:w-52 shrink-0">
           <Select
@@ -478,7 +508,7 @@ const Jobs: React.FC = () => {
             value={statusFilter}
             onChange={(e) => handleStatusFilterChange(e.target.value)}
             options={STATUS_OPTIONS}
-            className="rounded-xl shadow-sm border-gray-100 py-3 text-[14px] bg-white"
+            className="h-10 rounded-xl shadow-2xs border-gray-200/90 text-sm bg-white hover:border-gray-300 focus:border-[#0047CC]"
             menuClassName="z-50 shadow-xl border-gray-100 rounded-xl"
           />
         </div>

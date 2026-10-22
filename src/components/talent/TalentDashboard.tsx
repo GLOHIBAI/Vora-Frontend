@@ -6,7 +6,6 @@ import QuickActionCard from '../dashboard/QuickActionCard';
 import JobCard from '../dashboard/JobCard';
 import { InfoIcon } from '../common/Icons';
 import FullPageSpinner from '../common/FullPageSpinner';
-import { TALENT_SAMPLE_JOBS } from '../../constants/mockData';
 import { useAuth } from '../../context/AuthContext';
 import {
   useGetPublicRoleQuery,
@@ -377,73 +376,60 @@ const TalentDashboard: React.FC = () => {
           )}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {availableJobs.length > 0 ? (
-            availableJobs.map((job: TalentJobListItem, index: number) => {
-              const orgName = (job as any).organisationName || job.companyName || 'Verified Employer';
-              const salaryFormatted = (job as any).compensationSummary 
-                || ((job.salaryMin || job.salaryMax) ? formatJobSalary(job.salaryMin, job.salaryMax, job.salaryCurrency).amount : 'Competitive');
-              const jobPeriod = (job as any).salaryPeriod || (job as any).period;
-              const postedDate = (job as any).publishedAt ? new Date((job as any).publishedAt).toLocaleDateString() : job.createdAt ? new Date(job.createdAt).toLocaleDateString() : 'Recent';
-              const roleSlug = (job as any).roleLink || job.roleTitle?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'role';
+          {((dashboardData?.matchedRoles && dashboardData.matchedRoles.length > 0)
+            ? dashboardData.matchedRoles
+            : availableJobs
+          ).length > 0 ? (
+            ((dashboardData?.matchedRoles && dashboardData.matchedRoles.length > 0)
+              ? dashboardData.matchedRoles
+              : availableJobs
+            ).map((role: any, index: number) => {
+              const roleId = role.rolePostingId || role.id || `matched-role-${index}`;
+              const title = role.roleTitle || role.title || 'Role Opportunity';
+              const company = role.organisationName || role.employerName || role.companyName || 'Verified Employer';
+              const location = role.location || 'Remote';
+              const matchScore = role.matchScore;
+              const tags = [
+                ...(role.tags ? role.tags.map((t: string) => t.replace(/_/g, ' ')) : []),
+                ...(typeof matchScore === 'number' ? [`${matchScore}% MATCH`] : []),
+              ];
+              const roleSlug = role.roleLink || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'role';
 
               return (
                 <div 
-                  key={(job as any).rolePostingId || job.id || `avail-job-${index}`} 
+                  key={roleId} 
                   className="cursor-pointer h-full"
                   onClick={() => {
                     localStorage.setItem('active_assessment_role_slug', roleSlug);
-                    if ((job as any).rolePostingId) {
-                      localStorage.setItem('vora_role_posting_id', (job as any).rolePostingId);
+                    if (role.rolePostingId) {
+                      localStorage.setItem('vora_role_posting_id', role.rolePostingId);
                     }
-                    navigate(`/role/${roleSlug}`);
+                    if (role.hrefHint) {
+                      navigate(role.hrefHint);
+                    } else {
+                      navigate(`/role/${roleSlug}`);
+                    }
                   }}
                 >
                   <JobCard 
-                    title={job.roleTitle || 'Job Opportunity'}
-                    company={orgName}
-                    location={job.location || 'Remote'}
-                    postedAt={postedDate}
-                    salary={salaryFormatted}
-                    period={jobPeriod}
-                    description={job.department ? `Department: ${job.department}` : 'Verified opportunity on Vora.'}
-                    tags={[
-                      ...((job as any).tags ? (job as any).tags.map((t: string) => t.replace(/_/g, ' ')) : job.employmentType ? [job.employmentType.replace('_', ' ')] : []),
-                      ...(typeof job.matchScore === 'number' ? [`${job.matchScore}% MATCH`] : []),
-                    ]}
+                    title={title}
+                    company={company}
+                    location={location}
+                    postedAt={role.publishedAt ? new Date(role.publishedAt).toLocaleDateString() : 'Recent'}
+                    salary={role.compensationSummary || 'Competitive'}
+                    description="Opportunity tailored for your verified skillset."
+                    tags={tags.length > 0 ? tags : ['HYBRID', 'VERIFIED']}
                   />
                 </div>
               );
             })
-          ) : sampleOpportunities && sampleOpportunities.length > 0 ? (
-            sampleOpportunities.map((opp: TalentDashboardSampleOpportunity, idx: number) => (
-              <div 
-                key={opp.rolePostingId || `sample-opp-${idx}`} 
-                className="cursor-pointer h-full"
-                onClick={() => {
-                  if (opp.roleLink) {
-                    navigate(`/onboarding/talent/${opp.roleLink}/match`);
-                  } else if (opp.hrefHint) {
-                    navigate(opp.hrefHint);
-                  }
-                }}
-              >
-                <JobCard 
-                  title={opp.roleTitle || 'Opportunity'}
-                  company={opp.organisationName || opp.employerName || 'Employer'}
-                  location={opp.location || 'Lagos, Nigeria'}
-                  postedAt="Recent"
-                  salary={opp.compensationSummary || opp.salaryRange || 'Competitive'}
-                  description="Opportunity tailored for qualified talent."
-                  tags={opp.tags || ['HYBRID', 'SENIOR']}
-                />
-              </div>
-            ))
           ) : (
-            TALENT_SAMPLE_JOBS.map((job, idx) => (
-              <div key={job.title || `sample-job-${idx}`} className="h-full">
-                <JobCard {...job} period="monthly" />
-              </div>
-            ))
+            <div className="col-span-full py-12 px-6 text-center bg-gray-50/60 border border-dashed border-gray-200 rounded-2xl">
+              <p className="text-[14px] font-medium text-gray-700">No live matched roles right now</p>
+              <p className="text-[12px] text-gray-500 mt-1 max-w-md mx-auto">
+                Complete your assessment stages to receive tailored role matches.
+              </p>
+            </div>
           )}
         </div>
       </section>

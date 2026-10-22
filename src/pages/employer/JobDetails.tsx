@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { JOB_DETAILS_TABS } from '../../constants/tabs';
 import {
@@ -230,15 +230,31 @@ const JobDetails: React.FC = () => {
 
   const tabs = isEmployer ? JOB_DETAILS_TABS : ['Details'];
 
+  const isUuid = Boolean(id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+
+  useEffect(() => {
+    if (id && !isUuid) {
+      if (id.toLowerCase() === 'vault') {
+        navigate('/jobs?tab=Scheduled', { replace: true });
+      } else {
+        toast.error(`Invalid job ID: ${id}`);
+        navigate('/jobs', { replace: true });
+      }
+    }
+  }, [id, isUuid, navigate]);
+
   // API queries
-  const { data: jobDetail, isLoading: detailLoading } = useEmployerJobDetailQuery(id || '');
+  const { data: jobDetail, isLoading: detailLoading } = useEmployerJobDetailQuery(
+    id || '',
+    { enabled: isUuid }
+  );
   const { data: applicantsData, isLoading: applicantsLoading } = useEmployerJobApplicantsQuery(
     id || '',
-    { enabled: isEmployer && activeTab === 'Applicants' }
+    { enabled: isEmployer && isUuid && activeTab === 'Applicants' }
   );
   const { data: hiresData, isLoading: hiresLoading } = useEmployerJobHiresQuery(
     id || '',
-    { enabled: isEmployer && activeTab === 'Hired' }
+    { enabled: isEmployer && isUuid && activeTab === 'Hired' }
   );
 
   const handleEdit = (section: any) => {

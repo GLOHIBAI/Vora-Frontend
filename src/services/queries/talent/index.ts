@@ -1092,7 +1092,10 @@ export const useAddTalentMilestoneMutation = () => {
 };
 
 export interface PatchTalentProfilePayload {
+  firstName?: string;
+  lastName?: string;
   headline?: string;
+  bio?: string;
   location?: string;
   phone?: string;
   nationality?: string;
@@ -1238,6 +1241,88 @@ export const useUploadRightToWorkMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['talent-dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['talent-profile'] });
+    },
+  });
+};
+
+export interface TalentNotificationsSettings {
+  emailMatchFound?: boolean;
+  emailVaultRoleLive?: boolean;
+  emailAssessmentReady?: boolean;
+  emailAssessmentLocked?: boolean;
+  emailHireConfirmed?: boolean;
+  emailCourseComplete?: boolean;
+  emailJobAlerts?: boolean;
+  emailPlatformAnnouncements?: boolean;
+  inAppDashboardNotifications?: boolean;
+  frequency?: 'INSTANT' | 'DAILY_DIGEST' | 'WEEKLY_SUMMARY';
+}
+
+export const useTalentNotificationsSettingsQuery = (options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: ['talent', 'settings', 'notifications'],
+    queryFn: async () => {
+      const res = await apiClient.get<{ data: TalentNotificationsSettings }>({
+        url: '/talent/settings/notifications',
+        auth: true,
+      });
+      return res.data;
+    },
+    ...options,
+  });
+};
+
+export const useUpdateTalentNotificationsSettingsMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: TalentNotificationsSettings) =>
+      apiClient.patch<{ data: TalentNotificationsSettings }>({
+        url: '/talent/settings/notifications',
+        body,
+        auth: true,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['talent', 'settings', 'notifications'] });
+    },
+  });
+};
+
+export interface TalentAlertsSettings {
+  enabled?: boolean;
+  roleTypes?: string[];
+  seniorityLevels?: string[];
+  locations?: string[];
+  workArrangements?: string[];
+  notifyOnGoLive?: boolean;
+  notifyOnNewMatch?: boolean;
+  sourceRoleLink?: string;
+}
+
+export const useTalentAlertsQuery = (options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: ['talent', 'alerts'],
+    queryFn: async () => {
+      const res = await apiClient.get<{ data: TalentAlertsSettings }>({
+        url: '/talent/alerts',
+        auth: true,
+      });
+      return res.data;
+    },
+    ...options,
+  });
+};
+
+export const usePatchTalentAlertsMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: TalentAlertsSettings) =>
+      apiClient.patch<{ data: TalentAlertsSettings }>({
+        url: '/talent/alerts',
+        body,
+        auth: true,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['talent', 'alerts'] });
     },
   });
 };

@@ -23,7 +23,7 @@ import Tag from '../common/Tag';
 import Button from '../common/Button';
 import FullPageSpinner from '../common/FullPageSpinner';
 import { useAuth } from '../../context/AuthContext';
-import { useEmployerDashboardQuery } from '../../services/queries/employer';
+import { useEmployerDashboardQuery, useEmployerOrganisationQuery } from '../../services/queries/employer';
 import type {
   ActivityIconType,
   BannerAlertActionType,
@@ -106,6 +106,16 @@ const mapAlignmentBadgeVariant = (status?: AlignmentSessionStatus): 'blue' | 'gr
   }
 };
 
+const getCompanyInitials = (name?: string): string => {
+  if (!name || !name.trim()) return 'VO';
+  const clean = name.trim();
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+  return clean.slice(0, 2).toUpperCase();
+};
+
 const EmployerDashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -115,6 +125,7 @@ const EmployerDashboard: React.FC = () => {
   const [wizardConfig, setWizardConfig] = React.useState<PostJobContinueConfig | undefined>(undefined);
 
   const { data: dashboard, isLoading } = useEmployerDashboardQuery();
+  const { data: employerOrg } = useEmployerOrganisationQuery();
 
   // Computed Greeting Data
   const greeting = useMemo(() => {
@@ -550,15 +561,26 @@ const EmployerDashboard: React.FC = () => {
                 activeJobs.map((job, i) => {
                   const roleTitle = job.roleTitle || job.title || 'Untitled Role';
                   const appCount = Number(job.applicantCount ?? job.applicantsCount ?? job.applicants ?? 0);
-                  
-                  // Extract monogram (e.g. "BE" for Backend Engineer)
-                  const initials = roleTitle
-                    .split(' ')
-                    .filter(Boolean)
-                    .map(w => w[0])
-                    .slice(0, 2)
-                    .join('')
-                    .toUpperCase();
+
+                  // Resolve the name of the company that created this job
+                  const companyName =
+                    job.organisationName ||
+                    job.companyName ||
+                    job.company ||
+                    job.employerName ||
+                    employerOrg?.organisationName ||
+                    dashboard?.account?.profile?.organisationName ||
+                    user?.organisationName ||
+                    (user?.role === 'employer' && user?.firstName ? user.firstName : '') ||
+                    '';
+
+                  const companyLogo =
+                    job.logoUrl ||
+                    job.companyLogo ||
+                    employerOrg?.logoUrl ||
+                    user?.avatarUrl;
+
+                  const companyInitials = getCompanyInitials(companyName || 'Vora');
 
                   return (
                     <div
@@ -566,9 +588,26 @@ const EmployerDashboard: React.FC = () => {
                       onClick={() => navigate(job.id ? `/jobs/${job.id}` : '/jobs')}
                       className="flex items-center gap-4 p-4 hover:bg-slate-50/80 transition-all cursor-pointer group"
                     >
-                      {/* Role Monogram Badge */}
-                      <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 text-[#0047CC] font-bold text-[12px] flex items-center justify-center shrink-0">
-                        {initials}
+                      {/* Company Avatar / Monogram Badge */}
+                      <div
+                        className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 text-[#0047CC] font-bold text-[12px] flex items-center justify-center shrink-0 overflow-hidden"
+                        title={companyName || undefined}
+                      >
+                        {companyLogo ? (
+                          <img
+                            src={companyLogo}
+                            alt={companyName || 'Company logo'}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = 'none';
+                              if (e.currentTarget.parentElement) {
+                                e.currentTarget.parentElement.innerText = companyInitials;
+                              }
+                            }}
+                          />
+                        ) : (
+                          <span>{companyInitials}</span>
+                        )}
                       </div>
 
                       {/* Job Title & Details */}
@@ -577,7 +616,14 @@ const EmployerDashboard: React.FC = () => {
                           {roleTitle}
                         </p>
                         <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                          {[job.departmentOrUnit, job.location || 'Remote', `Posted ${job.postedDate || 'Recent'}`].filter(Boolean).join(' · ')}
+                          {[
+                            companyName || null,
+                            job.departmentOrUnit,
+                            job.location || 'Remote',
+                            `Posted ${job.postedDate || 'Recent'}`,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
                         </p>
                       </div>
 
@@ -653,7 +699,15 @@ const EmployerDashboard: React.FC = () => {
                       .toUpperCase()
                       .slice(0, 2);
                   return (
-                    <div key={session.id || i} className="flex items-center gap-3.5 p-4 hover:bg-slate-50 transition-all cursor-pointer group">
+                    <div
+                      key={session.id || i}
+                      onClick={() => {
+                        if (session.assessmentId && session.rolePostingId) {
+                          navigate(`/jobs/${session.rolePostingId}/alignment/${session.assessmentId}`);
+                        }
+                      }}
+                      className="flex items-center gap-3.5 p-4 hover:bg-slate-50 transition-all cursor-pointer group"
+                    >
                       <div
                         className={`w-9 h-9 rounded-xl ${
                           session.initialBg || 'bg-blue-600'

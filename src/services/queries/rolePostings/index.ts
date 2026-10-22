@@ -181,3 +181,65 @@ export const useUpdateRolePostingStepFiveMutation = () => {
     },
   });
 };
+
+export const useVaultPreQualifiedCountQuery = (
+  id: string,
+  options?: { enabled?: boolean }
+) => {
+  return useQuery({
+    queryKey: ['role-postings', id, 'vault', 'pre-qualified-count'],
+    queryFn: () =>
+      apiClient.get<ApiResponse<{ count: number }>>({
+        url: `/role-postings/${id}/vault/pre-qualified-count`,
+        auth: true,
+      }),
+    enabled: Boolean(id) && (options?.enabled ?? true),
+  });
+};
+
+export const useEditVaultRoleMutation = () => {
+  return useMutation({
+    mutationFn: ({
+      id,
+      changes,
+    }: {
+      id: string;
+      changes: Record<string, any>;
+    }) =>
+      apiClient.patch<ApiResponse<any>>({
+        url: `/role-postings/${id}/vault/edit`,
+        body: { changes },
+        auth: true,
+      }),
+  });
+};
+
+export const useCancelVaultRoleMutation = () => {
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiClient.delete<ApiResponse<any>>({
+        url: `/role-postings/${id}/vault`,
+        auth: true,
+      }),
+  });
+};
+
+export const useUpdateVaultCompetenciesMutation = () => {
+  return useMutation({
+    mutationFn: ({
+      id,
+      competencies,
+      minReadinessThreshold,
+    }: {
+      id: string;
+      competencies: Array<{ name: string; weight: number; level?: string; isRequired?: boolean }>;
+      minReadinessThreshold?: number;
+    }) =>
+      apiClient.put<ApiResponse<any>>({
+        url: `/role-postings/${id}/vault/competencies`,
+        body: { competencies, minReadinessThreshold },
+        auth: true,
+      }),
+  });
+};
+

@@ -8,9 +8,6 @@ import RolesFoundResultBanner from '../../components/talent/rolesFound/RolesFoun
 import RolesFoundStatsGrid from '../../components/talent/rolesFound/RolesFoundStatsGrid';
 import MatchedRoleCard from '../../components/talent/rolesFound/MatchedRoleCard';
 import MatchedRoleJdModal from '../../components/talent/rolesFound/MatchedRoleJdModal';
-import {
-  DEFAULT_ROLES_FOUND_SUMMARY,
-} from '../../constants/talentRolesFound';
 import { useAuth } from '../../context/AuthContext';
 import { 
   useGetPublicRoleQuery,
@@ -111,14 +108,15 @@ const RoleProfileRolesFound: React.FC = () => {
 
   const summary = useMemo(
     () => ({
-      ...DEFAULT_ROLES_FOUND_SUMMARY,
       originalRoleTitle:
-        resolveRoleTitleFromScan(matchScan, appliedRole?.roleTitle ?? DEFAULT_ROLES_FOUND_SUMMARY.originalRoleTitle),
+        resolveRoleTitleFromScan(matchScan, appliedRole?.roleTitle ?? 'Role Opportunity'),
       originalScore: matchScan.originalRoleScore,
       matchThreshold,
       matchedRoleCount: matchedRoles.length || (jobsData?.metrics?.availableMatchedCount ?? availableJobs.length),
-      careerReadinessScore: dashboardData?.metrics?.careerReadinessScore?.value ?? matchScan.careerReadinessScore ?? DEFAULT_ROLES_FOUND_SUMMARY.careerReadinessScore,
-      assessmentGrade: dashboardData?.metrics?.interviewGrade?.grade || jobsData?.talentGrade?.grade || DEFAULT_ROLES_FOUND_SUMMARY.assessmentGrade,
+      careerReadinessScore: dashboardData?.metrics?.careerReadinessScore?.value ?? matchScan.careerReadinessScore ?? 0,
+      assessmentGrade: dashboardData?.metrics?.interviewGrade?.grade || jobsData?.talentGrade?.grade || '',
+      profileStrengthLabel: '',
+      strongProfileNote: '',
       explanationSummary: resolveMatchSummary(matchScan),
     }),
     [

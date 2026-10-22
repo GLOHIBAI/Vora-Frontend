@@ -19,7 +19,7 @@ export const DEFAULT_VAULT_TIMELINE = (
     status: 'pending',
     title: 'Vault period, silent matching',
     description:
-      'Your role is completely invisible. No candidate knows it exists, no candidate is contacted about it. In the background, every new candidate who joins VORA and completes their onboarding profile is silently matched against your specification. Those who score 80% or above are pre-qualified internally, flagged as likely matches. They are not told. They are not contacted. They simply exist in a pre-qualified list that activates the moment your role goes live. Your Vault dashboard shows a live count of how many VORA candidates currently pre-qualify. That number updates in real time as new talent joins. If the number is zero today, it is honest. The value of scheduling further out is that it gives the pool more time to grow.',
+      'Your role is completely invisible to candidates. In the background, every new candidate who joins VORA is silently matched against your specification. Candidates scoring 80% or above join your pre-qualified list and are ready the moment your role goes live.',
     dateLabel: `Now until ${vaultPeriodEnd}`,
   },
   {
@@ -35,7 +35,7 @@ export const DEFAULT_VAULT_TIMELINE = (
     stepNumber: 4,
     title: 'Go-live, matching fires for the first time',
     description:
-      'On your go-live date, your role publishes publicly. VORA\'s matching engine runs for the first time against this role. Every qualified candidate in the VORA pool is notified simultaneously that a new matching role is available. This is the first moment any candidate ever sees or hears about this role.',
+      'On your go-live date, your role publishes publicly. VORA\'s matching engine runs for the first time against this role. Every qualified candidate in the VORA pool is notified simultaneously that a new matching role is available.',
     dateLabel: goLiveFormatted,
   },
   {
@@ -44,6 +44,6 @@ export const DEFAULT_VAULT_TIMELINE = (
     title: 'Interview and hire',
     description:
       'Matched candidates proceed through VORA\'s interview. You receive scored profiles and can hire or request an Alignment session. On confirmed hire, the true-up fires, if the final salary differs from the midpoint, VORA charges or refunds the difference within 24 hours.',
-    dateLabel: `${goLiveFormatted.split(' ').slice(-1)[0]} onwards`,
+    dateLabel: goLiveFormatted !== 'Not scheduled' ? `${goLiveFormatted.split(' ').slice(-1)[0]} onwards` : 'After go-live',
   },
 ];

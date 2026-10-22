@@ -22,10 +22,14 @@ const DURING_REVIEW_ITEMS = [
   'The escrow top-up charges automatically, no action required from you',
 ];
 
+const isValidUuid = (val?: string | null): boolean =>
+  Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+
 const VaultEditReview: React.FC = () => {
   const navigate = useNavigate();
   const { id: jobId } = useParams();
-  const vaultDashboardHref = jobId ? `/jobs/${jobId}` : '/jobs?tab=Scheduled';
+  const isUuid = isValidUuid(jobId);
+  const vaultDashboardHref = isUuid ? `/jobs/${jobId}` : '/jobs';
 
   const data = useMemo(() => {
     const loaded = loadVaultEditReview();
@@ -38,16 +42,16 @@ const VaultEditReview: React.FC = () => {
   return (
     <VaultReviewPageLayout backTo={vaultDashboardHref}>
       <ConfirmationHeader
-        icon={<ClockIcon size={28} className="text-[#D97706]" strokeWidth={2.3} />}
-        iconWrapperClassName="bg-[#FFFBEB] border-[#FDE68A]"
+        icon={<ClockIcon size={28} className="text-[#0047CC]" strokeWidth={2.3} />}
+        iconWrapperClassName="bg-[#F0F7FF] border-[#BDD9FF]"
         title="Edit in 48-hour review"
         subtitle={
-          <>
+          <div className="max-w-xl mx-auto text-left sm:text-center text-sm text-slate-600 leading-relaxed">
             Your specification update for{' '}
-            <strong className="text-[#1A1A1A] font-bold">{data.roleTitle}</strong> has been submitted.
+            <strong className="text-slate-900 font-semibold">{data.roleTitle}</strong> has been submitted.
             VORA is reviewing the changes. Once confirmed, the new spec takes effect and silent matching
-            recalibrates against the updated criteria. Previously pre-qualified candidates are re-scored.
-          </>
+            recalibrates against the updated criteria.
+          </div>
         }
       />
 
@@ -70,15 +74,24 @@ const VaultEditReview: React.FC = () => {
 
       <BulletListCard title="During the review window" items={DURING_REVIEW_ITEMS} />
 
-      <Button
-        variant="primary"
-        fullWidth
-        size="md"
-        className="bg-[#0047CC] hover:bg-[#003d99] text-white font-bold rounded-full border-0 transition-colors"
-        onClick={() => navigate(vaultDashboardHref)}
-      >
-        Back to Vault dashboard
-      </Button>
+      <div className="flex flex-col sm:flex-row gap-3 pt-2">
+        <Button
+          variant="outline"
+          size="md"
+          className="h-11 sm:h-12 border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 text-sm"
+          onClick={() => navigate(vaultDashboardHref)}
+        >
+          Cancel vault (full refund)
+        </Button>
+        <Button
+          variant="primary"
+          size="md"
+          className="flex-1 h-11 sm:h-12 bg-[#0047CC] hover:bg-[#003cb0] text-white font-medium rounded-xl border-0 transition-colors text-sm"
+          onClick={() => navigate(vaultDashboardHref)}
+        >
+          Back to Vault dashboard
+        </Button>
+      </div>
     </VaultReviewPageLayout>
   );
 };

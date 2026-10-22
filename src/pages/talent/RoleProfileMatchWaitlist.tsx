@@ -7,6 +7,7 @@ import RoleAlertPreferencesCard from '../../components/talent/profileWaitlist/Ro
 import ProfileWaitlistNextSteps from '../../components/talent/profileWaitlist/ProfileWaitlistNextSteps';
 import {
   DEFAULT_PROFILE_WAITLIST_SUMMARY,
+  DEFAULT_ROLE_ALERT_PREFERENCES,
 } from '../../constants/profileMatchWaitlist';
 import { useRoleAlertPreferences } from '../../hooks/useRoleAlertPreferences';
 import { useAuth } from '../../context/AuthContext';
@@ -59,7 +60,7 @@ const RoleProfileMatchWaitlist: React.FC = () => {
     [matchScan],
   );
 
-  const preferencesState = useRoleAlertPreferences();
+  const preferencesState = useRoleAlertPreferences(DEFAULT_ROLE_ALERT_PREFERENCES, roleSlug);
 
   useEffect(() => {
     if (!roleSlug) {

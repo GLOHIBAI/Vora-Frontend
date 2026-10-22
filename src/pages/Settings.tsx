@@ -47,6 +47,11 @@ import {
   useRevokeOtherSessionsMutation,
   useChangePasswordMutation,
 } from '../services/queries/employer';
+import {
+  usePatchTalentProfileMutation,
+  useTalentNotificationsSettingsQuery,
+  useUpdateTalentNotificationsSettingsMutation,
+} from '../services/queries/talent';
 import type { TabType, Slot, DayAvailability } from '../types';
 import type { NotificationFrequency } from '../services/queries/employer/types';
 import {
@@ -75,6 +80,7 @@ const StandardSettingsView: React.FC = () => {
   const { user, updateUser } = useAuth();
   const role = user?.role?.toLowerCase() || localStorage.getItem('vora_role') || 'employer';
   const isEmployer = role === 'employer';
+  const isTalent = role === 'talent' || user?.role?.toLowerCase() === 'talent';
 
   const availableTabs: TabType[] = (() => {
     if (role === 'talent') {
@@ -104,6 +110,13 @@ const StandardSettingsView: React.FC = () => {
   const revokeOtherSessionsMutation = useRevokeOtherSessionsMutation();
   const changePasswordMutation = useChangePasswordMutation();
   const logoutMutation = useLogoutMutation();
+
+  // -------------------------------------------------------------
+  // API Queries (for Talent)
+  // -------------------------------------------------------------
+  const patchTalentProfileMutation = usePatchTalentProfileMutation();
+  const { data: talentNotifsData } = useTalentNotificationsSettingsQuery({ enabled: isTalent });
+  const updateTalentNotifsMutation = useUpdateTalentNotificationsSettingsMutation();
 
   // -------------------------------------------------------------
   // Local Profile State (no mock fallbacks)
@@ -187,8 +200,23 @@ const StandardSettingsView: React.FC = () => {
       if (employerNotifsData.frequency) {
         setNotificationFrequency(employerNotifsData.frequency);
       }
+    } else if (isTalent && talentNotifsData) {
+      setEmailNotifs((prev) => ({
+        ...prev,
+        newApplications: talentNotifsData.emailMatchFound ?? true,
+        alignmentSessions: talentNotifsData.emailAssessmentReady ?? true,
+        escrowWalletActivity: talentNotifsData.emailHireConfirmed ?? true,
+        postHireCheckIns: talentNotifsData.emailVaultRoleLive ?? true,
+        platformAnnouncements: talentNotifsData.emailPlatformAnnouncements ?? true,
+      }));
+      setInAppNotifs({
+        showDashboard: talentNotifsData.inAppDashboardNotifications ?? true,
+      });
+      if (talentNotifsData.frequency) {
+        setNotificationFrequency(talentNotifsData.frequency as any);
+      }
     }
-  }, [isEmployer, employerNotifsData]);
+  }, [isEmployer, employerNotifsData, isTalent, talentNotifsData]);
 
   // -------------------------------------------------------------
   // Local Account State
@@ -338,6 +366,15 @@ const StandardSettingsView: React.FC = () => {
         photoStorageKey,
       });
       updateUser({ firstName: cleanFn, lastName: cleanLn });
+    } else if (isTalent) {
+      await patchTalentProfileMutation.mutateAsync({
+        firstName: cleanFn,
+        lastName: cleanLn,
+        headline: profile.title,
+        bio: profile.bio,
+      });
+      updateUser({ firstName: cleanFn, lastName: cleanLn });
+      toast.success('Profile settings saved successfully');
     } else {
       updateUser({ firstName: cleanFn, lastName: cleanLn });
       toast.success('Profile settings saved successfully');
@@ -356,6 +393,18 @@ const StandardSettingsView: React.FC = () => {
         inAppDashboardNotifications: inAppNotifs.showDashboard,
         frequency: notificationFrequency,
       });
+      toast.success('Notification settings saved successfully');
+    } else if (isTalent) {
+      await updateTalentNotifsMutation.mutateAsync({
+        emailMatchFound: emailNotifs.newApplications,
+        emailAssessmentReady: emailNotifs.alignmentSessions,
+        emailHireConfirmed: emailNotifs.escrowWalletActivity,
+        emailVaultRoleLive: emailNotifs.postHireCheckIns,
+        emailPlatformAnnouncements: emailNotifs.platformAnnouncements,
+        inAppDashboardNotifications: inAppNotifs.showDashboard,
+        frequency: notificationFrequency as any,
+      });
+      toast.success('Notification settings saved successfully');
     } else {
       toast.success('Notification settings saved successfully');
     }

@@ -96,6 +96,8 @@ const VaultRoleConfirmation = lazy(() => import('./pages/employer/VaultRoleConfi
 const EditVaultRole = lazy(() => import('./pages/employer/EditVaultRole'))
 const VaultEditReview = lazy(() => import('./pages/employer/VaultEditReview'))
 const RoleApplyRoute = lazy(() => import('./components/auth/RoleApplyRoute'))
+const SubmitCheckInPage = lazy(() => import('./pages/employer/SubmitCheckInPage'))
+const SetBenchmarksPage = lazy(() => import('./pages/employer/SetBenchmarksPage'))
 
 const JobPostedConfirmation = lazy(() => import('./pages/employer/JobPostedConfirmation'))
 const RoleLanding = lazy(() => import('./pages/public/RoleLanding'))
@@ -206,13 +208,16 @@ const App = () => {
           <Route path="/dashboard" element={<ProtectedDashboardLayout><Dashboard /></ProtectedDashboardLayout>} />
           <Route path="/jobs" element={<ProtectedDashboardLayout><Jobs /></ProtectedDashboardLayout>} />
           <Route path="/jobs/posted/confirmation" element={<ProtectedDashboardLayout><EmployerRoute><JobPostedConfirmation /></EmployerRoute></ProtectedDashboardLayout>} />
-          <Route path="/jobs/vault/confirmation" element={<ProtectedDashboardLayout><EmployerRoute><VaultRoleConfirmation /></EmployerRoute></ProtectedDashboardLayout>} />
+          <Route path="/jobs/vault/confirmation/:id?" element={<ProtectedDashboardLayout><EmployerRoute><VaultRoleConfirmation /></EmployerRoute></ProtectedDashboardLayout>} />
           <Route path="/jobs/vault/edit/:id" element={<ProtectedDashboardLayout><EmployerRoute><EditVaultRole /></EmployerRoute></ProtectedDashboardLayout>} />
           <Route path="/jobs/vault/review/:id?" element={<ProtectedDashboardLayout><EmployerRoute><VaultEditReview /></EmployerRoute></ProtectedDashboardLayout>} />
+          <Route path="/jobs/vault" element={<Navigate to="/jobs?tab=scheduled" replace />} />
           <Route path="/jobs/:id" element={<ProtectedDashboardLayout><JobDetails /></ProtectedDashboardLayout>} />
           <Route path="/jobs/:id/reject/:applicantId" element={<ProtectedDashboardLayout><EmployerRoute><Rejection /></EmployerRoute></ProtectedDashboardLayout>} />
           <Route path="/assessments/:assessmentId/reject" element={<ProtectedDashboardLayout><EmployerRoute><Rejection /></EmployerRoute></ProtectedDashboardLayout>} />
           <Route path="/jobs/:id/alignment/:candidateId" element={<ProtectedDashboardLayout><EmployerRoute><FinalAlignmentSession /></EmployerRoute></ProtectedDashboardLayout>} />
+          <Route path="/post-hire/check-ins/:checkInId/submit" element={<ProtectedDashboardLayout><EmployerRoute><SubmitCheckInPage /></EmployerRoute></ProtectedDashboardLayout>} />
+          <Route path="/post-hire/:hireId/benchmarks" element={<ProtectedDashboardLayout><EmployerRoute><SetBenchmarksPage /></EmployerRoute></ProtectedDashboardLayout>} />
           <Route path="/payments/*" element={<ProtectedDashboardLayout><EmployerRoute><Payments /></EmployerRoute></ProtectedDashboardLayout>} />
           <Route path="/talents" element={<ProtectedDashboardLayout><Talents /></ProtectedDashboardLayout>} />
           <Route path="/talents/:id" element={<ProtectedDashboardLayout><TalentProfile /></ProtectedDashboardLayout>} />

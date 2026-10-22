@@ -1214,5 +1214,61 @@ export interface EmployerReportData {
   decision?: Stage4DecisionScreen;
 }
 
+export interface AlignmentSessionCandidate {
+  talentId: string;
+  firstName?: string;
+  lastName?: string;
+  fullName?: string;
+  initials?: string;
+  country?: string;
+  grade?: string;
+  professionalTitle?: string;
+}
+
+export interface AlignmentSessionSlot {
+  id: string;
+  label: string;
+  startsAt: string;
+  timezone?: string;
+  taken?: boolean;
+}
+
+export interface AlignmentSessionDeposit {
+  depositId: string;
+  amount: number;
+  currency: string;
+  status: string;
+}
+
+export interface AlignmentSessionChecklistItem {
+  key: string;
+  label: string;
+  done: boolean;
+}
+
+export interface EmployerAlignmentSessionData {
+  assessmentId: string;
+  rolePostingId: string;
+  roleTitle?: string;
+  departmentOrUnit?: string;
+  location?: string;
+  candidate: AlignmentSessionCandidate;
+  decisionStatus: string;
+  durationMins?: number;
+  selectedSlot?: AlignmentSessionSlot | null;
+  slots: AlignmentSessionSlot[];
+  scheduledAt?: string | null;
+  deposit?: AlignmentSessionDeposit | null;
+  meetingLink?: string | null;
+  sessionNotes?: string | null;
+  checklist?: AlignmentSessionChecklistItem[];
+  actions?: {
+    hire?: string;
+    reject?: string;
+    reschedule?: string;
+    report?: string;
+  };
+}
+
 
 

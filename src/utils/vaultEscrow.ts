@@ -1,23 +1,28 @@
 import type { EscrowRecalcResult } from '../types/vaultEdit';
 
 export const formatUsd = (amount: number): string =>
-  `USD ${Math.abs(amount).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+  `USD ${Math.round(Math.abs(amount)).toLocaleString('en-US')}`;
 
 export const calcEscrowRecalc = (
   salMin: number,
   salMax: number,
   positions: number,
   originalEscrow: number,
-  feeRate = 0.15
+  feeRate = 0.15,
+  originalMidpoint?: number,
+  originalPositions?: number
 ): EscrowRecalcResult => {
-  const mid = salMin && salMax ? (salMin + salMax) / 2 : salMin || salMax;
-  const newEscrow = mid * positions * feeRate;
+  const mid = salMin && salMax ? Math.round((salMin + salMax) / 2) : Math.round(salMin || salMax || 0);
+  const newEscrow = Math.round(mid * positions * feeRate);
+  const origMid = originalMidpoint !== undefined ? Math.round(originalMidpoint) : mid;
+  const origPos = originalPositions !== undefined ? originalPositions : positions;
+
   return {
-    originalMidpoint: 70000,
+    originalMidpoint: origMid,
     newMidpoint: mid,
     positions,
-    originalEscrow,
+    originalEscrow: Math.round(originalEscrow),
     newEscrow,
-    adjustment: newEscrow - originalEscrow,
+    adjustment: newEscrow - Math.round(originalEscrow),
   };
 };

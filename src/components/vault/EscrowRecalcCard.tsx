@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangleIcon } from '../common/Icons';
+import { InfoIcon } from '../common/Icons';
 import type { EscrowRecalcResult } from '../../types/vaultEdit';
 import { formatUsd } from '../../utils/vaultEscrow';
 
@@ -10,23 +10,23 @@ interface EscrowRecalcCardProps {
 
 const EscrowRecalcCard: React.FC<EscrowRecalcCardProps> = ({
   recalc,
-  originalMidpoint = 70000,
+  originalMidpoint = 0,
 }) => {
   const adj = recalc.adjustment;
   let adjLabel = 'No adjustment';
-  let adjClass = 'text-[#1A1A1A]';
+  let adjClass = 'text-slate-800';
   if (adj > 0) {
     adjLabel = `+${formatUsd(adj)} top-up required`;
-    adjClass = 'text-[#1D871D]';
+    adjClass = 'text-[#0047CC] font-semibold';
   } else if (adj < 0) {
     adjLabel = `${formatUsd(adj)} refund to wallet`;
-    adjClass = 'text-[#DC2626]';
+    adjClass = 'text-emerald-700 font-semibold';
   }
 
   const rows = [
-    { label: 'Original midpoint', value: formatUsd(originalMidpoint) },
+    { label: 'Original midpoint', value: formatUsd(originalMidpoint || recalc.originalEscrow / (recalc.positions * 0.15) || 0) },
     { label: 'New midpoint', value: formatUsd(recalc.newMidpoint) },
-    { label: 'Positions', value: `${recalc.positions} position${recalc.positions > 1 ? 's' : ''}` },
+    { label: 'Positions', value: `${recalc.positions} ${recalc.positions === 1 ? 'position' : 'positions'}` },
     { label: 'Fee rate (locked at submission)', value: '15% / 10% LMIC' },
     { label: 'Original escrow', value: formatUsd(recalc.originalEscrow) },
     { label: 'New escrow required', value: formatUsd(recalc.newEscrow) },
@@ -39,21 +39,23 @@ const EscrowRecalcCard: React.FC<EscrowRecalcCardProps> = ({
   ];
 
   return (
-    <div className="bg-white border-[1.5px] border-[#FDE68A] rounded-[10px] p-4 mt-2">
-      <div className="text-[13px] font-semibold text-[#92400E] mb-2.5 flex items-center gap-1.5">
-        <AlertTriangleIcon size={13} strokeWidth={2} />
+    <div className="bg-blue-50/60 border border-blue-200 rounded-xl p-4 mt-3">
+      <div className="text-sm font-semibold text-slate-900 mb-2.5 flex items-center gap-2">
+        <InfoIcon size={16} className="text-[#0047CC] shrink-0" strokeWidth={2} />
         Escrow recalculation triggered
       </div>
-      <div>
+      <div className="divide-y divide-blue-200/50">
         {rows.map((row, index) => (
           <div
             key={row.label}
             className={`flex justify-between items-center py-1.5 text-[13px] ${
-              index < rows.length - 1 ? 'border-b border-[#E6E6E6]' : 'pt-2.5 font-semibold text-sm'
+              index === rows.length - 1 ? 'pt-2 font-semibold text-sm' : ''
             }`}
           >
-            <span className="text-[#808080] font-medium">{row.label}</span>
-            <span className={`font-medium ${row.valueClass ?? 'text-[#1A1A1A]'}`}>{row.value}</span>
+            <span className="text-slate-600 font-medium">{row.label}</span>
+            <span className={`tabular-nums ${row.valueClass ?? 'text-slate-800 font-medium'}`}>
+              {row.value}
+            </span>
           </div>
         ))}
       </div>

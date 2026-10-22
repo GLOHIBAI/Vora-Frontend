@@ -49,12 +49,12 @@ const Textarea: React.FC<TextareaProps> = ({
     : 'focus-within:ring-brand-blue/20 focus-within:border-brand-blue';
 
   const fieldClasses = [
-    'block w-full px-4 py-3 border-0 bg-transparent resize-none focus:outline-none',
+    'block w-full px-4 py-3 border-0 bg-transparent resize-y focus:outline-none',
     'placeholder:text-gray-400 text-[14px] font-medium text-gray-800 leading-relaxed',
-    'custom-scrollbar',
+    'custom-scrollbar min-h-[120px]',
     hasFixedHeight
       ? `${sizeClass} overflow-y-auto`
-      : `min-h-[calc(1.5rem*${rowCount}+1.5rem)] overflow-y-auto max-h-[calc(1.5rem*${rowCount}+2rem)]`,
+      : 'overflow-y-auto',
     fieldClass,
   ]
     .filter(Boolean)

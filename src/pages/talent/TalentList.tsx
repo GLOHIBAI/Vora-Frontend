@@ -19,6 +19,7 @@ import {
   type EmployerTalentItem,
   type EmployerTalentAction,
 } from '../../services/queries/employer';
+import { usePostHireHiresQuery } from '../../services/queries/postHire';
 import { toast } from 'react-hot-toast';
 import { resolveAssessmentId, isCandidateEligibleForRejection } from '../../utils/assessmentDecision';
 
@@ -68,6 +69,13 @@ const Talents: React.FC = () => {
     limit: 20,
     enabled: activeTab !== 'Post-Hire Tracking',
   });
+
+  // Post-hire tracking metrics for button badge
+  const { data: postHireData } = usePostHireHiresQuery();
+  const postHireAttentionCount = useMemo(() => {
+    if (!postHireData?.metrics) return 0;
+    return (postHireData.metrics.checkInsOverdue || 0) + (postHireData.metrics.benchmarksPending || 0);
+  }, [postHireData]);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -270,13 +278,15 @@ const Talents: React.FC = () => {
           }`}
         >
           <span>Post-Hire Tracking</span>
-          <span
-            className={`w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center ${
-              activeTab === 'Post-Hire Tracking' ? 'bg-white text-[#0047CC]' : 'bg-[#DC2626] text-white'
-            }`}
-          >
-            1
-          </span>
+          {postHireAttentionCount > 0 && (
+            <span
+              className={`w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center ${
+                activeTab === 'Post-Hire Tracking' ? 'bg-white text-[#0047CC]' : 'bg-[#DC2626] text-white'
+              }`}
+            >
+              {postHireAttentionCount}
+            </span>
+          )}
         </button>
       </div>
 

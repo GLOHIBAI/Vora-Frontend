@@ -1403,21 +1403,10 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
         body: { vaultMode, vaultGoLiveDate }
       });
 
-      if (vaultMode) {
-        saveVaultConfirmation(
-          buildVaultConfirmationData({
-            roleTitle: roleTitle || undefined,
-            goLiveDate: vaultGoLiveDate,
-            positions: String(escrow.positions),
-            salaryMidpoint: escrow.midpoint,
-            currency: escrow.currency,
-            feeRateLabel: escrow.rateLabel,
-            feePerPosition: escrow.perPosition,
-            totalEscrow: escrow.total,
-            isLmic: isLmicActive,
-          })
-        );
+      const responseData = (res as any)?.data || (res as any) || {};
+      const returnedRoleId = responseData.roleId || rolePostingId;
 
+      if (vaultMode) {
         clearRolePostingDraft();
         setIsCheckoutOpen(false);
         setIsClosing(true);
@@ -1425,12 +1414,11 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
           onClose();
           setIsClosing(false);
           setRolePostingId(null);
-          navigate('/jobs/vault/confirmation');
+          navigate(`/jobs/vault/confirmation/${returnedRoleId}`, { state: { roleId: returnedRoleId } });
         }, 400);
         return;
       }
 
-      const responseData = (res as any)?.data || {};
       const returnedSlug = responseData.roleLink;
       const returnedShareUrl = responseData.shareUrl;
 

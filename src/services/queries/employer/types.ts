@@ -104,12 +104,26 @@ export interface EmployerDashboardJobItem {
   status?: string;
   displayStatus?: JobDisplayStatus;
   variant?: 'green' | 'blue' | 'yellow' | 'red' | 'gray';
+  organisationName?: string;
+  companyName?: string;
+  company?: string;
+  employerName?: string;
+  logoUrl?: string | null;
+  companyLogo?: string | null;
 }
 
 export type AlignmentSessionStatus = 'SCHEDULED' | 'AWAITING_CONFIRMATION' | 'COMPLETED';
 
 export interface EmployerDashboardAlignmentItem {
   id: string;
+  assessmentId?: string;
+  rolePostingId?: string;
+  talentId?: string;
+  talentName?: string;
+  talentInitials?: string;
+  scheduledAt?: string;
+  depositAmount?: number;
+  depositStatus?: string;
   candidateName?: string;
   name?: string;
   roleTitle?: string;

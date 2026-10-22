@@ -9,20 +9,20 @@ interface SummaryRowsCardProps {
 }
 
 const SummaryRowsCard: React.FC<SummaryRowsCardProps> = ({ title, rows, className = '' }) => (
-  <div className={`bg-white border border-[#E6E6E6] rounded-xl p-5 mb-5 ${className}`}>
-    <CardTitle as="h2" className="mb-3">{title}</CardTitle>
-    <div>
-      {rows.map((row, index) => (
+  <div className={`bg-white border border-slate-200 rounded-xl p-5 mb-5 ${className}`}>
+    <CardTitle as="h2" className="text-base font-semibold text-slate-900 mb-3">{title}</CardTitle>
+    <div className="divide-y divide-slate-100">
+      {rows.map((row) => (
         <div
           key={row.label}
-          className={`flex justify-between gap-4 text-[13px] py-1.5 ${
-            index < rows.length - 1 ? 'border-b border-[#E6E6E6]' : 'pt-2.5 font-semibold text-[15px]'
-          }`}
+          className="flex items-center justify-between gap-4 text-sm py-2.5"
         >
-          <span className="text-[#808080] font-medium shrink-0">{row.label}</span>
+          <span className="text-slate-600 font-medium shrink-0">{row.label}</span>
           <span
-            className={`text-right font-bold ${
-              row.highlight || index === rows.length - 1 ? 'text-[#0047CC]' : 'text-[#1A1A1A]'
+            className={`text-right font-medium tabular-nums ${
+              row.value === 'Not scheduled' || row.value === '--'
+                ? 'text-slate-400 font-normal'
+                : 'text-slate-900'
             }`}
           >
             {row.value}

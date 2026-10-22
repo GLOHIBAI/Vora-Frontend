@@ -32,12 +32,6 @@ import type {
   MentorQuickActionItem,
   MentorHeaderAction,
 } from '../../services/queries/mentor/types';
-import {
-  UPCOMING_SESSIONS as MOCK_UPCOMING_SESSIONS,
-  ACTIVE_COURSES as MOCK_ACTIVE_COURSES,
-  PENDING_REQUESTS as MOCK_PENDING_REQUESTS,
-  RECENT_ACTIVITY as MOCK_RECENT_ACTIVITY,
-} from '../../constants/mockData';
 
 // --- Sub-components for Mentor Dashboard ---
 
@@ -193,20 +187,14 @@ const MentorDashboard: React.FC = () => {
   const courseEnrollmentsCount = metrics?.courseEnrollments?.count ?? 0;
   const courseEnrollmentsHint = metrics?.courseEnrollments?.hint ?? '';
 
-  // Lists
-  const upcomingSessions: MentorUpcomingSessionItem[] = dashboardData
-    ? dashboardData.upcomingSessions || []
-    : (MOCK_UPCOMING_SESSIONS as any[]);
+  // Lists - Strictly sourced from live backend GET /mentors/dashboard
+  const upcomingSessions: MentorUpcomingSessionItem[] = dashboardData?.upcomingSessions || [];
 
   const activeCoursesBlock = dashboardData?.activeCourses;
-  const activeCourses: MentorActiveCourseItem[] = activeCoursesBlock
-    ? activeCoursesBlock.items || []
-    : (MOCK_ACTIVE_COURSES as any[]);
+  const activeCourses: MentorActiveCourseItem[] = activeCoursesBlock?.items || [];
   const draftsLabel = activeCoursesBlock ? activeCoursesBlock.draftsLabel : null;
 
-  const pendingRequests: MentorPendingRequestItem[] = dashboardData
-    ? dashboardData.pendingRequests || []
-    : (MOCK_PENDING_REQUESTS as any[]);
+  const pendingRequests: MentorPendingRequestItem[] = dashboardData?.pendingRequests || [];
 
   const earnings = dashboardData?.earnings;
   const earningsTotal = earnings?.formattedAmount || earnings?.formattedTotal || monthRevAmount;
@@ -224,9 +212,7 @@ const MentorDashboard: React.FC = () => {
   const criticalCount = Number(gapIntel?.criticalCount ?? gapIntel?.criticalGapsCount ?? 0);
   const highDemandCount = Number(gapIntel?.highCount ?? gapIntel?.analysedCount ?? 0);
 
-  const recentActivity: MentorRecentActivityItem[] = dashboardData
-    ? dashboardData.recentActivity || []
-    : (MOCK_RECENT_ACTIVITY as any[]);
+  const recentActivity: MentorRecentActivityItem[] = dashboardData?.recentActivity || [];
 
   const quickActions: MentorQuickActionItem[] = dashboardData?.quickActions && dashboardData.quickActions.length > 0
     ? dashboardData.quickActions

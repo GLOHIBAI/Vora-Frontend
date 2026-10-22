@@ -1,15 +1,29 @@
 import React, { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useParams } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import { CloseIcon } from '../common/Icons';
 import Input from '../common/Input';
 import Select from '../common/Select';
 import Button from '../common/Button';
 import Textarea from '../common/Textarea';
+import {
+  useUpdateRolePostingStepOneMutation,
+  useUpdateRolePostingStepTwoMutation,
+  useUpdateRolePostingStepThreeMutation,
+  useUpdateRolePostingStepFourMutation,
+  useUpdateRolePostingStepFiveMutation,
+  useEditVaultRoleMutation,
+  rolePostingKeys,
+} from '../../services/queries/rolePostings';
+import { employerKeys } from '../../services/queries/employer/keys';
 
 interface JobEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   section: 'details' | 'responsibilities' | 'experience' | 'compensation' | 'collaboration';
   data: any;
+  rolePostingId?: string;
 }
 
 // --- Options Definitions ---
@@ -240,7 +254,19 @@ const extractSalaryInfo = (card?: any) => {
   return { currency, minSalary, maxSalary };
 };
 
-const JobEditModal: React.FC<JobEditModalProps> = ({ isOpen, onClose, section, data }) => {
+const JobEditModal: React.FC<JobEditModalProps> = ({ isOpen, onClose, section, data, rolePostingId: propRoleId }) => {
+  const { id: paramId } = useParams<{ id: string }>();
+  const roleId = propRoleId || data?.id || data?.rolePostingId || paramId;
+  const queryClient = useQueryClient();
+  const [isSaving, setIsSaving] = useState(false);
+
+  const updateStepOne = useUpdateRolePostingStepOneMutation();
+  const updateStepTwo = useUpdateRolePostingStepTwoMutation();
+  const updateStepThree = useUpdateRolePostingStepThreeMutation();
+  const updateStepFour = useUpdateRolePostingStepFourMutation();
+  const updateStepFive = useUpdateRolePostingStepFiveMutation();
+  const editVault = useEditVaultRoleMutation();
+
   // Details Section State
   const [roleTitle, setRoleTitle] = useState('');
   const [roleType, setRoleType] = useState('');
@@ -643,6 +669,153 @@ const JobEditModal: React.FC<JobEditModalProps> = ({ isOpen, onClose, section, d
     }
   };
 
+  const handleSave = async () => {
+    if (!roleId) {
+      toast.error('Role ID not found');
+      return;
+    }
+
+    const isVault = data?.isVault || data?.status === 'VAULT' || data?.rolePostingStatus === 'VAULT';
+
+    setIsSaving(true);
+    try {
+      if (isVault) {
+        let changes: Record<string, any> = {};
+        if (section === 'details') {
+          changes = {
+            roleTitle,
+            roleType,
+            positionsAvailable: positions ? parseInt(positions, 10) : 1,
+            workLocationPrimary: workLocation,
+            roleSummary: summary,
+          };
+        } else if (section === 'responsibilities') {
+          changes = {
+            roleGoal: problem,
+            coreResponsibilities: core,
+            technicalSkills: skills ? skills.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+            toolsRequired: tools ? tools.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
+          };
+        } else if (section === 'experience') {
+          changes = {
+            minimumQualification: minQual,
+            yearsExperienceRequired: years,
+            publicationsRequired: publications,
+            securityClearanceRequirement: clearance,
+            preferredTalentProfile: narrative,
+          };
+        } else if (section === 'collaboration') {
+          changes = {
+            preferredWorkingStyle: prefStyle ? prefStyle.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+            primaryWorkingLanguage: lang,
+            teamCultureFreeText: collabStyle,
+          };
+        }
+        await editVault.mutateAsync({ id: roleId, changes });
+      } else {
+        if (section === 'details') {
+          const levelMap: Record<string, any> = {
+            'Student / Graduate': 'STUDENT_GRADUATE',
+            'Entry level': 'ENTRY',
+            'Mid level': 'MID',
+            'Senior level': 'SENIOR',
+            'Executive / Director': 'EXECUTIVE',
+          };
+          const formatMap: Record<string, any> = {
+            'Fully onsite': 'FULLY_ONSITE',
+            'Hybrid': 'HYBRID',
+            'Remote - specific timezone(s) required': 'REMOTE_TIMEZONE',
+            'Remote - no timezone restriction': 'REMOTE_NO_TIMEZONE',
+            'Flexible / candidate preference': 'FLEXIBLE',
+          };
+          await updateStepOne.mutateAsync({
+            id: roleId,
+            body: {
+              advanceStep: false,
+              roleTitle: roleTitle || 'Untitled Role',
+              roleType: roleType || 'Full-time employment',
+              employmentLevel: levelMap[level] || 'MID',
+              positionsAvailable: positions ? parseInt(positions, 10) : 1,
+              timeCommitment: commitment || undefined,
+              workFormat: formatMap[workFormat] || 'FLEXIBLE',
+              workLocationPrimary: workLocation || 'Remote',
+              startDate: startDate || new Date().toISOString().split('T')[0],
+              closingDate: endDate || undefined,
+              roleSummary: summary || '',
+              internationalTalentPolicy: candidatePolicy || 'Open to all nationalities',
+            },
+          });
+        } else if (section === 'responsibilities') {
+          await updateStepTwo.mutateAsync({
+            id: roleId,
+            body: {
+              advanceStep: false,
+              roleGoal: problem || '',
+              coreResponsibilities: core || '',
+              technicalSkills: skills ? skills.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+              toolsRequired: tools ? tools.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
+            },
+          });
+        } else if (section === 'experience') {
+          await updateStepThree.mutateAsync({
+            id: roleId,
+            body: {
+              advanceStep: false,
+              minimumQualification: minQual || '',
+              typeOfExperience: fields ? fields.split(',').map((f: string) => f.trim()).filter(Boolean) : [],
+              yearsExperienceRequired: years || '1 to 3 years',
+              sectorBackground: fields ? [fields] : [],
+              publicationsRequired: publications,
+              securityClearanceRequirement: clearance,
+              internationalTalentPolicy: candidatePolicy || 'Open to all nationalities',
+              preferredTalentProfile: narrative || '',
+            },
+          });
+        } else if (section === 'collaboration') {
+          await updateStepFour.mutateAsync({
+            id: roleId,
+            body: {
+              advanceStep: false,
+              preferredWorkingStyle: prefStyle ? prefStyle.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+              communicationRhythm: [collabStyle].filter(Boolean),
+              primaryWorkingLanguage: lang || 'English',
+              personalityTraits: [],
+              workEnvironmentDescriptors: [],
+              teamCultureFreeText: collabStyle || '',
+            },
+          });
+        } else if (section === 'compensation') {
+          const compTypeMap: Record<string, any> = {
+            'Annual salary': 'SALARIED',
+            'Contract / daily rate': 'CONTRACT_DAILY_RATE',
+            'Monthly stipend / fellowship': 'STIPEND_FELLOWSHIP',
+            'Unpaid / flat listing fee': 'UNPAID_FLAT_FEE',
+            'Funded PhD (year-1 stipend)': 'FUNDED_PHD',
+          };
+          await updateStepFive.mutateAsync({
+            id: roleId,
+            body: {
+              advanceStep: false,
+              compensationType: compTypeMap[compType] || 'SALARIED',
+              compensationCurrency: currency || 'USD',
+              salaryMin: minSalary ? parseFloat(minSalary) : undefined,
+              salaryMax: maxSalary ? parseFloat(maxSalary) : undefined,
+            },
+          });
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: rolePostingKeys.detail(roleId) });
+      queryClient.invalidateQueries({ queryKey: employerKeys.all });
+      toast.success('Changes saved successfully');
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to save changes');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/45 backdrop-blur-[1px] animate-in fade-in duration-300" onClick={onClose} />
@@ -664,10 +837,11 @@ const JobEditModal: React.FC<JobEditModalProps> = ({ isOpen, onClose, section, d
         {/* Footer */}
         <div className="px-8 py-6 border-t border-gray-100 flex-shrink-0">
           <Button 
-            onClick={onClose}
+            onClick={handleSave}
+            disabled={isSaving}
             pill={false}
           >
-            Save changes
+            {isSaving ? 'Saving...' : 'Save changes'}
           </Button>
         </div>
       </div>

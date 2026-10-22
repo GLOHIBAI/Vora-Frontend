@@ -20,6 +20,7 @@ import type {
   Gate2PillarKey,
   Gate2PillarItemsResponse,
   GateWindowInfo,
+  EmployerAlignmentSessionData,
 } from "./types";
 import { parseGateProgressEntries } from "../../../utils/assessmentSession";
 
@@ -102,6 +103,8 @@ export const assessmentKeys = {
     [...assessmentKeys.all, "role", rolePostingId, "review-queue"] as const,
   employerReport: (assessmentId: string, rolePostingId?: string) =>
     [...assessmentKeys.all, assessmentId, "employer-report", { rolePostingId }] as const,
+  alignmentSession: (assessmentId: string, rolePostingId?: string) =>
+    [...assessmentKeys.all, assessmentId, "alignment-session", { rolePostingId }] as const,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1388,6 +1391,31 @@ export const useEmployerDecideRejectMutation = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: assessmentKeys.all });
     },
+  });
+};
+
+export const fetchEmployerAlignmentSession = async (
+  assessmentId: string,
+  rolePostingId?: string,
+): Promise<EmployerAlignmentSessionData> => {
+  const query = rolePostingId ? `?rolePostingId=${encodeURIComponent(rolePostingId)}` : "";
+  const response = await apiClient.get<{ data: EmployerAlignmentSessionData }>({
+    url: `/assessments/${assessmentId}/alignment-session${query}`,
+    auth: true,
+  });
+  return response.data;
+};
+
+export const useEmployerAlignmentSessionQuery = (
+  assessmentId?: string,
+  rolePostingId?: string,
+  enabled: boolean = true,
+) => {
+  return useQuery({
+    queryKey: assessmentKeys.alignmentSession(assessmentId ?? "", rolePostingId),
+    queryFn: () => fetchEmployerAlignmentSession(assessmentId!, rolePostingId),
+    enabled: Boolean(assessmentId && enabled),
+    staleTime: 1000 * 30,
   });
 };
 

@@ -6,21 +6,29 @@ interface EditAllowanceMeterProps {
 }
 
 const EditAllowanceMeter: React.FC<EditAllowanceMeterProps> = ({ used, total }) => {
-  const remaining = total - used;
+  const remaining = Math.max(0, total - used);
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-xs font-bold text-[#808080]">Edit allowance:</span>
-      <div className="flex gap-1">
-        {Array.from({ length: total }, (_, i) => (
-          <div
-            key={i}
-            className={`w-[22px] h-1.5 rounded-full ${i < used ? 'bg-[#E6E6E6]' : 'bg-[#0047CC]'}`}
-          />
-        ))}
+    <div className="flex items-center gap-2.5 flex-wrap">
+      <span className="text-[13px] font-semibold text-slate-700">Edit allowance:</span>
+      <div className="flex items-center gap-1.5" role="meter" aria-valuenow={used} aria-valuemin={0} aria-valuemax={total}>
+        {Array.from({ length: total }, (_, i) => {
+          const isFilled = i < used;
+          return (
+            <div
+              key={i}
+              title={isFilled ? `Edit ${i + 1} used` : `Edit ${i + 1} available`}
+              className={`w-6 h-2 rounded-full transition-colors ${
+                isFilled
+                  ? 'bg-[#0047CC]' // filled = used
+                  : 'bg-white border-[1.5px] border-slate-300' // outlined = remaining
+              }`}
+            />
+          );
+        })}
       </div>
-      <span className="text-[11px] text-[#808080]">
-        {used} of {total} used, {remaining} remaining
+      <span className="text-[13px] text-slate-600 font-medium">
+        {used} of {total} used ({remaining} remaining)
       </span>
     </div>
   );
