@@ -12,10 +12,22 @@ export const calcEscrowRecalc = (
   originalMidpoint?: number,
   originalPositions?: number
 ): EscrowRecalcResult => {
+  // Defensive guard: if feeRate > 1 (e.g. a salary midpoint like 1950 passed in 5th position),
+  // the caller inverted feeRate with originalMidpoint!
+  let resolvedFeeRate = feeRate;
+  let resolvedOrigMid = originalMidpoint;
+  let resolvedOrigPos = originalPositions;
+
+  if (feeRate > 1) {
+    resolvedOrigMid = feeRate;
+    resolvedOrigPos = typeof originalMidpoint === 'number' ? originalMidpoint : positions;
+    resolvedFeeRate = 0.15;
+  }
+
   const mid = salMin && salMax ? Math.round((salMin + salMax) / 2) : Math.round(salMin || salMax || 0);
-  const newEscrow = Math.round(mid * positions * feeRate);
-  const origMid = originalMidpoint !== undefined ? Math.round(originalMidpoint) : mid;
-  const origPos = originalPositions !== undefined ? originalPositions : positions;
+  const newEscrow = Math.round(mid * positions * resolvedFeeRate);
+  const origMid = resolvedOrigMid !== undefined ? Math.round(resolvedOrigMid) : mid;
+  const origPos = resolvedOrigPos !== undefined ? resolvedOrigPos : positions;
 
   return {
     originalMidpoint: origMid,

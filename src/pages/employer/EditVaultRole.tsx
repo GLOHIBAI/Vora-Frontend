@@ -181,12 +181,42 @@ const EditVaultRole: React.FC = () => {
         parseFloat(form.salMax) || 0,
         parseInt(form.positions, 10) || 1,
         originalEscrowAmount,
+        0.15,
         originalMidpoint,
-        originalPositionsCount,
-        0.15
+        originalPositionsCount
       ),
     [form.salMin, form.salMax, form.positions, originalEscrowAmount, originalMidpoint, originalPositionsCount]
   );
+
+  const [localEditLimitReached, setLocalEditLimitReached] = useState(false);
+
+  const editsUsed = useMemo(() => {
+    if (localEditLimitReached) return 3;
+    const rd: any = roleResponse?.data || {};
+    if (typeof rd.specificationEditCount === 'number') return rd.specificationEditCount;
+    if (typeof rd.vaultEditCount === 'number') return rd.vaultEditCount;
+    if (typeof rd.vaultEditsCount === 'number') return rd.vaultEditsCount;
+    if (typeof rd.editsCount === 'number') return rd.editsCount;
+    if (typeof rd.editsUsed === 'number') return rd.editsUsed;
+    if (typeof rd.vaultEditsUsed === 'number') return rd.vaultEditsUsed;
+    if (typeof rd.specificationEditsUsed === 'number') return rd.specificationEditsUsed;
+    if (typeof rd.vaultEditAllowance?.used === 'number') return rd.vaultEditAllowance.used;
+    if (typeof rd.editAllowance?.used === 'number') return rd.editAllowance.used;
+    if (typeof rd.editsRemaining === 'number') return Math.max(0, 3 - rd.editsRemaining);
+    if (typeof rd.vaultEditsRemaining === 'number') return Math.max(0, 3 - rd.vaultEditsRemaining);
+    return 0;
+  }, [roleResponse, localEditLimitReached]);
+
+  const editsTotal = useMemo(() => {
+    const rd: any = roleResponse?.data || {};
+    if (typeof rd.vaultEditAllowance?.total === 'number') return rd.vaultEditAllowance.total;
+    if (typeof rd.editAllowance?.total === 'number') return rd.editAllowance.total;
+    if (typeof rd.editsTotal === 'number') return rd.editsTotal;
+    if (typeof rd.maxVaultEdits === 'number') return rd.maxVaultEdits;
+    return 3;
+  }, [roleResponse]);
+
+  const isAtEditLimit = editsUsed >= editsTotal;
 
   const summaryChanges = useMemo((): VaultEditChange[] => {
     return buildChangesFromEdit(original, form);
@@ -230,7 +260,12 @@ const EditVaultRole: React.FC = () => {
         saveVaultEditReview(reviewData);
         navigate(jobId ? `/jobs/vault/review/${jobId}` : '/jobs/vault/review');
       } catch (err: any) {
-        toast.error(err?.message || 'Failed to submit vault role edits');
+        const msg = err?.message || err?.data?.message || 'Failed to submit vault role edits';
+        if (msg.toLowerCase().includes('maximum of 3') || msg.toLowerCase().includes('vault edit')) {
+          setLocalEditLimitReached(true);
+          setConfirmOpen(false);
+        }
+        toast.error(msg);
       }
     } else {
       toast.error('Role ID missing');
@@ -243,19 +278,25 @@ const EditVaultRole: React.FC = () => {
         to={vaultDashboardHref}
         label="Vault dashboard"
         trailing={
-          <EditAllowanceMeter used={VAULT_EDIT_ALLOWANCE.used} total={VAULT_EDIT_ALLOWANCE.total} />
+          <EditAllowanceMeter used={editsUsed} total={editsTotal} />
         }
       />
 
       <ScrollArea className="flex-1 min-h-0">
         <div className="w-full max-w-[800px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <AlertBanner variant="info" className="mb-6">
-            <strong>You are editing a vaulted role specification.</strong> Every change you save here
-            enters a 48-hour review window before taking effect. During that window, silent matching
-            continues against the previous spec. Pre-qualified candidates built up so far ({preQualifiedCount}) remain valid.
-            If you change the salary band, the escrow amount recalculates and a top-up or partial refund
-            fires automatically. This counts as 1 of your 3 permitted specification edits.
-          </AlertBanner>
+          {isAtEditLimit ? (
+            <AlertBanner variant="red" className="mb-6">
+              <strong>Specification edit limit reached.</strong> This vaulted role has already used all {editsTotal} of its {editsTotal} permitted specification edits. No further changes can be submitted before go-live.
+            </AlertBanner>
+          ) : (
+            <AlertBanner variant="info" className="mb-6">
+              <strong>You are editing a vaulted role specification.</strong> Every change you save here
+              enters a 48-hour review window before taking effect. During that window, silent matching
+              continues against the previous spec. Pre-qualified candidates built up so far ({preQualifiedCount}) remain valid.
+              If you change the salary band, the escrow amount recalculates and a top-up or partial refund
+              fires automatically. This counts as {Math.min(editsTotal, editsUsed + 1)} of your {editsTotal} permitted specification edits.
+            </AlertBanner>
+          )}
 
           <FormSectionCard title="Role details" changed={detailsChanged}>
             <TrackedField
@@ -695,13 +736,19 @@ const EditVaultRole: React.FC = () => {
           fullWidth={false}
           size="md"
           pill={false}
-          disabled={!hasChanges || editVaultMutation.isPending}
+          disabled={isAtEditLimit || !hasChanges || editVaultMutation.isPending}
           isLoading={editVaultMutation.isPending}
           loadingLabel="Submitting..."
           className="h-11 bg-[#0047CC] hover:bg-[#003cb0] text-white font-medium rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
-          onClick={() => setConfirmOpen(true)}
+          onClick={() => {
+            if (isAtEditLimit) {
+              toast.error('Maximum of 3 vault edits allowed.');
+              return;
+            }
+            setConfirmOpen(true);
+          }}
         >
-          Submit edit for review
+          {isAtEditLimit ? 'Edit limit reached' : 'Submit edit for review'}
         </Button>
       </PageActionBar>
 
@@ -731,8 +778,8 @@ const EditVaultRole: React.FC = () => {
               pill={false}
               isLoading={editVaultMutation.isPending}
               loadingLabel="Submitting..."
-              disabled={editVaultMutation.isPending}
-              className="h-11 bg-[#0047CC] hover:bg-[#003cb0] text-white font-medium rounded-xl text-sm px-3 whitespace-normal sm:whitespace-nowrap text-center"
+              disabled={isAtEditLimit || editVaultMutation.isPending}
+              className="h-11 bg-[#0047CC] hover:bg-[#003cb0] text-white font-medium rounded-xl text-sm px-3 whitespace-normal sm:whitespace-nowrap text-center disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={handleSubmit}
             >
               Submit edit and enter 48hr review

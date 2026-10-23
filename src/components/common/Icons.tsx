@@ -672,7 +672,3 @@ export const TargetIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
     <circle cx="12" cy="12" r="2" />
   </svg>
 );
-
-
-
-
