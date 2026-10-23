@@ -34,7 +34,7 @@ export interface SessionEarning {
   id: string;
   date: string;
   mentee: string;
-  pathway: 'Assessment Referred' | 'Direct' | 'VORA Matched';
+  pathway: 'Interview Referred' | 'Direct' | 'VORA Matched';
   tier: 'T1' | 'T2' | 'T3';
   country: string;
   listedRate: number;
@@ -74,7 +74,7 @@ const INITIAL_SESSION_EARNINGS: SessionEarning[] = [
     id: 'se-1',
     date: 'Today',
     mentee: 'Chiamaka Obi',
-    pathway: 'Assessment Referred',
+    pathway: 'Interview Referred',
     tier: 'T3',
     country: 'Nigeria',
     listedRate: 600,
@@ -97,7 +97,7 @@ const INITIAL_SESSION_EARNINGS: SessionEarning[] = [
     id: 'se-3',
     date: '14 Mar',
     mentee: 'Fatima Al-Rashidi',
-    pathway: 'Assessment Referred',
+    pathway: 'Interview Referred',
     tier: 'T3',
     country: 'Yemen',
     listedRate: 600,

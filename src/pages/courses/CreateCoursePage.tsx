@@ -507,24 +507,6 @@ export const CreateCoursePage: React.FC = () => {
   const [promoVideoUploadProgress, setPromoVideoUploadProgress] = useState(0);
   const [isUploadingLessonVideo, setIsUploadingLessonVideo] = useState(false);
 
-  const isAnyLoadingOrUploading = Boolean(
-    isUploadingThumbnail ||
-    isUploadingPromoVideo ||
-    isUploadingLessonVideo ||
-    uploadMediaMutation.isPending ||
-    isSavingDraft ||
-    isNavigatingNext ||
-    createDraftMutation.isPending ||
-    patchCourseMutation.isPending ||
-    publishMutation.isPending ||
-    unpublishMutation.isPending
-  );
-
-  // Status & Validation
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
-  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
-
   // Lesson modal state
   const [editingLesson, setEditingLesson] = useState<{
     moduleId: string;
@@ -533,6 +515,35 @@ export const CreateCoursePage: React.FC = () => {
   const [isSavingLesson, setIsSavingLesson] = useState(false);
   const [isReplacingLessonVideo, setIsReplacingLessonVideo] = useState(false);
   const [googleDriveInputVal, setGoogleDriveInputVal] = useState('');
+
+  const isAnyLoadingOrUploading = Boolean(
+    isUploadingThumbnail ||
+    isUploadingPromoVideo ||
+    isUploadingLessonVideo ||
+    uploadMediaMutation.isPending ||
+    isSavingDraft ||
+    isNavigatingNext ||
+    isAddingModule ||
+    addingLessonModuleId ||
+    isSavingLesson ||
+    createDraftMutation.isPending ||
+    patchCourseMutation.isPending ||
+    createModuleMutation.isPending ||
+    patchModuleMutation.isPending ||
+    deleteModuleMutation.isPending ||
+    createLessonMutation.isPending ||
+    patchLessonMutation.isPending ||
+    deleteLessonMutation.isPending ||
+    reorderModulesMutation.isPending ||
+    reorderLessonsMutation.isPending ||
+    publishMutation.isPending ||
+    unpublishMutation.isPending
+  );
+
+  // Status & Validation
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
   useEffect(() => {
     setIsReplacingLessonVideo(false);
@@ -3721,7 +3732,7 @@ export const CreateCoursePage: React.FC = () => {
                   type="button"
                   onClick={handlePrevStep}
                   disabled={isAnyLoadingOrUploading}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#475569] bg-white border border-[#CBD5E1] hover:bg-[#F8FAFC] disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-all cursor-pointer shadow-2xs"
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#475569] bg-white border border-[#CBD5E1] hover:bg-[#F8FAFC] disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none rounded-xl transition-all cursor-pointer shadow-2xs"
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <polyline points="15 18 9 12 15 6" />
@@ -3753,7 +3764,7 @@ export const CreateCoursePage: React.FC = () => {
                   isLoading={isSavingDraft}
                   loadingLabel="Saving & Exiting…"
                   disabled={isAnyLoadingOrUploading}
-                  className="px-4 min-h-[38px] !rounded-xl text-xs font-bold border-[#CBD5E1] text-[#334155] hover:border-[#0047CC] hover:text-[#0047CC] disabled:opacity-40 disabled:cursor-not-allowed bg-white cursor-pointer shadow-2xs"
+                  className="px-4 min-h-[38px] !rounded-xl text-xs font-bold border-[#CBD5E1] text-[#334155] hover:border-[#0047CC] hover:text-[#0047CC] disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none bg-white cursor-pointer shadow-2xs"
                 >
                   Save Draft
                 </Button>
@@ -3766,7 +3777,7 @@ export const CreateCoursePage: React.FC = () => {
                     disabled={isAnyLoadingOrUploading}
                     fullWidth={false}
                     pill={false}
-                    className="px-6 min-h-[38px] !rounded-xl bg-[#0047CC] hover:bg-[#0037a3] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+                    className="px-6 min-h-[38px] !rounded-xl bg-[#0047CC] hover:bg-[#0037a3] disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98]"
                   >
                     <span>Continue</span>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -3781,7 +3792,7 @@ export const CreateCoursePage: React.FC = () => {
                     disabled={!isPublishReady || isAnyLoadingOrUploading}
                     fullWidth={false}
                     pill={false}
-                    className="px-6 min-h-[38px] !rounded-xl bg-[#0047CC] hover:bg-[#0037a3] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+                    className="px-6 min-h-[38px] !rounded-xl bg-[#0047CC] hover:bg-[#0037a3] disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.98]"
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M22 2L11 13" />
@@ -4164,7 +4175,7 @@ export const CreateCoursePage: React.FC = () => {
                 <div className="p-3.5 bg-blue-50/70 border border-blue-200/60 rounded-xl text-blue-900">
                   <div className="font-bold mb-0.5 text-xs text-[#0047CC]">Interactive Knowledge Check</div>
                   <div className="text-[11px] leading-relaxed text-blue-900/80">
-                    Question authoring will be linked via the VORA Assessment Studio.
+                    Question authoring will be linked via the VORA Interview Studio.
                   </div>
                 </div>
               )}

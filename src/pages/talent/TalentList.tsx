@@ -215,7 +215,7 @@ const Talents: React.FC = () => {
 
     if (action.enabled === false) {
       if (key === 'REJECT_APPLICANT' || label.includes('reject')) {
-        toast.error('Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-assessment exits stay Failed.');
+        toast.error('Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-interview exits stay Failed.');
       } else {
         toast.error('This action is currently unavailable for this candidate.');
       }
@@ -235,7 +235,7 @@ const Talents: React.FC = () => {
     if (key === 'REJECT_APPLICANT' || label.includes('reject')) {
       const eligibility = isCandidateEligibleForRejection(talent);
       if (!eligibility.eligible) {
-        toast.error(eligibility.message || 'Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-assessment exits stay Failed.');
+        toast.error(eligibility.message || 'Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-interview exits stay Failed.');
         return;
       }
       const jobId = talent.rolePostingId || '1';

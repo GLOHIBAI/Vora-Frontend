@@ -21,6 +21,11 @@ import {
   useUploadCvMutation,
   useGetTalentCvProfileQuery,
 } from '../../services/queries/talent';
+import {
+  MAX_CV_UPLOADS,
+  getCvUploadCount,
+  incrementCvUploadCount,
+} from '../../utils/credentialLimits';
 import { OverviewTab } from './profile-tabs/OverviewTab';
 import { CareerMapTab } from './profile-tabs/CareerMapTab';
 import { SkillsLedgerTab } from './profile-tabs/SkillsLedgerTab';
@@ -132,6 +137,26 @@ const TalentMyProfile: React.FC = () => {
   const uploadCvMutation = useUploadCvMutation();
   const deleteTalentDataMutation = useDeleteTalentDataMutation();
 
+  // CV Upload Limit (Max 3 revisions)
+  const userIdentifier = user?.email || user?.id || '';
+  const serverCvUploadCount =
+    (dashboard as any)?.cvUploadCount ??
+    (dashboard as any)?.unlocks?.uploadCv?.uploadCount ??
+    (myData as any)?.documents?.cvUploadCount;
+
+  const [cvUploadCount, setCvUploadCount] = useState<number>(() =>
+    getCvUploadCount(userIdentifier, serverCvUploadCount)
+  );
+
+  useEffect(() => {
+    if (serverCvUploadCount != null) {
+      setCvUploadCount(getCvUploadCount(userIdentifier, serverCvUploadCount));
+    }
+  }, [userIdentifier, serverCvUploadCount]);
+
+  const remainingCvUploads = Math.max(0, MAX_CV_UPLOADS - cvUploadCount);
+  const isCvLimitReached = remainingCvUploads <= 0;
+
   // Poll CV parsing
   const { data: cvProfileData } = useGetTalentCvProfileQuery({
     enabled: isPollingCvProfile,
@@ -147,7 +172,7 @@ const TalentMyProfile: React.FC = () => {
       setIsPollingCvProfile(false);
       setIsParsingCv(false);
       toast.dismiss('cv-parsing');
-      toast.success('CV uploaded and parsed successfully! Skills Ledger updated.');
+      toast.success('CV uploaded and parsed successfully! Full profile and Skills Ledger updated.');
       queryClient.invalidateQueries({ queryKey: ['talent-dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['talent', 'skills-ledger'] });
       queryClient.invalidateQueries({ queryKey: ['talent', 'my-data'] });
@@ -161,6 +186,10 @@ const TalentMyProfile: React.FC = () => {
   }, [cvProfileData, isPollingCvProfile, queryClient]);
 
   const handleCvFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isCvLimitReached) {
+      toast.error(`You have reached the maximum limit of ${MAX_CV_UPLOADS} CV updates.`);
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) return;
     const MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
@@ -173,6 +202,11 @@ const TalentMyProfile: React.FC = () => {
   };
 
   const handleExecuteUploadCv = async () => {
+    if (isCvLimitReached) {
+      toast.error(`You have reached the maximum limit of ${MAX_CV_UPLOADS} CV updates.`);
+      return;
+    }
+
     if (!selectedCvFile) {
       cvInputRef.current?.click();
       return;
@@ -191,6 +225,11 @@ const TalentMyProfile: React.FC = () => {
       const res = await uploadCvMutation.mutateAsync({ file: selectedCvFile });
       const parseStatus = (res as any)?.data?.parseStatus || (res as any)?.parseStatus;
 
+      // Increment local count & close modal
+      const nextCount = incrementCvUploadCount(userIdentifier);
+      setCvUploadCount(nextCount);
+      const newRemaining = Math.max(0, MAX_CV_UPLOADS - nextCount);
+
       // Close modal and reset state on successful upload submission
       setIsUploadModalOpen(false);
       setSelectedCvFile(null);
@@ -203,10 +242,15 @@ const TalentMyProfile: React.FC = () => {
         queryClient.invalidateQueries({ queryKey: ['talent', 'skills-ledger'] });
         queryClient.invalidateQueries({ queryKey: ['talent', 'my-data'] });
         queryClient.invalidateQueries({ queryKey: ['talent', 'cv-profile'] });
-        toast.success('CV uploaded and parsed successfully! Ledger updated.');
+        toast.success(
+          `CV uploaded and parsed successfully! Full profile updated (${newRemaining} of ${MAX_CV_UPLOADS} updates remaining).`
+        );
       } else {
         setIsPollingCvProfile(true);
-        toast.loading('Analyzing CV and updating ledger...', { id: 'cv-parsing' });
+        toast.loading(
+          `Analyzing CV and updating profile dossier (${newRemaining} of ${MAX_CV_UPLOADS} updates remaining)...`,
+          { id: 'cv-parsing' }
+        );
       }
     } catch (err: any) {
       setIsParsingCv(false);
@@ -275,8 +319,12 @@ const TalentMyProfile: React.FC = () => {
         <div className="flex items-center gap-2.5">
           <button
             type="button"
-            disabled={isCvLocked || isParsingCv}
+            disabled={isCvLocked || isParsingCv || isCvLimitReached}
             onClick={() => {
+              if (isCvLimitReached) {
+                toast.error(`You have reached the maximum limit of ${MAX_CV_UPLOADS} CV updates.`);
+                return;
+              }
               if (cvUnlock?.hrefHint && cvUnlock.hrefHint !== '/talent/settings/cv') {
                 navigate(cvUnlock.hrefHint);
               } else {
@@ -284,13 +332,20 @@ const TalentMyProfile: React.FC = () => {
               }
             }}
             className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium transition-colors shadow-2xs ${
-              isCvLocked
+              isCvLocked || isCvLimitReached
                 ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
                 : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 cursor-pointer'
             }`}
+            title={isCvLimitReached ? `CV update limit reached (${MAX_CV_UPLOADS} of ${MAX_CV_UPLOADS} used)` : undefined}
           >
-            <UploadIcon size={14} className="text-[#0047CC]" />
-            <span>{isParsingCv ? 'Processing CV...' : cvUnlock?.label || 'Update CV'}</span>
+            <UploadIcon size={14} className={isCvLimitReached ? 'text-slate-400' : 'text-[#0047CC]'} />
+            <span>
+              {isParsingCv
+                ? 'Processing CV...'
+                : isCvLimitReached
+                ? `CV Limit Reached (${MAX_CV_UPLOADS}/${MAX_CV_UPLOADS})`
+                : `${cvUnlock?.label || 'Update CV'} (${remainingCvUploads} of ${MAX_CV_UPLOADS} left)`}
+            </span>
           </button>
 
           <button
@@ -424,6 +479,8 @@ const TalentMyProfile: React.FC = () => {
         <MyDataTab
           data={myData}
           isLoading={isMyDataLoading}
+          remainingCvUploads={remainingCvUploads}
+          isCvLimitReached={isCvLimitReached}
           isJourneyLocked={
             dashboard?.unlocks?.uploadCv?.locked === true ||
             myData?.assessmentResults?.some(
@@ -440,7 +497,20 @@ const TalentMyProfile: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
           <div className="bg-white rounded-xl max-w-lg w-full p-6 space-y-5 shadow-lg border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-base font-semibold text-slate-900">Update Your CV</h3>
+              <div className="flex items-center gap-2.5">
+                <h3 className="text-base font-semibold text-slate-900">Update Your CV</h3>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
+                    isCvLimitReached
+                      ? 'bg-red-50 text-red-700 border-red-200'
+                      : 'bg-blue-50 text-[#0047CC] border-blue-200'
+                  }`}
+                >
+                  {isCvLimitReached
+                    ? `${MAX_CV_UPLOADS}/${MAX_CV_UPLOADS} updates used`
+                    : `${remainingCvUploads} of ${MAX_CV_UPLOADS} updates left`}
+                </span>
+              </div>
               <button
                 type="button"
                 disabled={isUploadingCv}
@@ -451,65 +521,78 @@ const TalentMyProfile: React.FC = () => {
               </button>
             </div>
 
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2.5 text-xs text-amber-900">
-              <span className="font-bold leading-none shrink-0 text-amber-700">!</span>
-              <span>
-                <strong>Skills Ledger update:</strong> Uploading a new CV refreshes your profile extraction and re-evaluates all matched and reach roles across VORA.
-              </span>
-            </div>
-
-            {selectedCvFile ? (
-              <div className="border border-slate-200 bg-slate-50 rounded-lg p-4 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-lg bg-blue-50 text-[#0047CC] flex items-center justify-center shrink-0 border border-blue-200">
-                    <FileIcon size={20} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-900 truncate">{selectedCvFile.name}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {(selectedCvFile.size / (1024 * 1024)).toFixed(2)} MB · Ready to upload
-                    </p>
-                  </div>
+            {isCvLimitReached ? (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3.5 flex items-start gap-2.5 text-xs text-red-900">
+                <AlertTriangleIcon size={16} className="text-red-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="font-semibold text-red-950">Update limit reached:</strong> You have reached the maximum allowed limit of {MAX_CV_UPLOADS} CV updates. To preserve verified Skills Ledger records and interview ratings, no further CV uploads can be performed.
                 </div>
-                {!isUploadingCv && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedCvFile(null);
-                      if (cvInputRef.current) cvInputRef.current.value = '';
-                    }}
-                    className="px-2.5 py-1 text-xs font-medium text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0"
-                  >
-                    Change file
-                  </button>
-                )}
               </div>
             ) : (
-              <div
-                onClick={() => !isUploadingCv && cvInputRef.current?.click()}
-                className="border-2 border-dashed border-slate-300 hover:border-[#0047CC] rounded-lg p-6 text-center cursor-pointer transition-colors bg-slate-50/50 space-y-2.5"
-              >
-                <div className="w-10 h-10 rounded-lg bg-blue-50 text-[#0047CC] flex items-center justify-center mx-auto border border-blue-100">
-                  <UploadIcon size={20} />
-                </div>
+              <div className="bg-blue-50/70 border border-blue-200/80 rounded-lg p-3.5 flex items-start gap-2.5 text-xs text-blue-900">
+                <span className="font-bold leading-none shrink-0 text-[#0047CC] mt-0.5">ℹ</span>
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">Choose file to upload</p>
-                  <p className="text-xs text-slate-500 mt-1">Supported formats: PDF, DOCX · Max 2MB</p>
+                  <strong className="font-semibold text-blue-950">Automatic Profile &amp; Ledger Refresh:</strong> Uploading a new CV automatically updates your full profile dossier (including name, headline, experience, and skills) based on verified data. You are limited to <strong>{MAX_CV_UPLOADS} updates</strong> total ({remainingCvUploads} remaining).
                 </div>
               </div>
             )}
 
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1.5">Note (optional)</label>
-              <input
-                type="text"
-                disabled={isUploadingCv}
-                value={cvNote}
-                onChange={(e) => setCvNote(e.target.value)}
-                placeholder="e.g. Updated with recent healthcare analytics project"
-                className="w-full px-3.5 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#0047CC] disabled:bg-slate-100 disabled:opacity-60 text-slate-900 placeholder:text-slate-400"
-              />
-            </div>
+            {!isCvLimitReached && (
+              selectedCvFile ? (
+                <div className="border border-slate-200 bg-slate-50 rounded-lg p-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-lg bg-blue-50 text-[#0047CC] flex items-center justify-center shrink-0 border border-blue-200">
+                      <FileIcon size={20} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-900 truncate">{selectedCvFile.name}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {(selectedCvFile.size / (1024 * 1024)).toFixed(2)} MB · Ready to upload
+                      </p>
+                    </div>
+                  </div>
+                  {!isUploadingCv && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCvFile(null);
+                        if (cvInputRef.current) cvInputRef.current.value = '';
+                      }}
+                      className="px-2.5 py-1 text-xs font-medium text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0"
+                    >
+                      Change file
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div
+                  onClick={() => !isUploadingCv && cvInputRef.current?.click()}
+                  className="border-2 border-dashed border-slate-300 hover:border-[#0047CC] rounded-lg p-6 text-center cursor-pointer transition-colors bg-slate-50/50 space-y-2.5"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-blue-50 text-[#0047CC] flex items-center justify-center mx-auto border border-blue-100">
+                    <UploadIcon size={20} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Choose file to upload</p>
+                    <p className="text-xs text-slate-500 mt-1">Supported formats: PDF, DOCX · Max 2MB</p>
+                  </div>
+                </div>
+              )
+            )}
+
+            {!isCvLimitReached && (
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">Note (optional)</label>
+                <input
+                  type="text"
+                  disabled={isUploadingCv}
+                  value={cvNote}
+                  onChange={(e) => setCvNote(e.target.value)}
+                  placeholder="e.g. Updated with recent healthcare analytics project"
+                  className="w-full px-3.5 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#0047CC] disabled:bg-slate-100 disabled:opacity-60 text-slate-900 placeholder:text-slate-400"
+                />
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
               <button
@@ -522,11 +605,11 @@ const TalentMyProfile: React.FC = () => {
               </button>
               <button
                 type="button"
-                disabled={isUploadingCv}
+                disabled={isUploadingCv || isCvLimitReached || (!selectedCvFile && !isCvLimitReached)}
                 onClick={selectedCvFile ? handleExecuteUploadCv : () => cvInputRef.current?.click()}
                 className={`inline-flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-xs font-semibold text-white shadow-xs transition-colors ${
-                  isUploadingCv
-                    ? 'bg-blue-400 cursor-not-allowed opacity-80'
+                  isUploadingCv || isCvLimitReached || !selectedCvFile
+                    ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
                     : 'bg-[#0047CC] hover:bg-[#003bb5] cursor-pointer'
                 }`}
               >
@@ -535,6 +618,8 @@ const TalentMyProfile: React.FC = () => {
                     <Spinner size={14} className="text-white" />
                     <span>Uploading...</span>
                   </>
+                ) : isCvLimitReached ? (
+                  <span>Limit Reached</span>
                 ) : selectedCvFile ? (
                   <span>Upload CV</span>
                 ) : (

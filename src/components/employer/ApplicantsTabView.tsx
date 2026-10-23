@@ -425,7 +425,7 @@ const StageApplicantsTable: React.FC<{
                                 e.stopPropagation();
                                 setOpenMenuIdx(null);
                                 if (!rejectAction.enabled) {
-                                  toast.error('Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-assessment exits stay Failed, not this form.');
+                                  toast.error('Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-interview exits stay Failed, not this form.');
                                   return;
                                 }
                                 const effectiveJobId = jobId || rolePostingId;
@@ -1014,7 +1014,7 @@ const ApplicantsTabView: React.FC<ApplicantsTabViewProps> = ({
                                         e.stopPropagation();
                                         setOpenMenuIdx(null);
                                         if (!rejectAction.enabled) {
-                                          toast.error('Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-assessment exits stay Failed, not this form.');
+                                          toast.error('Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-interview exits stay Failed, not this form.');
                                           return;
                                         }
                                         const effectiveJobId = jobId || data?.rolePostingId;

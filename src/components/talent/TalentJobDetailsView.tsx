@@ -17,7 +17,7 @@ import Tag from '../common/Tag';
 import { useTalentJobDetailQuery } from '../../services/queries/talent';
 
 const STAGE_TITLES: Record<string, string> = {
-  GATE_1: 'Gate 1: Culture & Context (Async Assessment)',
+  GATE_1: 'Gate 1: Culture & Context (Async Interview)',
   GATE_2: 'Gate 2: Technical Knowledge & Reasoning',
   GATE_3: 'Gate 3: Live Video Session',
   HIRED: 'Hired / Offer Received',
@@ -186,7 +186,7 @@ export const TalentJobDetailsView: React.FC = () => {
             >
               {job.hasApplied ? (
                 <>
-                  Continue Assessment
+                  Continue Interview
                   <ArrowRightIcon size={16} />
                 </>
               ) : (
@@ -209,7 +209,7 @@ export const TalentJobDetailsView: React.FC = () => {
               <div>
                 <p className="text-sm font-semibold text-blue-900">Application in Progress</p>
                 <p className="text-xs text-blue-700">
-                  Current: {job.application.currentStage ? STAGE_TITLES[job.application.currentStage] || job.application.currentStage : 'Under Assessment'}
+                  Current: {job.application.currentStage ? STAGE_TITLES[job.application.currentStage] || job.application.currentStage : 'Under Interview'}
                 </p>
               </div>
             </div>
@@ -341,14 +341,14 @@ export const TalentJobDetailsView: React.FC = () => {
           <div className="bg-blue-600 rounded-2xl p-6 text-white space-y-4 shadow-sm">
             <h3 className="text-base font-bold">Ready to take the next step?</h3>
             <p className="text-xs text-blue-100 leading-relaxed">
-              Complete the structured assessment gates to demonstrate your domain mastery directly to hiring teams.
+              Complete the structured interview gates to demonstrate your domain mastery directly to hiring teams.
             </p>
             <button
               type="button"
               onClick={handleApplyOrContinue}
               className="w-full py-2.5 px-4 bg-white text-blue-600 rounded-xl font-semibold hover:bg-blue-50 transition-colors shadow-xs flex items-center justify-center cursor-pointer text-sm"
             >
-              {job.hasApplied ? 'Continue Assessment' : 'Apply Now'}
+              {job.hasApplied ? 'Continue Interview' : 'Apply Now'}
             </button>
           </div>
         </div>

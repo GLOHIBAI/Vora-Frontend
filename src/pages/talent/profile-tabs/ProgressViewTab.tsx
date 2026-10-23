@@ -49,7 +49,7 @@ export const ProgressViewTab: React.FC<ProgressViewTabProps> = ({ data, isLoadin
       {/* ASSESSMENT JOURNEY BY ROLE */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-5">
         <div>
-          <h3 className="text-base font-semibold text-slate-900">Assessment Journey by Role</h3>
+          <h3 className="text-base font-semibold text-slate-900">Interview Journey by Role</h3>
           <p className="text-xs text-slate-500 mt-0.5">
             Stage progression and evaluation status per role.
           </p>
@@ -58,13 +58,13 @@ export const ProgressViewTab: React.FC<ProgressViewTabProps> = ({ data, isLoadin
         <div className="bg-blue-50/70 border border-blue-200 rounded-lg p-3.5 flex items-start gap-2.5 text-xs text-slate-700">
           <span className="font-semibold text-sm leading-none shrink-0 text-[#0047CC]">!</span>
           <span>
-            Assessments are real interview-grade evaluations. If you fail one, you cannot proceed to the next stage for that role. VORA will then recommend a course — if completed, you may retake the assessment for eligible roles.
+            Interviews are real evaluations. If you fail one, you cannot proceed to the next stage for that role. VORA will then recommend a course — if completed, you may retake the interview for eligible roles.
           </span>
         </div>
 
         {journeys.length === 0 ? (
           <div className="p-8 text-center text-xs text-slate-500 border border-dashed border-slate-200 rounded-lg">
-            No assessment journeys active at this time.
+            No interview journeys active at this time.
           </div>
         ) : (
           journeys.map((journey, jIdx) => {

@@ -227,7 +227,7 @@ export const SkillsLedgerTab: React.FC<SkillsLedgerTabProps> = ({ data, isLoadin
                     }}
                   />
                 </div>
-                <div className="text-xs text-slate-500 mt-1">Demonstrated through course or assessment</div>
+                <div className="text-xs text-slate-500 mt-1">Demonstrated through course or interview</div>
               </div>
 
               <div>

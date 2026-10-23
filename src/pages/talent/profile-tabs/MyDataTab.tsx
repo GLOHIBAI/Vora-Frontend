@@ -23,6 +23,8 @@ interface MyDataTabProps {
   data?: TalentMyDataData;
   isLoading?: boolean;
   isJourneyLocked?: boolean;
+  remainingCvUploads?: number;
+  isCvLimitReached?: boolean;
   onOpenUploadModal: () => void;
   onOpenDeleteModal: () => void;
 }
@@ -31,6 +33,8 @@ export const MyDataTab: React.FC<MyDataTabProps> = ({
   data,
   isLoading,
   isJourneyLocked = false,
+  remainingCvUploads = 3,
+  isCvLimitReached = false,
   onOpenUploadModal,
   onOpenDeleteModal,
 }) => {
@@ -335,12 +339,25 @@ export const MyDataTab: React.FC<MyDataTabProps> = ({
               <p className="text-xs text-slate-500 mt-0.5">Manage CV dossiers and verified credential proofs</p>
             </div>
 
-            <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl p-3.5 flex items-start gap-3 text-xs text-amber-900 leading-relaxed">
-              <AlertTriangleIcon size={16} className="text-amber-600 shrink-0 mt-0.5" />
+            <div
+              className={`rounded-xl p-3.5 flex items-start gap-3 text-xs leading-relaxed border ${
+                isCvLimitReached
+                  ? 'bg-red-50/80 border-red-200/80 text-red-900'
+                  : 'bg-amber-50/80 border-amber-200/80 text-amber-900'
+              }`}
+            >
+              <AlertTriangleIcon
+                size={16}
+                className={`shrink-0 mt-0.5 ${isCvLimitReached ? 'text-red-600' : 'text-amber-600'}`}
+              />
               <span>
-                <strong className="font-semibold text-amber-950">CV upload policy:</strong>{' '}
-                {docs?.cvUploadLimitNote ||
-                  'Uploading a new CV updates your Skills Ledger. Prior CV-sourced claims are refreshed based on the uploaded file.'}
+                <strong className={`font-semibold ${isCvLimitReached ? 'text-red-950' : 'text-amber-950'}`}>
+                  {isCvLimitReached ? 'CV update limit reached:' : 'CV upload policy:'}
+                </strong>{' '}
+                {isCvLimitReached
+                  ? 'You have reached the maximum allowed limit of 3 CV updates. Further uploads are restricted to preserve your verified profile and ledger integrity.'
+                  : docs?.cvUploadLimitNote ||
+                    `Uploading a new CV automatically updates your full profile and Skills Ledger based on backend extraction. You can update your CV up to 3 times (${remainingCvUploads} of 3 updates left).`}
               </span>
             </div>
 
@@ -391,18 +408,37 @@ export const MyDataTab: React.FC<MyDataTabProps> = ({
             )}
 
             {/* Upload trigger dashed box */}
-            <div
-              onClick={onOpenUploadModal}
-              className="border-2 border-dashed border-slate-200 hover:border-[#0047CC] hover:bg-blue-50/20 rounded-xl p-4 flex items-center gap-3.5 cursor-pointer transition-all duration-200 bg-slate-50/40"
-            >
-              <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 shrink-0">
-                <UploadIcon size={16} />
+            {isCvLimitReached ? (
+              <div className="border border-slate-200 bg-slate-50 rounded-xl p-4 flex items-center justify-between gap-3 cursor-not-allowed opacity-75">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-9 h-9 rounded-lg bg-slate-200 flex items-center justify-center text-slate-500 shrink-0">
+                    <UploadIcon size={16} />
+                  </div>
+                  <div>
+                    <div className="text-xs sm:text-sm font-semibold text-slate-700">CV Update Limit Reached</div>
+                    <div className="text-[11px] text-slate-500">Maximum 3 of 3 updates completed</div>
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-200 text-slate-600">
+                  Locked
+                </span>
               </div>
-              <div>
-                <div className="text-xs sm:text-sm font-semibold text-slate-800">Upload new CV version</div>
-                <div className="text-[11px] text-slate-500">PDF, DOCX · Refreshes your Skills Ledger</div>
+            ) : (
+              <div
+                onClick={onOpenUploadModal}
+                className="border-2 border-dashed border-slate-200 hover:border-[#0047CC] hover:bg-blue-50/20 rounded-xl p-4 flex items-center gap-3.5 cursor-pointer transition-all duration-200 bg-slate-50/40"
+              >
+                <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 shrink-0">
+                  <UploadIcon size={16} />
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-semibold text-slate-800">Upload new CV version</div>
+                  <div className="text-[11px] text-slate-500">
+                    PDF, DOCX · Updates profile dossier ({remainingCvUploads} of 3 left)
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="pt-2">
               <div className="flex items-center justify-between mb-2">
@@ -468,20 +504,20 @@ export const MyDataTab: React.FC<MyDataTabProps> = ({
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col justify-between space-y-4">
           <div className="space-y-4">
             <div className="pb-3 border-b border-slate-100">
-              <h3 className="text-base font-semibold text-slate-900">Assessment Results</h3>
+              <h3 className="text-base font-semibold text-slate-900">Interview Results</h3>
               <p className="text-xs text-slate-500 mt-0.5">Results are per-role — see Progress View for full detail</p>
             </div>
 
             <div className="bg-blue-50/80 border border-blue-200/80 rounded-xl p-3.5 flex items-start gap-3 text-xs text-slate-700 leading-relaxed">
               <InfoIcon size={16} className="text-[#0047CC] shrink-0 mt-0.5" />
               <span>
-                Assessments are real interviews, not boosters. They evaluate role fit. Grade advances through CV revamps, courses, and mentorship.
+                Interviews evaluate role fit and are not boosters. Grade advances through CV revamps, courses, and mentorship.
               </span>
             </div>
 
             <div className="divide-y divide-slate-100 text-xs">
               {assessments.length === 0 ? (
-                <div className="py-3 text-slate-400 italic">No assessment results recorded yet.</div>
+                <div className="py-3 text-slate-400 italic">No interview results recorded yet.</div>
               ) : (
                 assessments.map((res, rIdx) => (
                   <div key={res.assessmentId || rIdx} className="py-2.5 flex justify-between items-center">
@@ -516,7 +552,7 @@ export const MyDataTab: React.FC<MyDataTabProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div>
             <h3 className="text-base font-semibold text-slate-900">Profile Reset</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Controlled reset policy for locked assessments</p>
+            <p className="text-xs text-slate-500 mt-0.5">Controlled reset policy for locked interviews</p>
           </div>
           {isJourneyLocked && (
             <Tag variant="red" label="Interview Locked" />

@@ -362,7 +362,7 @@ const TalentDashboard: React.FC = () => {
             </h2>
             <p className="text-sm text-gray-500 font-medium">
               {availableJobs.length > 0
-                ? 'Verified roles matching your skills. Apply and proceed through assessment gates.'
+                ? 'Verified roles matching your skills. Apply and proceed through interview gates.'
                 : 'Upload your CV to get jobs tailored specifically for you.'}
             </p>
           </div>
@@ -427,7 +427,7 @@ const TalentDashboard: React.FC = () => {
             <div className="col-span-full py-12 px-6 text-center bg-gray-50/60 border border-dashed border-gray-200 rounded-2xl">
               <p className="text-[14px] font-medium text-gray-700">No live matched roles right now</p>
               <p className="text-[12px] text-gray-500 mt-1 max-w-md mx-auto">
-                Complete your assessment stages to receive tailored role matches.
+                Complete your interview stages to receive tailored role matches.
               </p>
             </div>
           )}

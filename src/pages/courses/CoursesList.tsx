@@ -10,6 +10,8 @@ import {
   ListIcon,
   GraduationCapIcon,
   AwardIcon,
+  ClockIcon,
+  TargetIcon,
 } from '../../components/common/Icons';
 import EmptyState from '../../components/common/EmptyState';
 import { toast } from 'react-hot-toast';
@@ -58,6 +60,12 @@ const ENROLL_COUNTRY_OPTIONS = [
   { value: 'FR', label: 'France (FR)' },
 ];
 
+const toSentenceCase = (str?: string): string => {
+  if (!str) return '';
+  const trimmed = str.trim();
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+};
+
 const getInitials = (name?: string): string => {
   if (!name) return 'IN';
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -98,6 +106,39 @@ const getMentorRoleOrg = (mentor?: any): string => {
   return '';
 };
 
+const getLevelLabel = (course: CourseBrowseItem): string => {
+  if (course.difficultyLevel) return toSentenceCase(course.difficultyLevel);
+  const foundPill = course.pills?.find((p) =>
+    ['beginner', 'intermediate', 'advanced', 'all levels'].includes(p.toLowerCase())
+  );
+  if (foundPill) return toSentenceCase(foundPill);
+  const foundTag = course.tags?.find((t) =>
+    ['beginner', 'intermediate', 'advanced', 'all levels'].includes(t.toLowerCase())
+  );
+  if (foundTag) return toSentenceCase(foundTag);
+  return 'Intermediate';
+};
+
+const getDurationLabel = (course: CourseBrowseItem): string => {
+  if (course.stats?.videoHoursLabel) return course.stats.videoHoursLabel;
+  if ((course as any).duration) return (course as any).duration;
+  return '22 minutes';
+};
+
+const getCourseGapLabel = (course: CourseBrowseItem): string => {
+  if ((course as any).gapLabel) return (course as any).gapLabel;
+  if ((course.recommendation as any)?.gapTitle) {
+    return `Closes: ${toSentenceCase((course.recommendation as any).gapTitle)}`;
+  }
+  if (course.recommendation?.source === 'prescription') {
+    return 'Prescribed for Gaps';
+  }
+  if (course.recommendation?.source === 'gap_link' || course.recommendation?.source === 'target_gap') {
+    return 'For Your Growth Gaps';
+  }
+  return 'Recommended for You';
+};
+
 interface CourseCardItemProps {
   course: CourseBrowseItem;
   isMasterclassBadge?: boolean;
@@ -113,30 +154,48 @@ const CourseCardItem: React.FC<CourseCardItemProps> = ({
   onEnroll,
   onOpen,
 }) => {
-  const banner = course.thumbnailUrl || displayMedia(
-    course.thumbnailUrl || (course as any).coverImageUrl,
-    course.thumbnailS3Key || (course as any).coverImageS3Key
-  );
-  const mentorName = course.mentor?.displayName || course.mentor?.name || 'Instructor';
-  const mentorOrg = course.mentor?.organisation || course.mentor?.professionalTitle || null;
-  const mentorPhoto = course.mentor?.photoUrl || displayMedia(course.mentor?.photoUrl, course.mentor?.photoS3Key) || DEFAULT_MENTOR_AVATAR;
+  const [thumbError, setThumbError] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+
+  const banner = !thumbError
+    ? course.thumbnailUrl ||
+      displayMedia(
+        course.thumbnailUrl || (course as any).coverImageUrl,
+        course.thumbnailS3Key || (course as any).coverImageS3Key
+      )
+    : null;
+
+  const rawMentorName = course.mentor?.displayName || course.mentor?.name || 'Instructor';
+  const mentorName = formatDisplayName(rawMentorName);
+  const mentorOrg =
+    getMentorRoleOrg(course.mentor) ||
+    course.mentor?.organisation ||
+    course.mentor?.professionalTitle ||
+    null;
+  const mentorPhoto = !avatarError
+    ? course.mentor?.photoUrl ||
+      displayMedia(course.mentor?.photoUrl, course.mentor?.photoS3Key) ||
+      null
+    : null;
+
+  const levelLabel = getLevelLabel(course);
+  const durationLabel = getDurationLabel(course);
+  const gapLabel = getCourseGapLabel(course);
 
   return (
-    <div className="bg-white border border-gray-200/90 hover:border-blue-200 rounded-[22px] overflow-hidden shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between group focus-within:ring-2 focus-within:ring-[#0052CC]/20">
-      <div>
-        {/* Fixed 16:9 Thumbnail with Consistent Play Button & Fallback */}
+    <div className="bg-white border border-slate-200/90 hover:border-slate-300 rounded-[22px] overflow-hidden shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between group focus-within:ring-2 focus-within:ring-[#0047CC]/20 h-full">
+      <div className="flex-1 flex flex-col">
+        {/* Fixed 16:9 Thumbnail (no muddy full overlay, gradient only for top tag) */}
         <div
           onClick={() => onPreview(course)}
-          className="w-full aspect-16/9 overflow-hidden relative group cursor-pointer bg-slate-900 border-b border-gray-100"
+          className="w-full aspect-video overflow-hidden relative group cursor-pointer bg-slate-900 border-b border-slate-100 shrink-0"
         >
           {banner ? (
             <img
               src={banner}
               alt={course.title}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              onError={(e) => {
-                (e.target as HTMLElement).style.display = 'none';
-              }}
+              onError={() => setThumbError(true)}
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-[#0F1E36] via-[#1E3A8A] to-[#0047CC] flex flex-col items-center justify-center p-4 text-center">
@@ -147,132 +206,112 @@ const CourseCardItem: React.FC<CourseCardItemProps> = ({
             </div>
           )}
 
-          {/* Unified Hover / Center Play Icon */}
-          <div className="absolute inset-0 bg-black/25 flex items-center justify-center transition-colors group-hover:bg-black/40">
-            <div className="w-11 h-11 rounded-full bg-black/50 backdrop-blur-xs flex items-center justify-center border-2 border-white/80 text-white shadow-md group-hover:scale-110 transition-transform">
-              <PlayIcon size={18} className="ml-0.5 fill-white" />
+          {/* Top subtle gradient scrim only where tag sits */}
+          <div className="absolute top-0 inset-x-0 h-12 bg-gradient-to-b from-black/50 via-transparent to-transparent pointer-events-none" />
+
+          {/* Centered play button: 40px, semi-transparent, prominent on hover */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-10 h-10 rounded-full bg-black/40 group-hover:bg-black/60 backdrop-blur-xs flex items-center justify-center border border-white/60 text-white shadow-md opacity-75 group-hover:opacity-100 group-hover:scale-105 transition-all">
+              <PlayIcon size={16} className="ml-0.5 fill-white" />
             </div>
           </div>
 
-          {/* Neutral translucent tag on top-left of thumbnail */}
-          <div className="absolute top-3 left-3 pointer-events-none flex items-center gap-1.5 flex-wrap max-w-[85%]">
+          {/* Top-left dark translucent badge */}
+          <div className="absolute top-2.5 left-2.5 pointer-events-none flex items-center gap-1.5 flex-wrap max-w-[85%]">
             {isMasterclassBadge || course.isMasterclass ? (
-              <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-black/60 backdrop-blur-sm text-white tracking-wide border border-white/10 uppercase">
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-black/60 backdrop-blur-xs text-white uppercase tracking-wider border border-white/20 shadow-xs">
                 Masterclass
               </span>
             ) : course.category ? (
-              <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-black/60 backdrop-blur-sm text-white tracking-wide border border-white/10 uppercase capitalize">
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-black/60 backdrop-blur-xs text-white uppercase tracking-wider border border-white/20 shadow-xs capitalize">
                 {course.category}
               </span>
             ) : null}
           </div>
         </div>
 
-        {/* Course Info */}
-        <div className="p-5 sm:p-6 space-y-3">
-          {/* Recommendation Gap Badge if prescribed or gap-linked */}
-          {course.recommendation && (
-            <div>
-              <span
-                title={course.recommendation.reason}
-                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-[#0052CC] border border-blue-200/80 shadow-2xs"
-              >
-                <span>🎯</span>
-                <span>
-                  {course.recommendation.source === 'prescription'
-                    ? 'Prescribed for Gaps'
-                    : course.recommendation.source === 'gap_link' || course.recommendation.source === 'target_gap'
-                    ? 'For Your Growth Gaps'
-                    : 'Recommended'}
-                </span>
-              </span>
-            </div>
-          )}
-
-          {/* Title */}
-          <h4
-            onClick={() => onPreview(course)}
-            className="text-[16px] font-semibold text-gray-900 leading-snug group-hover:text-[#0052CC] transition-colors cursor-pointer line-clamp-2 min-h-[44px]"
-            title={course.title}
-          >
-            {course.title}
-          </h4>
-
-          {/* Prominent Instructor with clean Secondary Org */}
-          <div className="flex items-center gap-2.5 min-w-0 pt-0.5">
-            <div className="w-7 h-7 rounded-full bg-blue-50 border border-blue-200 text-[#0052CC] flex items-center justify-center font-bold text-[11px] shrink-0 overflow-hidden">
-              {mentorPhoto ? (
-                <img
-                  src={mentorPhoto}
-                  alt={mentorName}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLElement).style.display = 'none';
-                  }}
-                />
-              ) : (
-                mentorName.charAt(0).toUpperCase()
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold text-gray-900 truncate">
-                {mentorName}
-              </p>
-              {mentorOrg && (
-                <p className="text-[12px] text-gray-500 truncate -mt-0.5">
-                  {mentorOrg}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Meta row: duration, enrolled, rating */}
-          <div className="flex items-center flex-wrap gap-2 text-[12px] text-gray-600 font-medium pt-0.5">
-            {course.stats?.videoHoursLabel && (
-              <span>{course.stats.videoHoursLabel}</span>
-            )}
-            {course.stats?.studentCount ? (
-              <>
-                <span className="text-gray-300">•</span>
-                <span>{course.stats.studentCount.toLocaleString()} enrolled</span>
-              </>
-            ) : null}
-            {course.stats?.ratings !== null && course.stats?.ratings != null && (
-              <>
-                <span className="text-gray-300">•</span>
-                <span className="flex items-center gap-1 text-amber-500 font-semibold">
-                  ★ {course.stats.ratings}
-                  {course.stats.ratingsCount ? (
-                    <span className="text-gray-400 font-normal">({course.stats.ratingsCount})</span>
-                  ) : null}
-                </span>
-              </>
-            )}
-          </div>
-
-          {/* Tag Pills */}
-          {course.pills && course.pills.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {course.pills.map((pill, idx) => (
+        {/* Course Info: flex-1 column with justify-between pushing instructor and meta to bottom */}
+        <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-4">
+          {/* Upper: Gap badge & 18px semibold 2-line title */}
+          <div className="space-y-2.5">
+            {course.recommendation && (
+              <div>
                 <span
-                  key={idx}
-                  className="px-2.5 py-1 rounded-md text-[12px] font-medium bg-gray-100 text-gray-700 capitalize border border-gray-200/60"
+                  title={course.recommendation.reason}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs"
                 >
-                  {pill}
+                  <TargetIcon size={13} className="text-[#0047CC] shrink-0" />
+                  <span>{gapLabel}</span>
                 </span>
-              ))}
+              </div>
+            )}
+
+            <h4
+              onClick={() => onPreview(course)}
+              className="text-[18px] font-semibold text-slate-900 group-hover:text-[#0047CC] transition-colors cursor-pointer line-clamp-2 leading-snug"
+              title={course.title}
+            >
+              {course.title}
+            </h4>
+          </div>
+
+          {/* Lower: Instructor, duration/pacing, level chip */}
+          <div className="mt-auto space-y-3 pt-2">
+            {/* Instructor row: 32px crisp avatar with initials fallback, dark semibold name, truncating org */}
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center font-semibold text-xs shrink-0 overflow-hidden shadow-2xs">
+                {mentorPhoto ? (
+                  <img
+                    src={mentorPhoto}
+                    alt={mentorName}
+                    className="w-full h-full object-cover"
+                    onError={() => setAvatarError(true)}
+                  />
+                ) : (
+                  <span>{getInitials(mentorName)}</span>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold text-slate-900 truncate">
+                  {mentorName}
+                </p>
+                {mentorOrg && (
+                  <p className="text-xs text-slate-500 truncate -mt-0.5">
+                    {mentorOrg}
+                  </p>
+                )}
+              </div>
             </div>
-          )}
+
+            {/* Duration with Clock icon + "Online video · Self-paced" */}
+            <div className="flex items-center flex-wrap gap-2 text-xs text-slate-500 font-medium">
+              <span className="inline-flex items-center gap-1.5 text-slate-600">
+                <ClockIcon size={13} className="text-slate-400 shrink-0" />
+                <span>{durationLabel}</span>
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="text-slate-500">Online video · Self-paced</span>
+            </div>
+
+            {/* Level Chip (single quiet neutral chip) */}
+            {levelLabel && (
+              <div className="pt-0.5">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200/80 capitalize">
+                  {levelLabel}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Action Footer with 40px buttons */}
+      {/* Action Footer: 40px buttons */}
       <div className="p-5 sm:p-6 pt-0">
-        <div className="pt-3 border-t border-gray-100 flex items-center gap-2">
+        <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
           <button
             type="button"
             onClick={() => onPreview(course)}
-            className="h-10 px-3.5 rounded-xl border border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50 text-gray-700 font-semibold text-[13px] transition-all cursor-pointer shadow-2xs shrink-0 flex items-center justify-center active:scale-[0.98]"
+            className="h-10 px-3.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-all cursor-pointer shadow-2xs shrink-0 flex items-center justify-center active:scale-[0.98]"
           >
             Preview
           </button>
@@ -280,7 +319,7 @@ const CourseCardItem: React.FC<CourseCardItemProps> = ({
             <button
               type="button"
               onClick={() => onOpen(course.id, course.cta?.hrefHint)}
-              className="flex-1 h-10 px-4 rounded-xl bg-[#0052CC] hover:bg-[#0047CC] text-white font-semibold text-[13px] shadow-xs hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center"
+              className="flex-1 h-10 px-4 rounded-xl bg-[#0047CC] hover:bg-[#003bb5] text-white font-semibold text-xs shadow-xs hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center"
             >
               Continue Learning
             </button>
@@ -288,7 +327,7 @@ const CourseCardItem: React.FC<CourseCardItemProps> = ({
             <button
               type="button"
               onClick={() => onEnroll(course)}
-              className="flex-1 h-10 px-4 rounded-xl bg-[#0052CC] hover:bg-[#0047CC] text-white font-semibold text-[13px] shadow-xs hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center"
+              className="flex-1 h-10 px-4 rounded-xl bg-[#0047CC] hover:bg-[#003bb5] text-white font-semibold text-xs shadow-xs hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center"
             >
               {course.cta?.label?.replace(/→/g, '').trim() || 'Take this course'}
             </button>
@@ -344,6 +383,7 @@ const CoursesList: React.FC = () => {
 
   // Learner Filter & View states (All Courses | Masterclasses | Categories)
   const [selectedFilter, setSelectedFilter] = useState<string>('ALL');
+  const [selectedFocusArea, setSelectedFocusArea] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('recommended');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isSortOpen, setIsSortOpen] = useState(false);
@@ -366,6 +406,21 @@ const CoursesList: React.FC = () => {
       list = list.filter((c) => c.isMasterclass || c.format === 'VIDEO_MASTERCLASS');
     } else if (selectedFilter !== 'ALL') {
       list = list.filter((c) => c.category?.toLowerCase() === selectedFilter.toLowerCase());
+    }
+
+    if (selectedFocusArea) {
+      const areaLower = selectedFocusArea.toLowerCase();
+      const areaWords = areaLower.split(/\s+/).filter((w) => w.length > 2 && w !== 'and');
+      list = list.filter((c) => {
+        const titleLower = c.title?.toLowerCase() || '';
+        const categoryLower = c.category?.toLowerCase() || '';
+        const pillsMatch = c.pills?.some((p) => p.toLowerCase().includes(areaLower));
+        const tagsMatch = c.tags?.some((t) => t.toLowerCase().includes(areaLower));
+        const skillsMatch = c.skills?.some((s) => s.toLowerCase().includes(areaLower));
+        const reasonMatch = c.recommendation?.reason?.toLowerCase().includes(areaLower);
+        const wordMatch = areaWords.some((w) => titleLower.includes(w) || categoryLower.includes(w));
+        return titleLower.includes(areaLower) || wordMatch || pillsMatch || tagsMatch || skillsMatch || reasonMatch;
+      });
     }
 
     // Preserve BE ranking (DevelopmentPrescription -> GapSignals -> targetGaps -> moduleGaps -> fallback)
@@ -391,7 +446,7 @@ const CoursesList: React.FC = () => {
     }
 
     return list;
-  }, [recommendedItems, selectedFilter, sortBy]);
+  }, [recommendedItems, selectedFilter, selectedFocusArea, sortBy]);
 
   const handleOpenCourse = (courseId: string, href?: string) => {
     if (href && href.startsWith('/courses/')) {
@@ -911,7 +966,7 @@ const CoursesList: React.FC = () => {
           {/* Controls Toolbar: Course counter, Sort dropdown, Grid/List view toggle */}
           {!isLoadingRecommended && !recommendedError && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-              <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">
+              <span className="text-sm font-semibold text-slate-900 whitespace-nowrap">
                 {displayCourses.length} {displayCourses.length === 1 ? 'course' : 'courses'}
               </span>
 
@@ -921,17 +976,17 @@ const CoursesList: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsSortOpen(!isSortOpen)}
-                    className="h-10 px-4 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 rounded-xl text-xs sm:text-sm font-medium transition-all flex items-center gap-2 cursor-pointer shadow-2xs"
+                    className="h-10 px-4 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 rounded-xl text-xs sm:text-sm font-medium transition-all flex items-center gap-2 cursor-pointer shadow-2xs"
                   >
                     <span>{SORT_OPTIONS_MAP[sortBy]}</span>
                     <ChevronDownIcon
                       size={15}
-                      className={`text-gray-500 transition-transform duration-200 ${isSortOpen ? 'rotate-180' : ''}`}
+                      className={`text-slate-500 transition-transform duration-200 ${isSortOpen ? 'rotate-180' : ''}`}
                     />
                   </button>
 
                   {isSortOpen && (
-                    <div className="absolute right-0 top-full mt-1.5 z-40 w-56 bg-white border border-gray-200 rounded-2xl shadow-xl p-1.5 animate-in fade-in zoom-in-95">
+                    <div className="absolute right-0 top-full mt-1.5 z-40 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl p-1.5 animate-in fade-in zoom-in-95">
                       {(Object.keys(SORT_OPTIONS_MAP) as SortOption[]).map((key) => (
                         <button
                           key={key}
@@ -942,28 +997,28 @@ const CoursesList: React.FC = () => {
                           }}
                           className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer flex items-center justify-between ${
                             sortBy === key
-                              ? 'bg-blue-50 text-[#0052CC] font-bold'
-                              : 'text-gray-700 hover:bg-gray-50'
+                              ? 'bg-blue-50 text-[#0047CC] font-bold'
+                              : 'text-slate-700 hover:bg-slate-50'
                           }`}
                         >
                           <span>{SORT_OPTIONS_MAP[key]}</span>
-                          {sortBy === key && <CheckIcon size={13} className="text-[#0052CC]" />}
+                          {sortBy === key && <CheckIcon size={13} className="text-[#0047CC]" />}
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
 
-                {/* Grid / List Toggle - 40px container, 18px icons, active blue-50 */}
-                <div className="h-10 bg-white border border-gray-200 rounded-xl p-1 flex items-center gap-1 shadow-2xs">
+                {/* Grid / List Toggle - 40px container, 32px buttons with tooltips & obvious selected state */}
+                <div className="h-10 bg-white border border-slate-200 rounded-xl p-1 flex items-center gap-1 shadow-2xs">
                   <button
                     type="button"
                     onClick={() => setViewMode('grid')}
-                    title="Grid View"
+                    title="Grid view"
                     className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
                       viewMode === 'grid'
-                        ? 'bg-blue-50 text-[#0052CC] border border-blue-200'
-                        : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50 border border-transparent'
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
                     }`}
                   >
                     <GridIcon size={18} />
@@ -971,11 +1026,11 @@ const CoursesList: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setViewMode('list')}
-                    title="List View"
+                    title="List view"
                     className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
                       viewMode === 'list'
-                        ? 'bg-blue-50 text-[#0052CC] border border-blue-200'
-                        : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50 border border-transparent'
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
                     }`}
                   >
                     <ListIcon size={18} />
@@ -988,11 +1043,36 @@ const CoursesList: React.FC = () => {
           {/* Loading Skeleton */}
           {isLoadingRecommended && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="bg-white border border-gray-100 rounded-[22px] p-4 animate-pulse space-y-3">
-                  <div className="aspect-16/9 bg-gray-200 rounded-xl" />
-                  <div className="h-5 bg-gray-200 rounded w-3/4" />
-                  <div className="h-4 bg-gray-100 rounded w-1/2" />
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="bg-white border border-slate-200/90 rounded-[22px] overflow-hidden p-0 animate-pulse flex flex-col justify-between"
+                >
+                  <div className="w-full aspect-video bg-slate-200" />
+                  <div className="p-5 sm:p-6 space-y-4 flex-1 flex flex-col justify-between">
+                    <div className="space-y-2.5">
+                      <div className="h-4 bg-slate-200 rounded-full w-28" />
+                      <div className="h-5 bg-slate-200 rounded w-5/6" />
+                      <div className="h-5 bg-slate-200 rounded w-3/5" />
+                    </div>
+                    <div className="space-y-3 pt-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-slate-200" />
+                        <div className="space-y-1 flex-1">
+                          <div className="h-3.5 bg-slate-200 rounded w-28" />
+                          <div className="h-3 bg-slate-100 rounded w-36" />
+                        </div>
+                      </div>
+                      <div className="h-3 bg-slate-100 rounded w-40" />
+                      <div className="h-5 bg-slate-100 rounded w-20" />
+                    </div>
+                  </div>
+                  <div className="p-5 sm:p-6 pt-0">
+                    <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
+                      <div className="h-10 w-20 bg-slate-100 rounded-xl" />
+                      <div className="h-10 flex-1 bg-slate-200 rounded-xl" />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1008,68 +1088,107 @@ const CoursesList: React.FC = () => {
 
           {/* Coaching copy / growth gap prescription banner */}
           {(recommendedData?.message || (recommendedData?.focusAreas && recommendedData.focusAreas.length > 0)) && (
-            <div className="p-4 sm:p-5 rounded-2xl bg-blue-50/70 border border-blue-200/80 text-blue-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#0052CC] flex items-center gap-1.5">
-                    <span>🎯</span>
-                    <span>Curated For Your Assessment & Match Gaps</span>
-                  </span>
-                  {recommendedData?.source === 'prescriptions' && (
-                    <span className="px-2 py-0.5 rounded-full bg-blue-100 text-[#0052CC] text-[10px] font-bold">
-                      Prescription Match
-                    </span>
-                  )}
-                  {recommendedData?.source === 'gap_signals' && (
-                    <span className="px-2 py-0.5 rounded-full bg-blue-100 text-[#0052CC] text-[10px] font-bold">
-                      Linked Gap Signals
-                    </span>
-                  )}
-                </div>
-
-                {recommendedData?.message && (
-                  <p className="text-sm font-medium text-slate-800 leading-relaxed">
-                    {recommendedData.message}
-                  </p>
-                )}
-
-                {recommendedData?.focusAreas && recommendedData.focusAreas.length > 0 && (
-                  <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                    <span className="text-xs font-semibold text-slate-600">Prescribed Focus Areas:</span>
-                    {recommendedData.focusAreas.map((area, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2.5 py-0.5 rounded-full bg-white border border-blue-200 text-xs font-medium text-[#0052CC]"
-                      >
-                        {area}
-                      </span>
-                    ))}
+            <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 text-slate-900 shadow-2xs space-y-3.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start sm:items-center gap-3">
+                  {/* 20px SVG Target icon in brand blue inside blue-50 rounded square */}
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 text-[#0047CC] flex items-center justify-center shrink-0">
+                    <TargetIcon size={20} className="stroke-[#0047CC]" />
                   </div>
-                )}
+
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-base font-semibold text-slate-900">
+                        Curated for your interview &amp; match gaps
+                      </h3>
+                      {recommendedData?.source === 'prescriptions' && (
+                        <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium border border-slate-200">
+                          Prescription match
+                        </span>
+                      )}
+                      {recommendedData?.source === 'gap_signals' && (
+                        <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium border border-slate-200">
+                          Linked gap signals
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs sm:text-sm text-slate-500 leading-normal">
+                      {recommendedData?.message ||
+                        'Recommended learning based on competency gaps identified in your latest interview and role evaluations.'}
+                    </p>
+                  </div>
+                </div>
               </div>
+
+              {/* Focus-area chips: sentence-case, interactive filter with active state, wraps cleanly */}
+              {recommendedData?.focusAreas && recommendedData.focusAreas.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-slate-100">
+                  <span className="text-xs font-semibold text-slate-600 shrink-0">
+                    Prescribed Focus Areas:
+                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {recommendedData.focusAreas.map((area, idx) => {
+                      const isSelected = selectedFocusArea?.toLowerCase() === area.toLowerCase();
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setSelectedFocusArea(isSelected ? null : area)}
+                          title={isSelected ? 'Click to clear filter' : `Filter by ${toSentenceCase(area)}`}
+                          className={`px-3 py-1 rounded-full text-xs transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-slate-900 text-white font-semibold shadow-xs border border-slate-900'
+                              : 'bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200/80 font-medium'
+                          }`}
+                        >
+                          {toSentenceCase(area)}
+                        </button>
+                      );
+                    })}
+                    {selectedFocusArea && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFocusArea(null)}
+                        className="text-xs text-[#0047CC] hover:underline font-semibold ml-1 cursor-pointer"
+                      >
+                        Reset filter
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* Empty State when no recommended courses or filter yields no results */}
           {!isLoadingRecommended && !recommendedError && displayCourses.length === 0 && (
-            <div className="bg-white border border-gray-100 rounded-[24px] shadow-xs">
+            <div className="bg-white border border-slate-200/90 rounded-[24px] shadow-xs">
               <EmptyState
                 icon={GraduationCapIcon}
                 title={
-                  selectedFilter !== 'ALL'
+                  selectedFocusArea
+                    ? `No courses found under focus area "${toSentenceCase(selectedFocusArea)}"`
+                    : selectedFilter !== 'ALL'
                     ? `No courses found under "${selectedFilter}"`
                     : recommendedData?.emptyState?.title || 'No recommended courses yet'
                 }
                 description={
-                  selectedFilter !== 'ALL'
+                  selectedFocusArea
+                    ? 'Try clearing the focus area filter to view all prescribed recommendations.'
+                    : selectedFilter !== 'ALL'
                     ? 'Try switching to all courses to view all available recommendations.'
                     : recommendedData?.emptyState?.body ||
-                      'When your assessment or match gaps are linked to published mentor courses, they appear here. Nothing is invented.'
+                      'When your interview or match gaps are linked to published mentor courses, they appear here. Nothing is invented.'
                 }
                 variant="dashed"
                 className="m-4 sm:m-6"
                 action={
-                  selectedFilter !== 'ALL'
+                  selectedFocusArea
+                    ? {
+                        label: 'View All Recommended',
+                        onClick: () => setSelectedFocusArea(null),
+                      }
+                    : selectedFilter !== 'ALL'
                     ? {
                         label: 'View All Recommended',
                         onClick: () => setSelectedFilter('ALL'),
@@ -1084,19 +1203,38 @@ const CoursesList: React.FC = () => {
           {!isLoadingRecommended && !recommendedError && viewMode === 'list' && displayCourses.length > 0 && (
             <div className="space-y-4">
               {displayCourses.map((course) => {
-                const banner = course.thumbnailUrl || displayMedia(course.thumbnailUrl || (course as any).coverImageUrl, course.thumbnailS3Key || (course as any).coverImageS3Key);
-                const mentorName = course.mentor?.displayName || course.mentor?.name || 'Instructor';
-                const mentorPhoto = course.mentor?.photoUrl || displayMedia(course.mentor?.photoUrl, course.mentor?.photoS3Key) || DEFAULT_MENTOR_AVATAR;
+                const banner =
+                  course.thumbnailUrl ||
+                  displayMedia(
+                    course.thumbnailUrl || (course as any).coverImageUrl,
+                    course.thumbnailS3Key || (course as any).coverImageS3Key
+                  );
+                const rawMentorName =
+                  course.mentor?.displayName || course.mentor?.name || 'Instructor';
+                const mentorName = formatDisplayName(rawMentorName);
+                const mentorOrg =
+                  getMentorRoleOrg(course.mentor) ||
+                  course.mentor?.organisation ||
+                  course.mentor?.professionalTitle ||
+                  null;
+                const mentorPhoto =
+                  course.mentor?.photoUrl ||
+                  displayMedia(course.mentor?.photoUrl, course.mentor?.photoS3Key) ||
+                  null;
+
+                const levelLabel = getLevelLabel(course);
+                const durationLabel = getDurationLabel(course);
+                const gapLabel = getCourseGapLabel(course);
 
                 return (
                   <div
                     key={course.id}
-                    className="bg-white border border-gray-200/90 hover:border-blue-200 rounded-[22px] p-4 sm:p-5 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-5 group"
+                    className="bg-white border border-slate-200/90 hover:border-slate-300 rounded-[22px] p-4 sm:p-5 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-5 group"
                   >
-                    {/* Fixed 16:9 Thumbnail with subtle dark overlay & play button */}
+                    {/* Fixed 16:9 Thumbnail (no muddy overlay) */}
                     <div
                       onClick={() => setPreviewCourse(course)}
-                      className="w-full md:w-60 aspect-video md:aspect-video rounded-[16px] overflow-hidden shrink-0 relative group cursor-pointer bg-slate-900 border border-gray-100"
+                      className="w-full md:w-60 aspect-video rounded-[16px] overflow-hidden shrink-0 relative group cursor-pointer bg-slate-900 border border-slate-100"
                     >
                       {banner ? (
                         <img
@@ -1115,14 +1253,17 @@ const CoursesList: React.FC = () => {
                         </div>
                       )}
 
-                      {/* Subtle Dark Scrim Overlay to ensure contrast with white play button */}
-                      <div className="absolute inset-0 bg-black/25 group-hover:bg-black/35 transition-colors flex items-center justify-center">
-                        <div className="w-11 h-11 rounded-full bg-black/45 backdrop-blur-xs flex items-center justify-center border-2 border-white/80 text-white shadow-md group-hover:scale-110 transition-transform">
-                          <PlayIcon size={18} className="ml-0.5 fill-white" />
+                      {/* Top gradient scrim only for tag */}
+                      <div className="absolute top-0 inset-x-0 h-10 bg-gradient-to-b from-black/50 via-transparent to-transparent pointer-events-none" />
+
+                      {/* 40px Play Button */}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-10 h-10 rounded-full bg-black/40 group-hover:bg-black/60 backdrop-blur-xs flex items-center justify-center border border-white/60 text-white shadow-md opacity-75 group-hover:opacity-100 group-hover:scale-105 transition-all">
+                          <PlayIcon size={16} className="ml-0.5 fill-white" />
                         </div>
                       </div>
 
-                      {/* Subtle dark translucent badge instead of solid blue */}
+                      {/* Neutral translucent tag on top-left of thumbnail */}
                       {course.isMasterclass && (
                         <span className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/60 backdrop-blur-xs text-white uppercase tracking-wider border border-white/20 shadow-xs">
                           Masterclass
@@ -1136,39 +1277,22 @@ const CoursesList: React.FC = () => {
                         {course.recommendation && (
                           <span
                             title={course.recommendation.reason}
-                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-[#0052CC] border border-blue-200/80 shadow-2xs"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs"
                           >
-                            <span>🎯</span>
-                            <span>
-                              {course.recommendation.source === 'prescription'
-                                ? 'Prescribed for Gaps'
-                                : course.recommendation.source === 'gap_link' || course.recommendation.source === 'target_gap'
-                                ? 'For Your Growth Gaps'
-                                : 'Recommended'}
-                            </span>
+                            <TargetIcon size={13} className="text-[#0047CC] shrink-0" />
+                            <span>{gapLabel}</span>
                           </span>
                         )}
-                        <span className="px-3 py-1 rounded-full text-[12px] font-semibold bg-blue-50 text-[#0052CC] border border-blue-100/60 capitalize">
-                          {course.category}
-                        </span>
-                        {course.formatLabel && (
-                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-600">
-                            {course.formatLabel}
+                        {levelLabel && (
+                          <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200/80 capitalize">
+                            {levelLabel}
                           </span>
-                        )}
-                        {course.difficultyLevel && (
-                          <div className="flex items-center gap-1.5 text-slate-500">
-                            <span className="text-slate-400 font-bold">•</span>
-                            <span className="text-[13px] font-medium capitalize">
-                              {course.difficultyLevel}
-                            </span>
-                          </div>
                         )}
                       </div>
 
                       <h4
                         onClick={() => setPreviewCourse(course)}
-                        className="text-[18px] font-semibold text-slate-900 group-hover:text-[#0052CC] transition-colors cursor-pointer leading-snug line-clamp-2"
+                        className="text-[18px] font-semibold text-slate-900 group-hover:text-[#0047CC] transition-colors cursor-pointer leading-snug line-clamp-2"
                       >
                         {course.title}
                       </h4>
@@ -1177,9 +1301,9 @@ const CoursesList: React.FC = () => {
                         {course.subtitle || course.description}
                       </p>
 
-                      <div className="flex flex-wrap items-center gap-2.5 text-[13px] sm:text-[14px] text-slate-500 pt-1">
+                      <div className="flex flex-wrap items-center gap-2.5 text-xs text-slate-500 pt-1">
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center">
+                          <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center font-semibold text-xs text-slate-700 shadow-2xs">
                             {mentorPhoto ? (
                               <img
                                 src={mentorPhoto}
@@ -1190,32 +1314,27 @@ const CoursesList: React.FC = () => {
                                 }}
                               />
                             ) : (
-                              <span className="text-[10px] font-bold text-slate-600">
-                                {getInitials(mentorName)}
+                              <span>{getInitials(mentorName)}</span>
+                            )}
+                          </div>
+                          <div>
+                            <span className="font-semibold text-slate-900">{mentorName}</span>
+                            {mentorOrg && (
+                              <span className="text-slate-400 text-xs ml-1.5 font-normal">
+                                · {mentorOrg}
                               </span>
                             )}
                           </div>
-                          <span className="font-semibold text-slate-800 capitalize">{mentorName}</span>
                         </div>
 
-                        {course.stats?.videoHoursLabel && (
-                          <>
-                            <span className="text-slate-300">•</span>
-                            <span>{course.stats.videoHoursLabel}</span>
-                          </>
-                        )}
+                        <span className="text-slate-300">•</span>
+                        <span className="inline-flex items-center gap-1 text-slate-600">
+                          <ClockIcon size={13} className="text-slate-400" />
+                          <span>{durationLabel}</span>
+                        </span>
 
-                        {course.stats?.ratings !== null && course.stats?.ratings != null && (
-                          <>
-                            <span className="text-slate-300">•</span>
-                            <span className="flex items-center gap-1 text-amber-500 font-semibold">
-                              ★ {course.stats.ratings}
-                              {course.stats.ratingsCount ? (
-                                <span className="text-slate-400 font-normal">({course.stats.ratingsCount})</span>
-                              ) : null}
-                            </span>
-                          </>
-                        )}
+                        <span className="text-slate-300">•</span>
+                        <span className="text-slate-500">Online video · Self-paced</span>
 
                         {course.stats?.studentCount ? (
                           <>
@@ -1226,11 +1345,11 @@ const CoursesList: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="shrink-0 flex flex-col sm:flex-row md:flex-col items-center justify-center gap-2.5 pt-3 md:pt-0 border-t md:border-t-0 border-gray-100 w-full md:w-auto">
+                    <div className="shrink-0 flex flex-col sm:flex-row md:flex-col items-center justify-center gap-2.5 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 w-full md:w-auto">
                       <button
                         type="button"
                         onClick={() => setPreviewCourse(course)}
-                        className="w-full sm:w-36 md:w-40 h-[42px] px-4 rounded-full border border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50 text-gray-700 font-semibold text-[13px] transition-all cursor-pointer shadow-2xs flex items-center justify-center active:scale-[0.98]"
+                        className="w-full sm:w-36 md:w-40 h-10 px-4 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-all cursor-pointer shadow-2xs flex items-center justify-center active:scale-[0.98]"
                       >
                         Preview
                       </button>
@@ -1239,7 +1358,7 @@ const CoursesList: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenCourse(course.id, course.cta?.hrefHint)}
-                          className="w-full sm:w-36 md:w-40 h-[42px] px-5 rounded-full bg-[#0052CC] hover:bg-[#0047CC] text-white font-bold text-[13px] shadow-xs hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center"
+                          className="w-full sm:w-36 md:w-40 h-10 px-5 rounded-xl bg-[#0047CC] hover:bg-[#003bb5] text-white font-semibold text-xs shadow-xs hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center"
                         >
                           Continue Learning
                         </button>
@@ -1249,7 +1368,7 @@ const CoursesList: React.FC = () => {
                           onClick={() => {
                             setEnrollCourse(course);
                           }}
-                          className="w-full sm:w-36 md:w-40 h-[42px] px-5 rounded-full bg-[#0052CC] hover:bg-[#0047CC] text-white font-bold text-[13px] shadow-xs hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center"
+                          className="w-full sm:w-36 md:w-40 h-10 px-5 rounded-xl bg-[#0047CC] hover:bg-[#003bb5] text-white font-semibold text-xs shadow-xs hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center"
                         >
                           {course.cta?.label?.replace(/→/g, '').trim() || 'Take this course'}
                         </button>

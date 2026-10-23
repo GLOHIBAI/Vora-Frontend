@@ -99,3 +99,56 @@ export const getEmailChangesRemaining = (
 ): number => {
   return Math.max(0, MAX_CREDENTIAL_CHANGES - getEmailChangeCount(userIdentifier, serverCount));
 };
+
+export const MAX_CV_UPLOADS = 3;
+
+/**
+ * Retrieves the number of CV uploads for the current user.
+ */
+export const getCvUploadCount = (
+  userIdentifier?: string | null,
+  serverCount?: number | null
+): number => {
+  let localCount = 0;
+  if (userIdentifier) {
+    try {
+      const val = localStorage.getItem(`vora_cv_uploads_${userIdentifier.toLowerCase()}`);
+      if (val) localCount = parseInt(val, 10) || 0;
+    } catch {}
+  }
+  return Math.max(localCount, typeof serverCount === 'number' ? serverCount : 0);
+};
+
+/**
+ * Increments the CV upload count for the given user.
+ */
+export const incrementCvUploadCount = (userIdentifier?: string | null): number => {
+  if (!userIdentifier) return 1;
+  const current = getCvUploadCount(userIdentifier);
+  const next = current + 1;
+  try {
+    localStorage.setItem(`vora_cv_uploads_${userIdentifier.toLowerCase()}`, String(next));
+  } catch {}
+  return next;
+};
+
+/**
+ * Checks if the user is allowed to upload/change their CV.
+ */
+export const canUserUploadCv = (
+  userIdentifier?: string | null,
+  serverCount?: number | null
+): boolean => {
+  return getCvUploadCount(userIdentifier, serverCount) < MAX_CV_UPLOADS;
+};
+
+/**
+ * Returns the number of CV uploads remaining for the user.
+ */
+export const getCvUploadsRemaining = (
+  userIdentifier?: string | null,
+  serverCount?: number | null
+): number => {
+  return Math.max(0, MAX_CV_UPLOADS - getCvUploadCount(userIdentifier, serverCount));
+};
+

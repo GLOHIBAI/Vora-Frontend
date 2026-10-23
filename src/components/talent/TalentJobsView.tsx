@@ -231,7 +231,7 @@ export const TalentJobsView: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Opportunities & Applications</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Browse verified job roles, view match compatibility, and track your assessment progress.
+            Browse verified job roles, view match compatibility, and track your interview progress.
           </p>
         </div>
         {/* Talent Grade Badge */}
@@ -459,7 +459,7 @@ export const TalentJobsView: React.FC = () => {
             description={
               searchQuery || selectedTag !== 'ALL'
                 ? 'Try adjusting your search terms or filter tags.'
-                : 'Explore available roles and apply to start your assessment journey.'
+                : 'Explore available roles and apply to start your interview journey.'
             }
             action={
               !searchQuery && selectedTag === 'ALL'

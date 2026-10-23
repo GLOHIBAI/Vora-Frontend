@@ -148,7 +148,7 @@ const Rejection: React.FC = () => {
           <div className="flex items-center gap-2">
             <AlertTriangleIcon size={16} className="text-red-600 shrink-0" />
             <span>
-              <strong>Missing assessment ID:</strong> Cannot submit rejection without an assessment ID. Please access this form through the applicant row in the candidates list.
+              <strong>Missing interview ID:</strong> Cannot submit rejection without an interview ID. Please access this form through the applicant row in the candidates list.
             </span>
           </div>
           <button
@@ -166,7 +166,7 @@ const Rejection: React.FC = () => {
           <div className="flex items-center gap-2">
             <AlertTriangleIcon size={16} className="text-amber-600 shrink-0" />
             <span>
-              <strong>Candidate In Progress:</strong> {ineligibilityReason || 'Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-assessment exits remain classified as Failed.'}
+              <strong>Candidate In Progress:</strong> {ineligibilityReason || 'Rejection only works after Stage 3 pass (COMPLETED + overallPassed). Mid-interview exits remain classified as Failed.'}
             </span>
           </div>
           <button
