@@ -124,10 +124,24 @@ const TalentOnboarding: React.FC = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const { updateUser } = useAuth();
+  const { user, updateUser } = useAuth();
+
+  // Check if learner profile was previously stored
+  const storedLearnerProfile = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('vora_learner_profile');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const prefilledFirstName = user?.firstName || storedLearnerProfile?.firstName || '';
+  const prefilledLastName = user?.lastName || storedLearnerProfile?.lastName || '';
+  const hasPrefilledNames = Boolean(prefilledFirstName.trim() && prefilledLastName.trim());
 
   const stepParam = Number(searchParams.get('step'));
-  const initialStep = stepParam || location.state?.onboardingStep || 1;
+  const initialStep = stepParam || location.state?.onboardingStep || (hasPrefilledNames ? 2 : 1);
   const [step, setStep] = useState(initialStep);
 
   useEffect(() => {
@@ -200,21 +214,21 @@ const TalentOnboarding: React.FC = () => {
 
   // Step 1 state
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    firstName: prefilledFirstName ? capitalizeFirstLetter(prefilledFirstName) : '',
+    lastName: prefilledLastName ? capitalizeFirstLetter(prefilledLastName) : '',
   });
 
   // Step 2 state, Profile
-  const [professionalTitle, setProfessionalTitle] = useState('');
+  const [professionalTitle, setProfessionalTitle] = useState(() => storedLearnerProfile?.professionalTitle || user?.title || '');
   const [areasOfInterest, setAreasOfInterest] = useState<string[]>([]);
   const otherInterest = ''; // Set to empty string if not used
   const [experienceLevel, setExperienceLevel] = useState('');
-  const [country, setCountry] = useState('');
+  const [country, setCountry] = useState(() => storedLearnerProfile?.country || '');
 
   // Step 2 state, Work Authorisation
   const [nationalities, setNationalities] = useState<string[]>([]);
-  const [residence, setResidence] = useState('');
-  const [city, setCity] = useState('');
+  const [residence, setResidence] = useState(() => storedLearnerProfile?.country || '');
+  const [city, setCity] = useState(() => storedLearnerProfile?.city || '');
   const [rightToWork, setRightToWork] = useState('');
   const [relocation, setRelocation] = useState('');
   const [relocationDestinations, setRelocationDestinations] = useState('');

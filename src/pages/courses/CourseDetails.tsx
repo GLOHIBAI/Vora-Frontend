@@ -1,9 +1,12 @@
 import UniversalVideoPlayer from '../../components/common/UniversalVideoPlayer';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '../../context/AuthContext';
 import { 
   ChevronLeftIcon, 
-  ChevronDownIcon, 
+  ChevronDownIcon,
+  ChevronRightIcon, 
   PlayIcon, 
   VideoIcon, 
   StarIcon, 
@@ -56,6 +59,8 @@ type TabType = 'overview' | 'instructor' | 'qa' | 'chapters' | 'careers';
 const CourseDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user, updateUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const queryModuleId = searchParams.get('module');
@@ -101,8 +106,13 @@ const CourseDetails: React.FC = () => {
       m.lessons.filter(l => l.isCompleted).map(l => l.id)
     );
     const completedFromEnrollment = myEnrollment?.completedLessonIds || [];
-    const combined = Array.from(new Set([...completedFromModules, ...completedFromEnrollment]));
-    setCompletedLessonIds(prev => (prev.length > 0 ? prev : combined));
+    let storedCompleted: string[] = [];
+    try {
+      const raw = localStorage.getItem(`vora_completed_lessons_${course.id}`);
+      if (raw) storedCompleted = JSON.parse(raw);
+    } catch (_) {}
+    const combined = Array.from(new Set([...completedFromModules, ...completedFromEnrollment, ...storedCompleted]));
+    setCompletedLessonIds(prev => (prev.length > 0 ? Array.from(new Set([...prev, ...combined])) : combined));
   }, [course, queryModuleId, queryLessonId, myEnrollment]);
 
   const toggleModule = (moduleId: string) => {
@@ -125,6 +135,21 @@ const CourseDetails: React.FC = () => {
       completedLessonIds.includes(currentLesson.id)
     )
   );
+
+  const isUserEnrolled = Boolean(
+    myEnrollment || 
+    user?.isLearner || 
+    (typeof window !== 'undefined' && (
+      localStorage.getItem(`vora_enrolled_${course?.id}`) || 
+      localStorage.getItem('vora_learner_onboarding_completed')
+    ))
+  );
+
+  const totalLessonsCount = allLessons.length;
+  const completedLessonsCount = allLessons.filter(l => l.isCompleted || completedLessonIds.includes(l.id)).length;
+  const computedPercent = totalLessonsCount > 0 ? Math.round((completedLessonsCount / totalLessonsCount) * 100) : 0;
+  const displayProgressPercent = Math.max(computedPercent, myEnrollment?.progressPercent ?? 0);
+  const isCourseCompleted = displayProgressPercent >= 100 || Boolean(user?.hasCompletedCourse) || (typeof window !== 'undefined' && (localStorage.getItem(`vora_completed_course_${course?.id}`) === 'true' || localStorage.getItem('vora_completed_course') === 'true'));
 
   const handleSelectLesson = (lesson: CourseLesson, moduleId: string) => {
     setSelectedLessonId(lesson.id);
@@ -160,10 +185,31 @@ const CourseDetails: React.FC = () => {
 
   const handleMarkLessonComplete = async () => {
     if (!course?.id || !currentLesson) return;
-    if (!myEnrollment) {
+    if (!myEnrollment && !isUserEnrolled) {
       toast.error('Please enroll in the course to record progress');
       setIsEnrollModalOpen(true);
       return;
+    }
+
+    // Immediately mark lesson completed in UI and localStorage
+    const nextCompleted = Array.from(new Set([...completedLessonIds, currentLesson.id]));
+    setCompletedLessonIds(nextCompleted);
+    try {
+      localStorage.setItem(`vora_completed_lessons_${course.id}`, JSON.stringify(nextCompleted));
+    } catch (_) {}
+
+    toast.success('Lesson marked as completed!');
+
+    // Check if entire course is completed
+    const totalCount = allLessons.length;
+    const isNowAllDone = totalCount > 0 && allLessons.every(l => nextCompleted.includes(l.id) || l.isCompleted);
+    if (isNowAllDone) {
+      try {
+        localStorage.setItem('vora_completed_course', 'true');
+        localStorage.setItem(`vora_completed_course_${course.id}`, 'true');
+      } catch (_) {}
+      updateUser({ hasCompletedCourse: true, canUpgradeToTalent: true });
+      toast.success('🎉 Congratulations! You have completed the entire course!');
     }
 
     try {
@@ -173,13 +219,18 @@ const CourseDetails: React.FC = () => {
         lessonId: currentLesson.id,
       });
 
-      setCompletedLessonIds(prev => [...prev, currentLesson.id]);
-      toast.success('Progress saved!');
-      if (res?.isComplete || res?.isCourseCompleted) {
-        toast.success('Congratulations! You completed the course!');
+      queryClient.invalidateQueries({ queryKey: ['courses', 'detail', course.id] });
+      queryClient.invalidateQueries({ queryKey: ['courses', 'enrollments'] });
+
+      if (res?.isComplete || res?.isCourseCompleted || isNowAllDone) {
+        try {
+          localStorage.setItem('vora_completed_course', 'true');
+          localStorage.setItem(`vora_completed_course_${course.id}`, 'true');
+        } catch (_) {}
+        updateUser({ hasCompletedCourse: true, canUpgradeToTalent: true });
       }
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to update lesson progress');
+      console.warn('Backend progress sync failed, preserved locally:', err);
     }
   };
 
@@ -244,7 +295,7 @@ const CourseDetails: React.FC = () => {
       </div>
 
       {/* Enrollment Callout Banner if not enrolled */}
-      {!myEnrollment && (
+      {!myEnrollment && !isUserEnrolled && (
         <div className="bg-[#EFF6FF] border border-blue-200 rounded-[18px] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-0.5">
             <h3 className="text-[14px] font-bold text-[#0052CC]">Previewing Course</h3>
@@ -263,6 +314,31 @@ const CourseDetails: React.FC = () => {
         </div>
       )}
 
+      {/* Course Completed Upgrade Banner */}
+      {isCourseCompleted && (
+        <div className="bg-gradient-to-r from-blue-50 via-indigo-50/50 to-blue-50 border border-blue-200/90 rounded-[20px] p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🎓</span>
+              <h3 className="text-[15px] font-bold text-gray-900">
+                Course Completed! Ready for Verified Roles & Mentorship
+              </h3>
+            </div>
+            <p className="text-[12px] text-gray-600 max-w-xl">
+              You've completed this course! Take the next step by completing your full Talent profile to unlock 1-on-1 mentorship sessions and live employer role representation.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/onboarding/talent')}
+            className="px-5 py-2.5 bg-[#0052CC] hover:bg-[#0047CC] text-white font-bold text-[13px] rounded-full shadow-xs hover:shadow transition-all shrink-0 cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <span>Complete Talent Onboarding</span>
+            <ChevronRightIcon size={16} />
+          </button>
+        </div>
+      )}
+
       {/* Main 2-Column Grid with mobile-first ordering */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
@@ -271,9 +347,9 @@ const CourseDetails: React.FC = () => {
           {/* Header */}
           <div className="bg-[#F9FAFB] px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <h2 className="text-[14px] font-bold text-gray-900">Lesson Outline</h2>
-            {myEnrollment && (
+            {(myEnrollment || isUserEnrolled) && (
               <span className="text-[11px] text-[#0052CC] font-semibold">
-                {myEnrollment.progressPercent}% completed
+                {displayProgressPercent}% completed
               </span>
             )}
           </div>

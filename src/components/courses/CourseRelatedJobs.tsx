@@ -109,7 +109,6 @@ export const CourseRelatedJobs: React.FC<CourseRelatedJobsProps> = ({
 
   const [selectedJobForUpgrade, setSelectedJobForUpgrade] =
     useState<CourseRelatedJob | null>(null);
-  const [isViewAllUpgradeModalOpen, setIsViewAllUpgradeModalOpen] = useState(false);
 
   if (jobs.length === 0) {
     return null;
@@ -122,29 +121,6 @@ export const CourseRelatedJobs: React.FC<CourseRelatedJobsProps> = ({
 
   const handleCardClick = (job: CourseRelatedJob) => {
     navigate(`/role/${job.slug}`);
-  };
-
-  const handleViewAllClick = () => {
-    const isOnboardingComplete = Boolean(
-      (user as any)?.isOnboardingComplete || (user as any)?.onboardingCompleted
-    );
-    if (!user || isLearner || !isOnboardingComplete) {
-      setIsViewAllUpgradeModalOpen(true);
-    } else {
-      navigate('/jobs');
-    }
-  };
-
-  const handleConfirmTalentOnboarding = () => {
-    setIsViewAllUpgradeModalOpen(false);
-    if (courseId) {
-      try {
-        localStorage.setItem('vora_active_learning_course_id', courseId);
-      } catch {
-        /* ignore */
-      }
-    }
-    navigate('/onboarding/talent');
   };
 
   const handleViewJobClick = (e: React.MouseEvent, job: CourseRelatedJob) => {
@@ -203,18 +179,6 @@ export const CourseRelatedJobs: React.FC<CourseRelatedJobsProps> = ({
             Employers partner directly with VORA to hire talent based on the verified skills taught in this curriculum. Complete your course to unlock fast-track interview representation.
           </p>
         </div>
-
-        {/* View All Button at Top Right */}
-        {jobs.length > 0 && (
-          <button
-            type="button"
-            onClick={handleViewAllClick}
-            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-[#0047CC] hover:text-[#0039A6] transition-colors shrink-0 group/all cursor-pointer self-start sm:self-end pb-1"
-          >
-            <span>View all jobs ({jobs.length})</span>
-            <ArrowRightIcon size={14} className="group-hover/all:translate-x-0.5 transition-transform" />
-          </button>
-        )}
       </div>
 
       {/* Jobs Grid: Equal heights and fixed vertical alignment */}
@@ -462,79 +426,6 @@ export const CourseRelatedJobs: React.FC<CourseRelatedJobsProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedJobForUpgrade(null)}
-                className="w-full py-2.5 text-xs sm:text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors cursor-pointer text-center"
-              >
-                Continue as Talent &amp; Decide Later
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* View All Modal: Drives Unregistered / Learner Users to Complete Proper Talent Onboarding */}
-      {isViewAllUpgradeModalOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 sm:p-8 space-y-6">
-            <button
-              type="button"
-              onClick={() => setIsViewAllUpgradeModalOpen(false)}
-              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
-            >
-              <CloseIcon size={18} />
-            </button>
-
-            <div className="space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#0047CC] border border-blue-100 flex items-center justify-center shadow-2xs">
-                <BriefcaseIcon size={22} />
-              </div>
-              <h3 className="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight leading-snug">
-                Unlock All Matching Roles
-              </h3>
-              <p className="text-sm text-slate-600 font-normal leading-relaxed">
-                Employers partner with VORA to hire talent trained in this curriculum. Complete your Talent Profile to explore all {jobs.length} employer opportunities, compare salaries, and unlock direct interview representation.
-              </p>
-            </div>
-
-            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4.5 space-y-3 text-xs sm:text-sm text-slate-700">
-              <div className="flex items-start gap-2.5">
-                <div className="w-5 h-5 rounded-full bg-blue-100 text-[#0047CC] flex items-center justify-center shrink-0 mt-0.5">
-                  <CheckIcon size={11} strokeWidth={3} className="text-[#0047CC]" />
-                </div>
-                <div>
-                  <strong className="font-semibold text-slate-900 block">Your course progress is 100% saved</strong>
-                  <span className="text-slate-600">You retain full access to all your course modules, notes, and lessons.</span>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5">
-                <div className="w-5 h-5 rounded-full bg-blue-100 text-[#0047CC] flex items-center justify-center shrink-0 mt-0.5">
-                  <CheckIcon size={11} strokeWidth={3} className="text-[#0047CC]" />
-                </div>
-                <div>
-                  <strong className="font-semibold text-slate-900 block">Full talent vetting &amp; representation</strong>
-                  <span className="text-slate-600">Uploading your CV and work eligibility connects you directly with hiring employers.</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2.5 pt-2">
-              <Button
-                variant="primary"
-                size="lg"
-                fullWidth
-                pill={false}
-                onClick={handleConfirmTalentOnboarding}
-                className="rounded-xl font-bold text-sm h-12 bg-[#0047CC] hover:bg-[#0039A6] text-white shadow-xs cursor-pointer"
-              >
-                Complete Talent Profile &amp; View All Roles
-              </Button>
-              <button
-                type="button"
-                onClick={() => setIsViewAllUpgradeModalOpen(false)}
                 className="w-full py-2.5 text-xs sm:text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors cursor-pointer text-center"
               >
                 Continue as Talent &amp; Decide Later

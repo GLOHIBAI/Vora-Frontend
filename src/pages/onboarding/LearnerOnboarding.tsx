@@ -186,6 +186,13 @@ export const LearnerOnboarding: React.FC = () => {
       try {
         localStorage.setItem('vora_user_track', 'learner');
         localStorage.setItem('vora_learner_onboarding_completed', 'true');
+        localStorage.setItem('vora_learner_profile', JSON.stringify({
+          firstName: cleanFirstName,
+          lastName: cleanLastName,
+          country: rawCountry,
+          city: city,
+          professionalTitle: finalBackgroundTitle,
+        }));
       } catch {
         /* ignore */
       }

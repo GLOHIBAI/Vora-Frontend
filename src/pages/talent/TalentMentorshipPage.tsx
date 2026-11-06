@@ -267,6 +267,9 @@ const TalentMentorshipPage: React.FC = () => {
 
   // Cross-cutting requirement: Respect unlocks.mentors from /talent/dashboard
   if (!isLoadingDashboard && isMentorsLocked) {
+    const hasCompletedCourse = Boolean(
+      (typeof window !== 'undefined' && localStorage.getItem('vora_completed_course') === 'true')
+    );
     return (
       <div className="space-y-6 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-16">
         <div className="bg-white rounded-3xl border border-gray-100 p-8 sm:p-14 shadow-xs text-center space-y-5">
@@ -275,10 +278,12 @@ const TalentMentorshipPage: React.FC = () => {
           </div>
           <div className="space-y-2 max-w-md mx-auto">
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
-              {lockLabel}
+              Access to 1-on-1 Mentorship
             </h1>
             <p className="text-xs sm:text-sm text-gray-500 leading-relaxed">
-              {lockReason}
+              {hasCompletedCourse
+                ? 'Congratulations on completing your course! Take the next step by completing your full Talent profile to unlock 1-on-1 mentorship sessions with technical leaders.'
+                : 'Connect 1-on-1 with Staff/Principal engineers and technical leaders once your Talent profile is completed.'}
             </p>
           </div>
           <div className="pt-2">
@@ -286,10 +291,10 @@ const TalentMentorshipPage: React.FC = () => {
               variant="primary"
               size="md"
               pill={false}
-              onClick={() => navigate(lockHrefHint)}
+              onClick={() => navigate('/onboarding/talent')}
               className="text-xs font-semibold px-6 py-2.5 shadow-xs"
             >
-              Upload CV to Unlock
+              Complete Talent Onboarding
             </Button>
           </div>
         </div>
