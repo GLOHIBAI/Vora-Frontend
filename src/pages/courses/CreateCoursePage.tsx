@@ -1969,7 +1969,7 @@ export const CreateCoursePage: React.FC = () => {
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
               <circle cx="12" cy="12" r="3" />
             </svg>
-            <span className="hidden sm:inline">Learner Preview</span>
+            <span className="hidden sm:inline">Talent Preview</span>
           </button>
 
           {/* Save Draft */}
@@ -2117,7 +2117,7 @@ export const CreateCoursePage: React.FC = () => {
                 <span
                   className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
                     isPublishReady
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      ? 'bg-blue-50 text-[#0047CC] border border-blue-200'
                       : 'bg-amber-50 text-amber-800 border border-amber-200'
                   }`}
                 >
@@ -2129,7 +2129,7 @@ export const CreateCoursePage: React.FC = () => {
         </aside>
 
         {/* ── MAIN WIZARD CONTENT ── */}
-        <main className="flex-1 p-4 sm:p-8 lg:p-10 max-w-4xl mx-auto flex flex-col justify-between">
+        <main className="flex-1 p-4 sm:p-8 lg:p-10 max-w-5xl mx-auto flex flex-col justify-between">
           <div>
             {/* Mobile Horizontal Stepper */}
             <div className="flex lg:hidden items-center gap-2 overflow-x-auto pb-3 mb-6 scrollbar-hide border-b border-[#E2E8F0]">
@@ -2295,7 +2295,7 @@ export const CreateCoursePage: React.FC = () => {
                           });
                         }
                       }}
-                      placeholder="Who is this course for? What strategic challenges will learners be equipped to solve? Which real-world field experiences inform this syllabus?"
+                      placeholder="Who is this course for? What strategic challenges will talents be equipped to solve? Which real-world field experiences inform this syllabus?"
                       className={`w-full bg-white border rounded-xl p-4 text-sm text-[#0F172A] placeholder:text-slate-400 focus:outline-none transition-all leading-relaxed ${
                         formErrors.description
                           ? 'border-rose-400 ring-2 ring-rose-100'
@@ -3251,12 +3251,12 @@ export const CreateCoursePage: React.FC = () => {
                             key={tier.id}
                             className="bg-slate-50 border border-slate-200 rounded-xl p-4.5 shadow-2xs hover:border-slate-300 transition-colors"
                           >
-                            <div className="flex items-center justify-between gap-1 mb-2">
-                              <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                            <div className="flex items-center justify-between gap-1.5 mb-2">
+                              <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5 min-w-0">
                                 <GlobeIcon size={14} className="text-slate-400 shrink-0" />
-                                {tier.tierCode}
+                                <span className="truncate">{tier.tierCode}</span>
                               </span>
-                              <span className="text-[10px] font-medium text-slate-500 bg-slate-200/70 px-1.5 py-0.5 rounded">
+                              <span className="text-[10px] font-semibold text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded whitespace-nowrap shrink-0">
                                 Computed Parity
                               </span>
                             </div>
@@ -3530,7 +3530,7 @@ export const CreateCoursePage: React.FC = () => {
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                         <UsersIcon size={14} className="text-[#0047CC]" />
-                        <span>Enrollment Capacity (Learner Limit)</span>
+                        <span>Enrollment Capacity (Talent Limit)</span>
                       </label>
                       <span className="text-[11px] text-slate-500">
                         Optional limit — leave empty for unlimited enrollment

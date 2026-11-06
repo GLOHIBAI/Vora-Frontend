@@ -22,16 +22,17 @@ export interface LocationAutocompleteProps {
   emptyMessage?: string;
   onBlur?: React.FocusEventHandler<HTMLInputElement>;
   onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>;
+  icon?: React.FC<{ size?: number; className?: string }>;
 }
 
 const DEBOUNCE_MS = 350;
 
 const inputClass = (error: boolean, focused: boolean) =>
   [
-    'w-full px-3.5 py-[11px] rounded-lg border text-sm font-normal bg-white outline-none transition-[border-color] duration-150',
-    'text-[#1A1A1A] placeholder:text-[#ADADAD] caret-[#1A1A1A]',
-    error ? 'border-red-500 bg-white' : 'border-[#E6E6E6]',
-    !error && focused ? 'border-[#0047CC]' : '',
+    'w-full px-3.5 h-11 min-h-[44px] rounded-xl border text-sm font-normal bg-white outline-hidden transition-all duration-150',
+    'text-slate-900 placeholder:text-slate-400 caret-[#0047CC]',
+    error ? 'border-red-500 ring-2 ring-red-500/20' : focused ? 'border-[#0047CC] ring-2 ring-[#0047CC]/20' : 'border-slate-200 hover:border-slate-300',
+
   ]
     .filter(Boolean)
     .join(' ');
@@ -50,6 +51,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   emptyMessage,
   onBlur,
   onKeyDown,
+  icon: Icon,
 }) => {
   const noResultsText =
     emptyMessage ??
@@ -180,6 +182,11 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
         <label className={labelClassName}>{label}</label>
       ) : null}
       <div className={`relative ${isOpen ? 'z-20' : ''}`}>
+        {Icon && (
+          <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-slate-400">
+            <Icon size={16} />
+          </div>
+        )}
         <input
           type="text"
           value={query}
@@ -193,7 +200,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
           placeholder={placeholder}
           autoComplete="off"
           spellCheck={false}
-          className={inputClass(error, isFocused)}
+          className={`${inputClass(error, isFocused)} ${Icon ? '!pl-10' : ''}`}
         />
 
         {showDropdown && (
@@ -216,27 +223,24 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleSelect(option)}
-                  className={`w-full text-left px-3.5 py-2.5 text-sm leading-snug transition-colors cursor-pointer ${
-                    option.value === value
+                  className={`w-full text-left px-3.5 py-2.5 text-sm leading-snug transition-colors cursor-pointer ${option.value === value
                       ? 'bg-[#EBF6FF] text-[#0047CC] font-bold'
                       : 'text-[#1A1A1A] hover:bg-[#F7F7F7]'
-                  }`}
+                    }`}
                 >
                   <span className="block">{option.label}</span>
                   {option.type === 'state' ? (
                     <span
-                      className={`block text-[11px] mt-0.5 font-normal ${
-                        option.value === value ? 'text-[#0047CC]/80' : 'text-[#808080]'
-                      }`}
+                      className={`block text-[11px] mt-0.5 font-normal ${option.value === value ? 'text-[#0047CC]/80' : 'text-[#808080]'
+                        }`}
                     >
                       State / region
                     </span>
                   ) : null}
                   {option.type === 'country' ? (
                     <span
-                      className={`block text-[11px] mt-0.5 font-normal ${
-                        option.value === value ? 'text-[#0047CC]/80' : 'text-[#808080]'
-                      }`}
+                      className={`block text-[11px] mt-0.5 font-normal ${option.value === value ? 'text-[#0047CC]/80' : 'text-[#808080]'
+                        }`}
                     >
                       Country
                     </span>

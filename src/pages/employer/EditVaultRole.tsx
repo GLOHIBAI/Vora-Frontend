@@ -84,9 +84,9 @@ const EditVaultRole: React.FC = () => {
         roleTitle: rd.roleTitle || DEFAULT_VAULT_EDIT_ORIGINAL.roleTitle,
         location: rd.workLocationPrimary || DEFAULT_VAULT_EDIT_ORIGINAL.location,
         workFormat: rd.workFormat || DEFAULT_VAULT_EDIT_ORIGINAL.workFormat,
-        positions: rd.positionsAvailable ? String(rd.positionsAvailable) : DEFAULT_VAULT_EDIT_ORIGINAL.positions,
-        goLiveDate: rd.scheduledGoLiveDate || DEFAULT_VAULT_EDIT_ORIGINAL.goLiveDate,
-        startDate: rd.startDate || DEFAULT_VAULT_EDIT_ORIGINAL.startDate,
+        positions: rd.positionsAvailable ? String(rd.positionsAvailable) : (DEFAULT_VAULT_EDIT_ORIGINAL.positions || '1'),
+        goLiveDate: rd.scheduledGoLiveDate || rd.vaultGoLiveDate || '',
+        startDate: rd.startDate || '',
         roleGoal: rd.roleGoal || DEFAULT_VAULT_EDIT_ORIGINAL.roleGoal,
         responsibilities: rd.coreResponsibilities || DEFAULT_VAULT_EDIT_ORIGINAL.responsibilities,
         skills: Array.isArray(rd.technicalSkills) ? rd.technicalSkills.join(', ') : (rd.technicalSkills || DEFAULT_VAULT_EDIT_ORIGINAL.skills),
@@ -190,33 +190,29 @@ const EditVaultRole: React.FC = () => {
 
   const [localEditLimitReached, setLocalEditLimitReached] = useState(false);
 
+  const editsTotal = 3;
+
+  const editsRemaining = useMemo(() => {
+    if (localEditLimitReached) return 0;
+    const rd: any = roleResponse?.data || {};
+    if (typeof rd.vaultEditsRemaining === 'number') return rd.vaultEditsRemaining;
+    if (typeof rd.editsRemaining === 'number') return rd.editsRemaining;
+    if (typeof rd.vaultEditCount === 'number') return Math.max(0, editsTotal - rd.vaultEditCount);
+    if (typeof rd.editsUsed === 'number') return Math.max(0, editsTotal - rd.editsUsed);
+    return editsTotal;
+  }, [roleResponse, localEditLimitReached]);
+
   const editsUsed = useMemo(() => {
     if (localEditLimitReached) return 3;
     const rd: any = roleResponse?.data || {};
-    if (typeof rd.specificationEditCount === 'number') return rd.specificationEditCount;
     if (typeof rd.vaultEditCount === 'number') return rd.vaultEditCount;
-    if (typeof rd.vaultEditsCount === 'number') return rd.vaultEditsCount;
-    if (typeof rd.editsCount === 'number') return rd.editsCount;
     if (typeof rd.editsUsed === 'number') return rd.editsUsed;
-    if (typeof rd.vaultEditsUsed === 'number') return rd.vaultEditsUsed;
-    if (typeof rd.specificationEditsUsed === 'number') return rd.specificationEditsUsed;
-    if (typeof rd.vaultEditAllowance?.used === 'number') return rd.vaultEditAllowance.used;
-    if (typeof rd.editAllowance?.used === 'number') return rd.editAllowance.used;
-    if (typeof rd.editsRemaining === 'number') return Math.max(0, 3 - rd.editsRemaining);
-    if (typeof rd.vaultEditsRemaining === 'number') return Math.max(0, 3 - rd.vaultEditsRemaining);
+    if (typeof rd.vaultEditsRemaining === 'number') return Math.max(0, editsTotal - rd.vaultEditsRemaining);
+    if (typeof rd.editsRemaining === 'number') return Math.max(0, editsTotal - rd.editsRemaining);
     return 0;
   }, [roleResponse, localEditLimitReached]);
 
-  const editsTotal = useMemo(() => {
-    const rd: any = roleResponse?.data || {};
-    if (typeof rd.vaultEditAllowance?.total === 'number') return rd.vaultEditAllowance.total;
-    if (typeof rd.editAllowance?.total === 'number') return rd.editAllowance.total;
-    if (typeof rd.editsTotal === 'number') return rd.editsTotal;
-    if (typeof rd.maxVaultEdits === 'number') return rd.maxVaultEdits;
-    return 3;
-  }, [roleResponse]);
-
-  const isAtEditLimit = editsUsed >= editsTotal;
+  const isAtEditLimit = editsRemaining === 0 || editsUsed >= editsTotal || localEditLimitReached;
 
   const summaryChanges = useMemo((): VaultEditChange[] => {
     return buildChangesFromEdit(original, form);
@@ -252,11 +248,19 @@ const EditVaultRole: React.FC = () => {
 
     if (jobId) {
       try {
-        await editVaultMutation.mutateAsync({ id: jobId, changes });
+        const response: any = await editVaultMutation.mutateAsync({ id: jobId, changes });
         queryClient.invalidateQueries({ queryKey: rolePostingKeys.detail(jobId) });
+        if (response?.data) {
+          queryClient.setQueryData(rolePostingKeys.detail(jobId), (prev: any) =>
+            prev ? { ...prev, data: { ...prev.data, ...response.data } } : response
+          );
+        }
         setConfirmOpen(false);
         toast.success('Edit submitted for 48-hour review');
-        const reviewData = buildVaultEditReviewData(form, original, escrowRecalc);
+        const updatedUsed = typeof response?.data?.vaultEditCount === 'number'
+          ? response.data.vaultEditCount
+          : (typeof response?.data?.editsUsed === 'number' ? response.data.editsUsed : editsUsed + 1);
+        const reviewData = buildVaultEditReviewData(form, original, escrowRecalc, updatedUsed, editsTotal);
         saveVaultEditReview(reviewData);
         navigate(jobId ? `/jobs/vault/review/${jobId}` : '/jobs/vault/review');
       } catch (err: any) {

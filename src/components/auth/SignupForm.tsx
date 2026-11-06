@@ -21,10 +21,12 @@ import {
 } from './AuthPageLayout';
 import { useSignupMutation } from '../../services/queries/auth';
 import { useBlockBrowserAutofill } from '../../hooks/useBlockBrowserAutofill';
+import { loadCourseEnrollContext } from '../../utils/courseSignup';
 
 export interface SignupFormProps {
   /** When set, account type is locked to Talent (role-link signup). */
   roleSlug?: string;
+  courseSlug?: string;
   showFooterLogin?: boolean;
   loginTo?: string;
   accountType?: string;
@@ -33,6 +35,7 @@ export interface SignupFormProps {
 
 const SignupForm: React.FC<SignupFormProps> = ({
   roleSlug,
+  courseSlug,
   showFooterLogin = true,
   loginTo = '/login',
   accountType: controlledAccountType,
@@ -40,9 +43,13 @@ const SignupForm: React.FC<SignupFormProps> = ({
 }) => {
   const navigate = useNavigate();
   const isRoleSignup = Boolean(roleSlug);
+  const isCourseSignup = Boolean(courseSlug);
+  const isLockedToTalent = isRoleSignup || isCourseSignup;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [localAccountType, setLocalAccountType] = useState(isRoleSignup ? 'Talent' : (controlledAccountType || ''));
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [localAccountType, setLocalAccountType] = useState(isLockedToTalent ? 'Talent' : (controlledAccountType || ''));
   const accountType = controlledAccountType !== undefined ? controlledAccountType : localAccountType;
 
   const handleAccountTypeChange = (newType: string) => {
@@ -54,7 +61,9 @@ const SignupForm: React.FC<SignupFormProps> = ({
 
   const signupMutation = useSignupMutation();
 
-  const [touched, setTouched] = useState({
+  const [touched, setTouched] = useState<Record<string, boolean>>({
+    firstName: false,
+    lastName: false,
     email: false,
     password: false,
     accountType: false,
@@ -70,14 +79,24 @@ const SignupForm: React.FC<SignupFormProps> = ({
     return validatePassword(password);
   }, [password, touched.password]);
 
+  const firstNameError = useMemo(() => {
+    if (!isCourseSignup || !touched.firstName) return '';
+    return !firstName.trim() ? 'First name is required' : '';
+  }, [isCourseSignup, touched.firstName, firstName]);
+
+  const lastNameError = useMemo(() => {
+    if (!isCourseSignup || !touched.lastName) return '';
+    return !lastName.trim() ? 'Last name is required' : '';
+  }, [isCourseSignup, touched.lastName, lastName]);
+
   const accountTypeError = useMemo(() => {
-    if (isRoleSignup) return '';
+    if (isLockedToTalent) return '';
     if (!touched.accountType) return '';
     return validateAccountType(accountType);
-  }, [accountType, touched.accountType, isRoleSignup]);
+  }, [accountType, touched.accountType, isLockedToTalent]);
 
   const isFormValid = useMemo(() => {
-    return (
+    return Boolean(
       email &&
       password &&
       accountType &&
@@ -89,11 +108,18 @@ const SignupForm: React.FC<SignupFormProps> = ({
 
   const handleSignup = async (e: React.FormEvent | React.MouseEvent) => {
     e.preventDefault();
-    if (!isFormValid) return;
+    if (!isFormValid) {
+      setTouched({
+        firstName: true,
+        lastName: true,
+        email: true,
+        password: true,
+        accountType: true,
+      });
+      return;
+    }
 
     setFormError('');
-
-
 
     try {
       const backendRole = accountType.toUpperCase() as 'TALENT' | 'EMPLOYER' | 'MENTOR';
@@ -101,13 +127,21 @@ const SignupForm: React.FC<SignupFormProps> = ({
       if (roleSlug) {
         payload.roleLink = roleSlug;
       }
+      if (isCourseSignup) {
+        const courseContext = loadCourseEnrollContext();
+        payload.courseId = courseContext?.courseId || courseSlug;
+
+        try {
+          localStorage.setItem('vora_user_track', 'learner');
+        } catch {}
+      }
       await signupMutation.mutateAsync(payload);
       navigate('/verify-email', {
-        state: { email, accountType, roleSlug },
+        state: { email, accountType, roleSlug, courseSlug },
       });
     } catch (error: unknown) {
       const err = error as { message?: string };
-      setFormError(err?.message || 'Registration failed. Please try again.');
+      setFormError(err?.message || 'Registration failed. Please check your credentials and try again.');
     }
   };
 
@@ -129,7 +163,8 @@ const SignupForm: React.FC<SignupFormProps> = ({
     <>
       {formError ? <AuthErrorBanner message={formError} /> : null}
 
-      <AuthForm className="space-y-5 sm:space-y-6">
+      <AuthForm className="space-y-4">
+        
         <Input
           label="Email"
           type="email"
@@ -137,9 +172,10 @@ const SignupForm: React.FC<SignupFormProps> = ({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           onBlur={() => handleBlur('email')}
-          placeholder="Enter email address"
+          placeholder="name@example.com"
           error={!!emailError}
           helperText={emailError}
+          required
           {...emailAutofillBlock}
         />
 
@@ -150,43 +186,53 @@ const SignupForm: React.FC<SignupFormProps> = ({
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           onBlur={() => handleBlur('password')}
-          placeholder="Enter password"
+          placeholder="Enter secure password"
           showPasswordToggle
           error={!!passwordError}
-          helperText={passwordError}
+          helperText={passwordError || (!touched.password ? 'Must be at least 8 characters' : '')}
+          required
           {...passwordAutofillBlock}
         />
 
-        <div>
-          <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">Account type</label>
-          {isRoleSignup ? (
-            <TalentAccountTypeBadge />
-          ) : (
-            <Select
-              value={accountType}
-              onChange={(e) => handleAccountTypeChange(e.target.value)}
-              onBlur={() => handleBlur('accountType')}
-              placeholder="Select account type"
-              options={[
-                { label: 'Talent', value: 'Talent' },
-                { label: 'Employer', value: 'Employer' },
-                { label: 'Mentor', value: 'Mentor' },
-              ]}
-              error={!!accountTypeError}
-              helperText={accountTypeError}
-            />
-          )}
-        </div>
+        {/* Account Type Selection (Only shown when not enrolling in a course) */}
+        {!isCourseSignup && (
+          <div>
+            <label className="block text-sm font-medium text-slate-800 mb-1.5">
+              Account type
+            </label>
+            {isRoleSignup ? (
+              <TalentAccountTypeBadge />
+            ) : (
+              <Select
+                value={accountType}
+                onChange={(e) => handleAccountTypeChange(e.target.value)}
+                onBlur={() => handleBlur('accountType')}
+                placeholder="Select account type"
+                options={[
+                  { label: 'Talent', value: 'Talent' },
+                  { label: 'Employer', value: 'Employer' },
+                  { label: 'Mentor', value: 'Mentor' },
+                ]}
+                error={!!accountTypeError}
+                helperText={accountTypeError}
+              />
+            )}
+          </div>
+        )}
 
-        <Button
-          variant={isFormValid ? 'primary' : 'secondary'}
-          type="submit"
-          onClick={handleSignup}
-          disabled={!isFormValid || signupMutation.isPending}
-          isLoading={signupMutation.isPending}
-        >
-          Get started
-        </Button>
+        <div className="pt-1">
+          <Button
+            variant={isFormValid ? 'primary' : 'secondary'}
+            type="submit"
+            fullWidth
+            onClick={handleSignup}
+            disabled={!isFormValid || signupMutation.isPending}
+            isLoading={signupMutation.isPending}
+            className="h-11 sm:h-12 rounded-xl font-semibold text-sm sm:text-base bg-[#0047CC] hover:bg-[#0039A6] text-white shadow-xs cursor-pointer"
+          >
+            {isCourseSignup ? 'Start Learning' : 'Get started'}
+          </Button>
+        </div>
 
         <AuthSocialDivider />
 
@@ -203,8 +249,21 @@ const SignupForm: React.FC<SignupFormProps> = ({
           </Button>
         </AuthSocialButtons>
 
+        {/* Fine Print: Legal terms and conditions */}
+        <p className="text-center text-[12px] text-slate-500 leading-relaxed px-2 pt-1">
+          By signing up, you agree to VORA&apos;s{' '}
+          <Link to="/terms" className="text-slate-700 underline hover:text-[#0047CC]">
+            Terms of Service
+          </Link>{' '}
+          and{' '}
+          <Link to="/privacy" className="text-slate-700 underline hover:text-[#0047CC]">
+            Privacy Policy
+          </Link>
+          .
+        </p>
+
         {showFooterLogin ? (
-          <p className="pt-2 text-center text-sm text-[#808080] font-medium">
+          <p className="pt-1 text-center text-sm text-slate-600 font-medium">
             Already have an account?{' '}
             <Link to={loginTo} className={authFooterLinkClass}>
               Log in

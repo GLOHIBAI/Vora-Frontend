@@ -74,11 +74,19 @@ export function mapApiUserToContextUser(user?: User): ContextUser {
   const onboardingStep =
     typeof user?.onboardingStep === 'number' ? user.onboardingStep : undefined;
 
+  const isLearnerUser = Boolean(
+    (user as any)?.isLearner ||
+    user?.role?.toLowerCase() === 'learner' ||
+    (typeof window !== 'undefined' && localStorage.getItem('vora_user_track') === 'learner') ||
+    (typeof window !== 'undefined' && Boolean(localStorage.getItem('vora_course_enroll_context')))
+  );
+
   const contextUser: ContextUser = {
     firstName,
     lastName: user?.lastName || '',
     role: mappedRole,
     email: user?.email,
+    isLearner: isLearnerUser,
     ...(onboardingStep !== undefined ? { onboardingStep } : {}),
     isOnboardingComplete: onboardingCompleted,
     ...(user?.onboardingCompleted !== undefined

@@ -67,7 +67,7 @@ export const ModalTitle: React.FC<TypographyProps> = ({
   as: Tag = 'h2',
   id,
 }) => (
-  <Tag id={id} className={merge('text-[17px] font-semibold text-[#1A1A1A]', className)}>
+  <Tag id={id} className={merge('text-lg sm:text-[20px] font-semibold text-slate-900 tracking-tight leading-snug', className)}>
     {children}
   </Tag>
 );

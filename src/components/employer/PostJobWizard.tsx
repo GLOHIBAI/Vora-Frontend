@@ -2109,14 +2109,9 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
                             </div>
 
                             {/* Fee Locked Warning */}
-                            <div className="flex items-start gap-3 p-4 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl">
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" className="shrink-0 mt-0.5 text-[#D97706]">
-                                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
-                              </svg>
-                              <p className="text-xs md:text-[13px] leading-relaxed text-[#92400E]">
-                                <strong>Fee rate locked today.</strong> Your escrow amount is calculated at submission using the current VORA fee rate. If VORA reprices before your go-live date, you pay the rate that was in force on the day you submitted. This is your protection for committing early.
-                              </p>
-                            </div>
+                            <AlertBanner variant="blue" className="!text-xs md:!text-[13px]">
+                              <strong>Fee rate locked today.</strong> Your escrow amount is calculated at submission using the current VORA fee rate. If VORA reprices before your go-live date, you pay the rate that was in force on the day you submitted. This is your protection for committing early.
+                            </AlertBanner>
                           </div>
                         )}
                       </div>
@@ -2670,7 +2665,7 @@ const PostJobWizard: React.FC<PostJobWizardProps> = ({ isOpen, onClose, initialC
 
                         {/* LMIC Badge */}
                         {isLmicActive && (
-                          <AlertBanner variant="green" className="mt-3 !text-xs">
+                          <AlertBanner variant="blue" className="mt-3 !text-xs">
                             <strong>LMIC fee rates applied.</strong> Your currency qualifies for VORA&apos;s lower-income country pricing â€” 10% for salaried and contract roles, 7% for stipends and PhDs, and USD 50 flat fee for unpaid/volunteer roles. These rates are research-grounded â€” below the 10â€“17% charged by local recruitment agencies across Sub-Saharan Africa, South Asia, and Southeast Asia. This rate is locked at submission.
                           </AlertBanner>
                         )}

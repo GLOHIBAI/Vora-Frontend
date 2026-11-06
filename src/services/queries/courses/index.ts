@@ -159,6 +159,91 @@ export const useCourseDetail = (
 export const useCourseDetails = useCourseDetail;
 
 /**
+ * Hook to fetch course details for public landing (works unauthenticated or authenticated).
+ * Endpoint: GET /courses/:slugOrId/public (falls back to GET /courses/:slugOrId)
+ */
+export const usePublicCourseQuery = (
+  slugOrId?: string | null,
+  options?: { enabled?: boolean; staleTime?: number }
+) => {
+  return useQuery({
+    queryKey: ['courses', 'public', slugOrId],
+    queryFn: async () => {
+      if (!slugOrId) throw new Error('Course identifier is required');
+
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      let res: any;
+      try {
+        res = await apiClient.get<CourseApiEnvelope<CourseDetailData>>({
+          url: `/courses/${slugOrId}/public`,
+          auth: Boolean(token),
+          suppressErrorToast: true,
+        });
+      } catch {
+        res = await apiClient.get<CourseApiEnvelope<CourseDetailData>>({
+          url: `/courses/${slugOrId}`,
+          auth: Boolean(token),
+          suppressErrorToast: true,
+        });
+      }
+
+      const payload = res?.data as any;
+      if (payload) {
+        const course = payload.course || payload;
+        const myEnrollment = payload.myEnrollment || payload.course?.myEnrollment || null;
+        const qualifyingJobs =
+          payload.qualifyingJobs ||
+          payload.course?.qualifyingJobs ||
+          [];
+        return {
+          ...payload,
+          course,
+          myEnrollment,
+          qualifyingJobs,
+        } as CourseDetailData;
+      }
+
+      return res?.data;
+    },
+    enabled: Boolean(slugOrId) && (options?.enabled ?? true),
+    staleTime: options?.staleTime ?? 1000 * 60 * 5, // 5 min cache
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
+};
+
+/**
+ * Dedicated hook to fetch qualifying live employer jobs matching a course.
+ * Endpoint: GET /courses/:id/qualifying-jobs?limit=3
+ */
+export const useQualifyingJobsQuery = (
+  courseId?: string | null,
+  limit: number = 3
+) => {
+  return useQuery({
+    queryKey: ['courses', 'qualifying-jobs', courseId, limit],
+    queryFn: async () => {
+      if (!courseId) return [];
+      try {
+        const res = await apiClient.get<{ statusCode: number; message: string; data: any[] }>({
+          url: `/courses/${courseId}/qualifying-jobs?limit=${limit}`,
+          auth: false,
+          suppressErrorToast: true,
+        });
+        return res?.data || [];
+      } catch (err) {
+        console.warn(`[useQualifyingJobsQuery] Failed to fetch qualifying jobs for ${courseId}:`, err);
+        return [];
+      }
+    },
+    enabled: Boolean(courseId),
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
+};
+
+
+/**
  * Mutation to enroll talent into a course.
  * Endpoint: POST /courses/:id/enroll
  * Body: { declaredCountry, ipCountry, paymentCountry, localeCountry }
@@ -183,6 +268,7 @@ export const useEnrollMutation = () => {
           localeCountry: payload.localeCountry || 'en-US',
         },
         auth: true,
+        suppressErrorToast: true,
       });
 
       return res?.data;

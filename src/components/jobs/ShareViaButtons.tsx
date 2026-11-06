@@ -1,3 +1,4 @@
+import React from 'react';
 import type { ShareChannel } from '../../types/jobs';
 import { MailIcon, WhatsappIcon, LinkedinIcon, TwitterIcon } from '../common/Icons';
 
@@ -10,42 +11,38 @@ interface ShareViaButtonsProps {
 const channelIcon = (id: ShareChannel['id']) => {
   switch (id) {
     case 'email':
-      return (
-        <MailIcon size={14} />
-      );
+      return <MailIcon size={18} className="text-slate-600 group-hover:text-slate-900 transition-colors" />;
     case 'whatsapp':
-      return (
-        <WhatsappIcon size={14} />
-      );
+      return <WhatsappIcon size={18} className="text-slate-600 group-hover:text-slate-900 transition-colors" />;
     case 'linkedin':
-      return (
-        <LinkedinIcon size={14} />
-      );
+      return <LinkedinIcon size={18} className="text-slate-600 group-hover:text-slate-900 transition-colors" />;
     case 'twitter':
-      return (
-        <TwitterIcon size={14} />
-      );
+      return <TwitterIcon size={18} className="text-slate-600 group-hover:text-slate-900 transition-colors" />;
     default:
       return null;
   }
 };
 
-const ShareViaButtons: React.FC<ShareViaButtonsProps> = ({
+export const ShareViaButtons: React.FC<ShareViaButtonsProps> = ({
   channels,
   onSelect,
   className = '',
 }) => (
   <div className={className}>
-    <div className="flex flex-wrap justify-center gap-2" role="tablist" aria-label="Share options">
+    <div
+      className="grid grid-cols-2 sm:grid-cols-4 gap-2.5"
+      role="group"
+      aria-label="Direct share options"
+    >
       {channels.map((channel) => (
         <button
           key={channel.id}
           type="button"
           onClick={() => onSelect(channel.id)}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12px] font-semibold transition-colors cursor-pointer border border-[#E6E6E6] text-[#4A4A4A] hover:border-[#808080] hover:text-[#1A1A1A] hover:bg-[#F7F7F7]"
+          className="group h-10 px-3 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50/80 active:bg-slate-100 focus:outline-hidden focus:ring-2 focus:ring-[#0047CC]/20 focus:border-[#0047CC] transition-all inline-flex items-center justify-center gap-2 cursor-pointer shadow-2xs active:scale-98"
         >
           {channelIcon(channel.id)}
-          {channel.label}
+          <span className="truncate">{channel.label}</span>
         </button>
       ))}
     </div>

@@ -19,7 +19,9 @@ import {
   BookOpenIcon,
   MessageSquareIcon,
   GraduationCapIcon,
+  ShareIcon,
 } from '../../components/common/Icons';
+import CourseShareModal from '../../components/courses/CourseShareModal';
 import Spinner from '../../components/common/Spinner';
 import Button from '../../components/common/Button';
 import Tag from '../../components/common/Tag';
@@ -46,6 +48,25 @@ import {
 } from '../../utils/media';
 
 interface MentorCoursesPageProps {}
+
+const formatTalentDisplayName = (name?: string | null): string => {
+  if (!name) return 'Talent';
+  const clean = name.replace(/learner/gi, 'Talent').trim();
+  return clean
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+};
+
+const formatTalentTitle = (title?: string | null): string => {
+  if (!title || title.trim().toLowerCase() === 'learner') return 'Talent';
+  return title
+    .replace(/learner/gi, 'Talent')
+    .trim()
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+};
 
 type CoursePillFilter = 'ALL' | 'PUBLISHED' | 'UNDER_REVIEW' | 'DRAFT' | 'LIVE';
 type SortOption = 'recent' | 'popular' | 'rating' | 'title';
@@ -78,6 +99,7 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
   const [courseToDelete, setCourseToDelete] = useState<InstructorCourseItem | null>(null);
   const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
   const [togglingCourseId, setTogglingCourseId] = useState<string | null>(null);
+  const [sharingCourse, setSharingCourse] = useState<InstructorCourseItem | null>(null);
   const sortRef = useRef<HTMLDivElement>(null);
 
   // Persistent tracking of deleted course IDs
@@ -363,7 +385,7 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Author, publish, and track your instructional courses, cohorts, and student progress.
+            Author, publish, and track your instructional courses, cohorts, and talent progress.
           </p>
         </div>
 
@@ -505,7 +527,7 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
                 : 'text-gray-500 hover:text-gray-900'
             }`}
           >
-            Student Roster &amp; Submissions ({tabCounts?.roster ?? roster.length})
+            Talent Roster &amp; Submissions ({tabCounts?.roster ?? roster.length})
           </button>
           <button
             type="button"
@@ -825,10 +847,10 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
                           </div>
                         </div>
 
-                        {/* Meta Numbers: Students & Revenue (muted label, dark value) */}
+                        {/* Meta Numbers: Talents & Revenue (muted label, dark value) */}
                         <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100">
                           <div className="bg-slate-50/80 rounded-xl p-2.5">
-                            <p className="text-xs text-slate-500 font-medium">Students</p>
+                            <p className="text-xs text-slate-500 font-medium">Talents</p>
                             <p className="text-sm font-bold text-slate-900 tabular-nums lining-nums mt-0.5">
                               {course.students ?? 0}
                             </p>
@@ -855,11 +877,11 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
                             unpublishMutation.isPending ||
                             !course.actions?.unpublish?.enabled
                           }
-                          className="h-10 px-3.5 text-xs font-semibold bg-red-50/40 text-red-600 border border-red-200 hover:bg-red-100/80 hover:border-red-300 hover:text-red-700 hover:shadow-xs rounded-lg transition-all inline-flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-2xs active:scale-[0.98]"
+                          className="h-10 px-3.5 text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 rounded-lg transition-all inline-flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-2xs active:scale-98"
                         >
                           {togglingCourseId === course.id ? (
                             <>
-                              <Spinner size={13} className="text-red-600 border-red-200" />
+                              <Spinner size={13} className="text-slate-600 border-slate-300" />
                               <span>Unpublishing…</span>
                             </>
                           ) : (
@@ -888,12 +910,21 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
                         </button>
                       )}
 
-                      {/* Secondary: Edit & 40px Delete Icon Button */}
-                      <div className="flex items-center gap-2">
+                      {/* Secondary: Share, Edit & Delete Icon Button */}
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSharingCourse(course)}
+                          className="h-10 px-3 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                          title="Share course link"
+                        >
+                          <ShareIcon size={13} className="text-[#0047CC]" />
+                          <span>Share</span>
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleEditCourse(course)}
-                          className="h-10 px-4 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                          className="h-10 px-3.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
                         >
                           <PencilIcon size={13} className="text-slate-500" />
                           <span>Edit</span>
@@ -1006,7 +1037,7 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
                           </span>
                         )}
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-slate-500 font-medium">Students:</span>
+                          <span className="text-xs text-slate-500 font-medium">Talents:</span>
                           <span className="text-sm font-bold text-slate-900 tabular-nums lining-nums">{course.students ?? 0}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -1029,11 +1060,11 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
                             unpublishMutation.isPending ||
                             !course.actions?.unpublish?.enabled
                           }
-                          className="h-10 px-3.5 text-xs font-semibold bg-red-50/40 text-red-600 border border-red-200 hover:bg-red-100/80 hover:border-red-300 hover:text-red-700 hover:shadow-xs rounded-lg transition-all w-full inline-flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-2xs active:scale-[0.98]"
+                          className="h-10 px-3.5 text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 rounded-lg transition-all w-full inline-flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-2xs active:scale-98"
                         >
                           {togglingCourseId === course.id ? (
                             <>
-                              <Spinner size={13} className="text-red-600 border-red-200" />
+                              <Spinner size={13} className="text-slate-600 border-slate-300" />
                               <span>Unpublishing…</span>
                             </>
                           ) : (
@@ -1065,6 +1096,15 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
                       <div className="flex items-center gap-2 w-full">
                         <button
                           type="button"
+                          onClick={() => setSharingCourse(course)}
+                          className="h-10 px-3 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                          title="Share course link"
+                        >
+                          <ShareIcon size={13} className="text-[#0047CC]" />
+                          <span>Share</span>
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => handleEditCourse(course)}
                           className="h-10 px-4 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-lg transition-colors flex-1 inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
                         >
@@ -1091,14 +1131,14 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
         </div>
       )}
 
-      {/* ══════════════════ TAB 2: STUDENT ROSTER & SUBMISSIONS ══════════════════ */}
+      {/* ══════════════════ TAB 2: TALENT ROSTER & SUBMISSIONS ══════════════════ */}
       {activeTab === 'students' && (
         <div className="space-y-6">
           <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-xs space-y-4">
             <div>
               <h2 className="text-sm sm:text-base font-bold text-gray-900">Enrolled Talents &amp; Project Submissions</h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                Track enrolled student progress and capstone deliverables.
+                Track enrolled talent progress and capstone deliverables.
               </p>
             </div>
 
@@ -1111,7 +1151,7 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
             ) : roster.length === 0 ? (
               <EmptyState
                 icon={UsersIcon}
-                title="No students enrolled yet"
+                title="No talents enrolled yet"
                 description="Enrolled talents and their course completion progress, assignments, and capstone submissions will appear here."
                 variant="dashed"
                 className="my-2"
@@ -1130,12 +1170,16 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
                         <div className="flex items-center gap-2.5 min-w-0">
                           <img
                             src={DEFAULT_MENTOR_AVATAR}
-                            alt={item.student?.displayName || 'Student'}
+                            alt={formatTalentDisplayName(item.student?.displayName)}
                             className="w-8 h-8 rounded-full object-cover border border-gray-200 shrink-0"
                           />
                           <div className="min-w-0">
-                            <p className="font-bold text-xs text-gray-900 truncate">{item.student?.displayName || 'Talent'}</p>
-                            <p className="text-[10px] text-gray-400">{item.student?.professionalTitle || 'Learner'}</p>
+                            <p className="font-bold text-xs text-gray-900 truncate">
+                              {formatTalentDisplayName(item.student?.displayName)}
+                            </p>
+                            <p className="text-[10px] text-gray-400">
+                              {formatTalentTitle(item.student?.professionalTitle)}
+                            </p>
                           </div>
                         </div>
                         <span className="bg-blue-50 text-[#0047CC] border border-blue-200 px-2 py-0.5 rounded-full font-bold text-[10px] shrink-0">
@@ -1169,7 +1213,7 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
                   <table className="w-full text-left text-xs min-w-[640px]">
                     <thead>
                       <tr className="border-b border-gray-100 text-gray-400 text-[11px] uppercase tracking-wider">
-                        <th className="pb-3 font-semibold">Student</th>
+                        <th className="pb-3 font-semibold">Talent</th>
                         <th className="pb-3 font-semibold">Course</th>
                         <th className="pb-3 font-semibold">Progress</th>
                         <th className="pb-3 font-semibold">Status</th>
@@ -1183,12 +1227,16 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
                             <div className="flex items-center gap-3">
                               <img
                                 src={displayMedia(item.student?.photoUrl, item.student?.photoS3Key) || DEFAULT_MENTOR_AVATAR}
-                                alt={item.student?.displayName || 'Student'}
+                                alt={formatTalentDisplayName(item.student?.displayName)}
                                 className="w-8 h-8 rounded-full object-cover border border-gray-200"
                               />
                               <div>
-                                <p className="font-bold text-gray-900">{item.student?.displayName || 'Talent'}</p>
-                                <p className="text-[10px] text-gray-400">{item.student?.professionalTitle || 'Learner'}</p>
+                                <p className="font-bold text-gray-900">
+                                  {formatTalentDisplayName(item.student?.displayName)}
+                                </p>
+                                <p className="text-[10px] text-gray-400">
+                                  {formatTalentTitle(item.student?.professionalTitle)}
+                                </p>
                               </div>
                             </div>
                           </td>
@@ -1345,8 +1393,8 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
           <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-xs">
             <EmptyState
               icon={MessageSquareIcon}
-              title="Student Reviews & Community Q&A Coming Soon"
-              description="Student feedback, ratings, and course questions will be available in an upcoming release as talents complete modules across your published catalog."
+              title="Talent Reviews & Community Q&A Coming Soon"
+              description="Talent feedback, ratings, and course questions will be available in an upcoming release as talents complete modules across your published catalog."
               variant="dashed"
             />
           </div>
@@ -1392,7 +1440,7 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
                 </h4>
                 <div className="flex items-center gap-2 text-sm text-slate-700 mt-0.5 font-medium">
                   <span>
-                    {courseToDelete.students ?? 0} enrolled {(courseToDelete.students ?? 0) === 1 ? 'student' : 'students'}
+                    {courseToDelete.students ?? 0} enrolled {(courseToDelete.students ?? 0) === 1 ? 'talent' : 'talents'}
                   </span>
                   <span className="text-slate-400">·</span>
                   <span>{courseToDelete.formattedPrice || (courseToDelete.price ? `$${courseToDelete.price} USD` : 'Free')}</span>
@@ -1410,9 +1458,9 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
           ...((courseToDelete?.students ?? 0) > 0
             ? [
                 {
-                  lead: 'Learner protection:',
+                  lead: 'Talent protection:',
                   text: `${courseToDelete?.students} enrolled ${
-                    courseToDelete?.students === 1 ? 'student retains' : 'students retain'
+                    courseToDelete?.students === 1 ? 'talent retains' : 'talents retain'
                   } lifetime access to lessons and certificates.`,
                 },
               ]
@@ -1432,6 +1480,23 @@ const MentorCoursesPage: React.FC<MentorCoursesPageProps> = () => {
             <p className="text-xs text-slate-500">Updating your course catalog</p>
           </div>
         </div>
+      )}
+
+      {sharingCourse && (
+        <CourseShareModal
+          isOpen={Boolean(sharingCourse)}
+          onClose={() => setSharingCourse(null)}
+          courseId={sharingCourse.id}
+          courseTitle={sharingCourse.title}
+          slug={(sharingCourse as any).slug || (sharingCourse as any).seoSlugPreview}
+          status={sharingCourse.status}
+          thumbnailUrl={
+            displayMedia(
+              sharingCourse.thumbnailUrl || (sharingCourse as any).coverImageUrl,
+              sharingCourse.thumbnailS3Key || (sharingCourse as any).coverImageS3Key
+            ) || undefined
+          }
+        />
       )}
 
     </div>

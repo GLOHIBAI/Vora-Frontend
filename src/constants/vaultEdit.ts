@@ -6,8 +6,8 @@ export const DEFAULT_VAULT_EDIT_ORIGINAL: VaultEditOriginal = {
   location: 'London, United Kingdom',
   workFormat: 'Hybrid',
   positions: '3',
-  goLiveDate: '2025-09-01',
-  startDate: '2025-10-01',
+  goLiveDate: '',
+  startDate: '',
   roleGoal:
     'To strengthen health systems data collection, analysis, and translation into policy across target geographies, with a focus on sub-national health financing and service delivery gaps.',
   responsibilities:
@@ -31,7 +31,7 @@ export const DEFAULT_VAULT_EDIT_ORIGINAL: VaultEditOriginal = {
   benefits: 'Health insurance, Travel reimbursement',
 };
 
-export const VAULT_EDIT_ALLOWANCE = { used: 1, total: 3 };
+export const VAULT_EDIT_ALLOWANCE = { used: 0, total: 3 };
 
 export const VAULT_ORIGINAL_ESCROW = 31500;
 export const VAULT_FEE_RATE = 0.15;

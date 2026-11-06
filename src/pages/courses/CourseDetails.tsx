@@ -1,3 +1,4 @@
+import UniversalVideoPlayer from '../../components/common/UniversalVideoPlayer';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
@@ -35,6 +36,7 @@ import {
 } from '../../utils/media';
 import Select from '../../components/common/Select';
 import MentorAvatar from '../../components/mentors/MentorAvatar';
+import CourseRelatedJobs from '../../components/courses/CourseRelatedJobs';
 
 const ENROLL_COUNTRY_OPTIONS = [
   { value: 'US', label: 'United States (US)' },
@@ -49,7 +51,7 @@ const ENROLL_COUNTRY_OPTIONS = [
   { value: 'FR', label: 'France (FR)' },
 ];
 
-type TabType = 'overview' | 'instructor' | 'qa' | 'chapters';
+type TabType = 'overview' | 'instructor' | 'qa' | 'chapters' | 'careers';
 
 const CourseDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -150,7 +152,7 @@ const CourseDetails: React.FC = () => {
         },
       });
       setIsEnrollModalOpen(false);
-      toast.success('Successfully enrolled! You can now start learning.');
+      toast.success('Successfully enrolled! You can now start as talent.');
     } catch (err: any) {
       toast.error(err?.message || 'Failed to enroll in course');
     }
@@ -375,28 +377,14 @@ const CourseDetails: React.FC = () => {
               currentLesson?.contentS3Key || (currentLesson as any)?.videoS3Key || course?.promoVideoS3Key
             );
             if (isPlayingVideo && lessonMedia) {
-              if (isYouTubeUrl(lessonMedia)) {
-                return (
-                  <div className="aspect-video bg-black rounded-[24px] overflow-hidden shadow-xs border border-gray-100">
-                    <iframe
-                      src={getYouTubeEmbedUrl(lessonMedia, true) || ''}
-                      title={currentLesson?.title || course.title}
-                      className="w-full h-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  </div>
-                );
-              }
               return (
                 <div className="aspect-video bg-black rounded-[24px] overflow-hidden shadow-xs border border-gray-100">
-                  <video
+                  <UniversalVideoPlayer
                     src={lessonMedia}
                     poster={bannerUrl || undefined}
-                    controls
-                    autoPlay
-                    playsInline
-                    className="w-full h-full object-cover"
+                    title={currentLesson?.title || course.title}
+                    autoPlay={true}
+                    controls={true}
                   />
                 </div>
               );
@@ -511,11 +499,50 @@ const CourseDetails: React.FC = () => {
             >
               All Chapters
             </button>
+            <button
+              onClick={() => setActiveTab('careers')}
+              className={`pb-3 text-[14px] transition-colors relative cursor-pointer font-medium flex items-center gap-1.5 ${
+                activeTab === 'careers'
+                  ? 'text-[#0052CC] font-semibold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2.5px] after:bg-[#0052CC]'
+                  : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              <span>Related Jobs</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-[#0052CC]">
+                Hiring
+              </span>
+            </button>
           </div>
 
           {/* ══════════════════ TAB 1: COURSE OVERVIEW ══════════════════ */}
           {activeTab === 'overview' && (
             <div className="space-y-6 animate-in fade-in duration-300">
+              {/* Career Bridge Banner */}
+              <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-blue-50/80 border border-blue-200/80 rounded-2xl p-4.5 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#0052CC] animate-pulse" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#0052CC]">
+                      Employment Outcomes
+                    </span>
+                  </div>
+                  <h4 className="text-sm sm:text-base font-bold text-slate-900">
+                    Qualify for Active Positions With This Course
+                  </h4>
+                  <p className="text-xs sm:text-sm text-slate-600 max-w-xl">
+                    Leading healthcare &amp; life sciences employers hire directly through VORA based on competencies taught in this masterclass.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('careers')}
+                  className="px-4 py-2 rounded-xl bg-[#0052CC] hover:bg-[#0039A6] text-white text-xs font-bold transition-all shrink-0 shadow-xs cursor-pointer flex items-center gap-1"
+                >
+                  <span>View Related Jobs</span>
+                  <span>&rarr;</span>
+                </button>
+              </div>
+
               <h2 className="text-[18px] font-bold text-gray-900">{course.title}</h2>
 
               {/* Metrics Strip (Ratings strictly hidden while null per backend contract) */}
@@ -525,7 +552,7 @@ const CourseDetails: React.FC = () => {
                   <p className="text-[13px] font-bold text-[#0052CC] mt-0.5">{course.stats?.skillLevel || course.difficultyLevel || 'All levels'}</p>
                 </div>
                 <div className="sm:px-4 text-center">
-                  <p className="text-[11px] text-gray-500 font-medium">Students</p>
+                  <p className="text-[11px] text-gray-500 font-medium">Talents</p>
                   <p className="text-[13px] font-bold text-[#0052CC] mt-0.5">{course.stats?.studentCount?.toLocaleString() || '0'}</p>
                 </div>
                 <div className="sm:px-4 text-center">
@@ -598,13 +625,13 @@ const CourseDetails: React.FC = () => {
 
               {/* Students Feedback / Reviews (Coming soon when reviews === null) */}
               <div className="space-y-4 pt-2">
-                <h3 className="text-[15px] font-bold text-gray-900">Students Feedback</h3>
+                <h3 className="text-[15px] font-bold text-gray-900">Talent Feedback</h3>
 
                 {course.reviews === null ? (
                   <div className="bg-[#FAFAFA] border border-gray-100 rounded-[20px] p-8 text-center space-y-2">
                     <p className="text-[14px] font-semibold text-gray-700">Course Reviews</p>
                     <p className="text-[12px] text-gray-400">
-                      Student reviews and ratings will be available soon as learners complete this course.
+                      Talent reviews and ratings will be available soon as talents complete this course.
                     </p>
                   </div>
                 ) : Array.isArray(course.reviews) && course.reviews.length > 0 ? (
@@ -727,7 +754,7 @@ const CourseDetails: React.FC = () => {
                   </div>
                   <h4 className="text-[16px] font-bold text-gray-800">Community Q&A Coming Soon</h4>
                   <p className="text-[13px] text-gray-500 max-w-md mx-auto leading-relaxed">
-                    Interactive discussions with mentors and fellow learners will be enabled in an upcoming release. You&apos;ll be able to ask module-specific questions and share solutions.
+                    Interactive discussions with mentors and fellow talents will be enabled in an upcoming release. You&apos;ll be able to ask module-specific questions and share solutions.
                   </p>
                 </div>
               ) : Array.isArray(course.questions) && course.questions.length > 0 ? (
@@ -849,6 +876,18 @@ const CourseDetails: React.FC = () => {
             </div>
           )}
 
+          {/* ══════════════════ TAB 5: RELATED JOBS & CAREERS ══════════════════ */}
+          {activeTab === 'careers' && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <CourseRelatedJobs
+                courseTitle={course?.title}
+                category={course?.category}
+                courseId={id}
+                qualifyingJobs={(course as any)?.qualifyingJobs || (detailData as any)?.qualifyingJobs}
+              />
+            </div>
+          )}
+
         </div>
       </div>
 
@@ -900,7 +939,7 @@ const CourseDetails: React.FC = () => {
               {/* Country Selection (PPP Body fields) */}
               <div className="space-y-2">
                 <label className="text-[13px] font-bold text-gray-900">Country of Residence</label>
-                <p className="text-[11px] text-gray-400">Used to localize your learning path and certificate</p>
+                <p className="text-[11px] text-gray-400">Used to localize your talent profile and certificate</p>
                 <Select
                   hideLabel
                   placeholder="Select country..."

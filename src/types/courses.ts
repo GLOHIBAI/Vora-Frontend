@@ -334,12 +334,14 @@ export interface CourseDetail {
   accentColor?: string;
   specialisation?: string;
   pills?: string[];
+  qualifyingJobs?: any[];
 }
 
 export interface CourseDetailData {
   schemaVersion: number;
   course: CourseDetail;
   myEnrollment: MyEnrollmentInfo | null;
+  qualifyingJobs?: any[];
 }
 
 export interface EnrollCoursePayload {

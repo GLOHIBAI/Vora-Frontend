@@ -177,3 +177,108 @@ export function getMediaUrl(s3Key?: string | null, fallback?: string): string {
   return fallback || '';
 }
 
+export const DEFAULT_FALLBACK_COURSE_COVER =
+  'https://images.unsplash.com/photo-1576091160538-4e12e1fdf958?w=800&auto=format&fit=crop&q=80';
+
+export function extractYouTubeId(url?: string | null): string | null {
+  if (!url) return null;
+  const match = url.trim().match(
+    /(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/|shorts\/))([a-zA-Z0-9_-]{11})/i
+  );
+  return match && match[1] ? match[1] : null;
+}
+
+/**
+ * Robustly resolves the cover image for a course:
+ * - Checks explicit thumbnail / cover URLs
+ * - Resolves storage keys
+ * - Automatically derives YouTube video thumbnail from promo or lesson videos
+ * - Falls back to a high-resolution global health masterclass banner
+ */
+export function resolveCourseCoverImage(courseOrApiData: any, context?: any): string {
+  if (context?.thumbnailUrl && typeof context.thumbnailUrl === 'string' && context.thumbnailUrl.trim()) {
+    return context.thumbnailUrl.trim();
+  }
+
+  const direct =
+    courseOrApiData?.thumbnailUrl ||
+    courseOrApiData?.coverImageUrl ||
+    courseOrApiData?.bannerUrl;
+  if (direct && typeof direct === 'string' && direct.trim()) {
+    return direct.trim();
+  }
+
+  const s3Key = courseOrApiData?.thumbnailS3Key || courseOrApiData?.coverImageS3Key;
+  if (s3Key) {
+    const resolved = mediaSrc(s3Key);
+    if (resolved) return resolved;
+  }
+
+  const videoUrl =
+    courseOrApiData?.promoVideoUrl ||
+    courseOrApiData?.introVideoUrl ||
+    courseOrApiData?.previewVideoUrl;
+  const videoYtId = extractYouTubeId(videoUrl);
+  if (videoYtId) {
+    return `https://img.youtube.com/vi/${videoYtId}/hqdefault.jpg`;
+  }
+
+  const modules = courseOrApiData?.modules || [];
+  if (Array.isArray(modules)) {
+    for (const mod of modules) {
+      const lessons = mod?.lessons || [];
+      if (Array.isArray(lessons)) {
+        for (const les of lessons) {
+          const lesUrl = les?.videoUrl || les?.contentUrl || les?.mediaUrl;
+          const lesYtId = extractYouTubeId(lesUrl);
+          if (lesYtId) {
+            return `https://img.youtube.com/vi/${lesYtId}/hqdefault.jpg`;
+          }
+        }
+      }
+    }
+  }
+
+  return DEFAULT_FALLBACK_COURSE_COVER;
+}
+
+
+
+/**
+ * Checks if a URL is a Vimeo link.
+ */
+export function isVimeoUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return /(?:vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^\/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|)(\d+)|player\.vimeo\.com\/video\/(\d+))/i.test(url.trim());
+}
+
+/**
+ * Converts a Vimeo URL into an embeddable player URL.
+ */
+export function getVimeoEmbedUrl(url: string | null | undefined, autoPlay = false): string | null {
+  if (!url) return null;
+  const match = url.trim().match(/(?:vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^\/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|)(\d+)|player\.vimeo\.com\/video\/(\d+))/i);
+  const id = match ? (match[1] || match[2]) : null;
+  if (!id) return null;
+  return `https://player.vimeo.com/video/${id}?autoplay=${autoPlay ? 1 : 0}&dnt=1`;
+}
+
+/**
+ * Checks if a URL is a Loom link.
+ */
+export function isLoomUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return /(?:loom\.com\/(?:share|embed)\/([a-zA-Z0-9_-]+))/i.test(url.trim());
+}
+
+/**
+ * Converts a Loom URL into an embeddable player URL.
+ */
+export function getLoomEmbedUrl(url: string | null | undefined, autoPlay = false): string | null {
+  if (!url) return null;
+  const match = url.trim().match(/(?:loom\.com\/(?:share|embed)\/([a-zA-Z0-9_-]+))/i);
+  if (match && match[1]) {
+    return `https://www.loom.com/embed/${match[1]}?autoplay=${autoPlay ? 1 : 0}`;
+  }
+  return null;
+}

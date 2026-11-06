@@ -16,6 +16,7 @@ import Spinner from '../common/Spinner';
 import EmptyState from '../common/EmptyState';
 import Tag from '../common/Tag';
 import Button from '../common/Button';
+import { useAuth } from '../../context/AuthContext';
 import { useTalentJobsQuery } from '../../services/queries/talent';
 import type { 
   TalentAppliedJob, 
@@ -76,6 +77,14 @@ const GRADE_VARIANT: Record<string, string> = {
 
 export const TalentJobsView: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isLearner = Boolean(
+    (user as any)?.isLearner ||
+    user?.role?.toLowerCase() === 'learner' ||
+    (typeof window !== 'undefined' && localStorage.getItem('vora_user_track') === 'learner') ||
+    (typeof window !== 'undefined' && Boolean(localStorage.getItem('vora_course_enroll_context'))) ||
+    (user?.role?.toLowerCase() === 'talent' && !(user as any)?.isOnboardingComplete && !(user as any)?.onboardingCompleted)
+  );
   const [activeTab, setActiveTab] = useState<'available' | 'applied'>('available');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState('ALL');
@@ -248,6 +257,30 @@ export const TalentJobsView: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Course-first Learner Welcome & Discovery Banner */}
+      {isLearner && (
+        <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 shadow-2xs">
+          <div className="flex items-start gap-3">
+            <SparklesIcon size={20} className="text-[#0047CC] shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-semibold text-slate-900">
+                Explore Healthcare &amp; Global Health Opportunities
+              </h4>
+              <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                As a VORA talent, you can explore verified roles anytime. When you find a position you want, apply to complete your quick CV verification.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/courses')}
+            className="text-xs font-semibold text-[#0047CC] hover:underline whitespace-nowrap shrink-0 self-end sm:self-center cursor-pointer"
+          >
+            Back to My Courses &rarr;
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="border-b border-gray-100">

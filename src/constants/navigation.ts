@@ -36,3 +36,10 @@ export const TALENT_NAV_ITEMS = [
   { name: 'Profile', icon: UserCircleIcon, path: '/profile' },
   { name: 'Settings', icon: GearIcon, path: '/settings' },
 ];
+
+/** Focused Learner experience: Courses, Mentors, and Settings */
+export const LEARNER_NAV_ITEMS = [
+  { name: 'Courses', icon: GraduationCapIcon, path: '/courses' },
+  { name: 'Mentors', icon: UsersIcon, path: '/mentors' },
+  { name: 'Settings', icon: GearIcon, path: '/settings' },
+];

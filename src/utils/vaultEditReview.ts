@@ -111,7 +111,9 @@ export const buildChangesFromEdit = (
 export const buildVaultEditReviewData = (
   form: VaultEditOriginal,
   original: VaultEditOriginal = DEFAULT_VAULT_EDIT_ORIGINAL,
-  escrow?: EscrowRecalcResult
+  escrow?: EscrowRecalcResult,
+  editsUsedCount?: number,
+  editsTotalCount = 3
 ): VaultEditReviewData => {
   const submittedAt = new Date().toISOString();
   const reviewEndsAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
@@ -130,8 +132,8 @@ export const buildVaultEditReviewData = (
     changes: buildChangesFromEdit(original, form),
     submittedAt,
     reviewEndsAt,
-    editsUsed: VAULT_EDIT_ALLOWANCE.used + 1,
-    editsTotal: VAULT_EDIT_ALLOWANCE.total,
+    editsUsed: typeof editsUsedCount === 'number' ? editsUsedCount : 1,
+    editsTotal: editsTotalCount,
     escrow: recalc,
     originalPositions: origPositions,
     originalMidpoint: origMid,

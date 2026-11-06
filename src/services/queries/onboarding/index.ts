@@ -64,6 +64,36 @@ export const useTalentOnboardingMutation = () => {
   });
 };
 
+export interface LearnerOnboardingRequest {
+  firstName: string;
+  lastName: string;
+  countryOfResidence?: string;
+  residenceCity?: string;
+  nationalities?: string[];
+  primaryAreaOfFocus?: string;
+  primarySpecialisation?: string;
+  learningGoal?: string;
+  [key: string]: any;
+}
+
+/**
+ * Endpoint for the streamlined 30-second /onboarding/learner flow.
+ * Endpoint: PUT/POST /api/v1/talent/learner-onboarding
+ */
+export const useLearnerOnboardingMutation = () => {
+  return useMutation({
+    mutationKey: ['learner-onboarding'],
+    mutationFn: async (data: any) => {
+      // Direct call to /talent/onboarding to avoid 404 toasts on environments where /talent/learner-onboarding is not mounted
+      return await apiClient.put<ApiResponse<any>>({
+        url: '/talent/onboarding',
+        body: data,
+        auth: true,
+      });
+    },
+  });
+};
+
 export const useTalentOnboardingStateQuery = (enabled = true, refetchInterval: number | false = false) => {
   return useQuery({
     queryKey: ['talent-onboarding', 'state'],

@@ -13,10 +13,11 @@ import { useEmployerProfileSettingsQuery, useEmployerOrganisationQuery, useEmplo
 import { useTalentOnboardingStateQuery, useMentorOnboardingStateQuery, useGetTalentProfileQuery, useGetMentorProfileQuery, useEmployerOnboardingStateQuery } from '../services/queries/onboarding';
 import { useMentorProfileSettingsQuery } from '../services/queries/mentor';
 
-import { 
+import {
   EMPLOYER_NAV_ITEMS,
   MENTOR_NAV_ITEMS,
-  TALENT_NAV_ITEMS
+  TALENT_NAV_ITEMS,
+  LEARNER_NAV_ITEMS
 } from '../constants/navigation';
 import {
   getMentorOnboardingRoute,
@@ -54,7 +55,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   const { user, updateUser } = useAuth();
   const logoutMutation = useLogoutMutation();
-  
+
   const isTalent = user?.role?.toLowerCase() === 'talent';
   const isMentor = user?.role?.toLowerCase() === 'mentor';
   const isEmployer = user?.role?.toLowerCase() === 'employer';
@@ -253,7 +254,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   const firstName = capitalizeName(employerProfile?.firstName || (isMentor ? mentorSettingsProfile?.firstName : null) || user.firstName || '');
   const lastName = capitalizeName(employerProfile?.lastName ?? (isMentor ? mentorSettingsProfile?.lastName : null) ?? user.lastName ?? '');
-  const userPersonalName = [firstName, lastName].filter(Boolean).join(' ').trim() 
+  const userPersonalName = [firstName, lastName].filter(Boolean).join(' ').trim()
     || (user.email ? capitalizeName(user.email.split('@')[0]) : 'User');
 
   // Sidebar bottom widget represents the logged-in user's personal profile
@@ -271,7 +272,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   }
 
   const isTalentMatchFlow = location.pathname.includes('/talent/match');
-  let roleLabel = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+  const isLearner = Boolean(
+    (user as any)?.isLearner ||
+    user?.role?.toLowerCase() === 'learner' ||
+    (typeof window !== 'undefined' && localStorage.getItem('vora_user_track') === 'learner') ||
+    (typeof window !== 'undefined' && Boolean(localStorage.getItem('vora_course_enroll_context'))) ||
+    (!isEmployer && !isMentor && !(user as any)?.isOnboardingComplete && !(user as any)?.onboardingCompleted)
+  );
+
+  let roleLabel = (isLearner || user.role?.toLowerCase() === 'learner') ? 'Talent' : (user.role.charAt(0).toUpperCase() + user.role.slice(1));
   if (isTalentMatchFlow) {
     roleLabel = 'Job Seeker';
   } else if (isEmployer) {
@@ -284,13 +293,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   const avatarUrl = isEmployer
     ? (employerProfile?.photoUrl || user?.avatarUrl || employerOrg?.logoUrl)
-    : (isMentor 
-        ? (mentorSettingsProfile?.photoUrl || mentorProfile?.data?.photoUrl || (mentorProfile?.data as any)?.avatarUrl || user?.avatarUrl) 
-        : user?.avatarUrl);
+    : (isMentor
+      ? (mentorSettingsProfile?.photoUrl || mentorProfile?.data?.photoUrl || (mentorProfile?.data as any)?.avatarUrl || user?.avatarUrl)
+      : user?.avatarUrl);
 
   const getNavItems = () => {
     if (user.role === 'employer') return EMPLOYER_NAV_ITEMS;
     if (user.role === 'mentor') return MENTOR_NAV_ITEMS;
+    if (isLearner) return LEARNER_NAV_ITEMS;
     return TALENT_NAV_ITEMS;
   };
 
@@ -342,7 +352,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     <div className="flex h-screen bg-[#F9FAFB] overflow-hidden w-full max-w-full">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity"
           onClick={() => setIsSidebarOpen(false)}
         />
@@ -365,7 +375,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           <div className="px-5 py-6 border-b border-[#E6E6E6] group-data-[nav-collapsed=true]/sidebar:lg:px-3 group-data-[nav-collapsed=true]/sidebar:lg:py-4">
             <div className="flex items-center justify-between gap-2 group-data-[nav-collapsed=true]/sidebar:lg:flex-col group-data-[nav-collapsed=true]/sidebar:lg:items-center group-data-[nav-collapsed=true]/sidebar:lg:gap-3">
               <Link
-                to="/dashboard"
+                to={isLearner ? '/courses' : '/dashboard'}
                 className="hidden group-data-[nav-collapsed=true]/sidebar:lg:flex items-center justify-center"
                 title="VORA"
               >
@@ -376,7 +386,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                 />
               </Link>
               <div className="shrink-0 group-data-[nav-collapsed=true]/sidebar:lg:hidden">
-                <VoraLogo to="/dashboard" size="md" />
+                <VoraLogo to={isLearner ? '/courses' : '/dashboard'} size="md" />
               </div>
               <div className="hidden lg:block">
                 {sidebarToggleButton('group-data-[nav-collapsed=true]/sidebar:lg:w-full')}
@@ -400,8 +410,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                 className={`
                   group/navitem relative flex items-center gap-3 px-5 py-3 text-sm font-semibold transition-all duration-150 cursor-pointer border-r-[3px]
                   group-data-[nav-collapsed=true]/sidebar:lg:justify-center group-data-[nav-collapsed=true]/sidebar:lg:px-0 group-data-[nav-collapsed=true]/sidebar:lg:gap-0
-                  ${isActive(item.path) 
-                    ? 'border-r-[#0047CC] bg-[#EBF6FF] text-[#0047CC]' 
+                  ${isActive(item.path)
+                    ? 'border-r-[#0047CC] bg-[#EBF6FF] text-[#0047CC]'
                     : 'border-r-transparent text-[#4A4A4A] hover:bg-[#F7F7F7] hover:text-[#1A1A1A]'}
                 `}
               >
@@ -468,14 +478,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         {/* Mobile Top Header */}
         <header className="lg:hidden bg-white border-b border-gray-100 px-6 py-4 flex items-center gap-4 sticky top-0 z-[45]">
-          <button 
+          <button
             className="text-gray-900 hover:bg-gray-50 p-1.5 rounded-lg transition-colors cursor-pointer"
             onClick={() => setIsSidebarOpen(true)}
             aria-label="Open menu"
           >
             <MenuIcon />
           </button>
-          <VoraLogo to="/dashboard" size="md" />
+          <VoraLogo to={isLearner ? '/courses' : '/dashboard'} size="md" />
         </header>
 
         {/* Page Content */}

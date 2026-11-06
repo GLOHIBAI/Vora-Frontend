@@ -795,7 +795,7 @@ const StandardSettingsView: React.FC = () => {
       {activeTab === 'courses' && !isEmployer && (
         <div className="animate-fadeIn duration-200">
           <SectionHeading className="mb-1">Courses</SectionHeading>
-          <p className="text-xs text-gray-500 mb-6">Manage your created courses and learning content.</p>
+          <p className="text-xs text-gray-500 mb-6">Manage your created courses and course content.</p>
         </div>
       )}
 

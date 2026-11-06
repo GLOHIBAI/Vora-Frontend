@@ -165,7 +165,15 @@ const VerifyOTP: React.FC = () => {
       const user = authData?.user;
 
       if (user) {
-        const targetRoute = routeAfterAuth(user);
+        const nextStep = (authData as any)?.nextStep;
+        const targetCourseId = (authData as any)?.courseId || (state as any)?.courseSlug;
+        if (targetCourseId || nextStep === 'COURSE_PLAYER') {
+          try {
+            localStorage.setItem('vora_user_track', 'learner');
+          } catch {}
+          (user as any).isLearner = true;
+        }
+        const targetRoute = routeAfterAuth(user, nextStep, targetCourseId);
         navigate(targetRoute, { state: { email, accountType: user.role } });
       } else {
         navigate('/dashboard');

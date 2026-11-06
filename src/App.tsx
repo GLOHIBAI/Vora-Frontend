@@ -26,6 +26,13 @@ const TalentRoleRedirect = () => {
   return <Navigate to={slug ? `/role/${slug}` : '/jobs'} replace />;
 };
 
+/** Redirect legacy /course/* paths to /courses/* */
+const CourseToCoursesRedirect = () => {
+  const location = useLocation();
+  const nextPath = location.pathname.replace(/^\/course\//, '/courses/');
+  return <Navigate to={`${nextPath}${location.search}${location.hash}`} replace />;
+};
+
 // Lazy load pages for performance
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Signup = lazy(() => import('./pages/auth/Signup'))
@@ -102,6 +109,9 @@ const SetBenchmarksPage = lazy(() => import('./pages/employer/SetBenchmarksPage'
 const JobPostedConfirmation = lazy(() => import('./pages/employer/JobPostedConfirmation'))
 const RoleLanding = lazy(() => import('./pages/public/RoleLanding'))
 const RoleSignup = lazy(() => import('./pages/auth/RoleSignup'))
+const CourseViewRouter = lazy(() => import('./pages/courses/CourseViewRouter'))
+const CourseSignup = lazy(() => import('./pages/auth/CourseSignup'))
+const LearnerOnboarding = lazy(() => import('./pages/onboarding/LearnerOnboarding'))
 const CoursesPage = lazy(() => import('./pages/courses/CoursesPage'))
 const CoursesList = lazy(() => import('./pages/courses/CoursesList'))
 const CourseDetails = lazy(() => import('./pages/courses/CourseDetails'))
@@ -205,6 +215,7 @@ const App = () => {
           <Route path="/role/:slug/verify-email" element={<VerifyOTP />} />
           <Route path="/role/:slug/verify-otp" element={<VerifyOTP />} />
           <Route path="/role/:slug/reset-password" element={<ResetPassword />} />
+          <Route path="/course/*" element={<CourseToCoursesRedirect />} />
           <Route path="/dashboard" element={<ProtectedDashboardLayout><Dashboard /></ProtectedDashboardLayout>} />
           <Route path="/jobs" element={<ProtectedDashboardLayout><Jobs /></ProtectedDashboardLayout>} />
           <Route path="/jobs/posted/confirmation" element={<ProtectedDashboardLayout><EmployerRoute><JobPostedConfirmation /></EmployerRoute></ProtectedDashboardLayout>} />
@@ -238,7 +249,13 @@ const App = () => {
           <Route path="/mentor/courses/create" element={<ProtectedDashboardLayout><CreateCoursePage /></ProtectedDashboardLayout>} />
           <Route path="/mentor/courses/:id/edit" element={<ProtectedDashboardLayout><CreateCoursePage /></ProtectedDashboardLayout>} />
           <Route path="/mentor/courses/:id/builder" element={<ProtectedDashboardLayout><CreateCoursePage /></ProtectedDashboardLayout>} />
-          <Route path="/courses/:id" element={<ProtectedDashboardLayout><CourseDetails /></ProtectedDashboardLayout>} />
+          <Route path="/courses/:id" element={<CourseViewRouter />} />
+          <Route path="/courses/:id/signup" element={<CourseSignup />} />
+          <Route path="/courses/:id/login" element={<Login />} />
+          <Route path="/courses/:id/forgot-password" element={<ForgotPassword />} />
+          <Route path="/courses/:id/verify-email" element={<VerifyOTP />} />
+          <Route path="/courses/:id/verify-otp" element={<VerifyOTP />} />
+          <Route path="/courses/:id/reset-password" element={<ResetPassword />} />
           <Route path="/mentor/courses" element={<ProtectedDashboardLayout><MentorCoursesPage /></ProtectedDashboardLayout>} />
           <Route path="/sessions" element={<ProtectedDashboardLayout><MentorSessionsPage /></ProtectedDashboardLayout>} />
           <Route path="/mentor/sessions" element={<ProtectedDashboardLayout><MentorSessionsPage /></ProtectedDashboardLayout>} />
@@ -270,6 +287,7 @@ const App = () => {
           <Route path="/onboarding/employer" element={<ProtectedRoute><EmployerOnboarding /></ProtectedRoute>} />
           {/* Normal Onboarding Routes */}
           <Route path="/onboarding/talent" element={<ProtectedRoute><TalentOnboarding /></ProtectedRoute>} />
+          <Route path="/onboarding/learner" element={<ProtectedRoute><LearnerOnboarding /></ProtectedRoute>} />
 
           {/* Job-Link RoDynamic & Protected) */}
           <Route path="/onboarding/talent/:roleSlug" element={<RoleApplyRoute />}>

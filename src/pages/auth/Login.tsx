@@ -83,7 +83,9 @@ const Login: React.FC = () => {
       const user = authData?.user;
 
       if (user) {
-        let targetRoute = routeAfterAuth(user);
+        const nextStep = (authData as any)?.nextStep;
+        const targetCourseId = (authData as any)?.courseId;
+        let targetRoute = routeAfterAuth(user, nextStep, targetCourseId);
         const isRestrictedRole = slug && user.role && user.role.toUpperCase() !== 'TALENT';
 
         if (slug && user.role?.toUpperCase() === 'TALENT') {

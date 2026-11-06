@@ -1404,14 +1404,14 @@ const MentorSettingsView: React.FC = () => {
               <div className="bg-white border border-[#E6E6E6] rounded-xl p-5 shadow-sm space-y-4">
                 <div>
                   <h3 className="text-sm font-bold text-[#1A1A1A]">Enrollment Settings</h3>
-                  <p className="text-xs text-[#808080]">Control how learners enroll and what access they receive.</p>
+                  <p className="text-xs text-[#808080]">Control how talents enroll and what access they receive.</p>
                 </div>
 
                 <div className="divide-y divide-[#F7F7F7]">
                   <div className="py-3 flex items-center justify-between gap-4">
                     <div>
                       <div className="text-xs font-bold text-[#1A1A1A]">Allow lifetime access after purchase</div>
-                      <div className="text-[11px] text-[#808080]">Enrolled learners can revisit course content indefinitely.</div>
+                      <div className="text-[11px] text-[#808080]">Enrolled talents can revisit course content indefinitely.</div>
                     </div>
                     <ToggleSwitch
                       checked={courseSettings.lifetimeAccess}
@@ -1422,7 +1422,7 @@ const MentorSettingsView: React.FC = () => {
                   <div className="py-3 flex items-center justify-between gap-4">
                     <div>
                       <div className="text-xs font-bold text-[#1A1A1A]">Show enrollment count publicly</div>
-                      <div className="text-[11px] text-[#808080]">Display number of enrolled learners on your course listings.</div>
+                      <div className="text-[11px] text-[#808080]">Display number of enrolled talents on your course listings.</div>
                     </div>
                     <ToggleSwitch
                       checked={courseSettings.showEnrolledCount}
@@ -1433,7 +1433,7 @@ const MentorSettingsView: React.FC = () => {
                   <div className="py-3 flex items-center justify-between gap-4">
                     <div>
                       <div className="text-xs font-bold text-[#1A1A1A]">Allow course reviews</div>
-                      <div className="text-[11px] text-[#808080]">Learners can leave star ratings and written reviews.</div>
+                      <div className="text-[11px] text-[#808080]">Talents can leave star ratings and written reviews.</div>
                     </div>
                     <ToggleSwitch
                       checked={courseSettings.allowReviews}
@@ -1447,12 +1447,12 @@ const MentorSettingsView: React.FC = () => {
               <div className="bg-white border border-[#E6E6E6] rounded-xl p-5 shadow-sm space-y-3">
                 <div>
                   <h3 className="text-sm font-bold text-[#1A1A1A]">Completion Certificates</h3>
-                  <p className="text-xs text-[#808080]">Automatically issue certificates when learners complete your courses.</p>
+                  <p className="text-xs text-[#808080]">Automatically issue certificates when talents complete your courses.</p>
                 </div>
                 <div className="flex items-center justify-between gap-4 pt-1">
                   <div>
                     <div className="text-xs font-bold text-[#1A1A1A]">Issue VORA completion certificates</div>
-                    <div className="text-[11px] text-[#808080]">Learners receive a certificate with your name and course title.</div>
+                    <div className="text-[11px] text-[#808080]">Talents receive a certificate with your name and course title.</div>
                   </div>
                   <ToggleSwitch
                     checked={courseSettings.issueCertificates}

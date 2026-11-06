@@ -97,6 +97,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       onClose={() => !isLoading && onClose()}
       maxWidth={maxWidth}
       dismissOnEscape={!isLoading}
+      showCloseButton={false}
       customHeader={
         <div className="p-6 pb-0 flex items-start justify-between gap-4">
           <div className="flex items-start gap-3.5 min-w-0">
@@ -106,7 +107,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                 {title}
               </h3>
               {subtitle && (
-                <p className="text-sm text-slate-500 mt-1 leading-normal">
+                <p className="text-sm text-slate-600 mt-1 leading-normal font-normal">
                   {subtitle}
                 </p>
               )}
@@ -228,7 +229,7 @@ const ModalDialog: ModalDialogComponent = Object.assign(
     containerClassName = '',
     hideHeaderBorder = false,
     hideFooterBorder = false,
-    showCloseButton = false,
+    showCloseButton = true,
     customHeader,
     dismissOnEscape = true,
   }: ModalDialogProps) => {
@@ -269,15 +270,20 @@ const ModalDialog: ModalDialogComponent = Object.assign(
           {customHeader ? (
             customHeader
           ) : title ? (
-            <div className={`px-5 sm:px-6 pt-5 pb-4 ${hideHeaderBorder ? '' : 'border-b border-[#E6E6E6]'} shrink-0 flex items-start justify-between gap-4`}>
+            <div className={`px-6 pt-6 pb-4 ${hideHeaderBorder ? '' : 'border-b border-slate-200'} shrink-0 flex items-start justify-between gap-4`}>
               <div className="min-w-0 flex-1">
                 <ModalTitle id="modal-title">{title}</ModalTitle>
+                {subtitle && (
+                  <p className="text-sm sm:text-base text-slate-600 font-normal mt-1 leading-relaxed">
+                    {subtitle}
+                  </p>
+                )}
               </div>
               {showCloseButton && (
                 <button
                   type="button"
                   onClick={onClose}
-                  className="p-1 -mr-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                  className="p-1.5 -mr-1.5 -mt-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-slate-300"
                   aria-label="Close dialog"
                 >
                   <CloseIcon size={16} />
@@ -287,14 +293,17 @@ const ModalDialog: ModalDialogComponent = Object.assign(
           ) : null}
 
           <div className="overflow-y-auto flex-1 min-h-0">
-            {subtitle && (
-              <p className="px-5 sm:px-6 text-sm sm:text-base text-black my-3 sm:my-4 leading-relaxed font-bold">{subtitle}</p>
+            {/* If title was not provided but subtitle was, render subtitle here */}
+            {!title && subtitle && (
+              <p className="px-6 text-sm sm:text-base text-slate-600 my-4 leading-relaxed font-normal">
+                {subtitle}
+              </p>
             )}
-            <div className="px-5 sm:px-6 pb-5">{children}</div>
+            <div className="px-6 pb-6 pt-2">{children}</div>
           </div>
 
           {(footer || actions) && (
-            <div className={`px-5 sm:px-6 pb-5 pt-3 ${hideFooterBorder ? '' : 'border-t border-[#F7F7F7]'} shrink-0`}>
+            <div className={`px-6 pb-6 pt-3.5 ${hideFooterBorder ? '' : 'border-t border-slate-100'} shrink-0`}>
               {footer || actions}
             </div>
           )}

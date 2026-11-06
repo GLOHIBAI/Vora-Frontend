@@ -37,6 +37,11 @@ export interface RolePostingIntakeData {
   fillMethod: RolePostingFillMethod;
   vaultMode: boolean;
   vaultGoLiveDate?: string | null;
+  scheduledGoLiveDate?: string | null;
+  vaultEditCount?: number;
+  vaultEditsRemaining?: number;
+  editsUsed?: number;
+  editsRemaining?: number;
   jobDescription?: RolePostingJobDescription;
   createdAt: string;
   updatedAt: string;

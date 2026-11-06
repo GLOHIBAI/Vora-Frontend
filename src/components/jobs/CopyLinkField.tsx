@@ -1,54 +1,90 @@
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { CheckIcon } from '../common/Icons';
 
 interface CopyLinkFieldProps {
   url: string;
   className?: string;
+  inputAriaLabel?: string;
 }
 
-const CopyLinkField: React.FC<CopyLinkFieldProps> = ({ url, className = '' }) => {
-  const [copied, setCopied] = useState(false);
+export const CopyLinkField: React.FC<CopyLinkFieldProps> = ({
+  url,
+  className = '',
+  inputAriaLabel = 'Course public link',
+}) => {
+  const [copyState, setCopyState] = useState<'idle' | 'success' | 'manual'>('idle');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setCopied(false);
+    setCopyState('idle');
   }, [url]);
 
   const handleCopy = useCallback(async () => {
     try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error('Clipboard API not available');
+      }
       await navigator.clipboard.writeText(url);
-      setCopied(true);
+      setCopyState('success');
       toast.success('Link copied to clipboard!');
-      window.setTimeout(() => setCopied(false), 2500);
+      window.setTimeout(() => setCopyState('idle'), 2200);
     } catch {
-      toast.error('Could not copy link. Please copy manually.');
+      // Clipboard blocked or unsupported
+      setCopyState('manual');
+      if (inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.select();
+      }
+      toast('Press Ctrl+C to copy', { icon: '📋' });
+      window.setTimeout(() => setCopyState('idle'), 4000);
     }
   }, [url]);
 
+  const handleSelectAll = (e: React.SyntheticEvent<HTMLInputElement>) => {
+    e.currentTarget.select();
+  };
+
   return (
-    <div className={`flex flex-col sm:flex-row gap-2 ${className}`}>
-      <input
-        readOnly
-        value={url}
-        className="flex-1 min-w-0 px-3.5 py-2.5 border border-[#E6E6E6] rounded-lg text-[13px] text-[#4A4A4A] bg-[#F7F7F7] outline-none"
-        aria-label="Role share link"
-      />
+    <div className={`flex flex-col sm:flex-row gap-2.5 ${className}`}>
+      {/* Screen-reader live region for copy announcements */}
+      <div className="sr-only" aria-live="polite">
+        {copyState === 'success' ? 'Link copied to clipboard.' : ''}
+      </div>
+
+      <div className="relative flex-1 min-w-0">
+        <input
+          ref={inputRef}
+          readOnly
+          value={url}
+          onClick={handleSelectAll}
+          onFocus={handleSelectAll}
+          title={url}
+          className="w-full h-11 px-3.5 border border-slate-200 rounded-xl text-sm text-slate-700 bg-slate-50/80 hover:bg-slate-50 focus:bg-white focus:border-[#0047CC] focus:ring-2 focus:ring-[#0047CC]/20 outline-hidden font-mono truncate transition-all cursor-pointer select-all"
+          aria-label={inputAriaLabel}
+        />
+      </div>
+
       <button
         type="button"
         onClick={handleCopy}
-        className={`inline-flex items-center justify-center gap-1.5 shrink-0 px-5 py-2.5 rounded-lg text-[13px] font-bold transition-colors cursor-pointer ${
-          copied
-            ? 'bg-[#0047CC] text-white'
-            : 'bg-[#0047CC] hover:bg-[#0039A6] text-white'
+        className={`h-11 shrink-0 px-5 rounded-xl text-sm font-semibold transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-98 focus:outline-hidden focus:ring-2 focus:ring-offset-2 ${
+          copyState === 'success'
+            ? 'bg-emerald-600 text-white focus:ring-emerald-500'
+            : copyState === 'manual'
+            ? 'bg-amber-600 text-white focus:ring-amber-500'
+            : 'bg-[#0047CC] hover:bg-[#0039A6] text-white focus:ring-[#0047CC]'
         }`}
       >
-        {copied ? (
+        {copyState === 'success' ? (
           <>
-            <CheckIcon size={12} strokeWidth={3} />
-            Copied!
+            <CheckIcon size={15} strokeWidth={2.5} />
+            <span>Copied ✓</span>
           </>
+        ) : copyState === 'manual' ? (
+          <span>Press Ctrl+C</span>
         ) : (
-          'Copy link'
+          <span>Copy link</span>
         )}
       </button>
     </div>

@@ -960,7 +960,7 @@ const MentorFinancesPage: React.FC = () => {
                 <InfoIcon size={16} />
               </span>
               <div>
-                <strong className="font-semibold text-slate-900">PPP note:</strong> Course revenues reflect the blended purchasing power rate across all enrolled global learners. Each learner contributes their tier-adjusted tuition — maintaining equal educational access while compensating mentors fairly.
+                <strong className="font-semibold text-slate-900">PPP note:</strong> Course revenues reflect the blended purchasing power rate across all enrolled global talents. Each talent contributes their tier-adjusted tuition — maintaining equal educational access while compensating mentors fairly.
               </div>
             </div>
           </div>

@@ -321,7 +321,7 @@ const CourseCardItem: React.FC<CourseCardItemProps> = ({
               onClick={() => onOpen(course.id, course.cta?.hrefHint)}
               className="flex-1 h-10 px-4 rounded-xl bg-[#0047CC] hover:bg-[#003bb5] text-white font-semibold text-xs shadow-xs hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center"
             >
-              Continue Learning
+              Continue as Talent
             </button>
           ) : (
             <button
@@ -621,7 +621,7 @@ const CoursesList: React.FC = () => {
               <EmptyState
                 icon={GraduationCapIcon}
                 title="No active ongoing courses"
-                description="You are not enrolled in any courses right now. Explore top courses taught by industry leaders to start learning."
+                description="You are not enrolled in any courses right now. Explore top courses taught by industry leaders to start as talent."
                 variant="dashed"
                 className="m-4 sm:m-6"
                 action={{
@@ -1360,7 +1360,7 @@ const CoursesList: React.FC = () => {
                           onClick={() => handleOpenCourse(course.id, course.cta?.hrefHint)}
                           className="w-full sm:w-36 md:w-40 h-10 px-5 rounded-xl bg-[#0047CC] hover:bg-[#003bb5] text-white font-semibold text-xs shadow-xs hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center"
                         >
-                          Continue Learning
+                          Continue as Talent
                         </button>
                       ) : (
                         <button
@@ -1590,7 +1590,7 @@ const CoursesList: React.FC = () => {
               {/* Country Selection (PPP Body fields) */}
               <div className="space-y-2">
                 <label className="text-[13px] font-bold text-gray-900">Country of Residence</label>
-                <p className="text-[11px] text-gray-400">Used to localize your learning path and certificate</p>
+                <p className="text-[11px] text-gray-400">Used to localize your talent profile and certificate</p>
                 <Select
                   hideLabel
                   placeholder="Select country..."

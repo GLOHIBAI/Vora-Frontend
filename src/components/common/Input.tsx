@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { EyeIcon, EyeOffIcon } from './Icons';
+import { EyeIcon, EyeOffIcon, AlertTriangleIcon } from './Icons';
 import DateInput from './DateInput';
 
 import type { InputProps } from '../../types';
@@ -51,13 +51,14 @@ const Input: React.FC<InputProps> = ({
   return (
     <div className="w-full">
       {showLabel && (
-        <label className="block text-sm font-medium text-text-secondary mt-1 mb-3">
+        <label className="block text-sm font-medium text-slate-800 mb-1.5">
           {label}
+          {required && <span className="text-red-500 ml-0.5">*</span>}
         </label>
       )}
       <div className="relative">
         {Icon && (
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-300">
+          <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-slate-400">
             <Icon size={18} />
           </div>
         )}
@@ -71,7 +72,7 @@ const Input: React.FC<InputProps> = ({
           placeholder={placeholder}
           disabled={disabled}
           required={required}
-          className={`w-full ${Icon ? 'pl-12' : 'pl-4'} ${isPassword && showPasswordToggle ? 'pr-12' : 'pr-4'} py-3 sm:py-3.5 rounded-lg border ${error ? 'border-red-500 bg-white' : 'border-border-default bg-white'} focus:outline-none focus:ring-2 ${error ? 'focus:ring-red-500/20 focus:border-red-500' : 'focus:ring-brand-blue/20 focus:border-brand-blue'} transition-all placeholder:text-gray-400 ${className}`}
+          className={`w-full ${Icon ? 'pl-11' : 'pl-3.5'} ${isPassword && showPasswordToggle ? 'pr-11' : 'pr-3.5'} h-11 sm:h-12 rounded-xl border ${error ? 'border-red-500 bg-white text-slate-900' : 'border-slate-200 hover:border-slate-300 bg-white text-slate-900'} focus:outline-hidden focus:ring-2 ${error ? 'focus:ring-red-500/20 focus:border-red-500' : 'focus:ring-[#0047CC]/20 focus:border-[#0047CC]'} transition-all placeholder:text-slate-400 text-sm sm:text-base disabled:bg-slate-50 disabled:text-slate-400 ${className}`}
           {...props}
         />
         {isPassword && showPasswordToggle && (
@@ -79,19 +80,20 @@ const Input: React.FC<InputProps> = ({
             type="button"
             onClick={() => setShowPassword(!showPassword)}
             aria-label={showPassword ? 'Hide password' : 'Show password'}
-            className="absolute inset-y-0 right-0 flex items-center px-3.5 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer group"
+            className="absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer group"
           >
             {showPassword ? (
-              <EyeOffIcon size={20} className="group-hover:scale-110 transition-transform" />
+              <EyeOffIcon size={18} className="group-hover:scale-110 transition-transform" />
             ) : (
-              <EyeIcon size={20} className="group-hover:scale-110 transition-transform" />
+              <EyeIcon size={18} className="group-hover:scale-110 transition-transform" />
             )}
           </button>
         )}
       </div>
       {error && helperText && (
-        <p className="mt-1.5 text-xs text-red-500 font-medium ml-1">
-          {helperText}
+        <p className="mt-1.5 text-xs text-red-600 font-medium ml-0.5 flex items-center gap-1.5">
+          <AlertTriangleIcon size={13} className="shrink-0 text-red-500" />
+          <span>{helperText}</span>
         </p>
       )}
     </div>

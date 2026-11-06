@@ -16,6 +16,10 @@ export interface User {
   onboardingStep?: number;
   onboardingCompleted?: boolean;
   isOnboardingComplete?: boolean;
+  isLearner?: boolean;
+  isLearnerOnboardingComplete?: boolean;
+  hasCompletedCourse?: boolean;
+  canUpgradeToTalent?: boolean;
 }
 
 export interface AuthContextType {

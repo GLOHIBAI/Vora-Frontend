@@ -3,7 +3,7 @@ import FullPageSpinner from '../common/FullPageSpinner';
 import VoraLogo from '../common/VoraLogo';
 
 export const authFooterLinkClass =
-  'font-medium text-[#60A5FA] hover:text-[#2563EB] transition-colors duration-200';
+  'font-semibold text-[#0047CC] hover:text-[#0039A6] transition-colors duration-200';
 
 type AuthPageShellProps = {
   children?: ReactNode;
