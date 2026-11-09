@@ -70,16 +70,16 @@ export const CopyLinkField: React.FC<CopyLinkFieldProps> = ({
         onClick={handleCopy}
         className={`h-11 shrink-0 px-5 rounded-xl text-sm font-semibold transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-98 focus:outline-hidden focus:ring-2 focus:ring-offset-2 ${
           copyState === 'success'
-            ? 'bg-emerald-600 text-white focus:ring-emerald-500'
+            ? 'bg-[#0039A6] hover:bg-[#0039A6] text-white focus:ring-[#0047CC]'
             : copyState === 'manual'
-            ? 'bg-amber-600 text-white focus:ring-amber-500'
+            ? 'bg-slate-700 text-white focus:ring-slate-500'
             : 'bg-[#0047CC] hover:bg-[#0039A6] text-white focus:ring-[#0047CC]'
         }`}
       >
         {copyState === 'success' ? (
           <>
             <CheckIcon size={15} strokeWidth={2.5} />
-            <span>Copied ✓</span>
+            <span>Copied</span>
           </>
         ) : copyState === 'manual' ? (
           <span>Press Ctrl+C</span>
