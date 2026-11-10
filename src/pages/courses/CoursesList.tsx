@@ -653,8 +653,8 @@ const CoursesList: React.FC = () => {
 
               if (isCompleted) {
                 statusLabel = 'Completed';
-                statusChipClasses = 'bg-emerald-50 text-emerald-700 border border-emerald-200/80';
-                dotColor = 'bg-emerald-500';
+                statusChipClasses = 'bg-blue-50 text-[#0052CC] border border-blue-200/80';
+                dotColor = 'bg-[#0052CC]';
               } else if (isNotStarted) {
                 statusLabel = 'Not started';
                 statusChipClasses = 'bg-slate-100 text-slate-600 border border-slate-200/80';
@@ -752,9 +752,7 @@ const CoursesList: React.FC = () => {
                     {/* Progress Bar with visible darker track */}
                     <div className="w-full h-2 bg-slate-200/80 rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          isCompleted ? 'bg-emerald-500' : 'bg-[#0052CC]'
-                        }`}
+                        className="h-full rounded-full transition-all duration-500 bg-[#0052CC]"
                         style={{ width: `${progress}%` }}
                       />
                     </div>
@@ -908,15 +906,14 @@ const CoursesList: React.FC = () => {
                         </span>
                       </div>
                       
-                      {/* Progress Bar with Green Completed Chip */}
+                      {/* Progress Bar with Blue Completed Chip */}
                       <div className="pt-2 flex items-center gap-3">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/70">
-                          <CheckCircleIcon size={12} className="text-emerald-500" />
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-[#0052CC] border border-blue-200/70">
                           100% completed
                         </span>
                         <div className="w-full max-w-[160px] h-1.5 bg-slate-200/80 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-emerald-500 rounded-full"
+                            className="h-full bg-[#0052CC] rounded-full"
                             style={{ width: '100%' }}
                           />
                         </div>
@@ -928,8 +925,7 @@ const CoursesList: React.FC = () => {
                   <div className="bg-[#FAFAFA] border border-gray-100/90 rounded-[16px] p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 md:w-[320px] lg:w-[360px] shrink-0">
                     <div className="space-y-0.5">
                       <span className="text-[11px] text-gray-400 font-medium">Status</span>
-                      <div className="text-[16px] font-bold text-emerald-600 leading-tight flex items-center gap-1.5">
-                        <CheckCircleIcon size={18} className="text-emerald-500" />
+                      <div className="text-[16px] font-bold text-[#0052CC] leading-tight">
                         {enrollment.statusLabel || 'Completed'}
                       </div>
                     </div>
@@ -1648,7 +1644,7 @@ const CoursesList: React.FC = () => {
             <div className="bg-[#F8FAFC] border border-gray-100 rounded-[16px] p-3 sm:p-4 text-[12px] text-gray-600 grid grid-cols-2 gap-2 text-center">
               <div>
                 <p className="text-gray-400 text-[10px] sm:text-[11px]">Status</p>
-                <p className="font-bold text-emerald-600 text-[14px]">100% Completed</p>
+                <p className="font-bold text-[#0052CC] text-[14px]">100% Completed</p>
               </div>
               <div>
                 <p className="text-gray-400 text-[10px] sm:text-[11px]">Instructor</p>
