@@ -266,23 +266,29 @@ export const ModuleAssessmentModal: React.FC<ModuleAssessmentModalProps> = ({
             </div>
           )}
 
-          {/* Fetch error / 403 Lock state */}
+          {/* Fetch error / 403 Lock state / 404 Not published */}
           {!isLoading && fetchError && (
-            <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-6 text-center space-y-4 max-w-md mx-auto my-8">
-              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center space-y-4 max-w-md mx-auto my-8">
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#0052CC] flex items-center justify-center mx-auto">
                 <LockIcon size={24} />
               </div>
               <div className="space-y-1.5">
-                <h3 className="font-bold text-amber-950 text-base">Assessment Locked</h3>
-                <p className="text-xs text-amber-900 leading-relaxed">
-                  {(fetchError as any)?.message ||
-                    'You must complete all lessons and pass previous module assessments before taking this practical scenario.'}
+                <h3 className="font-bold text-slate-900 text-base">
+                  {(fetchError as any)?.status === 404 || (fetchError as any)?.statusCode === 404
+                    ? 'No Assessment Available'
+                    : 'Assessment Locked'}
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  {(fetchError as any)?.status === 404 || (fetchError as any)?.statusCode === 404
+                    ? 'This module does not currently have a published practical assessment.'
+                    : (fetchError as any)?.message ||
+                      'You must complete all lessons and pass previous module assessments before taking this practical scenario.'}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={onClose}
-                className="px-6 py-2 bg-white border border-amber-300 text-amber-900 rounded-full text-xs font-bold hover:bg-amber-50"
+                className="px-6 py-2 bg-[#0052CC] text-white rounded-full text-xs font-bold hover:bg-[#0047CC] transition-colors cursor-pointer"
               >
                 Back to Syllabus
               </button>

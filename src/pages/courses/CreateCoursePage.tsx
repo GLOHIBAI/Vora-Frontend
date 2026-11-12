@@ -383,7 +383,7 @@ export const CreateCoursePage: React.FC = () => {
   const [promoVideoS3Key, setPromoVideoS3Key] = useState<string | null>(null);
 
   const [modules, setModules] = useState<BuilderModule[]>([]);
-  const [isAddingModule, setIsAddingModule] = useState(false);
+
 
 
   // Pricing
@@ -689,11 +689,17 @@ export const CreateCoursePage: React.FC = () => {
         setCompletedSteps(new Set<StepId>([1, 2, 3, 4, 5, 6]));
       }
     } else if (builderData?.modules) {
-      if (!isAddingModule) {
-        setModules(sortModules(builderData.modules));
-      }
+      setModules((prev) => {
+        const hasPendingTemp = prev.some((m) => m.id.startsWith('temp-'));
+        if (hasPendingTemp) {
+          const tempMods = prev.filter((m) => m.id.startsWith('temp-'));
+          const serverMods = sortModules(builderData.modules);
+          return [...serverMods, ...tempMods];
+        }
+        return sortModules(builderData.modules);
+      });
     }
-  }, [builderData, courseDetails, isAddingModule, navStateCourse, sortModules]);
+  }, [builderData, courseDetails, navStateCourse, sortModules]);
 
   // Load from Gap parameter
   useEffect(() => {
@@ -1113,16 +1119,7 @@ export const CreateCoursePage: React.FC = () => {
   };
 
   // Curriculum Modules & Lessons
-  const handleAddModule = async () => {
-    if (isAddingModule) return;
-    setIsAddingModule(true);
-
-    const activeId = await ensureDraftCourse();
-    if (!activeId) {
-      setIsAddingModule(false);
-      return;
-    }
-
+  const handleAddModule = () => {
     // Determine the next module number by checking existing numbers
     const existingNums = modules
       .map((m) => {
@@ -1134,82 +1131,128 @@ export const CreateCoursePage: React.FC = () => {
     const moduleTitle = `Module ${nextNum}: `;
     const nextOrder = modules.length;
 
-    try {
-      const createdMod = await createModuleMutation.mutateAsync({
-        courseId: activeId,
-        payload: {
-          title: moduleTitle,
-        },
-      });
+    // Clear any curriculum validation errors
+    setFormErrors((prev) => {
+      if (!prev.curriculum) return prev;
+      const copy = { ...prev };
+      delete copy.curriculum;
+      return copy;
+    });
 
-      if (createdMod?.id) {
-        // Pre-seed query cache for assessment draft of this brand new module so it never flashes a loading spinner!
-        queryClient.setQueryData(courseBuilderKeys.moduleAssessmentDraft(activeId, createdMod.id), null);
+    // INSTANT OPTIMISTIC UI: Add module + initial lesson immediately (0ms wait)
+    const tempModuleId = `temp-module-${Date.now()}`;
+    const tempLessonId = `temp-lesson-${Date.now()}`;
+    const initialLessons: BuilderLesson[] = [
+      {
+        id: tempLessonId,
+        moduleId: tempModuleId,
+        title: 'Welcome & Foundations',
+        contentType: 'VIDEO',
+        durationMinutes: 15,
+        orderIndex: 0,
+      },
+    ];
 
-        let initialLessons: BuilderLesson[] = [];
-        try {
-          const createdLesson = await createLessonMutation.mutateAsync({
-            courseId: activeId,
-            moduleId: createdMod.id,
-            payload: {
-              title: 'Welcome & Foundations',
-              contentType: 'VIDEO',
-              durationMinutes: 15,
-            },
-          });
-          if (createdLesson?.id) {
-            initialLessons = [
-              {
-                id: createdLesson.id,
-                moduleId: createdMod.id,
-                title: createdLesson.title || 'Welcome & Foundations',
-                contentType: createdLesson.contentType || 'VIDEO',
-                durationMinutes: createdLesson.durationMinutes ?? 15,
-                orderIndex: 0,
-              },
-            ];
-          }
-        } catch (lessonErr) {
-          console.warn('Initial lesson creation failed, module created successfully:', lessonErr);
-        }
+    const optimisticModule: BuilderModule = {
+      id: tempModuleId,
+      courseId: courseId || 'temp-course',
+      title: moduleTitle,
+      orderIndex: nextOrder + 1,
+      lessons: initialLessons,
+    };
 
-        const newModule: BuilderModule = {
-          id: createdMod.id,
-          courseId: activeId,
-          title: createdMod.title || moduleTitle,
-          orderIndex: nextOrder + 1,
-          lessons: initialLessons,
-        };
+    setModules((prev) => [...prev, optimisticModule]);
 
-        setModules((prev) => {
-          const map = new Map<string, BuilderModule>();
-          for (const m of prev) {
-            if (m.id) map.set(m.id, m);
-          }
-          map.set(newModule.id, newModule);
-          return sortModules(Array.from(map.values()));
-        });
-
-        queryClient.setQueryData(courseBuilderKeys.detail(activeId), (old: any) => {
-          if (!old) return old;
-          const oldMods: BuilderModule[] = old.modules || [];
-          const map = new Map<string, BuilderModule>();
-          for (const m of oldMods) {
-            if (m.id) map.set(m.id, m);
-          }
-          map.set(newModule.id, newModule);
-          return {
-            ...old,
-            modules: sortModules(Array.from(map.values())),
-          };
-        });
-        toast.success('New module added.');
-      }
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to add module.');
-    } finally {
-      setIsAddingModule(false);
+    // Pre-seed query cache for assessment draft so it never shows a spinner
+    if (courseId) {
+      queryClient.setQueryData(courseBuilderKeys.moduleAssessmentDraft(courseId, tempModuleId), null);
     }
+
+    // Call endpoints underground (in the background) without making user wait
+    (async () => {
+      try {
+        const activeId = await ensureDraftCourse();
+        if (!activeId) return;
+
+        const createdMod = await createModuleMutation.mutateAsync({
+          courseId: activeId,
+          payload: {
+            title: moduleTitle,
+          },
+        });
+
+        if (createdMod?.id) {
+          // Pre-seed query cache for assessment draft of this brand new module
+          queryClient.setQueryData(courseBuilderKeys.moduleAssessmentDraft(activeId, createdMod.id), null);
+
+          let realLessonId = tempLessonId;
+          try {
+            const createdLesson = await createLessonMutation.mutateAsync({
+              courseId: activeId,
+              moduleId: createdMod.id,
+              payload: {
+                title: 'Welcome & Foundations',
+                contentType: 'VIDEO',
+                durationMinutes: 15,
+              },
+            });
+            if (createdLesson?.id) {
+              realLessonId = createdLesson.id;
+            }
+          } catch (lessonErr) {
+            console.warn('Initial lesson creation failed, module created successfully:', lessonErr);
+          }
+
+          // Seamlessly swap temp IDs with real server IDs
+          setModules((prev) =>
+            prev.map((m) =>
+              m.id === tempModuleId
+                ? {
+                    ...m,
+                    id: createdMod.id,
+                    courseId: activeId,
+                    title: createdMod.title || m.title,
+                    lessons: m.lessons.map((l) =>
+                      l.id === tempLessonId
+                        ? { ...l, id: realLessonId, moduleId: createdMod.id }
+                        : { ...l, moduleId: createdMod.id }
+                    ),
+                  }
+                : m
+            )
+          );
+
+          queryClient.setQueryData(courseBuilderKeys.detail(activeId), (old: any) => {
+            if (!old) return old;
+            const oldMods: BuilderModule[] = old.modules || [];
+            const updated = oldMods.map((m) =>
+              m.id === tempModuleId
+                ? {
+                    ...m,
+                    id: createdMod.id,
+                    courseId: activeId,
+                    title: createdMod.title || m.title,
+                    lessons: m.lessons.map((l) =>
+                      l.id === tempLessonId
+                        ? { ...l, id: realLessonId, moduleId: createdMod.id }
+                        : { ...l, moduleId: createdMod.id }
+                    ),
+                  }
+                : m
+            );
+            return {
+              ...old,
+              modules: sortModules(updated),
+            };
+          });
+          toast.success('New module added.');
+        }
+      } catch (err: any) {
+        // Revert optimistic module if network failed
+        setModules((prev) => prev.filter((m) => m.id !== tempModuleId));
+        toast.error(err?.message || 'Failed to add module.');
+      }
+    })();
   };
 
   const handleModuleTitleBlur = async (moduleId: string, newTitle: string) => {
@@ -3205,23 +3248,13 @@ export const CreateCoursePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleAddModule}
-                  disabled={isAddingModule}
-                  className="w-full py-3.5 px-4 border-2 border-dashed border-[#CBD5E1] hover:border-[#0047CC] hover:bg-[#F0F6FF] disabled:opacity-60 disabled:cursor-not-allowed text-[#475569] hover:text-[#0047CC] rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
+                  className="w-full py-3.5 px-4 border-2 border-dashed border-[#CBD5E1] hover:border-[#0047CC] hover:bg-[#F0F6FF] text-[#475569] hover:text-[#0047CC] rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
                 >
-                  {isAddingModule ? (
-                    <>
-                      <Spinner size={16} className="text-[#0047CC]" />
-                      <span>Adding Curriculum Module…</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                      </svg>
-                      <span>Add New Curriculum Module</span>
-                    </>
-                  )}
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  <span>Add New Curriculum Module</span>
                 </button>
               </div>
             )}

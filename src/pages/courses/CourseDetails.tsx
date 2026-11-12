@@ -400,7 +400,9 @@ const CourseDetails: React.FC = () => {
                         </h3>
                         {isModuleLocked && (
                           <p className="text-[10px] text-slate-400 font-medium">
-                            Complete & pass Module {idx} practical assessment to unlock
+                            {idx > 0 && course.modules[idx - 1]?.assessment
+                              ? `Complete & pass Module ${idx} practical assessment to unlock`
+                              : `Complete Module ${idx} lessons to unlock`}
                           </p>
                         )}
                       </div>
@@ -459,56 +461,58 @@ const CourseDetails: React.FC = () => {
                           );
                         })}
 
-                        {/* Module Practical Scenario Assessment Row */}
-                        <div className="p-3.5 bg-slate-50/90 border-t border-slate-100 flex items-center justify-between gap-3">
-                          <div className="space-y-0.5 min-w-0 flex-1 pl-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-[#0052CC]">
-                                Practical Assessment
-                              </span>
-                              {assessment?.passed ? (
-                                <span className="text-[10px] font-bold text-[#0052CC] bg-blue-100/70 px-2 py-0.2 rounded-full">
-                                  Passed ({assessment.highestScore || 80}%)
+                        {/* Module Practical Scenario Assessment Row - only shown when module has a published assessment */}
+                        {Boolean(assessment) && (
+                          <div className="p-3.5 bg-slate-50/90 border-t border-slate-100 flex items-center justify-between gap-3">
+                            <div className="space-y-0.5 min-w-0 flex-1 pl-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-[#0052CC]">
+                                  Practical Assessment
                                 </span>
-                              ) : assessment?.isInCooldown ? (
-                                <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.2 rounded-full">
-                                  Cool-off ({assessment.cooldownRemainingMinutes || 720}m left)
-                                </span>
-                              ) : null}
+                                {assessment?.passed ? (
+                                  <span className="text-[10px] font-bold text-[#0052CC] bg-blue-100/70 px-2 py-0.2 rounded-full">
+                                    Passed ({assessment.highestScore || 80}%)
+                                  </span>
+                                ) : assessment?.isInCooldown ? (
+                                  <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.2 rounded-full">
+                                    Cool-off ({assessment.cooldownRemainingMinutes || 720}m left)
+                                  </span>
+                                ) : null}
+                              </div>
+                              <p className="text-[12px] font-bold text-slate-900 truncate">
+                                {assessment?.title || `${module.title} Practical Scenario`}
+                              </p>
+                              <p className="text-[10px] text-slate-500">
+                                {assessment?.passed
+                                  ? 'Scenario decision mastered. Module complete.'
+                                  : canTakeAssessment
+                                  ? `Pass mark 80% • ${assessment?.attemptsRemainingInCycle ?? 3} attempts remaining`
+                                  : 'Complete all module lessons to unlock assessment'}
+                              </p>
                             </div>
-                            <p className="text-[12px] font-bold text-slate-900 truncate">
-                              {assessment?.title || `${module.title} Practical Scenario`}
-                            </p>
-                            <p className="text-[10px] text-slate-500">
-                              {assessment?.passed
-                                ? 'Scenario decision mastered. Module complete.'
-                                : canTakeAssessment
-                                ? `Pass mark 80% • ${assessment?.attemptsRemainingInCycle ?? 3} attempts remaining`
-                                : 'Complete all module lessons to unlock assessment'}
-                            </p>
-                          </div>
 
-                          <button
-                            type="button"
-                            disabled={!canTakeAssessment || assessment?.isInCooldown}
-                            onClick={() => setAssessmentModalModule({ moduleId: module.id, moduleTitle: module.title })}
-                            className={`px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 transition-all cursor-pointer ${
-                              assessment?.passed
-                                ? 'bg-blue-50 text-[#0052CC] border border-blue-200 hover:bg-blue-100'
-                                : canTakeAssessment && !assessment?.isInCooldown
-                                ? 'bg-[#0052CC] hover:bg-[#0047CC] text-white shadow-xs'
-                                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                            }`}
-                          >
-                            {assessment?.passed
-                              ? 'Review Assessment'
-                              : assessment?.isInCooldown
-                              ? 'In Cool-off'
-                              : canTakeAssessment
-                              ? 'Take Assessment'
-                              : 'Locked'}
-                          </button>
-                        </div>
+                            <button
+                              type="button"
+                              disabled={!canTakeAssessment || assessment?.isInCooldown}
+                              onClick={() => setAssessmentModalModule({ moduleId: module.id, moduleTitle: module.title })}
+                              className={`px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 transition-all cursor-pointer ${
+                                assessment?.passed
+                                  ? 'bg-blue-50 text-[#0052CC] border border-blue-200 hover:bg-blue-100'
+                                  : canTakeAssessment && !assessment?.isInCooldown
+                                  ? 'bg-[#0052CC] hover:bg-[#0047CC] text-white shadow-xs'
+                                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                              }`}
+                            >
+                              {assessment?.passed
+                                ? 'Review Assessment'
+                                : assessment?.isInCooldown
+                                ? 'In Cool-off'
+                                : canTakeAssessment
+                                ? 'Take Assessment'
+                                : 'Locked'}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

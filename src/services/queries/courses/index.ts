@@ -489,6 +489,7 @@ export const useModuleAssessmentQuery = (
       const res = await apiClient.get<CourseApiEnvelope<ModuleAssessmentData>>({
         url: `/courses/${courseId}/modules/${moduleId}/assessment`,
         auth: true,
+        suppressErrorToast: true,
       });
       return res?.data;
     },
