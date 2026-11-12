@@ -257,6 +257,92 @@ export interface CourseLesson {
   durationLabel: string; // e.g. "Video (2 minutes)"
   isCompleted?: boolean;
   order?: number;
+  transcript?: string | null;
+  notes?: string | null;
+}
+
+export interface ModuleAssessmentSummary {
+  title: string;
+  passingScore: number;
+  maxAttempts: number;
+  cooldownHours: number;
+  timeLimitMinutes?: number | null;
+  challengeCount: number;
+  passed: boolean;
+  highestScore?: number;
+  attemptsUsed: number;
+  attemptsRemainingInCycle: number;
+  isInCooldown: boolean;
+  cooldownUntil?: string | null;
+  cooldownRemainingMinutes?: number | null;
+  canAttempt: boolean;
+}
+
+export interface ModuleAssessmentChallengeOption {
+  id: string;
+  text: string;
+}
+
+export interface ModuleAssessmentChallenge {
+  id: string;
+  question: string;
+  options: ModuleAssessmentChallengeOption[];
+}
+
+export interface ModuleAssessmentSession {
+  startedAt: string;
+  expiresAt: string | null;
+  remainingSeconds: number | null;
+}
+
+export interface ModuleAssessmentData {
+  moduleId: string;
+  title: string;
+  scenarioContext?: string | Record<string, any>;
+  challenges: ModuleAssessmentChallenge[];
+  session: ModuleAssessmentSession;
+  passingScore: number;
+  maxAttempts: number;
+  attemptsUsed: number;
+  attemptsRemainingInCycle: number;
+}
+
+export interface ModuleAssessmentSubmitAnswer {
+  challengeId: string;
+  selectedOptionId: string;
+}
+
+export interface ModuleAssessmentFeedbackItem {
+  challengeId: string;
+  isCorrect: boolean;
+  yourChoice?: string;
+  correctChoice?: string;
+  rationale?: string;
+  explanation?: string;
+  competencyTag?: string;
+}
+
+export interface ModuleAssessmentSubmitResponse {
+  score: number;
+  passingScore: number;
+  passed: boolean;
+  timedOut: boolean;
+  attemptNumber: number;
+  attemptsRemainingInCycle: number;
+  cooldownUntil?: string | null;
+  nextModuleUnlocked?: boolean;
+  nextModuleId?: string | null;
+  courseCompleted?: boolean;
+  message?: string;
+  feedback?: ModuleAssessmentFeedbackItem[];
+}
+
+export interface ModuleAssessmentHistoryItem {
+  attemptNumber: number;
+  score: number;
+  passed: boolean;
+  timedOut: boolean;
+  submittedAt: string;
 }
 
 export interface CourseModule {
@@ -269,6 +355,10 @@ export interface CourseModule {
   durationLabel?: string;
   lessons: CourseLesson[];
   order?: number;
+  isLocked?: boolean;
+  canTakeAssessment?: boolean;
+  isCompleted?: boolean;
+  assessment?: ModuleAssessmentSummary | null;
 }
 
 export interface CourseChapterStatus {

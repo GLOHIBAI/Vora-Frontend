@@ -168,10 +168,13 @@ export const LearnerOnboarding: React.FC = () => {
       try {
         await onboardingMutation.mutateAsync(payload as any);
       } catch (err: any) {
-        // If already completed or benign 409, continue smoothly
-        if (err?.status !== 409) {
-          console.warn('[LearnerOnboarding] Notice during onboarding submit:', err);
+        // 409 = already a full talent
+        if (err?.status === 409) {
+          toast('Onboarding already completed. Taking you to courses...', { icon: 'ℹ️' });
+          navigate('/courses', { replace: true });
+          return;
         }
+        console.warn('[LearnerOnboarding] Notice during onboarding submit:', err);
       }
 
       // 2. Mark user onboarding complete locally with learner track flag

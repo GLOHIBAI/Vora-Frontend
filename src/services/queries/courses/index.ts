@@ -11,6 +11,10 @@ import type {
   RecordProgressResponseData,
   InstructorHubData,
   CreateCourseDto,
+  ModuleAssessmentData,
+  ModuleAssessmentSubmitAnswer,
+  ModuleAssessmentSubmitResponse,
+  ModuleAssessmentHistoryItem,
 } from '../../../types/courses';
 
 /**
@@ -465,5 +469,97 @@ export const useDeleteCourseMutation = () => {
 
       queryClient.invalidateQueries({ queryKey: ['courses', 'recommended'] });
     },
+  });
+};
+
+
+/**
+ * Hook to open/resume a module practical assessment attempt.
+ * Endpoint: GET /courses/:id/modules/:moduleId/assessment
+ */
+export const useModuleAssessmentQuery = (
+  courseId?: string,
+  moduleId?: string,
+  enabled: boolean = false
+) => {
+  return useQuery({
+    queryKey: ['courses', 'module-assessment', courseId, moduleId],
+    queryFn: async () => {
+      if (!courseId || !moduleId) return null;
+      const res = await apiClient.get<CourseApiEnvelope<ModuleAssessmentData>>({
+        url: `/courses/${courseId}/modules/${moduleId}/assessment`,
+        auth: true,
+      });
+      return res?.data;
+    },
+    enabled: Boolean(courseId && moduleId && enabled),
+    staleTime: 0,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+};
+
+/**
+ * Mutation to submit answers for a module practical assessment.
+ * Endpoint: POST /courses/:id/modules/:moduleId/assessment/submit
+ */
+export const useSubmitModuleAssessmentMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      courseId,
+      moduleId,
+      answers,
+    }: {
+      courseId: string;
+      moduleId: string;
+      answers: ModuleAssessmentSubmitAnswer[];
+    }) => {
+      const res = await apiClient.post<CourseApiEnvelope<ModuleAssessmentSubmitResponse>>({
+        url: `/courses/${courseId}/modules/${moduleId}/assessment/submit`,
+        body: { answers },
+        auth: true,
+      });
+      return res?.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['courses', 'detail', variables.courseId] });
+      queryClient.invalidateQueries({ queryKey: ['courses', 'module-assessment', variables.courseId, variables.moduleId] });
+      queryClient.invalidateQueries({ queryKey: ['courses', 'enrollments'] });
+      queryClient.invalidateQueries({ queryKey: ['talent', 'me'] });
+      queryClient.invalidateQueries({ queryKey: ['talent', 'dashboard'] });
+    },
+  });
+};
+
+/**
+ * Hook to view assessment history for a module.
+ * Endpoint: GET /courses/:id/modules/:moduleId/assessment/history
+ */
+export const useModuleAssessmentHistoryQuery = (
+  courseId?: string,
+  moduleId?: string,
+  enabled: boolean = false
+) => {
+  return useQuery({
+    queryKey: ['courses', 'module-assessment-history', courseId, moduleId],
+    queryFn: async () => {
+      if (!courseId || !moduleId) return [];
+      try {
+        const res = await apiClient.get<CourseApiEnvelope<ModuleAssessmentHistoryItem[]>>({
+          url: `/courses/${courseId}/modules/${moduleId}/assessment/history`,
+          auth: true,
+          suppressErrorToast: true,
+        });
+        return res?.data || [];
+      } catch (err) {
+        console.warn(`[useModuleAssessmentHistoryQuery] error:`, err);
+        return [];
+      }
+    },
+    enabled: Boolean(courseId && moduleId && enabled),
+    staleTime: 1000 * 60,
+    refetchOnWindowFocus: false,
   });
 };

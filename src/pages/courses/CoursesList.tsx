@@ -737,7 +737,7 @@ const CoursesList: React.FC = () => {
                   {/* Progress Strip: Status chip + percentage label + visible darker track */}
                   <div className="order-3 sm:order-2 space-y-2 pt-0.5">
                     <div className="flex items-center justify-between text-xs sm:text-sm">
-                      {/* Status Chip following status map: Not started = gray, In progress = blue-50, Completed = green */}
+                      {/* Status Chip following status map: Not started = gray, In progress = blue-50, Completed = blue */}
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusChipClasses}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
                         {statusLabel}
@@ -1562,7 +1562,7 @@ const CoursesList: React.FC = () => {
                   <p className="font-bold text-gray-900">{enrollCourse.title}</p>
                   <p className="text-gray-500 text-[12px]">Instructor: {enrollCourse.mentor?.displayName || enrollCourse.mentor?.name}</p>
                 </div>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-[#0052CC]">
                   Included
                 </span>
               </div>

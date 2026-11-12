@@ -12,6 +12,17 @@ export function routeAfterAuth(user: User, nextStep?: string, courseId?: string)
   const courseContext = loadCourseEnrollContext();
   const targetCourseId = courseId || courseContext?.courseId;
 
+  // Direct backend nextStep routing contract
+  if (nextStep === 'COURSE_PLAYER') {
+    return targetCourseId ? `/courses/${targetCourseId}` : '/courses';
+  }
+  if (nextStep === 'LEARNER_ONBOARDING') {
+    return '/onboarding/learner';
+  }
+  if (nextStep === 'ONBOARDING') {
+    return '/onboarding/talent';
+  }
+
   const role = user.role?.toUpperCase();
   const onboardingStep = user.onboardingStep ?? 0;
 

@@ -28,6 +28,7 @@ export interface BuilderLesson {
   isOptional?: boolean;
   isPreview?: boolean;
   resources?: LessonResourceItem[];
+  notes?: string | null;
 }
 
 export interface BuilderModule {
@@ -176,6 +177,7 @@ export interface CreateLessonDto {
   contentS3Key?: string | null;
   videoS3Key?: string | null;
   orderIndex?: number;
+  notes?: string | null;
 }
 
 export interface PatchLessonDto {
@@ -185,6 +187,7 @@ export interface PatchLessonDto {
   videoS3Key?: string | null;
   durationMinutes?: number;
   orderIndex?: number;
+  notes?: string | null;
 }
 
 export interface ReorderModulesDto {
@@ -243,3 +246,90 @@ export const REVERSE_CONTENT_TYPE_MAP: Record<BuilderLessonContentType, string> 
   READING: 'reading',
   GRADED_ASSIGNMENT: 'assignment',
 };
+
+// ============================================================================
+// MODULE PRACTICAL ASSESSMENTS - MENTOR / AI-DRAFTING
+// ============================================================================
+
+export interface AssessmentDraftChallengeOption {
+  id: string;
+  text: string;
+}
+
+export interface AssessmentDraftChallenge {
+  id: string;
+  prompt: string;
+  options: AssessmentDraftChallengeOption[];
+  correctOptionId: string;
+  explanation?: string;
+  sourceLessonId?: string;
+  sourceLessonTitle?: string;
+  sourceQuote?: string;
+  competencyTag?: string;
+}
+
+export interface AssessmentDraftUsedLesson {
+  lessonId: string;
+  title: string;
+  source: 'NOTES' | 'TRANSCRIPT' | string;
+}
+
+export interface AssessmentDraftSkippedLesson {
+  lessonId: string;
+  title: string;
+  reason: string;
+  hint: string;
+}
+
+export interface AssessmentDraftSources {
+  usedLessons?: AssessmentDraftUsedLesson[];
+  skippedLessons?: AssessmentDraftSkippedLesson[];
+  rejectedQuestions?: any[];
+}
+
+export interface ModuleAssessmentDraftData {
+  id?: string;
+  status: 'DRAFT' | 'PUBLISHED';
+  draftStatus?: 'PENDING' | 'READY' | 'FAILED' | null;
+  draftError?: string | null;
+  title: string;
+  description?: string | null;
+  scenarioContext?: string | null;
+  practicalType?: string | null;
+  passingScore: number;
+  maxAttempts: number;
+  cooldownHours: number;
+  timeLimitMinutes?: number | null;
+  challenges: AssessmentDraftChallenge[];
+  sources?: AssessmentDraftSources | null;
+}
+
+export interface GenerateAssessmentDraftDto {
+  challengeCount?: number;
+  practicalType?: string;
+  timeLimitMinutes?: number;
+  instructions?: string;
+}
+
+export interface SaveModuleAssessmentDto {
+  title?: string;
+  description?: string;
+  scenarioContext?: string;
+  practicalType?: string;
+  passingScore?: number;
+  maxAttempts?: number;
+  cooldownHours?: number;
+  timeLimitMinutes?: number | null;
+  challenges: AssessmentDraftChallenge[];
+}
+
+export interface PublishModuleAssessmentResponse {
+  assessment: {
+    id: string;
+    status: 'PUBLISHED';
+    title: string;
+    passingScore: number;
+    challengeCount?: number;
+    [key: string]: any;
+  };
+}

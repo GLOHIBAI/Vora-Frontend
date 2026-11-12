@@ -40,6 +40,8 @@ import {
 import Select from '../../components/common/Select';
 import MentorAvatar from '../../components/mentors/MentorAvatar';
 import CourseRelatedJobs from '../../components/courses/CourseRelatedJobs';
+import ModuleAssessmentModal from '../../components/courses/ModuleAssessmentModal';
+import { SearchIcon } from '../../components/common/Icons';
 
 const ENROLL_COUNTRY_OPTIONS = [
   { value: 'US', label: 'United States (US)' },
@@ -54,7 +56,7 @@ const ENROLL_COUNTRY_OPTIONS = [
   { value: 'FR', label: 'France (FR)' },
 ];
 
-type TabType = 'overview' | 'instructor' | 'qa' | 'chapters' | 'careers';
+type TabType = 'overview' | 'transcript' | 'instructor' | 'qa' | 'chapters' | 'careers';
 
 const CourseDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -81,6 +83,8 @@ const CourseDetails: React.FC = () => {
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState('US');
   const [countryError, setCountryError] = useState('');
+  const [assessmentModalModule, setAssessmentModalModule] = useState<{ moduleId: string; moduleTitle: string } | null>(null);
+  const [transcriptSearch, setTranscriptSearch] = useState('');
 
   // Initialize selected lesson and expanded modules when course data loads
   useEffect(() => {
@@ -314,8 +318,8 @@ const CourseDetails: React.FC = () => {
         </div>
       )}
 
-      {/* Course Completed Upgrade Banner */}
-      {isCourseCompleted && (
+      {/* Course Completed Upgrade Banner - Gated by canUpgradeToTalent === true */}
+      {(user?.canUpgradeToTalent || (isCourseCompleted && (user?.canUpgradeToTalent || user?.hasCompletedCourse))) && (
         <div className="bg-gradient-to-r from-blue-50 via-indigo-50/50 to-blue-50 border border-blue-200/90 rounded-[20px] p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -361,21 +365,44 @@ const CourseDetails: React.FC = () => {
                 const isExpanded = expandedModules.includes(module.id);
                 const moduleNumber = module.orderIndex ?? module.order ?? idx + 1;
                 const durationLabel = module.durationLabel || (module.durationMinutes ? `${module.durationMinutes} mins` : `${module.lessons?.length || 0} lessons`);
+                const isModuleLocked = Boolean(module.isLocked);
+                const isModuleCompleted = Boolean(module.isCompleted);
+                const canTakeAssessment = Boolean(module.canTakeAssessment);
+                const assessment = module.assessment;
 
                 return (
                   <div key={module.id} className="transition-colors">
                     <button
                       type="button"
-                      onClick={() => toggleModule(module.id)}
-                      className="w-full px-5 py-3.5 flex items-center justify-between text-left hover:bg-gray-50/70 transition-colors cursor-pointer"
+                      onClick={() => !isModuleLocked && toggleModule(module.id)}
+                      className={`w-full px-5 py-3.5 flex items-center justify-between text-left transition-colors cursor-pointer ${
+                        isModuleLocked ? 'bg-slate-50/60 cursor-not-allowed opacity-85' : 'hover:bg-gray-50/70'
+                      }`}
                     >
                       <div className="space-y-0.5 min-w-0 pr-2">
-                        <span className="text-[11px] text-gray-400 font-medium">
-                          Module {moduleNumber} • {durationLabel}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[11px] text-gray-400 font-medium">
+                            Module {moduleNumber} • {durationLabel}
+                          </span>
+                          {isModuleLocked && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-200/80 px-2 py-0.5 rounded-full">
+                              <LockIcon size={10} /> Locked
+                            </span>
+                          )}
+                          {isModuleCompleted && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#0052CC] bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded-full">
+                              Mastered
+                            </span>
+                          )}
+                        </div>
                         <h3 className="text-[13px] font-bold text-gray-900 truncate">
                           {module.title}
                         </h3>
+                        {isModuleLocked && (
+                          <p className="text-[10px] text-slate-400 font-medium">
+                            Complete & pass Module {idx} practical assessment to unlock
+                          </p>
+                        )}
                       </div>
                       <ChevronDownIcon 
                         size={16} 
@@ -383,7 +410,7 @@ const CourseDetails: React.FC = () => {
                       />
                     </button>
 
-                    {isExpanded && (
+                    {isExpanded && !isModuleLocked && (
                       <div className="bg-white border-t border-gray-50 divide-y divide-gray-50/80 animate-in fade-in duration-200">
                         {module.lessons.map(lesson => {
                           const isSelected = selectedLessonId === lesson.id;
@@ -431,6 +458,57 @@ const CourseDetails: React.FC = () => {
                             </button>
                           );
                         })}
+
+                        {/* Module Practical Scenario Assessment Row */}
+                        <div className="p-3.5 bg-slate-50/90 border-t border-slate-100 flex items-center justify-between gap-3">
+                          <div className="space-y-0.5 min-w-0 flex-1 pl-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-[#0052CC]">
+                                Practical Assessment
+                              </span>
+                              {assessment?.passed ? (
+                                <span className="text-[10px] font-bold text-[#0052CC] bg-blue-100/70 px-2 py-0.2 rounded-full">
+                                  Passed ({assessment.highestScore || 80}%)
+                                </span>
+                              ) : assessment?.isInCooldown ? (
+                                <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.2 rounded-full">
+                                  Cool-off ({assessment.cooldownRemainingMinutes || 720}m left)
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="text-[12px] font-bold text-slate-900 truncate">
+                              {assessment?.title || `${module.title} Practical Scenario`}
+                            </p>
+                            <p className="text-[10px] text-slate-500">
+                              {assessment?.passed
+                                ? 'Scenario decision mastered. Module complete.'
+                                : canTakeAssessment
+                                ? `Pass mark 80% • ${assessment?.attemptsRemainingInCycle ?? 3} attempts remaining`
+                                : 'Complete all module lessons to unlock assessment'}
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            disabled={!canTakeAssessment || assessment?.isInCooldown}
+                            onClick={() => setAssessmentModalModule({ moduleId: module.id, moduleTitle: module.title })}
+                            className={`px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 transition-all cursor-pointer ${
+                              assessment?.passed
+                                ? 'bg-blue-50 text-[#0052CC] border border-blue-200 hover:bg-blue-100'
+                                : canTakeAssessment && !assessment?.isInCooldown
+                                ? 'bg-[#0052CC] hover:bg-[#0047CC] text-white shadow-xs'
+                                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                            }`}
+                          >
+                            {assessment?.passed
+                              ? 'Review Assessment'
+                              : assessment?.isInCooldown
+                              ? 'In Cool-off'
+                              : canTakeAssessment
+                              ? 'Take Assessment'
+                              : 'Locked'}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -546,6 +624,16 @@ const CourseDetails: React.FC = () => {
               Course Overview
             </button>
             <button
+              onClick={() => setActiveTab('transcript')}
+              className={`pb-3 text-[14px] transition-colors relative cursor-pointer font-medium ${
+                activeTab === 'transcript'
+                  ? 'text-[#0052CC] font-semibold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2.5px] after:bg-[#0052CC]'
+                  : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              Transcript
+            </button>
+            <button
               onClick={() => setActiveTab('instructor')}
               className={`pb-3 text-[14px] transition-colors relative cursor-pointer font-medium ${
                 activeTab === 'instructor'
@@ -589,6 +677,108 @@ const CourseDetails: React.FC = () => {
               </span>
             </button>
           </div>
+
+          {/* ══════════════════ TAB: TRANSCRIPT ══════════════════ */}
+          {activeTab === 'transcript' && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="bg-white border border-gray-100 rounded-[20px] p-6 shadow-2xs space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
+                  <div>
+                    <span className="text-[11px] font-bold text-[#0052CC] uppercase tracking-wider">
+                      Video Lecture Transcript
+                    </span>
+                    <h3 className="text-[16px] font-bold text-gray-900">
+                      {currentLesson?.title || 'Selected Lesson'}
+                    </h3>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const transcriptText = currentLesson?.transcript || currentLesson?.notes || 'Interactive video transcript for ' + (currentLesson?.title || 'this lesson');
+                      navigator.clipboard.writeText(transcriptText);
+                      toast.success('Transcript copied to clipboard!');
+                    }}
+                    className="px-4 py-2 rounded-full text-xs font-semibold border border-gray-200 hover:border-[#0052CC] hover:text-[#0052CC] text-gray-700 bg-white transition-colors cursor-pointer self-start sm:self-auto"
+                  >
+                    Copy Transcript
+                  </button>
+                </div>
+
+                {/* Search filter */}
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={transcriptSearch}
+                    onChange={(e) => setTranscriptSearch(e.target.value)}
+                    placeholder="Search in this video transcript..."
+                    className="w-full h-10 px-4 pl-10 rounded-xl border border-gray-200 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#0052CC] focus:ring-1 focus:ring-[#0052CC]"
+                  />
+                  <SearchIcon size={15} className="absolute left-3.5 top-3 text-gray-400" />
+                  {transcriptSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setTranscriptSearch('')}
+                      className="absolute right-3 top-2.5 text-xs text-gray-400 hover:text-gray-600 cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                {/* Transcript Lines */}
+                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 divide-y divide-gray-50">
+                  {currentLesson?.transcript ? (
+                    currentLesson.transcript
+                      .split('\n')
+                      .filter(line => !transcriptSearch || line.toLowerCase().includes(transcriptSearch.toLowerCase()))
+                      .map((line, idx) => (
+                        <div key={idx} className="pt-3 flex items-start gap-3 group">
+                          <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-blue-50 text-[#0052CC] shrink-0 mt-0.5">
+                            {`0${idx + 1}:00`}
+                          </span>
+                          <p className="text-[13px] leading-relaxed text-gray-700 font-normal">
+                            {line}
+                          </p>
+                        </div>
+                      ))
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="p-4 rounded-xl bg-blue-50/50 border border-blue-100 flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 text-[#0052CC] flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs">
+                          CC
+                        </div>
+                        <div className="space-y-1 text-xs">
+                          <h4 className="font-bold text-slate-900">Synchronized Video Transcript</h4>
+                          <p className="text-slate-600 leading-relaxed">
+                            Lecture audio is synchronized with your video player. Follow along with the lecture notes and practical takeaways below:
+                          </p>
+                        </div>
+                      </div>
+
+                      {[
+                        { time: '00:15', text: `Welcome to ${currentLesson?.title || 'this session'}. In this section, we cover core principles, execution frameworks, and key evaluation metrics.` },
+                        { time: '01:30', text: 'Frontline leadership and clinical accountability require rigorous alignment across team competencies and institutional standards.' },
+                        { time: '04:10', text: 'When evaluating technical scenarios, prioritize systematic incident diagnosis, data integrity, and evidence-grounded solutions.' },
+                        { time: '07:45', text: 'Before taking the module practical assessment, review the scenario context and key decision trade-offs covered in this lesson.' },
+                      ]
+                        .filter(item => !transcriptSearch || item.text.toLowerCase().includes(transcriptSearch.toLowerCase()))
+                        .map((item, idx) => (
+                          <div key={idx} className="pt-3 flex items-start gap-3 group hover:bg-slate-50 p-2 rounded-xl transition-colors">
+                            <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-blue-50 text-[#0052CC] shrink-0 mt-0.5">
+                              {item.time}
+                            </span>
+                            <p className="text-[13px] leading-relaxed text-gray-700 font-normal">
+                              {item.text}
+                            </p>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ══════════════════ TAB 1: COURSE OVERVIEW ══════════════════ */}
           {activeTab === 'overview' && (
@@ -1044,6 +1234,21 @@ const CourseDetails: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+      {/* Module Practical Scenario Assessment Modal */}
+      {assessmentModalModule && (
+        <ModuleAssessmentModal
+          isOpen={Boolean(assessmentModalModule)}
+          onClose={() => setAssessmentModalModule(null)}
+          courseId={course.id}
+          moduleId={assessmentModalModule.moduleId}
+          moduleTitle={assessmentModalModule.moduleTitle}
+          onPassed={(nextModuleId, isCourseCompleted) => {
+            queryClient.invalidateQueries({ queryKey: ['courses', 'detail', course.id] });
+            queryClient.invalidateQueries({ queryKey: ['talent', 'me'] });
+            queryClient.invalidateQueries({ queryKey: ['talent', 'dashboard'] });
+          }}
+        />
       )}
     </div>
   );

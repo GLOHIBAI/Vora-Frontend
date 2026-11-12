@@ -55,6 +55,7 @@ import {
   useUnpublishCourseBuilder,
 } from '../../services/queries/courses/builder';
 import { useCourseBuilderAutosave } from '../../hooks/useCourseBuilderAutosave';
+import { ModuleAssessmentManager } from '../../components/courses/ModuleAssessmentManager';
 import {
   getMediaUrl,
   mediaSrc,
@@ -383,7 +384,7 @@ export const CreateCoursePage: React.FC = () => {
 
   const [modules, setModules] = useState<BuilderModule[]>([]);
   const [isAddingModule, setIsAddingModule] = useState(false);
-  const [addingLessonModuleId, setAddingLessonModuleId] = useState<string | null>(null);
+
 
   // Pricing
   const [basePrice, setBasePrice] = useState<string>('40');
@@ -523,19 +524,8 @@ export const CreateCoursePage: React.FC = () => {
     uploadMediaMutation.isPending ||
     isSavingDraft ||
     isNavigatingNext ||
-    isAddingModule ||
-    addingLessonModuleId ||
     isSavingLesson ||
     createDraftMutation.isPending ||
-    patchCourseMutation.isPending ||
-    createModuleMutation.isPending ||
-    patchModuleMutation.isPending ||
-    deleteModuleMutation.isPending ||
-    createLessonMutation.isPending ||
-    patchLessonMutation.isPending ||
-    deleteLessonMutation.isPending ||
-    reorderModulesMutation.isPending ||
-    reorderLessonsMutation.isPending ||
     publishMutation.isPending ||
     unpublishMutation.isPending
   );
@@ -773,7 +763,7 @@ export const CreateCoursePage: React.FC = () => {
     courseId,
     payload: currentPatchPayload,
     enabled: Boolean(courseId && title.trim()),
-    debounceMs: 1500,
+    debounceMs: 2500,
   });
 
   const parsedHours = parseFloat(contactHours) || 0;
@@ -1153,6 +1143,9 @@ export const CreateCoursePage: React.FC = () => {
       });
 
       if (createdMod?.id) {
+        // Pre-seed query cache for assessment draft of this brand new module so it never flashes a loading spinner!
+        queryClient.setQueryData(courseBuilderKeys.moduleAssessmentDraft(activeId, createdMod.id), null);
+
         let initialLessons: BuilderLesson[] = [];
         try {
           const createdLesson = await createLessonMutation.mutateAsync({
@@ -1239,6 +1232,9 @@ export const CreateCoursePage: React.FC = () => {
     }
     if (!courseId || !moduleId) return;
 
+    // Snapshot for rollback on network error
+    const previousModules = modules;
+
     // Immediately remove from UI and update query cache so background refetch never restores deleted module
     setModules((prev) => prev.filter((m) => m.id !== moduleId));
     setFormErrors((prev) => {
@@ -1259,24 +1255,64 @@ export const CreateCoursePage: React.FC = () => {
       return;
     }
 
-    try {
-      await deleteModuleMutation.mutateAsync({
+    // Call endpoint in background without making the user wait
+    deleteModuleMutation.mutate(
+      {
         courseId,
         moduleId,
-      });
-      toast.success('Module removed.');
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to delete module.');
-      refetchBuilder();
-    }
+      },
+      {
+        onSuccess: () => {
+          toast.success('Module removed.');
+        },
+        onError: (err: any) => {
+          setModules(previousModules);
+          queryClient.setQueryData(courseBuilderKeys.detail(courseId), (old: any) => {
+            if (!old) return old;
+            return { ...old, modules: previousModules };
+          });
+          toast.error(err?.message || 'Failed to delete module.');
+        },
+      }
+    );
   };
 
   const handleAddLesson = async (moduleId: string) => {
-    if (!courseId || !moduleId || moduleId.startsWith('temp-') || addingLessonModuleId === moduleId) return;
+    if (!courseId || !moduleId || moduleId.startsWith('temp-')) return;
     const targetModule = modules.find((m) => m.id === moduleId);
     const nextOrder = targetModule?.lessons?.length || 0;
 
-    setAddingLessonModuleId(moduleId);
+    // INSTANT OPTIMISTIC UI: Add the new lesson to UI immediately (0ms wait)
+    const tempLessonId = `temp-lesson-${Date.now()}`;
+    const optimisticLesson: BuilderLesson = {
+      id: tempLessonId,
+      moduleId,
+      title: 'New Lesson',
+      contentType: 'VIDEO',
+      durationMinutes: 15,
+      orderIndex: nextOrder,
+    };
+
+    setModules((prev) =>
+      prev.map((m) =>
+        m.id === moduleId
+          ? { ...m, lessons: [...(m.lessons || []), optimisticLesson] }
+          : m
+      )
+    );
+
+    queryClient.setQueryData(courseBuilderKeys.detail(courseId), (old: any) => {
+      if (!old?.modules) return old;
+      return {
+        ...old,
+        modules: old.modules.map((m: any) =>
+          m.id === moduleId
+            ? { ...m, lessons: [...(m.lessons || []), optimisticLesson] }
+            : m
+        ),
+      };
+    });
+
     try {
       const created = await createLessonMutation.mutateAsync({
         courseId,
@@ -1289,28 +1325,56 @@ export const CreateCoursePage: React.FC = () => {
       });
 
       if (created?.id) {
-        const newLesson: BuilderLesson = {
-          id: created.id,
-          moduleId,
-          title: created.title || 'New Lesson',
-          contentType: created.contentType || 'VIDEO',
-          durationMinutes: created.durationMinutes ?? 15,
-          orderIndex: nextOrder,
-        };
-
+        // Swap temp ID with real server ID seamlessly
         setModules((prev) =>
           prev.map((m) =>
             m.id === moduleId
-              ? { ...m, lessons: [...(m.lessons || []), newLesson] }
+              ? {
+                  ...m,
+                  lessons: (m.lessons || []).map((l) =>
+                    l.id === tempLessonId
+                      ? {
+                          ...l,
+                          id: created.id,
+                          title: created.title || l.title,
+                          contentType: created.contentType || l.contentType,
+                          durationMinutes: created.durationMinutes ?? l.durationMinutes,
+                        }
+                      : l
+                  ),
+                }
               : m
           )
         );
+
+        queryClient.setQueryData(courseBuilderKeys.detail(courseId), (old: any) => {
+          if (!old?.modules) return old;
+          return {
+            ...old,
+            modules: old.modules.map((m: any) =>
+              m.id === moduleId
+                ? {
+                    ...m,
+                    lessons: (m.lessons || []).map((l: any) =>
+                      l.id === tempLessonId ? { ...l, id: created.id } : l
+                    ),
+                  }
+                : m
+            ),
+          };
+        });
         toast.success('Lesson added.');
       }
     } catch (err: any) {
+      // Revert optimistic lesson on network error
+      setModules((prev) =>
+        prev.map((m) =>
+          m.id === moduleId
+            ? { ...m, lessons: (m.lessons || []).filter((l) => l.id !== tempLessonId) }
+            : m
+        )
+      );
       toast.error(err?.message || 'Failed to add lesson.');
-    } finally {
-      setAddingLessonModuleId(null);
     }
   };
 
@@ -1349,6 +1413,7 @@ export const CreateCoursePage: React.FC = () => {
       if (s3Key !== undefined) payload.contentS3Key = s3Key;
       if (updates.durationMinutes !== undefined) payload.durationMinutes = updates.durationMinutes;
       if (updates.orderIndex !== undefined && updates.orderIndex >= 0) payload.orderIndex = updates.orderIndex;
+      if (updates.notes !== undefined) payload.notes = updates.notes ? updates.notes : null;
 
       await patchLessonMutation.mutateAsync({
         courseId,
@@ -1362,7 +1427,7 @@ export const CreateCoursePage: React.FC = () => {
     }
   };
 
-  const handleDeleteLesson = async (moduleId: string, lessonId: string) => {
+  const handleDeleteLesson = (moduleId: string, lessonId: string) => {
     setFormErrors((prev) => {
       if (!prev.curriculum) return prev;
       const copy = { ...prev };
@@ -1371,35 +1436,57 @@ export const CreateCoursePage: React.FC = () => {
     });
     if (!courseId || !moduleId || !lessonId) return;
 
+    // Snapshot previous modules state for rollback if network fails
+    const previousModules = modules;
+
+    // INSTANT UI UPDATE: Remove the lesson immediately (0ms delay)
+    setModules((prev) =>
+      prev.map((mod) =>
+        mod.id === moduleId
+          ? { ...mod, lessons: mod.lessons.filter((les) => les.id !== lessonId) }
+          : mod
+      )
+    );
+
+    // Also update query cache immediately so background refetches never resurrect it
+    queryClient.setQueryData(courseBuilderKeys.detail(courseId), (old: any) => {
+      if (!old?.modules) return old;
+      return {
+        ...old,
+        modules: old.modules.map((m: any) =>
+          m.id === moduleId
+            ? { ...m, lessons: (m.lessons || []).filter((les: any) => les.id !== lessonId) }
+            : m
+        ),
+      };
+    });
+
     if (moduleId.startsWith('temp-') || lessonId.startsWith('temp-')) {
-      setModules((prev) =>
-        prev.map((mod) =>
-          mod.id === moduleId
-            ? { ...mod, lessons: mod.lessons.filter((les) => les.id !== lessonId) }
-            : mod
-        )
-      );
       return;
     }
 
-    try {
-      await deleteLessonMutation.mutateAsync({
+    // Call delete endpoint in background without making the user wait
+    deleteLessonMutation.mutate(
+      {
         courseId,
         moduleId,
         lessonId,
-      });
-      setModules((prev) =>
-        prev.map((mod) =>
-          mod.id === moduleId
-            ? { ...mod, lessons: mod.lessons.filter((les) => les.id !== lessonId) }
-            : mod
-        )
-      );
-      toast.success('Lesson deleted.');
-      refetchBuilder();
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to delete lesson.');
-    }
+      },
+      {
+        onSuccess: () => {
+          toast.success('Lesson deleted.');
+        },
+        onError: (err: any) => {
+          // Revert to snapshot on network failure
+          setModules(previousModules);
+          queryClient.setQueryData(courseBuilderKeys.detail(courseId), (old: any) => {
+            if (!old) return old;
+            return { ...old, modules: previousModules };
+          });
+          toast.error(err?.message || 'Failed to delete lesson.');
+        },
+      }
+    );
   };
 
   const handleMoveModule = async (index: number, direction: 'up' | 'down') => {
@@ -3088,24 +3175,24 @@ export const CreateCoursePage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleAddLesson(mod.id)}
-                          disabled={addingLessonModuleId === mod.id}
-                          className="w-full mt-2 flex items-center justify-center gap-1.5 py-2.5 px-3 border border-dashed border-[#CBD5E1] hover:border-[#0047CC] hover:bg-[#F0F6FF] disabled:opacity-60 text-[#64748B] hover:text-[#0047CC] rounded-xl text-xs font-bold transition-all cursor-pointer"
+                          className="w-full mt-2 flex items-center justify-center gap-1.5 py-2.5 px-3 border border-dashed border-[#CBD5E1] hover:border-[#0047CC] hover:bg-[#F0F6FF] text-[#64748B] hover:text-[#0047CC] rounded-xl text-xs font-bold transition-all cursor-pointer"
                         >
-                          {addingLessonModuleId === mod.id ? (
-                            <>
-                              <Spinner size={14} className="text-[#0047CC]" />
-                              <span>Adding Lesson…</span>
-                            </>
-                          ) : (
-                            <>
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <line x1="12" y1="5" x2="12" y2="19" />
-                                <line x1="5" y1="12" x2="19" y2="12" />
-                              </svg>
-                              <span>Add Lesson</span>
-                            </>
-                          )}
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                          </svg>
+                          <span>Add Lesson</span>
                         </button>
+
+                        {/* Practical Assessment Section for this Module */}
+                        {courseId && (
+                          <ModuleAssessmentManager
+                            courseId={courseId}
+                            moduleId={mod.id}
+                            moduleTitle={mod.title || `Module ${modIdx + 1}`}
+                            lessons={mod.lessons || []}
+                          />
+                        )}
                       </div>
                     </div>
                   ))}
@@ -4179,6 +4266,37 @@ export const CreateCoursePage: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Lesson Notes for Module Assessment */}
+              <div className="pt-1">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <span>Lesson Notes & Assessment Context</span>
+                    <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                      Optional
+                    </span>
+                  </label>
+                  <span className="text-[11px] text-slate-400 tabular-nums">
+                    {(editingLesson.lesson.notes || '').length.toLocaleString()} / 50,000
+                  </span>
+                </div>
+                <textarea
+                  rows={4}
+                  maxLength={50000}
+                  value={editingLesson.lesson.notes || ''}
+                  onChange={(e) =>
+                    setEditingLesson({
+                      ...editingLesson,
+                      lesson: { ...editingLesson.lesson, notes: e.target.value },
+                    })
+                  }
+                  placeholder="Key concepts, frameworks, formulas, or practical takeaways taught in this lesson…"
+                  className="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#0047CC] focus:ring-2 focus:ring-[#0047CC]/15"
+                />
+                <p className="mt-1 text-[11px] text-slate-500 leading-snug">
+                  Key points from this lesson. Used to write the module assessment. Optional for uploaded videos, needed for Google Drive links.
+                </p>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                 <button

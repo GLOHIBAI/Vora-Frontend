@@ -15,6 +15,10 @@ import type {
   ReorderLessonsDto,
   BuilderModule,
   BuilderLesson,
+  ModuleAssessmentDraftData,
+  GenerateAssessmentDraftDto,
+  SaveModuleAssessmentDto,
+  PublishModuleAssessmentResponse,
 } from '../../../types/courseBuilder';
 
 // ============================================================================
@@ -25,6 +29,8 @@ export const courseBuilderKeys = {
   detail: (courseId: string) => ['courses', 'builder', courseId] as const,
   pricingPreview: (tier1Price: number) =>
     ['courses', 'pricing', 'preview', tier1Price] as const,
+  moduleAssessmentDraft: (courseId: string, moduleId: string) =>
+    ['courses', 'builder', courseId, 'module', moduleId, 'assessment', 'draft'] as const,
 };
 
 // ============================================================================
@@ -545,6 +551,171 @@ export const useUnpublishCourseBuilder = () => {
       queryClient.invalidateQueries({ queryKey: courseBuilderKeys.detail(courseId) });
       queryClient.invalidateQueries({ queryKey: ['courses', 'instructor', 'hub'] });
       queryClient.invalidateQueries({ queryKey: ['courses', 'detail', courseId] });
+    },
+  });
+};
+
+// ============================================================================
+// MODULE PRACTICAL ASSESSMENTS (AI DRAFTING / MENTOR REVIEW)
+// ============================================================================
+
+export const useModuleAssessmentDraftQuery = (
+  courseId: string | undefined,
+  moduleId: string | undefined,
+  options?: { enabled?: boolean }
+) => {
+  return useQuery({
+    queryKey:
+      courseId && moduleId
+        ? courseBuilderKeys.moduleAssessmentDraft(courseId, moduleId)
+        : ['courses', 'builder', 'assessment', 'none'],
+    queryFn: async (): Promise<ModuleAssessmentDraftData | null> => {
+      if (!courseId || !moduleId || moduleId.startsWith('temp-')) return null;
+      try {
+        const res = await apiClient.get<CourseApiEnvelope<ModuleAssessmentDraftData>>({
+          url: `/courses/${courseId}/modules/${moduleId}/assessment/draft`,
+          auth: true,
+          suppressErrorToast: true,
+        });
+        const data = (res as any)?.data ?? res;
+        return data as ModuleAssessmentDraftData;
+      } catch (err: any) {
+        if (err?.status === 404) {
+          return null;
+        }
+        throw err;
+      }
+    },
+    enabled: Boolean(courseId && moduleId && !moduleId.startsWith('temp-')) && (options?.enabled ?? true),
+    staleTime: 60_000,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      return data?.draftStatus === 'PENDING' ? 3000 : false;
+    },
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+};
+
+export const useGenerateModuleAssessmentDraftMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      courseId,
+      moduleId,
+      payload,
+    }: {
+      courseId: string;
+      moduleId: string;
+      payload?: GenerateAssessmentDraftDto;
+    }) => {
+      const res = await apiClient.post<CourseApiEnvelope<any>>({
+        url: `/courses/${courseId}/modules/${moduleId}/assessment/generate`,
+        body: payload || {},
+        auth: true,
+      });
+      return (res as any)?.data ?? res;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: courseBuilderKeys.moduleAssessmentDraft(variables.courseId, variables.moduleId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: courseBuilderKeys.detail(variables.courseId),
+      });
+    },
+  });
+};
+
+export const useSaveModuleAssessmentMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      courseId,
+      moduleId,
+      payload,
+    }: {
+      courseId: string;
+      moduleId: string;
+      payload: SaveModuleAssessmentDto;
+    }) => {
+      const res = await apiClient.post<CourseApiEnvelope<any>>({
+        url: `/courses/${courseId}/modules/${moduleId}/assessment`,
+        body: payload,
+        auth: true,
+      });
+      return (res as any)?.data ?? res;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: courseBuilderKeys.moduleAssessmentDraft(variables.courseId, variables.moduleId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: courseBuilderKeys.detail(variables.courseId),
+      });
+    },
+  });
+};
+
+export const usePublishModuleAssessmentMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      courseId,
+      moduleId,
+      payload,
+    }: {
+      courseId: string;
+      moduleId: string;
+      payload?: Partial<SaveModuleAssessmentDto>;
+    }) => {
+      const res = await apiClient.post<CourseApiEnvelope<PublishModuleAssessmentResponse>>({
+        url: `/courses/${courseId}/modules/${moduleId}/assessment/publish`,
+        body: payload || {},
+        auth: true,
+      });
+      return (res as any)?.data ?? res;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: courseBuilderKeys.moduleAssessmentDraft(variables.courseId, variables.moduleId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: courseBuilderKeys.detail(variables.courseId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['courses', 'detail', variables.courseId],
+      });
+    },
+  });
+};
+
+export const useDeleteModuleAssessmentMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      courseId,
+      moduleId,
+    }: {
+      courseId: string;
+      moduleId: string;
+    }) => {
+      const res = await apiClient.delete<CourseApiEnvelope<any>>({
+        url: `/courses/${courseId}/modules/${moduleId}/assessment`,
+        auth: true,
+      });
+      return (res as any)?.data ?? res;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: courseBuilderKeys.moduleAssessmentDraft(variables.courseId, variables.moduleId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: courseBuilderKeys.detail(variables.courseId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['courses', 'detail', variables.courseId],
+      });
     },
   });
 };

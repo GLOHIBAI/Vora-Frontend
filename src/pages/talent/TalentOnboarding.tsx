@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { useTalentOnboardingMutation, useTalentOnboardingStateQuery } from '../../services/queries/onboarding';
 import { apiClient } from '../../services/api';
@@ -200,9 +201,27 @@ const TalentOnboarding: React.FC = () => {
     }
   }, [onboardingState?.data?.step, stepParam, location.state?.onboardingStep]);
 
-  // If onboarding is already complete, skip the form entirely.
-  // Role-apply flow → go straight to CV upload; normal flow → go to dashboard.
+  // Learner Unlock Gate: Learner must complete at least 1 course before doing full talent onboarding
   useEffect(() => {
+    const isLearner = Boolean(
+      user?.isLearner ||
+      (typeof window !== 'undefined' && localStorage.getItem('vora_user_track') === 'learner')
+    );
+    const canUpgrade = Boolean(
+      user?.canUpgradeToTalent ||
+      user?.hasCompletedCourse ||
+      (typeof window !== 'undefined' && (
+        localStorage.getItem('vora_completed_course') === 'true' ||
+        localStorage.getItem('vora_can_upgrade_to_talent') === 'true'
+      ))
+    );
+
+    if (isLearner && !canUpgrade) {
+      toast.error('Complete at least one course to unlock your full talent profile.');
+      navigate('/courses', { replace: true });
+      return;
+    }
+
     if (!onboardingState?.data?.onboardingCompleted) return;
     if (isRoleApplyFlow && roleSlug) {
       navigate(`/onboarding/talent/${roleSlug}/cv`, { replace: true });
@@ -210,7 +229,7 @@ const TalentOnboarding: React.FC = () => {
       navigate('/dashboard', { replace: true });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onboardingState?.data?.onboardingCompleted]);
+  }, [onboardingState?.data?.onboardingCompleted, user, navigate, isRoleApplyFlow, roleSlug]);
 
   // Step 1 state
   const [formData, setFormData] = useState({
@@ -519,6 +538,21 @@ const TalentOnboarding: React.FC = () => {
           }
         } catch (err: any) {
           const status = err?.status;
+
+          // 403 = Learner tried full onboarding before completing a course
+          if (status === 403) {
+            toast.error(err?.message || 'Complete at least one course to unlock your full talent profile.');
+            navigate('/courses', { replace: true });
+            return;
+          }
+
+          // 400 = Proper validation message from backend
+          if (status === 400) {
+            const errorList = err?.data?.errors;
+            const msg = Array.isArray(errorList) ? errorList.join(', ') : (err?.message || 'Please review your inputs.');
+            toast.error(msg);
+            return;
+          }
 
           // 409 = "Onboarding already completed" — it worked, just continue
           if (status === 409) {

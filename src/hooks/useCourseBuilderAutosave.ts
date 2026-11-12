@@ -15,7 +15,7 @@ export function useCourseBuilderAutosave({
   courseId,
   payload,
   enabled = true,
-  debounceMs = 1500,
+  debounceMs = 2000,
 }: UseCourseBuilderAutosaveProps) {
   const [autosaveStatus, setAutosaveStatus] = useState<AutosaveStatus>('idle');
   const patchCourseMutation = usePatchCourse();
@@ -25,6 +25,10 @@ export function useCourseBuilderAutosave({
   const latestPayloadRef = useRef<PatchCourseDto>(payload);
   const isFirstMountRef = useRef<boolean>(true);
   const prevCourseIdRef = useRef<string | null | undefined>(courseId);
+  const isSavingInProgressRef = useRef<boolean>(false);
+  const pendingPayloadRef = useRef<PatchCourseDto | null>(null);
+  const patchMutationRef = useRef(patchCourseMutation.mutateAsync);
+  patchMutationRef.current = patchCourseMutation.mutateAsync;
 
   latestPayloadRef.current = payload;
 
@@ -33,26 +37,46 @@ export function useCourseBuilderAutosave({
       if (!courseId) return;
       const dataToSave = overridePayload || latestPayloadRef.current;
       const serialized = JSON.stringify(dataToSave);
+      
+      // Never re-save identical payload
       if (serialized === lastSavedJsonRef.current) {
         return;
       }
 
+      // If a save is already in-flight, queue this payload and return
+      if (isSavingInProgressRef.current) {
+        pendingPayloadRef.current = dataToSave;
+        return;
+      }
+
+      // Mark immediately before starting network request to prevent duplicate timers firing the same payload
+      lastSavedJsonRef.current = serialized;
+      isSavingInProgressRef.current = true;
       setAutosaveStatus('saving');
+
       try {
-        await patchCourseMutation.mutateAsync({
+        await patchMutationRef.current({
           courseId,
           payload: dataToSave,
         });
-        lastSavedJsonRef.current = serialized;
         setAutosaveStatus('saved');
       } catch (err) {
         console.error('[Autosave] Failed to autosave course:', err);
-        // Prevent infinite loops on validation/server errors for this exact payload
-        lastSavedJsonRef.current = serialized;
         setAutosaveStatus('error');
+      } finally {
+        isSavingInProgressRef.current = false;
+        // If another payload arrived while saving, execute it now
+        if (pendingPayloadRef.current) {
+          const nextData = pendingPayloadRef.current;
+          pendingPayloadRef.current = null;
+          const nextSerialized = JSON.stringify(nextData);
+          if (nextSerialized !== lastSavedJsonRef.current) {
+            saveImmediate(nextData);
+          }
+        }
       }
     },
-    [courseId, patchCourseMutation]
+    [courseId]
   );
 
   // Debounced autosave effect
