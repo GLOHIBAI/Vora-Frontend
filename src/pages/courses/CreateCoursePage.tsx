@@ -690,13 +690,36 @@ export const CreateCoursePage: React.FC = () => {
       }
     } else if (builderData?.modules) {
       setModules((prev) => {
-        const hasPendingTemp = prev.some((m) => m.id.startsWith('temp-'));
-        if (hasPendingTemp) {
-          const tempMods = prev.filter((m) => m.id.startsWith('temp-'));
-          const serverMods = sortModules(builderData.modules);
-          return [...serverMods, ...tempMods];
+        const tempMods = prev.filter((m) => m.id.startsWith('temp-'));
+        if (tempMods.length === 0) {
+          return sortModules(builderData.modules);
         }
-        return sortModules(builderData.modules);
+
+        // Merge server modules while deduplicating against any pending optimistic modules
+        const merged = builderData.modules.map((serverMod) => {
+          const matchingTemp = tempMods.find(
+            (tm) => tm.title.trim() === serverMod.title.trim() || tm.orderIndex === serverMod.orderIndex
+          );
+          if (matchingTemp && (!serverMod.lessons || serverMod.lessons.length === 0) && (matchingTemp.lessons?.length || 0) > 0) {
+            return {
+              ...serverMod,
+              lessons: matchingTemp.lessons,
+            };
+          }
+          return serverMod;
+        });
+
+        // Only append temp modules that don't match any server module yet
+        for (const tm of tempMods) {
+          const existsOnServer = merged.some(
+            (sm) => sm.id === tm.id || sm.title.trim() === tm.title.trim() || sm.orderIndex === tm.orderIndex
+          );
+          if (!existsOnServer) {
+            merged.push(tm);
+          }
+        }
+
+        return sortModules(merged);
       });
     }
   }, [builderData, courseDetails, navStateCourse, sortModules]);
@@ -1184,6 +1207,15 @@ export const CreateCoursePage: React.FC = () => {
         if (createdMod?.id) {
           // Pre-seed query cache for assessment draft of this brand new module
           queryClient.setQueryData(courseBuilderKeys.moduleAssessmentDraft(activeId, createdMod.id), null);
+
+          // Update temp module ID immediately so IDs match if server data is refetched
+          setModules((prev) =>
+            prev.map((m) =>
+              m.id === tempModuleId
+                ? { ...m, id: createdMod.id, courseId: activeId }
+                : m
+            )
+          );
 
           let realLessonId = tempLessonId;
           try {

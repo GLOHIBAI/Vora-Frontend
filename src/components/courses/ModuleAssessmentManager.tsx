@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   SparklesIcon,
   CheckCircleIcon,
@@ -20,6 +21,7 @@ import {
   useSaveModuleAssessmentMutation,
   usePublishModuleAssessmentMutation,
   useDeleteModuleAssessmentMutation,
+  courseBuilderKeys,
 } from '../../services/queries/courses/builder';
 import type {
   BuilderLesson,
@@ -41,12 +43,18 @@ export const ModuleAssessmentManager: React.FC<ModuleAssessmentManagerProps> = (
   lessons,
 }) => {
   const isTemp = !moduleId || moduleId.startsWith('temp-') || !courseId || courseId.startsWith('temp-');
+  const queryClient = useQueryClient();
+
+  // Optimistic drafting state so UI shows active drafting immediately upon trigger
+  const [isDraftingLocally, setIsDraftingLocally] = useState(false);
 
   const {
     data: draft,
     isLoading,
+    isFetching,
   } = useModuleAssessmentDraftQuery(courseId, moduleId, {
     enabled: !isTemp,
+    isPollingActive: isDraftingLocally,
   });
 
   const generateMutation = useGenerateModuleAssessmentDraftMutation();
@@ -68,6 +76,22 @@ export const ModuleAssessmentManager: React.FC<ModuleAssessmentManagerProps> = (
   const [workingDraft, setWorkingDraft] = useState<ModuleAssessmentDraftData | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+
+  // Reset local drafting state once backend returns READY or FAILED
+  useEffect(() => {
+    if (draft?.draftStatus === 'READY' || draft?.draftStatus === 'FAILED') {
+      setIsDraftingLocally(false);
+    }
+  }, [draft?.draftStatus]);
+
+  // Safety timer: stop local drafting indicator after 90 seconds
+  useEffect(() => {
+    if (!isDraftingLocally) return;
+    const timer = setTimeout(() => {
+      setIsDraftingLocally(false);
+    }, 90_000);
+    return () => clearTimeout(timer);
+  }, [isDraftingLocally]);
 
   // Sync workingDraft when review modal opens or draft updates
   useEffect(() => {
@@ -143,7 +167,7 @@ export const ModuleAssessmentManager: React.FC<ModuleAssessmentManagerProps> = (
     );
   }
 
-  const isPending = draft?.draftStatus === 'PENDING';
+  const isPending = draft?.draftStatus === 'PENDING' || isDraftingLocally || generateMutation.isPending;
   const isFailed = draft?.draftStatus === 'FAILED';
   const isPublished = draft?.status === 'PUBLISHED';
   const hasAssessment = Boolean(draft && (draft.challenges?.length || draft.draftStatus));
@@ -155,6 +179,20 @@ export const ModuleAssessmentManager: React.FC<ModuleAssessmentManagerProps> = (
       return;
     }
 
+    setIsDraftingLocally(true);
+    setIsGenerateModalOpen(false);
+
+    // Optimistically update query cache with PENDING state so drafting banner appears instantly
+    queryClient.setQueryData(
+      courseBuilderKeys.moduleAssessmentDraft(courseId, moduleId),
+      (old: any) => ({
+        ...(old || {}),
+        draftStatus: 'PENDING',
+        status: 'DRAFT',
+        title: `${moduleTitle} Practical Assessment`,
+      })
+    );
+
     try {
       await generateMutation.mutateAsync({
         courseId,
@@ -164,9 +202,12 @@ export const ModuleAssessmentManager: React.FC<ModuleAssessmentManagerProps> = (
           timeLimitMinutes: isUntimed ? undefined : timeLimitMinutes,
         },
       });
-      setIsGenerateModalOpen(false);
       toast.success('AI drafting initiated. Analyzing lesson content and transcripts…');
     } catch (err: any) {
+      setIsDraftingLocally(false);
+      queryClient.invalidateQueries({
+        queryKey: courseBuilderKeys.moduleAssessmentDraft(courseId, moduleId),
+      });
       const msg = err?.message || 'Failed to start AI assessment drafting.';
       toast.error(msg);
     }
@@ -372,7 +413,11 @@ export const ModuleAssessmentManager: React.FC<ModuleAssessmentManagerProps> = (
         <div className="p-3.5 bg-gradient-to-r from-blue-50/50 via-slate-50 to-white border border-dashed border-blue-200/80 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0 text-[#0047CC] mt-0.5">
-              <SparklesIcon size={14} />
+              {isLoading || isFetching ? (
+                <Spinner size={13} className="text-[#0047CC]" />
+              ) : (
+                <SparklesIcon size={14} />
+              )}
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -382,6 +427,12 @@ export const ModuleAssessmentManager: React.FC<ModuleAssessmentManagerProps> = (
                 <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-blue-50 text-[#0047CC] rounded">
                   80% pass bar
                 </span>
+                {isFetching && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 font-medium">
+                    <Spinner size={9} className="text-slate-400" />
+                    Checking…
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
                 Gate module completion with practical workplace scenarios drafted from your lesson notes and videos.
@@ -392,14 +443,25 @@ export const ModuleAssessmentManager: React.FC<ModuleAssessmentManagerProps> = (
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
+              disabled={isFetching || generateMutation.isPending}
               onClick={() => setIsGenerateModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0047CC] hover:bg-[#003bb5] text-white text-xs font-bold rounded-lg shadow-2xs transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0047CC] hover:bg-[#003bb5] disabled:opacity-60 text-white text-xs font-bold rounded-lg shadow-2xs transition-colors cursor-pointer"
             >
-              <SparklesIcon size={12} />
-              <span>Draft with AI</span>
+              {generateMutation.isPending ? (
+                <>
+                  <Spinner size={12} className="text-white" />
+                  <span>Drafting…</span>
+                </>
+              ) : (
+                <>
+                  <SparklesIcon size={12} />
+                  <span>Draft with AI</span>
+                </>
+              )}
             </button>
             <button
               type="button"
+              disabled={isFetching || generateMutation.isPending}
               onClick={() => {
                 setWorkingDraft({
                   status: 'DRAFT',

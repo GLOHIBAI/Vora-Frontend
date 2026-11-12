@@ -291,7 +291,6 @@ export const useUploadCourseMedia = () => {
 // ============================================================================
 
 export const useCreateModule = () => {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       courseId,
@@ -308,8 +307,8 @@ export const useCreateModule = () => {
       const data = res?.data?.data ?? res?.data ?? res;
       return data as BuilderModule;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: courseBuilderKeys.detail(variables.courseId) });
+    onSuccess: () => {
+      // Optimistic cache update is handled by handleAddModule; avoiding premature refetch before initial lesson is created
     },
   });
 };
@@ -562,7 +561,7 @@ export const useUnpublishCourseBuilder = () => {
 export const useModuleAssessmentDraftQuery = (
   courseId: string | undefined,
   moduleId: string | undefined,
-  options?: { enabled?: boolean }
+  options?: { enabled?: boolean; isPollingActive?: boolean }
 ) => {
   return useQuery({
     queryKey:
@@ -587,10 +586,13 @@ export const useModuleAssessmentDraftQuery = (
       }
     },
     enabled: Boolean(courseId && moduleId && !moduleId.startsWith('temp-')) && (options?.enabled ?? true),
-    staleTime: 60_000,
+    staleTime: options?.isPollingActive ? 0 : 30_000,
     refetchInterval: (query) => {
       const data = query.state.data;
-      return data?.draftStatus === 'PENDING' ? 3000 : false;
+      if (options?.isPollingActive || data?.draftStatus === 'PENDING') {
+        return 2500;
+      }
+      return false;
     },
     refetchOnWindowFocus: false,
     retry: false,
