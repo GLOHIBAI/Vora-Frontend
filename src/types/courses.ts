@@ -285,8 +285,22 @@ export interface ModuleAssessmentChallengeOption {
 
 export interface ModuleAssessmentChallenge {
   id: string;
-  question: string;
+  question?: string;
+  prompt?: string;
+  scenarioPrompt?: string | null;
   options: ModuleAssessmentChallengeOption[];
+  competencyTag?: string;
+}
+
+export interface ModuleAssessmentTalentState {
+  passed: boolean;
+  highestScore: number;
+  attemptsUsed: number;
+  attemptsRemainingInCycle: number;
+  isInCooldown: boolean;
+  cooldownUntil?: string | null;
+  cooldownRemainingMinutes?: number;
+  canAttempt: boolean;
 }
 
 export interface ModuleAssessmentSession {
@@ -296,15 +310,23 @@ export interface ModuleAssessmentSession {
 }
 
 export interface ModuleAssessmentData {
+  id?: string;
   moduleId: string;
+  courseId?: string;
   title: string;
+  description?: string;
+  practicalType?: string;
   scenarioContext?: string | Record<string, any>;
+  challengeCount?: number;
   challenges: ModuleAssessmentChallenge[];
   session: ModuleAssessmentSession;
   passingScore: number;
   maxAttempts: number;
-  attemptsUsed: number;
-  attemptsRemainingInCycle: number;
+  cooldownHours?: number;
+  timeLimitMinutes?: number;
+  attemptsUsed?: number;
+  attemptsRemainingInCycle?: number;
+  talentState?: ModuleAssessmentTalentState;
 }
 
 export interface ModuleAssessmentSubmitAnswer {

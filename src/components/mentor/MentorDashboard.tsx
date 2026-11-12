@@ -33,7 +33,61 @@ import type {
   MentorHeaderAction,
 } from '../../services/queries/mentor/types';
 
-// --- Sub-components for Mentor Dashboard ---
+interface ActiveCourseRowProps {
+  course: MentorActiveCourseItem;
+  index: number;
+  onCourseClick: (hrefHint?: string) => void;
+}
+
+const ActiveCourseRow: React.FC<ActiveCourseRowProps> = ({ course, index, onCourseClick }) => {
+  const [imageError, setImageError] = useState(false);
+  const gradient = course.gradient || 'from-[#0047CC] to-[#387DFF]';
+  const enrolledCount = course.enrollmentCount ?? course.enrolled ?? 0;
+  const revLabel = course.formattedRevenue || course.revenue || '$0';
+  const statusText = course.statusLabel || 'Published';
+  const ratingText = course.rating ? `★ ${course.rating}` : '★ 5.0';
+
+  return (
+    <div
+      key={course.courseId || course.id || index}
+      onClick={() => onCourseClick(course.hrefHint || '/mentor/courses')}
+      className="flex items-center gap-4 sm:gap-5 p-4 bg-gray-50/50 hover:bg-gray-50 rounded-2xl transition-all cursor-pointer border border-gray-100 group"
+    >
+      <div
+        className={`w-12 sm:w-14 h-12 sm:h-14 rounded-2xl overflow-hidden ${
+          course.thumbnailUrl && !imageError
+            ? 'bg-slate-100 border border-gray-100'
+            : `bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg shadow-blue-500/10`
+        } shrink-0`}
+      >
+        {course.thumbnailUrl && !imageError ? (
+          <img
+            src={course.thumbnailUrl}
+            alt={course.title || ''}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <PlayIcon size={20} className="text-white" />
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[14px] sm:text-[15px] font-medium text-gray-900 truncate">{course.title}</p>
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <span className="text-[12px] font-medium text-gray-400">{enrolledCount} enrolled</span>
+          <span className="text-[11px] font-medium text-green-600">{statusText}</span>
+          <span className="text-[11px] font-medium text-blue-500">{ratingText}</span>
+        </div>
+      </div>
+      <div className="text-right shrink-0">
+        <p className="text-[15px] sm:text-[16px] font-medium text-gray-900">{revLabel}</p>
+        <p className="text-[10px] font-medium text-gray-400 uppercase">
+          {course.revenuePeriodLabel || 'All-time'}
+        </p>
+      </div>
+    </div>
+  );
+};
 
 const StatCard: React.FC<{
   label: string;
@@ -514,41 +568,14 @@ const MentorDashboard: React.FC = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">
-                {activeCourses.map((course, i) => {
-                  const gradient = course.gradient || 'from-[#0047CC] to-[#387DFF]';
-                  const enrolledCount = course.enrollmentCount ?? course.enrolled ?? 0;
-                  const revLabel = course.formattedRevenue || course.revenue || '$0';
-                  const statusText = course.statusLabel || 'Published';
-                  const ratingText = course.rating ? `★ ${course.rating}` : '★ 5.0';
-
-                  return (
-                    <div
-                      key={course.courseId || course.id || i}
-                      onClick={() => handleCtaClick(course.hrefHint || '/mentor/courses')}
-                      className="flex items-center gap-4 sm:gap-5 p-4 bg-gray-50/50 hover:bg-gray-50 rounded-2xl transition-all cursor-pointer border border-gray-100 group"
-                    >
-                      <div
-                        className={`w-12 sm:w-14 h-12 sm:h-14 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/10`}
-                      >
-                        <PlayIcon size={20} className="text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[14px] sm:text-[15px] font-medium text-gray-900 truncate">{course.title}</p>
-                        <div className="flex flex-wrap items-center gap-3 pt-1">
-                          <span className="text-[12px] font-medium text-gray-400">{enrolledCount} enrolled</span>
-                          <span className="text-[11px] font-medium text-green-600">{statusText}</span>
-                          <span className="text-[11px] font-medium text-blue-500">{ratingText}</span>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-[15px] sm:text-[16px] font-medium text-gray-900">{revLabel}</p>
-                        <p className="text-[10px] font-medium text-gray-400 uppercase">
-                          {course.revenuePeriodLabel || 'All-time'}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
+                {activeCourses.map((course, i) => (
+                  <ActiveCourseRow
+                    key={course.courseId || course.id || i}
+                    course={course}
+                    index={i}
+                    onCourseClick={handleCtaClick}
+                  />
+                ))}
               </div>
             )}
 

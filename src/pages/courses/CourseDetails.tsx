@@ -17,6 +17,7 @@ import {
   LockIcon,
   CloseIcon 
 } from '../../components/common/Icons';
+import Spinner from '../../components/common/Spinner';
 import { toast } from 'react-hot-toast';
 import { 
   useCourseDetail, 
@@ -84,6 +85,19 @@ const CourseDetails: React.FC = () => {
   const [selectedCountry, setSelectedCountry] = useState('US');
   const [countryError, setCountryError] = useState('');
   const [assessmentModalModule, setAssessmentModalModule] = useState<{ moduleId: string; moduleTitle: string } | null>(null);
+  const [lessonCompletionModal, setLessonCompletionModal] = useState<{
+    isOpen: boolean;
+    lessonTitle: string;
+    moduleId: string;
+    moduleTitle: string;
+    isModuleCompleted: boolean;
+    hasAssessment: boolean;
+    isAssessmentPassed: boolean;
+    assessmentScore?: number;
+    assessmentTitle?: string;
+    nextLesson?: (CourseLesson & { moduleId: string }) | null;
+  } | null>(null);
+  const [isCourseCompletedModalOpen, setIsCourseCompletedModalOpen] = useState(false);
   const [transcriptSearch, setTranscriptSearch] = useState('');
 
   // Initialize selected lesson and expanded modules when course data loads
@@ -132,6 +146,13 @@ const CourseDetails: React.FC = () => {
     course?.modules?.flatMap(m => m.lessons.map(l => ({ ...l, moduleId: m.id }))) || [];
   
   const currentLesson = allLessons.find(l => l.id === selectedLessonId) || allLessons[0];
+
+  const currentModule = course?.modules?.find(m => m.id === currentLesson?.moduleId);
+  const currentModuleLessons = currentModule?.lessons || [];
+  const isCurrentModuleCompleted = currentModuleLessons.length > 0 && currentModuleLessons.every(
+    l => l.isCompleted || completedLessonIds.includes(l.id)
+  );
+  const currentModuleAssessment = currentModule?.assessment;
 
   const isCurrentLessonCompleted = Boolean(
     currentLesson && (
@@ -202,18 +223,50 @@ const CourseDetails: React.FC = () => {
       localStorage.setItem(`vora_completed_lessons_${course.id}`, JSON.stringify(nextCompleted));
     } catch (_) {}
 
+    // Check if this completes all lessons in the current module
+    const targetModule = course?.modules?.find(m => m.id === currentLesson.moduleId);
+    const targetModLessons = targetModule?.lessons || [];
+    const isModuleNowCompleted = targetModLessons.length > 0 && targetModLessons.every(
+      l => l.id === currentLesson.id || l.isCompleted || nextCompleted.includes(l.id)
+    );
+    const hasAssessment = Boolean(targetModule?.assessment);
+    const isAssessmentPassed = Boolean(targetModule?.assessment?.passed);
+    const assessmentScore = targetModule?.assessment?.highestScore;
+    const assessmentTitle = targetModule?.assessment?.title || `${targetModule?.title || 'Module'} Practical Assessment`;
+
+    const currentIndex = allLessons.findIndex(l => l.id === currentLesson.id);
+    const nextLesson = currentIndex >= 0 && currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
+
+    // Immediately trigger the saving & completion modal showing the loading state
+    setLessonCompletionModal({
+      isOpen: true,
+      lessonTitle: currentLesson.title,
+      moduleId: currentLesson.moduleId,
+      moduleTitle: targetModule?.title || 'Current Module',
+      isModuleCompleted: isModuleNowCompleted,
+      hasAssessment,
+      isAssessmentPassed,
+      assessmentScore,
+      assessmentTitle,
+      nextLesson,
+    });
+
     toast.success('Lesson marked as completed!');
 
-    // Check if entire course is completed
+    // Check if entire course is completed (all lessons + module assessments)
     const totalCount = allLessons.length;
     const isNowAllDone = totalCount > 0 && allLessons.every(l => nextCompleted.includes(l.id) || l.isCompleted);
+    const allAssessmentsPassedOrNone = course?.modules?.every(m => !m.assessment || m.assessment.passed);
+
     if (isNowAllDone) {
       try {
         localStorage.setItem('vora_completed_course', 'true');
         localStorage.setItem(`vora_completed_course_${course.id}`, 'true');
       } catch (_) {}
       updateUser({ hasCompletedCourse: true, canUpgradeToTalent: true });
-      toast.success('🎉 Congratulations! You have completed the entire course!');
+      if (allAssessmentsPassedOrNone) {
+        setIsCourseCompletedModalOpen(true);
+      }
     }
 
     try {
@@ -318,31 +371,6 @@ const CourseDetails: React.FC = () => {
         </div>
       )}
 
-      {/* Course Completed Upgrade Banner - Gated by canUpgradeToTalent === true */}
-      {(user?.canUpgradeToTalent || (isCourseCompleted && (user?.canUpgradeToTalent || user?.hasCompletedCourse))) && (
-        <div className="bg-gradient-to-r from-blue-50 via-indigo-50/50 to-blue-50 border border-blue-200/90 rounded-[20px] p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">🎓</span>
-              <h3 className="text-[15px] font-bold text-gray-900">
-                Course Completed! Ready for Verified Roles & Mentorship
-              </h3>
-            </div>
-            <p className="text-[12px] text-gray-600 max-w-xl">
-              You've completed this course! Take the next step by completing your full Talent profile to unlock 1-on-1 mentorship sessions and live employer role representation.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate('/onboarding/talent')}
-            className="px-5 py-2.5 bg-[#0052CC] hover:bg-[#0047CC] text-white font-bold text-[13px] rounded-full shadow-xs hover:shadow transition-all shrink-0 cursor-pointer flex items-center justify-center gap-1.5"
-          >
-            <span>Complete Talent Onboarding</span>
-            <ChevronRightIcon size={16} />
-          </button>
-        </div>
-      )}
-
       {/* Main 2-Column Grid with mobile-first ordering */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
@@ -367,7 +395,10 @@ const CourseDetails: React.FC = () => {
                 const durationLabel = module.durationLabel || (module.durationMinutes ? `${module.durationMinutes} mins` : `${module.lessons?.length || 0} lessons`);
                 const isModuleLocked = Boolean(module.isLocked);
                 const isModuleCompleted = Boolean(module.isCompleted);
-                const canTakeAssessment = Boolean(module.canTakeAssessment);
+                const allModuleLessonsDone = (module.lessons?.length ?? 0) > 0 && module.lessons.every(
+                  l => l.isCompleted || completedLessonIds.includes(l.id)
+                );
+                const canTakeAssessment = Boolean(module.canTakeAssessment || (allModuleLessonsDone && !isModuleLocked));
                 const assessment = module.assessment;
 
                 return (
@@ -589,7 +620,7 @@ const CourseDetails: React.FC = () => {
           })()}
 
           {/* Lesson Controls strip (when enrolled) */}
-          {myEnrollment && currentLesson && (
+          {(myEnrollment || isUserEnrolled) && currentLesson && (
             <div className="bg-[#FAFAFA] border border-gray-100 rounded-[16px] px-5 py-3 flex items-center justify-between gap-4">
               <div className="space-y-0.5 min-w-0">
                 <span className="text-[11px] text-gray-400 font-medium">Selected Lesson</span>
@@ -600,17 +631,25 @@ const CourseDetails: React.FC = () => {
                 type="button"
                 onClick={handleMarkLessonComplete}
                 disabled={progressMutation.isPending || isCurrentLessonCompleted}
-                className={`px-5 py-2 rounded-full text-[12px] font-bold transition-all cursor-pointer whitespace-nowrap ${
+                className={`px-5 py-2 rounded-full text-[12px] font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 shrink-0 ${
                   isCurrentLessonCompleted
                     ? 'bg-blue-50 text-[#0052CC] border border-blue-200 cursor-default'
                     : 'bg-[#0052CC] hover:bg-[#0047CC] text-white shadow-xs'
                 }`}
               >
-                {progressMutation.isPending 
-                  ? 'Saving...' 
-                  : isCurrentLessonCompleted 
-                  ? 'Lesson Completed' 
-                  : 'Mark as Completed'}
+                {progressMutation.isPending ? (
+                  <>
+                    <Spinner size={12} className="text-current" />
+                    <span>Saving...</span>
+                  </>
+                ) : isCurrentLessonCompleted ? (
+                  <>
+                    <CheckCircleIcon size={13} className="text-[#0052CC]" />
+                    <span>Lesson Completed</span>
+                  </>
+                ) : (
+                  'Mark as Completed'
+                )}
               </button>
             </div>
           )}
@@ -1251,8 +1290,268 @@ const CourseDetails: React.FC = () => {
             queryClient.invalidateQueries({ queryKey: ['courses', 'detail', course.id] });
             queryClient.invalidateQueries({ queryKey: ['talent', 'me'] });
             queryClient.invalidateQueries({ queryKey: ['talent', 'dashboard'] });
+
+            const passedModuleId = assessmentModalModule.moduleId;
+            const remainingModulesWithAssessment = course?.modules?.filter(
+              m => m.id !== passedModuleId && m.assessment && !m.assessment.passed
+            ) || [];
+
+            if (isCourseCompleted || remainingModulesWithAssessment.length === 0) {
+              try {
+                localStorage.setItem('vora_completed_course', 'true');
+                localStorage.setItem(`vora_completed_course_${course.id}`, 'true');
+              } catch (_) {}
+              updateUser({ hasCompletedCourse: true, canUpgradeToTalent: true });
+              setAssessmentModalModule(null);
+              setIsCourseCompletedModalOpen(true);
+            }
           }}
         />
+      )}
+
+      {/* Small Saving & Lesson Completion Modal */}
+      {lessonCompletionModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-sm w-full p-5 sm:p-6 space-y-4 animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                  progressMutation.isPending
+                    ? 'bg-blue-50 text-[#0052CC]'
+                    : 'bg-emerald-50 text-emerald-600'
+                }`}>
+                  {progressMutation.isPending ? (
+                    <Spinner size={16} className="text-[#0052CC]" />
+                  ) : (
+                    <CheckCircleIcon size={18} className="text-emerald-600" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 leading-snug">
+                    {progressMutation.isPending ? 'Saving Lesson Progress' : 'Lesson Completed!'}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    {lessonCompletionModal.isModuleCompleted ? 'Module requirements finished' : 'Keep up the momentum'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setLessonCompletionModal(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                aria-label="Close modal"
+              >
+                <XIcon size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="space-y-3.5">
+              {/* Completed Lesson Info */}
+              <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
+                  Completed Lesson
+                </span>
+                <p className="text-xs font-bold text-slate-800 line-clamp-2">
+                  {lessonCompletionModal.lessonTitle}
+                </p>
+              </div>
+
+              {/* Loading State / Progress Indicator */}
+              {progressMutation.isPending ? (
+                <div className="flex items-center gap-2.5 p-3 bg-blue-50/70 border border-blue-100 rounded-xl text-xs text-[#0052CC] font-semibold">
+                  <Spinner size={15} className="text-[#0052CC]" />
+                  <span>Saving your lesson progress...</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 p-2.5 bg-emerald-50/80 border border-emerald-100 rounded-xl text-xs text-emerald-800 font-semibold">
+                  <CheckCircleIcon size={15} className="text-emerald-600 shrink-0" />
+                  <span>Progress saved securely.</span>
+                </div>
+              )}
+
+              {/* Module Completed Banner (if all lessons in module are complete) */}
+              {lessonCompletionModal.isModuleCompleted && (
+                <div className="p-3 bg-blue-50/50 border border-blue-200/70 rounded-xl space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#0052CC]">
+                    <CheckCircleIcon size={14} className="text-[#0052CC]" />
+                    <span>
+                      {lessonCompletionModal.isAssessmentPassed ? 'Module Mastered!' : 'Module Completed!'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    You have finished all lessons in <span className="font-semibold text-slate-800">{lessonCompletionModal.moduleTitle}</span>.
+                    {lessonCompletionModal.hasAssessment
+                      ? lessonCompletionModal.isAssessmentPassed
+                        ? ` Practical assessment passed (${lessonCompletionModal.assessmentScore || 100}%).`
+                        : ' Complete the practical assessment (80% pass mark) to unlock subsequent modules.'
+                      : ''}
+                  </p>
+                </div>
+              )}
+
+              {/* Primary & Secondary Action Buttons */}
+              <div className="pt-1 space-y-2">
+                {/* Take Assessment button (ONLY shown if assessment is NOT already passed!) */}
+                {lessonCompletionModal.isModuleCompleted &&
+                  lessonCompletionModal.hasAssessment &&
+                  !lessonCompletionModal.isAssessmentPassed && (
+                    <button
+                      type="button"
+                      disabled={progressMutation.isPending}
+                      onClick={() => {
+                        const modId = lessonCompletionModal.moduleId;
+                        const modTitle = lessonCompletionModal.moduleTitle;
+                        setLessonCompletionModal(null);
+                        setAssessmentModalModule({ moduleId: modId, moduleTitle: modTitle });
+                      }}
+                      className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                        progressMutation.isPending
+                          ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                          : 'bg-[#0052CC] hover:bg-[#0047CC] text-white shadow-xs active:scale-[0.99]'
+                      }`}
+                    >
+                      {progressMutation.isPending ? (
+                        <>
+                          <Spinner size={14} className="text-slate-400" />
+                          <span>Saving... (Locked until saved)</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Take Assessment for this Module</span>
+                          <ChevronRightIcon size={14} />
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                {/* If assessment already passed & course is completed: Complete Talent Onboarding */}
+                {lessonCompletionModal.isAssessmentPassed && isCourseCompleted && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLessonCompletionModal(null);
+                      navigate('/onboarding/talent');
+                    }}
+                    className="w-full py-2.5 px-4 bg-[#0052CC] hover:bg-[#0047CC] text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
+                  >
+                    <span>Complete Talent Onboarding</span>
+                    <ChevronRightIcon size={14} />
+                  </button>
+                )}
+
+                {/* If assessment is already passed, offer Review Assessment option */}
+                {lessonCompletionModal.hasAssessment && lessonCompletionModal.isAssessmentPassed && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const modId = lessonCompletionModal.moduleId;
+                      const modTitle = lessonCompletionModal.moduleTitle;
+                      setLessonCompletionModal(null);
+                      setAssessmentModalModule({ moduleId: modId, moduleTitle: modTitle });
+                    }}
+                    className="w-full py-2 px-3 rounded-xl text-xs font-semibold bg-blue-50 text-[#0052CC] hover:bg-blue-100 border border-blue-200/80 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <span>Review Passed Assessment</span>
+                    <ChevronRightIcon size={13} />
+                  </button>
+                )}
+
+                {/* Continue to Next Lesson button (if next lesson exists) */}
+                {lessonCompletionModal.nextLesson && (
+                  <button
+                    type="button"
+                    disabled={progressMutation.isPending}
+                    onClick={() => {
+                      const next = lessonCompletionModal.nextLesson!;
+                      setLessonCompletionModal(null);
+                      handleSelectLesson(next, next.moduleId);
+                    }}
+                    className={`w-full py-2 px-3 rounded-xl text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      progressMutation.isPending ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    <span>Continue to Next Lesson</span>
+                    <ChevronRightIcon size={13} />
+                  </button>
+                )}
+
+                {/* Stay on this lesson */}
+                <button
+                  type="button"
+                  onClick={() => setLessonCompletionModal(null)}
+                  className="w-full text-center text-xs text-slate-400 hover:text-slate-600 font-medium py-1 cursor-pointer transition-colors"
+                >
+                  Stay on this lesson
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Course Completed Pop-Up Modal (HubSpot Academy celebration style) */}
+      {isCourseCompletedModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full p-6 sm:p-8 space-y-6 text-center animate-in zoom-in-95 duration-200 relative overflow-hidden">
+            {/* Top decorative gradient glow */}
+            <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 bg-blue-100/60 rounded-full blur-2xl pointer-events-none" />
+
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setIsCourseCompletedModalOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
+              aria-label="Close modal"
+            >
+              <XIcon size={18} />
+            </button>
+
+            {/* Celebration Icon */}
+            <div className="relative mx-auto w-16 h-16 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 text-white flex items-center justify-center text-3xl shadow-lg shadow-blue-500/20">
+              🎓
+            </div>
+
+            {/* Title & Description */}
+            <div className="space-y-2 relative">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#0052CC] bg-blue-50 px-3 py-1 rounded-full">
+                Course Completed
+              </span>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                Ready for Verified Roles &amp; Mentorship
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-sm mx-auto">
+                You've completed all modules and practical assessments in <span className="font-bold text-slate-800">{course?.title}</span>!
+                Take the next step by completing your full Talent profile to unlock 1-on-1 mentorship sessions and live employer role representation.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-2.5 pt-2 relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCourseCompletedModalOpen(false);
+                  navigate('/onboarding/talent');
+                }}
+                className="w-full py-3.5 px-6 bg-[#0052CC] hover:bg-[#0047CC] text-white font-bold text-sm rounded-full shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.99]"
+              >
+                <span>Complete Talent Onboarding</span>
+                <ChevronRightIcon size={16} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsCourseCompletedModalOpen(false)}
+                className="w-full py-2 text-xs text-slate-400 hover:text-slate-600 font-semibold cursor-pointer transition-colors"
+              >
+                Review Course Outline
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

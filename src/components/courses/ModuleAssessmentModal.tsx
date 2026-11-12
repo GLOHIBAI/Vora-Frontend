@@ -309,26 +309,68 @@ export const ModuleAssessmentModal: React.FC<ModuleAssessmentModalProps> = ({
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-slate-700">Attempts:</span>
                   <span className="font-semibold text-slate-600">
-                    {assessmentData.attemptsUsed + 1} of {assessmentData.maxAttempts || 3}
+                    {(assessmentData.talentState?.attemptsUsed ?? assessmentData.attemptsUsed ?? 0) + 1} of {assessmentData.maxAttempts || 3}
                   </span>
                 </div>
               </div>
 
-              {/* Scenario Context Card — handles string, { briefing: "..." }, or structured object */}
+              {/* Scenario Context Card */}
               {assessmentData.scenarioContext && (
-                <div className="bg-gradient-to-br from-slate-900 to-[#0F1E36] text-white rounded-2xl p-5 sm:p-6 shadow-sm space-y-2">
+                <div className="bg-gradient-to-br from-slate-900 to-[#0F1E36] text-white rounded-2xl p-5 sm:p-6 shadow-sm space-y-3">
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-white/10 text-blue-200 border border-white/20">
                       Scenario Brief
                     </span>
+                    {assessmentData.practicalType && (
+                      <span className="text-[10px] font-semibold text-slate-400 capitalize">
+                        {assessmentData.practicalType.toLowerCase().replace(/_/g, ' ')}
+                      </span>
+                    )}
                   </div>
-                  <p className="text-[13px] leading-relaxed text-slate-200 font-normal whitespace-pre-line">
-                    {typeof assessmentData.scenarioContext === 'string'
-                      ? assessmentData.scenarioContext
-                      : (assessmentData.scenarioContext as any).briefing
-                        ? (assessmentData.scenarioContext as any).briefing
-                        : JSON.stringify(assessmentData.scenarioContext, null, 2)}
-                  </p>
+
+                  {typeof assessmentData.scenarioContext === 'string' ? (
+                    <p className="text-[13px] leading-relaxed text-slate-200 font-normal whitespace-pre-line">
+                      {assessmentData.scenarioContext}
+                    </p>
+                  ) : (
+                    <div className="space-y-3 text-[13px] leading-relaxed text-slate-200">
+                      {(assessmentData.scenarioContext as any).briefing && (
+                        <p>{(assessmentData.scenarioContext as any).briefing}</p>
+                      )}
+                      {(assessmentData.scenarioContext as any).setting && (
+                        <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300 block mb-1">
+                            Setting
+                          </span>
+                          <p className="text-slate-200">{(assessmentData.scenarioContext as any).setting}</p>
+                        </div>
+                      )}
+                      {(assessmentData.scenarioContext as any).conflict && (
+                        <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300 block mb-1">
+                            Conflict &amp; Challenge
+                          </span>
+                          <p className="text-slate-200">{(assessmentData.scenarioContext as any).conflict}</p>
+                        </div>
+                      )}
+                      {!(assessmentData.scenarioContext as any).setting &&
+                        !(assessmentData.scenarioContext as any).conflict &&
+                        !(assessmentData.scenarioContext as any).briefing && (
+                          <div className="space-y-2">
+                            {Object.entries(assessmentData.scenarioContext).map(([key, val]) => (
+                              <div key={key} className="bg-white/5 border border-white/10 rounded-xl p-3">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300 block mb-1">
+                                  {key.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase())}
+                                </span>
+                                <p className="text-slate-200">
+                                  {typeof val === 'object' ? JSON.stringify(val) : String(val)}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -336,6 +378,7 @@ export const ModuleAssessmentModal: React.FC<ModuleAssessmentModalProps> = ({
               <div className="space-y-6">
                 {assessmentData.challenges.map((challenge, cIdx) => {
                   const selected = selectedAnswers[challenge.id];
+                  const questionText = challenge.prompt || challenge.question || challenge.scenarioPrompt || `Scenario Question ${cIdx + 1}`;
 
                   return (
                     <div
@@ -346,9 +389,16 @@ export const ModuleAssessmentModal: React.FC<ModuleAssessmentModalProps> = ({
                         <span className="w-6 h-6 rounded-full bg-blue-50 text-[#0052CC] font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                           {cIdx + 1}
                         </span>
-                        <h4 className="text-[14px] font-bold text-slate-900 leading-snug">
-                          {challenge.question}
-                        </h4>
+                        <div className="space-y-1 flex-1 min-w-0">
+                          {challenge.competencyTag && (
+                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-[#0052CC]">
+                              {challenge.competencyTag}
+                            </span>
+                          )}
+                          <h4 className="text-[14px] font-bold text-slate-900 leading-snug">
+                            {questionText}
+                          </h4>
+                        </div>
                       </div>
 
                       {/* Options */}

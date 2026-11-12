@@ -243,6 +243,9 @@ export interface MentorActiveCourseItem {
   id?: string | number;
   courseId?: string | number;
   title: string;
+  price?: number;
+  currency?: string;
+  formattedPrice?: string;
   enrolled?: number | string;
   enrollmentCount?: number | string;
   enrolledLabel?: string;
@@ -254,6 +257,7 @@ export interface MentorActiveCourseItem {
   revenuePeriodLabel?: string;
   gradient?: string;
   hrefHint?: string;
+  thumbnailUrl?: string | null;
 }
 
 export interface MentorActiveCoursesBlock {
