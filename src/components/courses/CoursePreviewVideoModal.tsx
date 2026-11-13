@@ -53,11 +53,22 @@ export const CoursePreviewVideoModal: React.FC<CoursePreviewVideoModalProps> = (
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isBuffering, setIsBuffering] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [hasEnded, setHasEnded] = useState(false);
   const [captionsEnabled, setCaptionsEnabled] = useState(false);
+
+  // Reset loading state on modal open or video URL change
+  useEffect(() => {
+    if (isOpen) {
+      setIsLoading(true);
+      setIsBuffering(false);
+      setHasError(false);
+      setHasEnded(false);
+      setIsPlaying(false);
+    }
+  }, [isOpen, videoUrl]);
 
   // Normalize source URL
   const rawUrl = (videoUrl && typeof videoUrl === 'string' ? videoUrl.trim() : '') || '';
@@ -269,6 +280,25 @@ export const CoursePreviewVideoModal: React.FC<CoursePreviewVideoModalProps> = (
 
         {/* Video Player Area (16:9, neutral near-black #0B0F17) */}
         <div className="relative aspect-video w-full bg-[#0B0F17] overflow-hidden flex items-center justify-center select-none group">
+          {/* Subtle poster backdrop while loading */}
+          {posterUrl && (isLoading || isBuffering) && !hasError && (
+            <img
+              src={posterUrl}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover opacity-25 blur-xs pointer-events-none"
+            />
+          )}
+
+          {/* Loading / Buffering Spinner Overlay (covers both embeds & direct video) */}
+          {(isLoading || isBuffering) && !hasError && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/70 backdrop-blur-xs z-20 pointer-events-none transition-opacity duration-300">
+              <div className="w-11 h-11 rounded-full border-3 border-white/20 border-t-[#0052CC] animate-spin mb-3 shadow-lg" />
+              <span className="text-xs text-slate-200 font-semibold tracking-wide drop-shadow-sm">
+                Loading video...
+              </span>
+            </div>
+          )}
+
           {isEmbed ? (
             // Third-party embed (YouTube, Vimeo, Loom, Drive)
             <div className="w-full h-full">
@@ -279,6 +309,7 @@ export const CoursePreviewVideoModal: React.FC<CoursePreviewVideoModalProps> = (
                   className="w-full h-full border-0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
+                  onLoad={() => setIsLoading(false)}
                 />
               )}
               {isVimeo && (
@@ -288,6 +319,7 @@ export const CoursePreviewVideoModal: React.FC<CoursePreviewVideoModalProps> = (
                   className="w-full h-full border-0"
                   allow="autoplay; fullscreen; picture-in-picture"
                   allowFullScreen
+                  onLoad={() => setIsLoading(false)}
                 />
               )}
               {isGdrive && (
@@ -297,6 +329,7 @@ export const CoursePreviewVideoModal: React.FC<CoursePreviewVideoModalProps> = (
                   className="w-full h-full border-0"
                   allow="autoplay; fullscreen"
                   allowFullScreen
+                  onLoad={() => setIsLoading(false)}
                 />
               )}
               {isLoom && (
@@ -306,6 +339,7 @@ export const CoursePreviewVideoModal: React.FC<CoursePreviewVideoModalProps> = (
                   className="w-full h-full border-0"
                   allow="autoplay; fullscreen; picture-in-picture"
                   allowFullScreen
+                  onLoad={() => setIsLoading(false)}
                 />
               )}
               {isGenericIframe && (
@@ -315,6 +349,7 @@ export const CoursePreviewVideoModal: React.FC<CoursePreviewVideoModalProps> = (
                   className="w-full h-full border-0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                   allowFullScreen
+                  onLoad={() => setIsLoading(false)}
                 />
               )}
             </div>
@@ -331,6 +366,9 @@ export const CoursePreviewVideoModal: React.FC<CoursePreviewVideoModalProps> = (
                 onClick={togglePlay}
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
+                onLoadStart={() => setIsLoading(true)}
+                onLoadedData={() => setIsLoading(false)}
+                onCanPlay={() => setIsLoading(false)}
                 onTimeUpdate={() => {
                   if (videoRef.current) {
                     setCurrentTime(videoRef.current.currentTime);
@@ -384,13 +422,6 @@ export const CoursePreviewVideoModal: React.FC<CoursePreviewVideoModalProps> = (
                       <path d="M8 5v14l11-7z" />
                     </svg>
                   </button>
-                </div>
-              )}
-
-              {/* Loading / Buffering Spinner */}
-              {(isLoading || isBuffering) && !hasError && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none">
-                  <div className="w-12 h-12 rounded-full border-3 border-blue-500/30 border-t-blue-500 animate-spin" />
                 </div>
               )}
 

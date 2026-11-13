@@ -36,6 +36,29 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loadError, setLoadError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isBuffering, setIsBuffering] = useState(false);
+
+  // Normalize source link
+  const rawUrl = (src && typeof src === 'string' ? src.trim() : '') || '';
+  const resolvedUrl = displayMedia(rawUrl) || mediaSrc(rawUrl) || rawUrl;
+
+  const isYt = isYouTubeUrl(resolvedUrl);
+  const isVimeo = isVimeoUrl(resolvedUrl);
+  const isGdrive = isGoogleDriveUrl(resolvedUrl);
+  const isLoom = isLoomUrl(resolvedUrl);
+  const isGenericIframe =
+    Boolean(resolvedUrl) &&
+    (resolvedUrl.includes('/embed/') ||
+      resolvedUrl.includes('player.') ||
+      resolvedUrl.includes('fast.wistia.net'));
+
+  // Reset loading state whenever the video source URL changes
+  useEffect(() => {
+    setIsLoading(true);
+    setIsBuffering(false);
+    setLoadError(false);
+  }, [resolvedUrl]);
 
   // YouTube / Vimeo / iframe postMessage listener for onEnded
   useEffect(() => {
@@ -85,20 +108,6 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
     return () => window.removeEventListener('message', handleWindowMessage);
   }, [onEnded]);
 
-  // Normalize source link
-  const rawUrl = (src && typeof src === 'string' ? src.trim() : '') || '';
-  const resolvedUrl = displayMedia(rawUrl) || mediaSrc(rawUrl) || rawUrl;
-
-  const isYt = isYouTubeUrl(resolvedUrl);
-  const isVimeo = isVimeoUrl(resolvedUrl);
-  const isGdrive = isGoogleDriveUrl(resolvedUrl);
-  const isLoom = isLoomUrl(resolvedUrl);
-  const isGenericIframe =
-    Boolean(resolvedUrl) &&
-    (resolvedUrl.includes('/embed/') ||
-      resolvedUrl.includes('player.') ||
-      resolvedUrl.includes('fast.wistia.net'));
-
   // Active YouTube state polling to ensure video finish is detected
   useEffect(() => {
     if (!onEnded || !isYt) return;
@@ -141,119 +150,164 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
     );
   }
 
-  // 1. YouTube streaming
-  if (isYt) {
-    const embedUrl = getYouTubeEmbedUrl(resolvedUrl, autoPlay, controls);
+  // Render specific video playback implementation
+  const renderPlayer = () => {
+    // 1. YouTube streaming
+    if (isYt) {
+      const embedUrl = getYouTubeEmbedUrl(resolvedUrl, autoPlay, controls);
+      return (
+        <iframe
+          ref={iframeRef}
+          src={embedUrl || ''}
+          title={title}
+          className="w-full h-full border-0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+          onLoad={() => {
+            setIsLoading(false);
+            try {
+              iframeRef.current?.contentWindow?.postMessage(
+                JSON.stringify({ event: 'listening', id: 1 }),
+                '*'
+              );
+              iframeRef.current?.contentWindow?.postMessage(
+                JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onStateChange'] }),
+                '*'
+              );
+            } catch (_) {}
+          }}
+        />
+      );
+    }
+
+    // 2. Vimeo streaming
+    if (isVimeo) {
+      const embedUrl = getVimeoEmbedUrl(resolvedUrl, autoPlay);
+      return (
+        <iframe
+          src={embedUrl || ''}
+          title={title}
+          className="w-full h-full border-0"
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowFullScreen
+          onLoad={() => setIsLoading(false)}
+        />
+      );
+    }
+
+    // 3. Google Drive streaming
+    if (isGdrive) {
+      const embedUrl = getGoogleDriveEmbedUrl(resolvedUrl);
+      return (
+        <iframe
+          src={embedUrl || ''}
+          title={title}
+          className="w-full h-full border-0"
+          allow="autoplay; fullscreen"
+          allowFullScreen
+          onLoad={() => setIsLoading(false)}
+        />
+      );
+    }
+
+    // 4. Loom streaming
+    if (isLoom) {
+      const embedUrl = getLoomEmbedUrl(resolvedUrl, autoPlay);
+      return (
+        <iframe
+          src={embedUrl || ''}
+          title={title}
+          className="w-full h-full border-0"
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowFullScreen
+          onLoad={() => setIsLoading(false)}
+        />
+      );
+    }
+
+    // 5. Generic embed / web player iframe
+    if (isGenericIframe) {
+      return (
+        <iframe
+          src={resolvedUrl}
+          title={title}
+          className="w-full h-full border-0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+          allowFullScreen
+          onLoad={() => setIsLoading(false)}
+        />
+      );
+    }
+
+    // 6. Direct MP4, WebM, HLS, S3, Cloudinary, or uploaded video
+    const videoSrc = loadError
+      ? 'https://assets.mixkit.co/videos/preview/mixkit-medical-laboratory-research-analysis-41270-large.mp4'
+      : (resolvedUrl || 'https://assets.mixkit.co/videos/preview/mixkit-medical-laboratory-research-analysis-41270-large.mp4');
+
     return (
-      <iframe
-        ref={iframeRef}
-        src={embedUrl || ''}
-        title={title}
-        className={`${className} border-0`}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowFullScreen
-        onLoad={() => {
-          try {
-            iframeRef.current?.contentWindow?.postMessage(
-              JSON.stringify({ event: 'listening', id: 1 }),
-              '*'
-            );
-            iframeRef.current?.contentWindow?.postMessage(
-              JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onStateChange'] }),
-              '*'
-            );
-          } catch (_) {}
+      <video
+        ref={videoRef}
+        controls={controls}
+        playsInline={playsInline}
+        poster={poster || undefined}
+        className="w-full h-full object-contain"
+        preload="metadata"
+        onLoadStart={() => setIsLoading(true)}
+        onLoadedData={() => setIsLoading(false)}
+        onCanPlay={() => setIsLoading(false)}
+        onWaiting={() => setIsBuffering(true)}
+        onPlaying={() => {
+          setIsBuffering(false);
+          setIsLoading(false);
         }}
-      />
+        onError={() => {
+          setLoadError(true);
+          setIsLoading(false);
+          setIsBuffering(false);
+        }}
+        onEnded={onEnded}
+        onTimeUpdate={() => {
+          if (
+            onEnded &&
+            videoRef.current &&
+            videoRef.current.duration > 0 &&
+            videoRef.current.currentTime >= videoRef.current.duration - 0.5
+          ) {
+            onEnded();
+          }
+        }}
+        src={videoSrc}
+      >
+        <source src={videoSrc} type="video/mp4" />
+        <source src={videoSrc} type="video/webm" />
+        Your browser does not support HTML5 video streaming.
+      </video>
     );
-  }
-
-  // 2. Vimeo streaming
-  if (isVimeo) {
-    const embedUrl = getVimeoEmbedUrl(resolvedUrl, autoPlay);
-    return (
-      <iframe
-        src={embedUrl || ''}
-        title={title}
-        className={`${className} border-0`}
-        allow="autoplay; fullscreen; picture-in-picture"
-        allowFullScreen
-      />
-    );
-  }
-
-  // 3. Google Drive streaming
-  if (isGdrive) {
-    const embedUrl = getGoogleDriveEmbedUrl(resolvedUrl);
-    return (
-      <iframe
-        src={embedUrl || ''}
-        title={title}
-        className={`${className} border-0`}
-        allow="autoplay; fullscreen"
-        allowFullScreen
-      />
-    );
-  }
-
-  // 4. Loom streaming
-  if (isLoom) {
-    const embedUrl = getLoomEmbedUrl(resolvedUrl, autoPlay);
-    return (
-      <iframe
-        src={embedUrl || ''}
-        title={title}
-        className={`${className} border-0`}
-        allow="autoplay; fullscreen; picture-in-picture"
-        allowFullScreen
-      />
-    );
-  }
-
-  // 5. Generic embed / web player iframe
-  if (isGenericIframe) {
-    return (
-      <iframe
-        src={resolvedUrl}
-        title={title}
-        className={`${className} border-0`}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-        allowFullScreen
-      />
-    );
-  }
-
-  // 6. Direct MP4, WebM, HLS, S3, Cloudinary, or uploaded video
-  const videoSrc = loadError
-    ? 'https://assets.mixkit.co/videos/preview/mixkit-medical-laboratory-research-analysis-41270-large.mp4'
-    : (resolvedUrl || 'https://assets.mixkit.co/videos/preview/mixkit-medical-laboratory-research-analysis-41270-large.mp4');
+  };
 
   return (
-    <video
-      ref={videoRef}
-      controls={controls}
-      playsInline={playsInline}
-      poster={poster || undefined}
-      className={`${className} object-contain`}
-      preload="metadata"
-      onError={() => setLoadError(true)}
-      onEnded={onEnded}
-      onTimeUpdate={() => {
-        if (
-          onEnded &&
-          videoRef.current &&
-          videoRef.current.duration > 0 &&
-          videoRef.current.currentTime >= videoRef.current.duration - 0.5
-        ) {
-          onEnded();
-        }
-      }}
-      src={videoSrc}
-    >
-      <source src={videoSrc} type="video/mp4" />
-      <source src={videoSrc} type="video/webm" />
-      Your browser does not support HTML5 video streaming.
-    </video>
+    <div className={`relative ${className} bg-[#0B0F17] overflow-hidden flex items-center justify-center select-none`}>
+      {/* Background Poster while loading */}
+      {poster && (isLoading || isBuffering) && !loadError && (
+        <img
+          src={poster}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover opacity-25 blur-xs pointer-events-none"
+        />
+      )}
+
+      {/* Loading & Buffering Spinner Overlay */}
+      {(isLoading || isBuffering) && !loadError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/70 backdrop-blur-xs z-10 pointer-events-none transition-opacity duration-300">
+          <div className="w-11 h-11 rounded-full border-3 border-white/20 border-t-[#0052CC] animate-spin mb-3 shadow-lg" />
+          <span className="text-xs text-slate-200 font-semibold tracking-wide drop-shadow-sm">
+            Loading video...
+          </span>
+        </div>
+      )}
+
+      {renderPlayer()}
+    </div>
   );
 };
 
