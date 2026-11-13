@@ -99,6 +99,28 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
       resolvedUrl.includes('player.') ||
       resolvedUrl.includes('fast.wistia.net'));
 
+  // Active YouTube state polling to ensure video finish is detected
+  useEffect(() => {
+    if (!onEnded || !isYt) return;
+    const interval = setInterval(() => {
+      try {
+        iframeRef.current?.contentWindow?.postMessage(
+          JSON.stringify({ event: 'command', func: 'getPlayerState' }),
+          '*'
+        );
+        iframeRef.current?.contentWindow?.postMessage(
+          JSON.stringify({ event: 'command', func: 'getCurrentTime' }),
+          '*'
+        );
+        iframeRef.current?.contentWindow?.postMessage(
+          JSON.stringify({ event: 'command', func: 'getDuration' }),
+          '*'
+        );
+      } catch (_) {}
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [onEnded, isYt]);
+
   // Attempt autoplay for direct HTML5 video element without throwing uncaught rejection
   useEffect(() => {
     if (autoPlay && videoRef.current && !isYt && !isVimeo && !isGdrive && !isLoom && !isGenericIframe) {
@@ -216,6 +238,16 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
       preload="metadata"
       onError={() => setLoadError(true)}
       onEnded={onEnded}
+      onTimeUpdate={() => {
+        if (
+          onEnded &&
+          videoRef.current &&
+          videoRef.current.duration > 0 &&
+          videoRef.current.currentTime >= videoRef.current.duration - 0.5
+        ) {
+          onEnded();
+        }
+      }}
       src={videoSrc}
     >
       <source src={videoSrc} type="video/mp4" />

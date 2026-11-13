@@ -177,15 +177,16 @@ const CourseDetails: React.FC = () => {
   const isCourseCompleted = displayProgressPercent >= 100 || Boolean(user?.hasCompletedCourse) || (typeof window !== 'undefined' && (localStorage.getItem(`vora_completed_course_${course?.id}`) === 'true' || localStorage.getItem('vora_completed_course') === 'true'));
 
   // Check if a specific lesson is unlocked (sequential lesson progression)
-  const isLessonUnlocked = (lessonId: string): boolean => {
+  const isLessonUnlocked = (lessonId: string, extraCompleted: string[] = []): boolean => {
     if (!course?.modules) return true;
+    const completedSet = new Set([...completedLessonIds, ...extraCompleted]);
     for (const mod of course.modules) {
       if (mod.isLocked) continue;
       const lIdx = mod.lessons.findIndex(l => l.id === lessonId);
       if (lIdx === -1) continue;
       if (lIdx === 0) return true;
       const prevLesson = mod.lessons[lIdx - 1];
-      return Boolean(prevLesson.isCompleted || completedLessonIds.includes(prevLesson.id));
+      return Boolean(prevLesson.isCompleted || completedSet.has(prevLesson.id));
     }
     return false;
   };
@@ -193,8 +194,8 @@ const CourseDetails: React.FC = () => {
   const currentIndex = allLessons.findIndex(l => l.id === currentLesson?.id);
   const nextLesson = currentIndex >= 0 && currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
 
-  const handleSelectLesson = (lesson: CourseLesson, moduleId: string) => {
-    if (!isLessonUnlocked(lesson.id)) {
+  const handleSelectLesson = (lesson: CourseLesson, moduleId: string, forceUnlock = false) => {
+    if (!forceUnlock && !isLessonUnlocked(lesson.id)) {
       const targetMod = course?.modules?.find(m => m.id === moduleId);
       const lIdx = targetMod?.lessons.findIndex(l => l.id === lesson.id) ?? -1;
       const prevTitle = lIdx > 0 ? targetMod?.lessons[lIdx - 1].title : 'the previous lesson';
@@ -312,6 +313,39 @@ const CourseDetails: React.FC = () => {
       }
     } catch (err: any) {
       console.warn('Backend progress sync failed, preserved locally:', err);
+    }
+  };
+
+  // Auto-advance handler when video ends (HubSpot & Coursera style)
+  const handleVideoEnded = async () => {
+    if (!course?.id || !currentLesson) return;
+
+    const wasAlreadyDone = completedLessonIds.includes(currentLesson.id) || currentLesson.isCompleted;
+    if (!wasAlreadyDone) {
+      await handleMarkLessonComplete();
+    }
+
+    // Check if this module is finished and requires taking a practical assessment
+    const targetModule = course?.modules?.find(m => m.id === currentLesson.moduleId);
+    const targetModLessons = targetModule?.lessons || [];
+    const allModDone = targetModLessons.every(
+      l => l.id === currentLesson.id || l.isCompleted || completedLessonIds.includes(l.id)
+    );
+    const hasUnpassedAssessment = Boolean(targetModule?.assessment && !targetModule.assessment.passed);
+
+    // If module has a practical assessment to complete, keep modal open for taking assessment
+    if (allModDone && hasUnpassedAssessment) {
+      return;
+    }
+
+    // Auto-advance to next lesson if available (HubSpot & Coursera style)
+    if (nextLesson) {
+      toast.success(`Lesson completed! Up next: ${nextLesson.title}`, {
+        duration: 3500,
+        icon: '▶️',
+      });
+      setLessonCompletionModal(null);
+      handleSelectLesson(nextLesson, nextLesson.moduleId, true);
     }
   };
 
@@ -619,7 +653,7 @@ const CourseDetails: React.FC = () => {
                     title={currentLesson?.title || course.title}
                     autoPlay={true}
                     controls={true}
-                    onEnded={handleMarkLessonComplete}
+                    onEnded={handleVideoEnded}
                   />
                 </div>
               );
@@ -712,44 +746,26 @@ const CourseDetails: React.FC = () => {
                     </button>
                   ) : null
                 ) : (
-                  /* Not yet completed: clicking Next Lesson marks current complete, saves progress, and advances */
+                  /* Not yet completed: learner must watch this lesson to the end before the next lesson unlocks */
                   nextLesson ? (
                     <button
                       type="button"
-                      disabled={progressMutation.isPending}
-                      onClick={handleMarkLessonComplete}
-                      className="px-4 py-1.5 rounded-full text-[12px] font-bold bg-[#0052CC] hover:bg-[#0047CC] text-white shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-98 disabled:opacity-60"
+                      disabled
+                      className="px-4 py-1.5 rounded-full text-[12px] font-medium bg-gray-100 text-gray-400 cursor-not-allowed flex items-center gap-1.5 border border-gray-200/50"
+                      title="Please finish watching this lesson to unlock the next lesson"
                     >
-                      {progressMutation.isPending ? (
-                        <>
-                          <Spinner size={12} className="text-white" />
-                          <span>Saving...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>Next Lesson</span>
-                          <ChevronRightIcon size={14} />
-                        </>
-                      )}
+                      <LockIcon size={11} className="text-gray-400" />
+                      <span>Next Lesson Locked</span>
                     </button>
                   ) : currentModuleAssessment && !currentModuleAssessment.passed ? (
                     <button
                       type="button"
-                      disabled={progressMutation.isPending}
-                      onClick={handleMarkLessonComplete}
-                      className="px-4 py-1.5 rounded-full text-[12px] font-bold bg-[#0052CC] hover:bg-[#0047CC] text-white shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-98 disabled:opacity-60"
+                      disabled
+                      className="px-4 py-1.5 rounded-full text-[12px] font-medium bg-gray-100 text-gray-400 cursor-not-allowed flex items-center gap-1.5 border border-gray-200/50"
+                      title="Please finish watching this lesson to unlock module assessment"
                     >
-                      {progressMutation.isPending ? (
-                        <>
-                          <Spinner size={12} className="text-white" />
-                          <span>Saving...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>Take Module Assessment</span>
-                          <ChevronRightIcon size={14} />
-                        </>
-                      )}
+                      <LockIcon size={11} className="text-gray-400" />
+                      <span>Assessment Locked</span>
                     </button>
                   ) : null
                 )}
@@ -932,8 +948,7 @@ const CourseDetails: React.FC = () => {
               {/* Career Bridge Banner */}
               <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-blue-50/80 border border-blue-200/80 rounded-2xl p-4.5 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#0052CC] animate-pulse" />
+                  <div>
                     <span className="text-[11px] font-bold uppercase tracking-wider text-[#0052CC]">
                       Employment Outcomes
                     </span>
@@ -948,10 +963,9 @@ const CourseDetails: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setActiveTab('careers')}
-                  className="px-4 py-2 rounded-xl bg-[#0052CC] hover:bg-[#0039A6] text-white text-xs font-bold transition-all shrink-0 shadow-xs cursor-pointer flex items-center gap-1"
+                  className="px-4 py-2 rounded-xl bg-[#0052CC] hover:bg-[#0039A6] text-white text-xs font-bold transition-all shrink-0 shadow-xs cursor-pointer flex items-center justify-center"
                 >
                   <span>View Related Jobs</span>
-                  <span>&rarr;</span>
                 </button>
               </div>
 
@@ -1446,7 +1460,7 @@ const CourseDetails: React.FC = () => {
                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
                 aria-label="Close modal"
               >
-                <XIcon size={16} />
+                <CloseIcon size={16} />
               </button>
             </div>
 
@@ -1609,7 +1623,7 @@ const CourseDetails: React.FC = () => {
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
               aria-label="Close modal"
             >
-              <XIcon size={18} />
+              <CloseIcon size={18} />
             </button>
 
             {/* Celebration Icon */}

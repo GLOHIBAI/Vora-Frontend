@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Link, useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useIsFetching, useIsMutating } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/common/Button';
@@ -517,6 +517,9 @@ export const CreateCoursePage: React.FC = () => {
   const [isReplacingLessonVideo, setIsReplacingLessonVideo] = useState(false);
   const [googleDriveInputVal, setGoogleDriveInputVal] = useState('');
 
+  const isFetchingBuilderQueries = useIsFetching({ queryKey: courseBuilderKeys.all }) > 0;
+  const isMutatingAny = useIsMutating() > 0;
+
   const isAnyLoadingOrUploading = Boolean(
     isUploadingThumbnail ||
     isUploadingPromoVideo ||
@@ -527,7 +530,9 @@ export const CreateCoursePage: React.FC = () => {
     isSavingLesson ||
     createDraftMutation.isPending ||
     publishMutation.isPending ||
-    unpublishMutation.isPending
+    unpublishMutation.isPending ||
+    isFetchingBuilderQueries ||
+    isMutatingAny
   );
 
   // Status & Validation
