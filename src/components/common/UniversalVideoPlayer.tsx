@@ -20,6 +20,7 @@ export interface UniversalVideoPlayerProps {
   controls?: boolean;
   className?: string;
   playsInline?: boolean;
+  onEnded?: () => void;
 }
 
 export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
@@ -30,9 +31,59 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
   controls = true,
   className = 'w-full h-full',
   playsInline = true,
+  onEnded,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loadError, setLoadError] = useState(false);
+
+  // YouTube / Vimeo / iframe postMessage listener for onEnded
+  useEffect(() => {
+    if (!onEnded) return;
+
+    const handleWindowMessage = (event: MessageEvent) => {
+      try {
+        let data = event.data;
+        if (typeof data === 'string') {
+          try {
+            data = JSON.parse(data);
+          } catch (_) {
+            return;
+          }
+        }
+
+        // 1. YouTube Player API events
+        // - onStateChange with info === 0 (YT.PlayerState.ENDED)
+        // - infoDelivery with info.playerState === 0
+        const isYtEnded =
+          (data?.event === 'onStateChange' && (data?.info === 0 || data?.info?.playerState === 0)) ||
+          (data?.event === 'infoDelivery' && (data?.info?.playerState === 0 || data?.info === 0)) ||
+          data?.info === 0 ||
+          data?.info?.playerState === 0;
+
+        // Check if YouTube reached end of duration (within 1.5s)
+        const isYtTimeEnded =
+          typeof data?.info?.currentTime === 'number' &&
+          typeof data?.info?.duration === 'number' &&
+          data.info.duration > 0 &&
+          data.info.currentTime >= data.info.duration - 1.5;
+
+        if (isYtEnded || isYtTimeEnded) {
+          onEnded();
+          return;
+        }
+
+        // 2. Vimeo message
+        if (data?.event === 'finish' || data?.method === 'finish') {
+          onEnded();
+          return;
+        }
+      } catch (_) {}
+    };
+
+    window.addEventListener('message', handleWindowMessage);
+    return () => window.removeEventListener('message', handleWindowMessage);
+  }, [onEnded]);
 
   // Normalize source link
   const rawUrl = (src && typeof src === 'string' ? src.trim() : '') || '';
@@ -73,11 +124,24 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
     const embedUrl = getYouTubeEmbedUrl(resolvedUrl, autoPlay, controls);
     return (
       <iframe
+        ref={iframeRef}
         src={embedUrl || ''}
         title={title}
         className={`${className} border-0`}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowFullScreen
+        onLoad={() => {
+          try {
+            iframeRef.current?.contentWindow?.postMessage(
+              JSON.stringify({ event: 'listening', id: 1 }),
+              '*'
+            );
+            iframeRef.current?.contentWindow?.postMessage(
+              JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onStateChange'] }),
+              '*'
+            );
+          } catch (_) {}
+        }}
       />
     );
   }
@@ -151,6 +215,7 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
       className={`${className} object-contain`}
       preload="metadata"
       onError={() => setLoadError(true)}
+      onEnded={onEnded}
       src={videoSrc}
     >
       <source src={videoSrc} type="video/mp4" />

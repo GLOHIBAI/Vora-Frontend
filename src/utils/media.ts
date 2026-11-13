@@ -117,6 +117,10 @@ export function getYouTubeEmbedUrl(
     if (autoPlay) params.set('autoplay', '1');
     if (!controls) params.set('controls', '0');
     params.set('rel', '0');
+    params.set('enablejsapi', '1');
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      params.set('origin', window.location.origin);
+    }
     return `${baseEmbed}?${params.toString()}`;
   }
   return null;

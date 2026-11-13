@@ -176,7 +176,31 @@ const CourseDetails: React.FC = () => {
   const displayProgressPercent = Math.max(computedPercent, myEnrollment?.progressPercent ?? 0);
   const isCourseCompleted = displayProgressPercent >= 100 || Boolean(user?.hasCompletedCourse) || (typeof window !== 'undefined' && (localStorage.getItem(`vora_completed_course_${course?.id}`) === 'true' || localStorage.getItem('vora_completed_course') === 'true'));
 
+  // Check if a specific lesson is unlocked (sequential lesson progression)
+  const isLessonUnlocked = (lessonId: string): boolean => {
+    if (!course?.modules) return true;
+    for (const mod of course.modules) {
+      if (mod.isLocked) continue;
+      const lIdx = mod.lessons.findIndex(l => l.id === lessonId);
+      if (lIdx === -1) continue;
+      if (lIdx === 0) return true;
+      const prevLesson = mod.lessons[lIdx - 1];
+      return Boolean(prevLesson.isCompleted || completedLessonIds.includes(prevLesson.id));
+    }
+    return false;
+  };
+
+  const currentIndex = allLessons.findIndex(l => l.id === currentLesson?.id);
+  const nextLesson = currentIndex >= 0 && currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
+
   const handleSelectLesson = (lesson: CourseLesson, moduleId: string) => {
+    if (!isLessonUnlocked(lesson.id)) {
+      const targetMod = course?.modules?.find(m => m.id === moduleId);
+      const lIdx = targetMod?.lessons.findIndex(l => l.id === lesson.id) ?? -1;
+      const prevTitle = lIdx > 0 ? targetMod?.lessons[lIdx - 1].title : 'the previous lesson';
+      toast.error(`Please finish "${prevTitle}" first before starting this lesson.`);
+      return;
+    }
     setSelectedLessonId(lesson.id);
     setIsPlayingVideo(true);
     setSearchParams({ module: moduleId, lesson: lesson.id });
@@ -445,17 +469,28 @@ const CourseDetails: React.FC = () => {
 
                     {isExpanded && !isModuleLocked && (
                       <div className="bg-white border-t border-gray-50 divide-y divide-gray-50/80 animate-in fade-in duration-200">
-                        {module.lessons.map(lesson => {
+                        {module.lessons.map((lesson, lessonIdx) => {
                           const isSelected = selectedLessonId === lesson.id;
                           const isCompleted = lesson.isCompleted || completedLessonIds.includes(lesson.id);
+                          const isLessonLocked = isModuleLocked || !isLessonUnlocked(lesson.id);
 
                           return (
                             <button
                               key={lesson.id}
                               type="button"
-                              onClick={() => handleSelectLesson(lesson, module.id)}
+                              disabled={isLessonLocked}
+                              onClick={() => {
+                                if (isLessonLocked) {
+                                  const prevTitle = lessonIdx > 0 ? module.lessons[lessonIdx - 1].title : 'previous lessons';
+                                  toast.error(`Finish "${prevTitle}" first to unlock this lesson.`);
+                                  return;
+                                }
+                                handleSelectLesson(lesson, module.id);
+                              }}
                               className={`w-full px-5 py-3 flex items-start gap-3 text-left transition-colors cursor-pointer ${
-                                isSelected 
+                                isLessonLocked
+                                  ? 'opacity-55 cursor-not-allowed bg-slate-50/40 hover:bg-slate-50/40'
+                                  : isSelected 
                                   ? 'bg-[#EFF6FF] border-l-4 border-[#0052CC]' 
                                   : 'hover:bg-gray-50/50'
                               }`}
@@ -463,6 +498,10 @@ const CourseDetails: React.FC = () => {
                               <div className="pt-0.5 shrink-0">
                                 {isCompleted ? (
                                   <CheckCircleIcon size={14} className="text-[#0052CC]" />
+                                ) : isLessonLocked ? (
+                                  <div className="w-3.5 h-3.5 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-400">
+                                    <LockIcon size={9} />
+                                  </div>
                                 ) : (
                                   <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
                                     isSelected ? 'border-[#0052CC] bg-white' : 'border-gray-300'
@@ -476,16 +515,22 @@ const CourseDetails: React.FC = () => {
 
                               <div className="space-y-0.5 min-w-0 flex-1">
                                 <p className={`text-[12px] leading-snug font-medium truncate ${
-                                  isSelected ? 'text-gray-900 font-semibold' : 'text-gray-700'
+                                  isLessonLocked
+                                    ? 'text-slate-400'
+                                    : isSelected 
+                                    ? 'text-gray-900 font-semibold' 
+                                    : 'text-gray-700'
                                 }`}>
                                   {lesson.title}
                                 </p>
                                 <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
                                   <VideoIcon size={12} className="text-gray-400" />
                                   <span>{lesson.durationLabel || (lesson.durationMinutes ? `${lesson.durationMinutes} mins` : 'Video')}</span>
-                                  {isCompleted && (
+                                  {isCompleted ? (
                                     <span className="text-[#0052CC] font-medium ml-1">Completed</span>
-                                  )}
+                                  ) : isLessonLocked ? (
+                                    <span className="text-slate-400 font-medium ml-1">Locked</span>
+                                  ) : null}
                                 </div>
                               </div>
                             </button>
@@ -574,6 +619,7 @@ const CourseDetails: React.FC = () => {
                     title={currentLesson?.title || course.title}
                     autoPlay={true}
                     controls={true}
+                    onEnded={handleMarkLessonComplete}
                   />
                 </div>
               );
@@ -619,38 +665,95 @@ const CourseDetails: React.FC = () => {
             );
           })()}
 
-          {/* Lesson Controls strip (when enrolled) */}
+          {/* Selected Lesson strip (when enrolled) */}
           {(myEnrollment || isUserEnrolled) && currentLesson && (
-            <div className="bg-[#FAFAFA] border border-gray-100 rounded-[16px] px-5 py-3 flex items-center justify-between gap-4">
+            <div className="bg-[#FAFAFA] border border-gray-100 rounded-[16px] px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-0.5 min-w-0">
                 <span className="text-[11px] text-gray-400 font-medium">Selected Lesson</span>
                 <p className="text-[13px] font-bold text-gray-800 truncate">{currentLesson.title}</p>
               </div>
 
-              <button
-                type="button"
-                onClick={handleMarkLessonComplete}
-                disabled={progressMutation.isPending || isCurrentLessonCompleted}
-                className={`px-5 py-2 rounded-full text-[12px] font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 shrink-0 ${
-                  isCurrentLessonCompleted
-                    ? 'bg-blue-50 text-[#0052CC] border border-blue-200 cursor-default'
-                    : 'bg-[#0052CC] hover:bg-[#0047CC] text-white shadow-xs'
-                }`}
-              >
-                {progressMutation.isPending ? (
-                  <>
-                    <Spinner size={12} className="text-current" />
-                    <span>Saving...</span>
-                  </>
-                ) : isCurrentLessonCompleted ? (
-                  <>
-                    <CheckCircleIcon size={13} className="text-[#0052CC]" />
-                    <span>Lesson Completed</span>
-                  </>
-                ) : (
-                  'Mark as Completed'
+              <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+                {isCurrentLessonCompleted && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-[#0052CC] border border-blue-200/60">
+                    <CheckCircleIcon size={12} className="text-[#0052CC]" />
+                    <span>Completed</span>
+                  </span>
                 )}
-              </button>
+
+                {/* Primary Forward Action: Next Lesson / Assessment / Onboarding */}
+                {isCurrentLessonCompleted ? (
+                  nextLesson ? (
+                    <button
+                      type="button"
+                      onClick={() => handleSelectLesson(nextLesson, nextLesson.moduleId)}
+                      className="px-4 py-1.5 rounded-full text-[12px] font-bold bg-[#0052CC] hover:bg-[#0047CC] text-white shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-98"
+                    >
+                      <span>Next Lesson</span>
+                      <ChevronRightIcon size={14} />
+                    </button>
+                  ) : isCurrentModuleCompleted && currentModuleAssessment && !currentModuleAssessment.passed ? (
+                    <button
+                      type="button"
+                      onClick={() => setAssessmentModalModule({ moduleId: currentLesson.moduleId, moduleTitle: currentModule?.title || '' })}
+                      className="px-4 py-1.5 rounded-full text-[12px] font-bold bg-[#0052CC] hover:bg-[#0047CC] text-white shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-98"
+                    >
+                      <span>Take Module Assessment</span>
+                      <ChevronRightIcon size={14} />
+                    </button>
+                  ) : isCourseCompleted ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsCourseCompletedModalOpen(true)}
+                      className="px-4 py-1.5 rounded-full text-[12px] font-bold bg-[#0052CC] hover:bg-[#0047CC] text-white shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-98"
+                    >
+                      <span>Complete Talent Onboarding</span>
+                      <ChevronRightIcon size={14} />
+                    </button>
+                  ) : null
+                ) : (
+                  /* Not yet completed: clicking Next Lesson marks current complete, saves progress, and advances */
+                  nextLesson ? (
+                    <button
+                      type="button"
+                      disabled={progressMutation.isPending}
+                      onClick={handleMarkLessonComplete}
+                      className="px-4 py-1.5 rounded-full text-[12px] font-bold bg-[#0052CC] hover:bg-[#0047CC] text-white shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-98 disabled:opacity-60"
+                    >
+                      {progressMutation.isPending ? (
+                        <>
+                          <Spinner size={12} className="text-white" />
+                          <span>Saving...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Next Lesson</span>
+                          <ChevronRightIcon size={14} />
+                        </>
+                      )}
+                    </button>
+                  ) : currentModuleAssessment && !currentModuleAssessment.passed ? (
+                    <button
+                      type="button"
+                      disabled={progressMutation.isPending}
+                      onClick={handleMarkLessonComplete}
+                      className="px-4 py-1.5 rounded-full text-[12px] font-bold bg-[#0052CC] hover:bg-[#0047CC] text-white shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-98 disabled:opacity-60"
+                    >
+                      {progressMutation.isPending ? (
+                        <>
+                          <Spinner size={12} className="text-white" />
+                          <span>Saving...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Take Module Assessment</span>
+                          <ChevronRightIcon size={14} />
+                        </>
+                      )}
+                    </button>
+                  ) : null
+                )}
+              </div>
             </div>
           )}
 
